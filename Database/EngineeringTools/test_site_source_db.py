@@ -148,3 +148,11 @@ def test_ephemeral_postgis_document_restore_and_replay(sample_gpx, tmp_path):
         assert gpx_roundtrip(original, projection, output)['updated'] == 1
         assert bootstrap_expertgps(conn, sample_gpx, 'ci-source-reviewer', digest)['status'] == 'ALREADY_ACCEPTED'
         assert export_waypoint_projection(conn, digest) == projection
+
+        # Exercise the actual autocommit adapter and combined consumer gate,
+        # not a fake connection that might hide transaction-boundary failures.
+        from accept_site_sources import validate_shared_consumers
+        assert validate_shared_consumers(conn, 'gis-ci@example.invalid')['status'] == 'PASS'
+        with conn.cursor() as cur:
+            cur.execute('SELECT count(*) FROM ref.site_power_breaker')
+            assert cur.fetchone()[0] == 0, 'Acceptance fixtures leaked'

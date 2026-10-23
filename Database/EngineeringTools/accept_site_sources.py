@@ -21,7 +21,7 @@ def validate_shared_consumers(conn, email):
     both consumers. This is acceptance against one clone, not a second importer.
     """
     import uuid
-    with conn.cursor() as cur:
+    with conn.transaction(), conn.cursor() as cur:
         cur.execute('SAVEPOINT shared_consumers')
         try:
             cur.execute('SELECT ref.site_power_snapshot(%s)', (email,))
