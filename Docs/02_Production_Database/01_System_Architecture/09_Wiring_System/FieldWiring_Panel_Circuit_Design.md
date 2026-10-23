@@ -6,6 +6,50 @@
 | Owner | #171 / #230, commanding #122; FieldWiring |
 | Reviewed | 2026-10-23 |
 
+## October 23 revised candidate — panel diagram and Combo inventory
+
+Design-first disposition: V0.4.8 is CHANGES REQUIRED, not operator accepted.
+The next candidate separates panel identity, outlet supply and network-box inventory.
+Panel owns GPX identity, owner, meter and local main or explicit remote supplying
+breaker. Breaker owns amps and seasonal/non-seasonal desired state. Circuit legs
+own supplied-waypoint relationships; ordinary Power waypoints require only those
+relationships. No duplicate circuit-rating or outlet seasonal-state entry.
+
+The normal panel interaction is a compact odd-left/even-right diagram. A two-pole
+breaker spans vertically adjacent same-side positions (1/3 or 18/20), never 1/2.
+Click a circuit leg to select its supplied waypoints. Breaker properties are edited
+separately and retain existing circuit IDs and feeds. Empty diagram positions are
+entry controls, not assertions that installed slots are empty. A5 acceptance uses
+18 two-pole breakers: left 1/3 through 33/35, right 2/4 through 34/36, 20 A per
+pole, main 200 A. This is a disposable fixture, not authorization to seed Production.
+Unusual recorded positions remain visible for reconciliation.
+
+OUT-Combo is one waypoint with a receptacle and a separate network enclosure.
+Only the network enclosure receives inventory installation records. Reuse existing
+ref.controller IDs and model catalog for switches, repeaters, PixieLink and power
+supplies. Add only ref.site_controller_installation: controller FK, waypoint FK,
+active/retired relationship, evidence and verification. One active installation per
+controller; moving equipment retires the old association before creating another.
+Identity/location fields are immutable on an association; history is retained in
+the existing revision/audit log. Existing controller current_location_code remains
+legacy descriptive context, not a second editable waypoint mapping on this page.
+Do not create another device catalog or use site_power_device as asset inventory.
+Work Orders continue to own failures/repairs linked to controller_id. Unknown PSU
+models and the reported failures require identified assets; no invented records.
+
+Reuse site_power_snapshot/site_power_command, Directus authorization, atomic API
+batches and exact-retry handling. Include installation relationships in the GPX
+dependency fingerprint. Existing controller/model tables are deployment dependencies;
+minimal synthetic catalog tables belong only in existing disposable CI fixtures.
+No additional service, importer, migration runner or acceptance workflow.
+
+Validation must cover A5 diagram spanning and circuit-click assignment, ordinary
+Power hiding network inventory, multiple Combo assets, duplicate placement denial,
+retire/reinstall history, authorization/retry, shared-breaker feeds and themes.
+GPX/FLW intake remains the PC GIS Manager's two governed workflows under #378.
+Preserve the existing cached source paths and reusable preview CLEAN EXIT procedure.
+No Production change until exact-candidate disposable and operator acceptance.
+
 ## October 23 operator review — one breaker workflow (supersedes generic entry)
 
 Disposition: CHANGES REQUIRED at candidate 99198bbd. Operator confirmed successful
