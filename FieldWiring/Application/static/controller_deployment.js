@@ -35,7 +35,7 @@
         const link=node("a",`Open ${name(id)}`,host);link.href=`waypoints?waypoint=${id}`;node("span"," · ",host);
       }
       const form=node("form",undefined,host); form.id="deployment-form";
-      const choose=(id,label)=>{const l=node("label",label,form);l.style.display="block";const s=node("select",undefined,l);s.id=id;node("option","Not connected",s).value="";return s;};
+      const choose=(id,label)=>{const l=node("label",label,form);l.style.display="block";const s=node("select",undefined,l);s.id=id;s.style.maxWidth="100%";node("option","Not connected",s).value="";return s;};
       const location=choose("deployment-network","Network waypoint ");
       const outlet=choose("deployment-outlet","Power outlet waypoint ");
       const circuit=choose("deployment-circuit","Actual supplying circuit ");

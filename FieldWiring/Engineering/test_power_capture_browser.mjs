@@ -466,6 +466,13 @@ try {
       .isDisabled(),
     true,
   );
+  await page.goto(`${base}?circuit=1`);
+  await page.getByText("Read only",{exact:false}).waitFor();
+  assert.equal(await page.locator("#editor").isVisible(),false);
+  await page.goto(base.replace("circuits","controllers?controller_id=101"));
+  await page.locator("#deployment-network").waitFor();
+  assert.equal(await page.locator("#deployment-save").isDisabled(),true);
+  assert.equal(await page.locator("#deployment-network").isDisabled(),true);
   assert.deepEqual(errors, []);
   console.log(
     "PASS: focused panel/waypoint/equipment/history routes, shared Controller placement and power moves, retained history, exact batch retry, stale denial, network-only eligibility, retests, mobile width and read-only user.",

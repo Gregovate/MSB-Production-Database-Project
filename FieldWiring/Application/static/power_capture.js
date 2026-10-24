@@ -138,7 +138,7 @@
       const query=new URLSearchParams(location.search);
       if(mode==="panels" && query.get("circuit") && !$("panel-detail").dataset.linkOpened) {
         const target=circuit(Number(query.get("circuit")));
-        if(target) {panelId=target.site_panel_id;render();openAssignments(target);$("panel-detail").dataset.linkOpened="1";}
+        if(target) {panelId=target.site_panel_id;render();if(data.access.can_edit) openAssignments(target);$("panel-detail").dataset.linkOpened="1";}
       }
       render();
       const requested=new URLSearchParams(location.search).get("waypoint");
