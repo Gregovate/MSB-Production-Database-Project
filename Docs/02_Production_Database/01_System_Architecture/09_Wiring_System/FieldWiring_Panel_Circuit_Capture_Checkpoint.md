@@ -165,3 +165,19 @@ This candidate reuses #319's permanent breaker/pole/circuit design; #454's older
 Electronic equipment types include DIN power supply, Ethernet switch, PoE switch, extender, splitter and RS485 repeater as separate typed options, without creating inventory records from example purchase links. Actual network/electrical details remain optional until observed.
 
 Source commits on PR319 incorporate the #454 low-friction improvements and isolated regression cases. **Do not deploy #454's older power DDL alongside the #319 canonical migration.** Operator disposable/browser acceptance, current main currency, source lock/review ownership and governed deployment are separate pending gates; passing GitHub CI is not permission to mutate Production.
+
+
+## October 24 integrated engineering gate — exact source CI
+
+The canonical grouped-breaker #319 branch incorporates the tested low-friction editing correction from draft #454, but **not #454's competing older DDL**. Exact application/SQL/test candidate `75a9bc204be983eac8c0879cc2c7eaa0177356e6` completed all seven GitHub checks **SUCCESS**: FieldWiring full (includes isolated PGlite and Chromium), Setup full, Windows transport, safety, Engineering Compliance and both candidate checks. These checks prove source/fixture behavior, not current-Production-clone or operator acceptance.
+
+The final source fixes:
+- regular reference saves succeed without mandatory typed evidence or manual verification;
+- stored status defaults to UNVERIFIED; a routine change to a previously verified reference demotes it to UNVERIFIED instead of falsely inheriting old verification;
+- audit saves the original command payload so a lost-response retry is exactly idempotent, even when the database supplies defaults;
+- breaker rating/pole count and equipment owner/kind are curated dropdowns, while existing nonstandard ratings and owner names remain selectable to avoid accidental loss;
+- empty notes are not synthesized into fake field evidence; real seasonal events continue requiring an observation;
+- controller placement and power paths use Combo capability from the structured waypoint type, including Combo light poles, never from human display-name substrings;
+- new-record forms hide the irrelevant retirement checkbox. Existing records retain governed retirement and audit controls.
+
+No current-Production clone, browser/physical operator acceptance, PR merge, migration or live server/source publication has occurred. The previously recorded GIS source lock must be owner-verified before any new review. Release gate: exact #319 source identity, existing disposable runner/port ownership, current PG16+PostGIS clone, protected Crew/Manager behavior and operator acceptance, then separate authorized #37 Production boundary. Retain #454 draft as reconciliation evidence, but never install its old power migration with this canonical candidate.
