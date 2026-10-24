@@ -28,7 +28,7 @@ A5 fixture dimensions do not automatically create Production breaker records.
 
 ## Outlet power and controller connections
 
-Expand **Waypoint supply / OUT-Combo network box** and select a waypoint. Its
+Open **Waypoint Connections** and select a Power, Network or Combo waypoint. Its
 **Outlet circuits** show the recorded supplies; select one to correct assignments.
 Use **Connect controller to outlet** to choose an existing inventory ID and the
 actual supplying circuit leg. At a two-circuit outlet, choose the leg the plug uses;
@@ -41,17 +41,31 @@ record the reason and save; then create its new connection. Retired rows and aud
 history remain visible. Supply changes are rejected while a controller connection
 still depends on that supply; reconcile the plug-in record first.
 
-## OUT-Combo network-box inventory
+## Controller deployment and Combo equipment
 
-The receptacle and larger network box share one OUT-Combo waypoint. The network
-box section appears only for Combo waypoints. **Install inventory item** selects
-an existing Controller Inventory ID; several repeaters, switches, adapters or power
-supplies can be installed. Use the existing Controller Inventory screen to maintain
-asset/model records. This screen does not create another equipment inventory.
-Network-box placement and the controller's outlet connection are separate facts.
-To move equipment, retire the old installation and install that same ID at the new
-box. Record failures and repairs in existing Work Orders against that controller ID.
-Network assignments and advanced intermediate electrical feeds remain separate.
+Open **Controllers**, select the Controller, and use **Waypoint connections** to
+view or change its network waypoint and actual power outlet/circuit. These are the
+same records shown in **Waypoint Connections**. **Save connections** retires prior
+associations and creates replacements atomically, retaining history. Choose
+**Not connected** to disconnect. **Reload connections** retrieves changes made
+from another screen; stale saves require a reload. After an uncertain response,
+retry the same Save rather than creating a new connection.
+
+Network placement offers Network or Combo waypoints only when current LOR
+programming and reviewed GIS paths establish eligibility. Power outlet choices
+are Power or Combo waypoints with a recorded supplying circuit. Network location
+and actual plugged-in power outlet remain separate facts.
+
+Open **Combo Equipment** for switches, power supplies, splitters, repeaters and
+other installed gear. Select the Combo waypoint and **Add new equipment**.
+Controllers remain in the existing Controller Inventory. Intermediate feed and
+conductor records are available in the equipment screen's engineering disclosure.
+
+Open **Cable Test History** and select the connected waypoint pair. Each physical
+cable retains its separate test history, including retests, UUID, raw result code,
+test standard, measured length and source hash. Unresolved bindings have their own
+choice. This information is read-only and does not establish a network path or
+prove electrical isolation.
 
 Correct conflicting evidence without publishing competing active breaker supplies.
 The database rejects such relationships even when they pass through equipment.

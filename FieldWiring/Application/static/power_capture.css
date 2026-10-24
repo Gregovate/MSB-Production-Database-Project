@@ -129,3 +129,21 @@ html[data-theme="dark"] #save-status { color: #ffaaa5; }
 .power-choices label[hidden], [hidden] { display: none !important; }
 .power-choices input[type=checkbox] { width: auto; flex: 0 0 auto; }
 @media (max-width: 600px) { .power-slot-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .power-slot button { font-size: .8rem; padding: .3rem; } }
+
+/* Each route exposes its own workflow while sharing records and commands. */
+nav[aria-label="Field wiring screens"] {padding: .8rem 1rem; line-height: 2;}
+body:not([data-power-screen="panels"]) .power-layout,
+body:not([data-power-screen="panels"]) #seasonal-activities,
+body:not([data-power-screen="panels"]) #panel-search,
+body[data-power-screen="panels"] #waypoint-detail,
+body[data-power-screen="tests"] #waypoint-detail,
+body[data-power-screen="tests"] #correction-history,
+body[data-power-screen="waypoints"] #add-device,
+body[data-power-screen="waypoints"] #equipment-help,
+body[data-power-screen="waypoints"] #equipment,
+body[data-power-screen="waypoints"] #feed-engineering,
+body[data-power-screen="equipment"] #outlet-supply-section,
+body[data-power-screen="equipment"] #outlet-controllers,
+body[data-power-screen="equipment"] #install-controller,
+body[data-power-screen="equipment"] #installations {display:none;}
+#test-history {overflow-wrap:anywhere;}

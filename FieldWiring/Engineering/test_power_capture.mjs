@@ -531,7 +531,7 @@ await db.exec("UPDATE ref.site_route_source_track SET source_class='HV'");
 assert.equal((await availability()).length,1);
 await db.exec("UPDATE ref.site_route_source_track SET source_class='NET'");
 // A passing FLW observation cannot substitute for a reviewed route.
-await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-24',1,'REVIEWED','fixture'); UPDATE ref.site_route_segment SET review_status='REVIEW_REQUIRED' WHERE site_route_segment_id=1");
+await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-24',1,'REVIEWED','fixture','Cat6',123,'Fixture test'); UPDATE ref.site_route_segment SET review_status='REVIEW_REQUIRED' WHERE site_route_segment_id=1");
 await denied(()=>cmd("controller_installation",{controller_id:103,site_waypoint_id:11}),"23514");
 await db.exec("UPDATE ref.site_route_segment SET review_status='REVIEWED' WHERE site_route_segment_id=1");
 const installed=await cmd("controller_installation",{controller_id:103,site_waypoint_id:11});
@@ -573,6 +573,13 @@ for(const view of ["site_network_availability","site_controller_placement_eligib
  assert.equal((await db.query("SELECT has_table_privilege('fieldwiring_app',$1,'INSERT,UPDATE,DELETE') allowed",["ref."+view])).rows[0].allowed,false);
 }
 n+=20;
+// Network-only endpoints use the same reviewed-route/LOR gate, never power.
+await cmd("controller_installation",{active:false},installed.target_id);
+await db.exec("UPDATE ref.site_waypoint SET waypoint_type='Network' WHERE site_waypoint_id=11");
+await cmd("controller_installation",{controller_id:103,site_waypoint_id:11});
+assert.equal(finalSnapshot.linkiq_evidence[0].test_standard,"Cat6");
+assert.equal(Number(finalSnapshot.linkiq_evidence[0].length_ft),123);
+n+=2;
 console.log(
   `PASS: ${n} SQL command/denial checks plus snapshot, audit, seasonal and rollback assertions (isolated PGlite PostgreSQL; no Production connection).`,
 );

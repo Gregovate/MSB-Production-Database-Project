@@ -224,7 +224,9 @@ function renderFirmwareHistory(rows) {
 }
 
 async function loadControllerDetail(controllerId) {
+  if (window.MSBControllerDeployment && !window.MSBControllerDeployment.mayLeave()) return;
   selectedControllerId = controllerId;
+  window.MSBControllerDeployment?.render(controllerId);
   for (const row of controllerList.querySelectorAll('.controller-row')) {
     row.classList.toggle('active', Number(row.dataset.controllerId) === controllerId);
   }
@@ -240,6 +242,7 @@ async function loadControllerDetail(controllerId) {
     const response = await fetch(`api/controllers/${controllerId}`);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || 'Controller could not be loaded.');
+    if (selectedControllerId !== controllerId) return;
     const c = payload.controller;
     document.getElementById('detail-id').textContent = `CTRL ${c.controller_id}`;
     document.getElementById('detail-model').textContent = `${c.manufacturer} · ${c.model_code} · ${c.model_name}`;

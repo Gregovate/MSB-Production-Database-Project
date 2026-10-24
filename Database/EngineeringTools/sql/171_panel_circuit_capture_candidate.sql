@@ -393,7 +393,7 @@ BEGIN
  result:=result||jsonb_build_object('circuit_loads',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_circuit_load t),'[]'::jsonb));
  result:=result||jsonb_build_object('load_lineage',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_circuit_load_lineage t),'[]'::jsonb));
  result:=result||jsonb_build_object('waypoint_power_sources',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_waypoint_power_sources t),'[]'::jsonb));
- result:=result||jsonb_build_object('route_evidence',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_route_source_track t),'[]'::jsonb),'linkiq_evidence',coalesce((SELECT jsonb_agg(jsonb_build_object('test_uuid',t.test_uuid,'cable_id',t.physical_site_cable_id,'endpoint_a',c.endpoint_a_waypoint_id,'endpoint_b',c.endpoint_b_waypoint_id,'test_time',t.test_time_local,'status_code',t.test_status_code,'review_status',t.identity_review_status,'source_sha256',t.first_seen_source_sha256)) FROM ops.linkiq_test t LEFT JOIN ref.site_cable c ON c.site_cable_id=t.physical_site_cable_id),'[]'::jsonb));
+ result:=result||jsonb_build_object('route_evidence',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_route_source_track t),'[]'::jsonb),'linkiq_evidence',coalesce((SELECT jsonb_agg(jsonb_build_object('test_uuid',t.test_uuid,'cable_id',t.physical_site_cable_id,'endpoint_a',c.endpoint_a_waypoint_id,'endpoint_b',c.endpoint_b_waypoint_id,'test_time',t.test_time_local,'status_code',t.test_status_code,'review_status',t.identity_review_status,'source_sha256',t.first_seen_source_sha256,'test_standard',t.test_standard,'length_ft',t.length_ft,'original_name',t.tester_original_name)) FROM ops.linkiq_test t LEFT JOIN ref.site_cable c ON c.site_cable_id=t.physical_site_cable_id),'[]'::jsonb));
  result:=result||jsonb_build_object('panels',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_panel t),'[]'::jsonb));
  result:=result||jsonb_build_object('cable_specs',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_power_cable_spec t),'[]'::jsonb));
  result:=result||jsonb_build_object('conductors',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_power_conductor t),'[]'::jsonb));
@@ -603,8 +603,8 @@ BEGIN
       OR expected->'site_waypoint_id' IS DISTINCT FROM before_row->'site_waypoint_id') THEN
     RAISE EXCEPTION 'Retire the previous installation and create a new one to move equipment' USING ERRCODE='22023';
    END IF;
-   IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_waypoint WHERE site_waypoint_id=(expected->>'site_waypoint_id')::bigint AND regexp_split_to_array(lower(btrim(waypoint_type)), '[-_[:space:]]+') @> ARRAY['combo']::text[]) THEN
-    RAISE EXCEPTION 'Controller installation requires a waypoint with Combo power-and-network capability' USING ERRCODE='22023';
+   IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_waypoint WHERE site_waypoint_id=(expected->>'site_waypoint_id')::bigint AND regexp_split_to_array(lower(btrim(waypoint_type)), '[-_[:space:]]+') && ARRAY['network','net','combo']::text[]) THEN
+    RAISE EXCEPTION 'Controller installation requires a Network or Combo waypoint' USING ERRCODE='22023';
    END IF;
    IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_controller_placement_eligibility
     WHERE controller_id=(expected->>'controller_id')::bigint AND site_waypoint_id=(expected->>'site_waypoint_id')::bigint) THEN

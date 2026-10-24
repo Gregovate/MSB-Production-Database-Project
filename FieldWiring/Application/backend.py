@@ -1,4 +1,4 @@
-"""MSB FieldWiring browser API and static application host — V0.4.11-waypoint-breaker."""
+"""MSB FieldWiring browser API and static application host — V0.4.12-deployment-connections."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.4.11-waypoint-breaker"
+APP_VERSION = "V0.4.12-deployment-connections"
 BASE_DIR = Path(__file__).resolve().parent
 CONTROLLER_COMMAND_HEADER = "X-MSB-Controller-Command"
 app = Flask(__name__, root_path=str(BASE_DIR))
@@ -186,6 +186,9 @@ def js() -> Response:
 
 @app.get("/circuits")
 @app.get("/circuits.html")
+@app.get("/waypoints")
+@app.get("/equipment")
+@app.get("/cable-tests")
 def circuits_page() -> Response:
     response = send_from_directory(BASE_DIR, "circuits.html")
     response.headers["Cache-Control"] = "no-store"

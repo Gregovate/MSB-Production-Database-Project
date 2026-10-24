@@ -74,8 +74,15 @@ const server = createServer(async (req, res) => {
         throw e;
       }
     }
+    // Inventory metadata is synthetic; deployment reads/writes above use real SQL.
+    if(url.pathname.startsWith("/fieldwiring/api/")) {
+      const id=Number(url.pathname.match(/controllers\/(\d+)/)?.[1]||101);
+      res.setHeader("Content-Type","application/json");
+      res.end(JSON.stringify({controller:{controller_id:id,manufacturer:"Fixture",model_code:"Fixture",model_name:"Fixture",controller_status_name:"AVAILABLE",lor_network:"REG"},controllers:[],assignments:[],firmware_history:[],access:{can_manage:false},can_manage:false}));return;
+    }
     let filename = url.pathname.replace("/fieldwiring/", "");
-    if (filename === "circuits") filename = "circuits.html";
+    if (["circuits","waypoints","equipment","cable-tests"].includes(filename)) filename = "circuits.html";
+    if (filename === "controllers") filename = "controllers.html";
     const full = path.resolve(app, filename);
     if (!full.startsWith(app + path.sep)) throw new Error("Invalid path");
     res.setHeader(
@@ -200,11 +207,14 @@ try {
     ).rows[0].n,
     1,
   );
-  await page.locator("#waypoint-detail > summary").click();
+  await page.goto(base.replace("circuits","waypoints"));
+  await page.getByText(/Revision \d+/).waitFor();
   await page.locator("#detail-waypoint").selectOption("11");
   assert.equal(await page.getByRole("button",{name:"Assign network",exact:true}).count(),0);
   assert.match(await page.locator("#networks").innerText(),/REG.*reviewed cable/);
   assert.match(await page.locator("#waypoint-safety").innerText(),/do not prove absence of voltage/);
+  await page.goto(base);
+  await page.getByText(/Revision \d+/).waitFor();
   await page.locator("#seasonal-activities > summary").click();
   await page
     .getByRole("button", { name: "Define activity", exact: true })
@@ -272,6 +282,9 @@ try {
   assert.equal(await page.locator("#waypoint-detail").getAttribute("open"),"");
   assert.equal(await page.locator("#detail-waypoint").inputValue(),"12");
   assert.equal((await db.query("SELECT count(DISTINCT f.source_circuit_id)::int n FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id WHERE c.site_power_breaker_id=$1 AND f.destination_waypoint_id=12 AND f.active",[breakerId])).rows[0].n,2);
+  await page.goto(base);
+  await page.getByText(/Revision \d+/).waitFor();
+  await page.locator("#panels").getByRole("button",{name:"A5 panel",exact:true}).click();
   assert.equal(await page.locator(".power-slot").count(),35);
   assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridRow),"9 / span 2");
   assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridColumn),"2");
@@ -317,6 +330,8 @@ try {
   assert.equal(positions.filter(x=>x[0]==="2").length,9);
   assert.ok(positions.every(x=>x[1].endsWith("span 2")));
   // Power-only outlet has circuit and plug-in controls, no network enclosure form.
+  await page.goto(base.replace("circuits","waypoints"));
+  await page.getByText(/Revision \d+/).waitFor();
   await page.locator("#detail-waypoint").selectOption("13");
   assert.equal(await page.locator("#combo-network-box").isVisible(),false);
   assert.equal(await page.locator("#connect-controller").isVisible(),true);
@@ -329,14 +344,19 @@ try {
   await dialog.locator("[name=site_power_circuit_id]").selectOption(String(firstCircuit));
   await evidence();await save();
   assert.match(await page.locator("#plugged-controllers").innerText(),/Controller 101/);
+  await page.goto(base);
+  await page.getByText(/Revision \d+/).waitFor();
+  await page.locator("#panels").getByRole("button",{name:"A5 panel",exact:true}).click();
   assert.match(await page.locator("#panel-detail").innerText(),/Recorded Display subtotal: 2 A/);
+  await page.goto(base.replace("circuits","waypoints"));
+  await page.getByText(/Revision \d+/).waitFor();
   await page.locator("#detail-waypoint").selectOption("12");
   for(const id of ["101","102"]) {
     await page.getByRole("button",{name:"Install existing controller",exact:true}).click();
     await dialog.locator("[name=controller_id]").selectOption(id);
     await evidence();await save();
   }
-  assert.equal(await page.locator("#equipment .power-record").count(),2);
+  assert.equal(await page.locator("#installations .power-record").count(),2);
   // A changed source must disappear from eligible locations on the next read.
   await db.exec("UPDATE ref.site_track SET changed_at='2027-01-01'");
   await page.locator("#reload").click();
@@ -352,6 +372,8 @@ try {
   await page.getByText(/Revision \d+/).waitFor();
   // Network equipment is recorded at its Combo waypoint, not forced into
   // the LOR Controller model inventory.
+  await page.goto(base.replace("circuits","equipment?waypoint=12"));
+  await page.getByText(/Revision \d+/).waitFor();
   await page.getByRole("button",{name:"Add new equipment",exact:true}).click();
   await dialog.locator("[name=device_name]").selectOption("TRENDnet TI-PGLC50 · 5-port PoE+");
   assert.equal(await dialog.locator("[name=device_kind]").inputValue(),"POE_SWITCH");
@@ -361,6 +383,54 @@ try {
   assert.match(await page.locator("#equipment").innerText(),/TRENDnet TI-PGLC50 · 5-port PoE\+ · POE_SWITCH/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_kind='POE_SWITCH' AND site_waypoint_id=12")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,4);
+  // Editing from Controller Inventory must update the same records visible at
+  // the waypoint, retaining history and safely replaying an uncertain response.
+  await page.goto(base.replace("circuits","controllers?controller_id=101"));
+  await page.locator("#deployment-network").waitFor();
+  assert.equal(await page.locator("#deployment-network").inputValue(),"12");
+  assert.equal(await page.locator("#deployment-outlet").inputValue(),"13");
+  await page.locator("#deployment-network").selectOption("11");
+  failNext=true;
+  await page.locator("#deployment-save").click();
+  await page.getByText(/Save outcome unknown/).waitFor();
+  await page.locator("#deployment-save").click();
+  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_controller_installation WHERE controller_id=101 AND active")).rows[0].n,1);
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_controller_installation WHERE controller_id=101 AND NOT active")).rows[0].n,1);
+  await page.goto(base.replace("circuits","waypoints?waypoint=11"));
+  await page.getByText(/Revision \d+/).waitFor();
+  assert.match(await page.locator("#installations").innerText(),/Controller 101/);
+  assert.equal(await page.locator('#detail-waypoint option[value="10"]').count(),0);
+  // Network-only placement is eligible when the existing reviewed route is valid.
+  await db.exec("UPDATE ref.site_waypoint SET waypoint_type='Network' WHERE site_waypoint_id=11");
+  await page.goto(base.replace("circuits","controllers?controller_id=102"));
+  await page.locator("#deployment-network").waitFor();
+  await page.locator("#deployment-network").selectOption("11");
+  await page.locator("#deployment-save").click();
+  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  assert.equal((await db.query("SELECT site_waypoint_id FROM ref.site_controller_installation WHERE controller_id=102 AND active")).rows[0].site_waypoint_id,11);
+  // Stale revision cannot silently overwrite another screen's update.
+  await page.locator("#deployment-network").selectOption("12");
+  await db.exec("UPDATE ref.site_power_revision SET revision=revision+1");
+  await page.locator("#deployment-save").click();
+  await page.getByText(/Records changed. Reload connections/).waitFor();
+  assert.equal(await page.locator("#deployment-save").isDisabled(),true);
+  page.once("dialog",d=>d.accept());
+  await page.getByRole("button",{name:"Reload connections",exact:true}).click();
+  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  // Separate read-only history retains retests and unresolved identities.
+  await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-23',1,'REVIEWED','source-one','Cat6',100,'first'),(gen_random_uuid(),1,'2026-10-24',2,'REVIEWED','source-two','Cat6',101,'retest'),(gen_random_uuid(),NULL,NULL,NULL,'UNMATCHED','source-three',NULL,NULL,'unresolved')");
+  await page.goto(base.replace("circuits","cable-tests"));
+  await page.getByText(/Revision \d+/).waitFor();
+  await page.locator("#test-pair").selectOption("11:12");
+  assert.equal(await page.locator("#test-history article").count(),2);
+  assert.match(await page.locator("#test-history").innerText(),/source-one/);
+  assert.match(await page.locator("#test-history").innerText(),/source-two/);
+  await page.locator("#test-pair").selectOption("unresolved");
+  assert.equal(await page.locator("#test-history article").count(),1);
+  assert.equal(await page.locator("#cable-history button").count(),0);
+  await page.goto(base);
+  await page.getByText(/Revision \d+/).waitFor();
   await page.screenshot({path:"/tmp/power-panel-desktop.png",fullPage:true});
   await page.getByRole("button", {name:/Light mode|Dark mode/}).click();
   const changedTheme = await page.locator("html").getAttribute("data-theme");
