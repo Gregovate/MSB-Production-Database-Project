@@ -32,7 +32,7 @@ CREATE TABLE ref.site_panel (
  site_panel_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  panel_name text NOT NULL CHECK (btrim(panel_name)<>''),
  site_waypoint_id bigint REFERENCES ref.site_waypoint(site_waypoint_id),
- owner_name text, panel_identification text, meter_information text, supply_breaker_id bigint,
+ owner_name text, year_installed integer CHECK (year_installed BETWEEN 1900 AND 2100), panel_identification text, meter_information text, supply_breaker_id bigint,
  active boolean NOT NULL DEFAULT true,
  source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
@@ -393,7 +393,7 @@ BEGIN
   allowed:=ARRAY['impact_reviewed','site_power_action_id','season_year','event_kind','condition','observed_at','evidence','corrects_event_id'];
  ELSE
   CASE p_kind
-  WHEN 'panel' THEN table_name:='site_panel'; key_name:='site_panel_id'; allowed:=ARRAY['panel_name','site_waypoint_id','owner_name','panel_identification','meter_information','supply_breaker_id','active','source_evidence','verification_status'];
+  WHEN 'panel' THEN table_name:='site_panel'; key_name:='site_panel_id'; allowed:=ARRAY['panel_name','site_waypoint_id','owner_name','year_installed','panel_identification','meter_information','supply_breaker_id','active','source_evidence','verification_status'];
   WHEN 'cable_spec' THEN table_name:='site_power_cable_spec'; key_name:='site_power_cable_spec_id'; allowed:=ARRAY['site_cable_id','cable_specification','active','source_evidence','verification_status'];
   WHEN 'conductor' THEN table_name:='site_power_conductor'; key_name:='site_power_conductor_id'; allowed:=ARRAY['site_cable_id','conductor_label','conductor_role','active','source_evidence','verification_status'];
   WHEN 'conductor_circuit' THEN table_name:='site_power_conductor_circuit'; key_name:='site_power_conductor_circuit_id'; allowed:=ARRAY['site_power_conductor_id','site_power_circuit_id','active','source_evidence','verification_status'];
