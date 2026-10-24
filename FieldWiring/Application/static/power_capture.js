@@ -584,8 +584,9 @@
   function renderCableHistory() {
     const selector=$("test-pair"), prior=selector.value;
     const tests=data.linkiq_evidence || [];
+    const chronology=new Map((data.flw_cable_tests || []).map(t=>[t.test_uuid,t]));
     // Reuse persisted intake proposals: source-declared endpoints do not create
-    // reviewed cable bindings, route continuity or network availability.
+    // reviewed cable bindings or route geometry. Resolved endpoints supply networks.
     const endpoints=t=>{
       if(t.endpoint_a && t.endpoint_b) return {key:[t.endpoint_a,t.endpoint_b].sort((a,b)=>a-b).join(":"),label:[t.endpoint_a,t.endpoint_b].sort((a,b)=>a-b).map(waypointName).join(" ↔ ")};
       const proposal=t.source_pair || {}, ids=proposal.endpoint_candidates || [];
@@ -603,12 +604,16 @@
     const root=$("test-history");root.replaceChildren();
     if(!tests.length) el("p","No retained cable tests.",root);
     const selected=tests.filter(t=>endpoints(t).key===selector.value);
-    const cableKey=t=>t.cable_id ? `Physical cable ${t.cable_id}` : `Source designation ${t.source_pair?.designation || "unknown"}${t.source_pair?.qualifier ? " / "+t.source_pair.qualifier : ""} — physical cable unreviewed`;
+    const cableKey=t=>t.cable_id ? `Physical cable ${t.cable_id}` : `Source designation ${chronology.get(t.test_uuid)?.network_key || t.source_pair?.designation || "unknown"} — physical cable unreviewed`;
     for(const key of new Set(selected.map(cableKey))) {
       const section=el("section",undefined,root);el("h3",key,section);
       for(const t of selected.filter(t=>cableKey(t)===key).sort((a,b)=>String(b.test_time||"").localeCompare(String(a.test_time||"")))) {
         const entry=el("article",undefined,section); entry.className="power-record";
-        el("h4",`${t.test_time || "Time unknown"} · ${t.test_uuid}`,entry);
+        const dated=chronology.get(t.test_uuid);
+        const clockUnset=!t.test_time || /^1970-/.test(t.test_time);
+        el("h4",`${clockUnset ? "Tester date unset / unknown" : t.test_time} · ${t.test_uuid}`,entry);
+        if(dated?.latest_reliably_dated) el("p",`Latest dated test${dated.has_unknown_test_order || dated.latest_time_tied ? " — test order uncertain" : ""}`,entry);
+        if(dated?.has_unknown_test_order) el("p","This cable also has tests without a reliable date; their order cannot be established.",entry);
         el("p",`Raw result code: ${t.status_code ?? "Unknown"} · Standard: ${t.test_standard || "Unknown"} · Length: ${t.length_ft ?? "Unknown"} ft · Review: ${t.review_status || "Unknown"}`,entry);
         if(t.source_pair) el("p",`FLW source label: ${t.source_pair.display_label} · Designation: ${t.source_pair.designation || "Unknown"} · Source: ${t.source_pair.source_sha256 || "Unknown"}`,entry);
         el("p",`Original test name: ${t.original_name || "Unknown"} · First source SHA-256: ${t.source_sha256 || "Unknown"}`,entry);
@@ -945,7 +950,7 @@
         location.value=selected;
       };
       controller.onchange=refresh;refresh();
-      el("p","Only locations with the required current LOR network and a reviewed GIS route are selectable. Resolve missing paths through GIS; network membership is read-only.",$("edit-fields"));
+      el("p","Only locations with the required current LOR network and FLW endpoint/network evidence are selectable. Reconcile unresolved FLW endpoints; network membership is read-only.",$("edit-fields"));
     }
     if (kind === "controller_installation" && row.site_controller_installation_id) {
       $("edit-form").elements.controller_id.disabled=true;

@@ -509,13 +509,6 @@ await db.exec("RESET ROLE");
 const availability=async()=> (await db.query("SELECT * FROM ref.site_controller_placement_eligibility WHERE controller_id=103 AND site_waypoint_id=11")).rows;
 assert.equal((await availability()).length,1);
 for(const [change,restore] of [
- ["UPDATE ref.site_route_segment SET review_status='REVIEW_REQUIRED' WHERE site_route_segment_id=1","UPDATE ref.site_route_segment SET review_status='REVIEWED' WHERE site_route_segment_id=1"],
- ["UPDATE ref.site_track SET changed_at='2027-01-01'","UPDATE ref.site_track SET changed_at='2026-01-01'"],
- ["UPDATE ref.site_track SET lifecycle_status='RETIRED'","UPDATE ref.site_track SET lifecycle_status='CURRENT'"],
- ["DELETE FROM ref.site_route_source_track WHERE site_route_segment_id=1","INSERT INTO ref.site_route_source_track VALUES(1,1,'NET','2026-02-02')"],
- ["UPDATE ref.site_cable_route_segment SET traversal_direction=-1 WHERE site_cable_id=1","UPDATE ref.site_cable_route_segment SET traversal_direction=1 WHERE site_cable_id=1"],
- ["UPDATE ref.site_cable_route_segment SET segment_order=2 WHERE site_cable_id=1","UPDATE ref.site_cable_route_segment SET segment_order=1 WHERE site_cable_id=1"],
- ["UPDATE ref.site_cable SET lifecycle_status='FAILED' WHERE site_cable_id=1","UPDATE ref.site_cable SET lifecycle_status='CURRENT' WHERE site_cable_id=1"],
  ["UPDATE ref.controller SET lor_network='AUX-A' WHERE controller_id=103","UPDATE ref.controller SET lor_network='REG' WHERE controller_id=103"],
  ["UPDATE lor_snap.v_current_props SET network='AUX-A' WHERE raw_prop_id='prop-103'","UPDATE lor_snap.v_current_props SET network='REG' WHERE raw_prop_id='prop-103'"],
  ["UPDATE lor_snap.v_current_props SET uid='invalid' WHERE raw_prop_id='prop-103'","UPDATE lor_snap.v_current_props SET uid='01' WHERE raw_prop_id='prop-103'"]
@@ -530,9 +523,9 @@ for(const [change,restore] of [
 await db.exec("UPDATE ref.site_route_source_track SET source_class='HV'");
 assert.equal((await availability()).length,1);
 await db.exec("UPDATE ref.site_route_source_track SET source_class='NET'");
-// A passing FLW observation cannot substitute for a reviewed route.
+// FLW endpoint membership remains available without reviewed GPX geometry.
 await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-24',1,'REVIEWED','fixture','Cat6',123,'Fixture test'); UPDATE ref.site_route_segment SET review_status='REVIEW_REQUIRED' WHERE site_route_segment_id=1");
-await denied(()=>cmd("controller_installation",{controller_id:103,site_waypoint_id:11}),"23514");
+assert.equal((await availability()).length,1);
 await db.exec("UPDATE ref.site_route_segment SET review_status='REVIEWED' WHERE site_route_segment_id=1");
 const installed=await cmd("controller_installation",{controller_id:103,site_waypoint_id:11});
 // Panel plans and evidence remain independent of branch plans and never imply OFF.
@@ -595,6 +588,32 @@ const remoteState=(await db.query("SELECT ref.site_power_snapshot('crew@example.
 assert.equal(remoteState.supply_panel_id,source15.target_id);
 assert.equal(remoteState.supply_breaker_id,null);
 n+=2;
+// FLW authority: unordered endpoints, multiple networks, old dates, latest failure.
+const immutableBefore=(await db.query("SELECT jsonb_agg(to_jsonb(t) ORDER BY test_uuid) evidence FROM ops.linkiq_test t")).rows[0].evidence;
+await db.exec(`INSERT INTO ref.site_network VALUES(3,'AUX-E','LOR');
+INSERT INTO ops.linkiq_test VALUES
+ ('00000000-0000-0000-0000-000000000021',NULL,'2023-10-01T10:00:00',1,'UNMATCHED','flw','1000BASE-T',306,'A TO B AUX-E'),
+ ('00000000-0000-0000-0000-000000000022',NULL,'2024-10-01T10:00:00',2,'UNMATCHED','flw','1000BASE-T',309,'B TO A AUX E'),
+ ('00000000-0000-0000-0000-000000000023',NULL,'1970-02-10T10:00:00',1,'UNMATCHED','flw','1000BASE-T',307,'A TO B AUX-E');
+INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal) VALUES
+ ('flw','00000000-0000-0000-0000-000000000021','{"endpoint_candidates":[[11],[12]],"designation":"AUX-E","reasons":[]}'),
+ ('flw','00000000-0000-0000-0000-000000000022','{"endpoint_candidates":[[12],[11]],"designation":"Aux E","reasons":[]}'),
+ ('flw','00000000-0000-0000-0000-000000000023','{"endpoint_candidates":[[11],[12]],"designation":"AUX-E","reasons":[]}');
+UPDATE ref.site_route_segment SET review_status='REVIEW_REQUIRED';`);
+const cableTests=(await db.query("SELECT * FROM ref.site_flw_cable_test WHERE network_key='AUX-E'")).rows;
+assert.equal(new Set(cableTests.map(x=>x.cable_key)).size,1);
+assert.equal(cableTests.filter(x=>x.latest_reliably_dated).length,1);
+assert.equal(cableTests.find(x=>x.latest_reliably_dated).test_status_code,2);
+assert.ok(cableTests.every(x=>x.has_unknown_test_order));
+assert.equal(cableTests.find(x=>x.test_time_local.startsWith('1970')).reliable_test_time,null);
+assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_network_availability WHERE site_waypoint_id=11")).rows[0].n,2);
+await db.exec("DELETE FROM ref.controller_display WHERE controller_id=103 AND display_id=201; UPDATE ref.controller SET lor_network='Aux E' WHERE controller_id=103; UPDATE lor_snap.v_current_props SET network='AUX-E' WHERE raw_prop_id='prop-103'");
+assert.equal((await availability()).length,1);
+await db.exec(`INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal) VALUES
+ ('conflicting','00000000-0000-0000-0000-000000000022','{"endpoint_candidates":[[11],[99]],"designation":"AUX-E","reasons":[]}');`);
+assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_flw_cable_test WHERE test_uuid='00000000-0000-0000-0000-000000000022'")).rows[0].n,0);
+assert.deepEqual((await db.query("SELECT jsonb_agg(to_jsonb(t) ORDER BY test_uuid) evidence FROM ops.linkiq_test t WHERE first_seen_source_sha256<>'flw'")).rows[0].evidence,immutableBefore);
+n+=9;
 console.log(
   `PASS: ${n} SQL command/denial checks plus snapshot, audit, seasonal and rollback assertions (isolated PGlite PostgreSQL; no Production connection).`,
 );

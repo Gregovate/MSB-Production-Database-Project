@@ -94,11 +94,11 @@ BEGIN
  VALUES(a,b,'Disposable',ST_GeomFromText('LINESTRING(100000 100000,100010 100010)',8158),'REVIEWED','Disposable',now()) RETURNING site_route_segment_id INTO segment;
  INSERT INTO ref.site_route_source_track VALUES(segment,track,'NET','Disposable review','Disposable',now());
  INSERT INTO ref.site_cable_route_segment VALUES(cable,1,segment,1,'Disposable',now());
- IF (SELECT count(*) FROM ref.site_network_availability WHERE site_cable_id=cable)<>2 THEN
+ IF (SELECT count(*) FROM ref.site_route_network_evidence WHERE site_cable_id=cable)<>2 THEN
   RAISE EXCEPTION 'Reviewed network route endpoints not available';
  END IF;
  UPDATE ref.site_track SET changed_at=now()+interval '1 second' WHERE site_track_id=track;
- IF EXISTS(SELECT FROM ref.site_network_availability WHERE site_cable_id=cable) THEN
+ IF EXISTS(SELECT FROM ref.site_route_network_evidence WHERE site_cable_id=cable) THEN
   RAISE EXCEPTION 'Changed track incorrectly retains network availability';
  END IF;
  BEGIN
@@ -106,7 +106,7 @@ BEGIN
   RAISE EXCEPTION 'Retired network write accepted';
  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
  END;
- IF has_table_privilege('fieldwiring_app','ref.site_network_availability','INSERT,UPDATE,DELETE')
+ IF has_table_privilege('fieldwiring_app','ref.site_route_network_evidence','INSERT,UPDATE,DELETE')
  OR has_table_privilege('fieldwiring_app','ref.site_circuit_load','INSERT,UPDATE,DELETE') THEN
   RAISE EXCEPTION 'Projection write privilege leaked';
  END IF;

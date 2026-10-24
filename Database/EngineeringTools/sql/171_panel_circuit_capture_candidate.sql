@@ -224,8 +224,8 @@ CREATE TABLE ops.site_power_edit_log (
 );
 -- Read capability does not invoke the identity reconciler (which can write).
 -- Derived availability requires a complete, directed, reviewed physical route.
--- No waypoint annotation or FLW measurement participates in this decision.
-CREATE VIEW ref.site_network_availability AS
+-- Geometry evidence is separate from FLW physical endpoint/network membership.
+CREATE VIEW ref.site_route_network_evidence AS
 WITH RECURSIVE edges AS (
  SELECT cr.site_cable_id,cr.segment_order,rs.site_route_segment_id,
  CASE cr.traversal_direction WHEN 1 THEN rs.endpoint_a_waypoint_id ELSE rs.endpoint_b_waypoint_id END a,
@@ -253,6 +253,75 @@ FROM walk w JOIN ref.site_network n USING(site_network_id)
 CROSS JOIN LATERAL (VALUES(w.endpoint_a_waypoint_id),(w.endpoint_b_waypoint_id)) v(site_waypoint_id)
 WHERE w.b=w.endpoint_b_waypoint_id AND w.segment_order=(SELECT max(segment_order) FROM ref.site_cable_route_segment WHERE site_cable_id=w.site_cable_id);
 
+-- LinkWare owns physical endpoint/network evidence. These read-only projections
+-- never rewrite imported tests or approve GPX geometry / physical cable identity.
+CREATE FUNCTION ref.site_network_key(value text) RETURNS text
+LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+ SELECT CASE WHEN upper(btrim(value)) ~ '^AUX[ -]+[A-Z]$'
+ THEN regexp_replace(upper(btrim(value)), '[ -]+', '-', 'g')
+ ELSE upper(btrim(value)) END
+$$;
+CREATE FUNCTION ref.site_flw_test_time(value text) RETURNS timestamp
+LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE result timestamp;
+BEGIN
+ -- Tester clock defaults are evidence, not usable chronology. Never substitute
+ -- the import timestamp or source row number for a physical test timestamp.
+ IF value IS NULL OR value !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}([T ][0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?)?$' THEN RETURN NULL; END IF;
+ result:=value::timestamp;
+ IF extract(year FROM result)<=1970 THEN RETURN NULL; END IF;
+ RETURN result;
+EXCEPTION WHEN datetime_field_overflow OR invalid_datetime_format THEN RETURN NULL;
+END $$;
+CREATE VIEW ref.site_flw_cable_test AS
+WITH proposals AS (
+ SELECT r.test_uuid,r.proposal,
+ CASE WHEN jsonb_array_length(r.proposal->'endpoint_candidates')=2
+ AND jsonb_array_length(r.proposal->'endpoint_candidates'->0)=1
+ AND jsonb_array_length(r.proposal->'endpoint_candidates'->1)=1
+ THEN r.proposal->'endpoint_candidates'->0->>0 END a,
+ CASE WHEN jsonb_array_length(r.proposal->'endpoint_candidates')=2
+ AND jsonb_array_length(r.proposal->'endpoint_candidates'->0)=1
+ AND jsonb_array_length(r.proposal->'endpoint_candidates'->1)=1
+ THEN r.proposal->'endpoint_candidates'->1->>0 END b,
+ ref.site_network_key(r.proposal->>'designation') network_key
+ FROM ops.linkiq_intake_review r
+), resolved AS (
+ SELECT p.test_uuid,least(a.site_waypoint_id,b.site_waypoint_id) endpoint_a,
+ greatest(a.site_waypoint_id,b.site_waypoint_id) endpoint_b,p.network_key
+ FROM proposals p JOIN ref.site_waypoint a ON a.site_waypoint_id::text=p.a
+ JOIN ref.site_waypoint b ON b.site_waypoint_id::text=p.b
+ WHERE a.site_waypoint_id<>b.site_waypoint_id AND p.network_key IS NOT NULL
+ AND NOT (coalesce(p.proposal->'reasons','[]'::jsonb) ?| ARRAY['SOURCE_DELETED','REVIEWED_BINDING_SOURCE_DISAGREEMENT','NAME_REQUIRES_REVIEW'])
+), identities AS (
+ -- Conflicting source appearances do not silently reassign a test's endpoints.
+ SELECT test_uuid,min(endpoint_a) endpoint_a,min(endpoint_b) endpoint_b,min(network_key) network_key
+ FROM resolved GROUP BY test_uuid
+ HAVING count(DISTINCT (endpoint_a,endpoint_b,network_key))=1
+ AND count(*)=(SELECT count(*) FROM proposals p WHERE p.test_uuid=resolved.test_uuid)
+), evidence AS (
+ SELECT t.test_uuid,t.test_time_local,t.test_status_code,t.test_standard,t.length_ft,t.physical_site_cable_id,i.endpoint_a,i.endpoint_b,i.network_key,
+ ref.site_flw_test_time(t.test_time_local) reliable_test_time,
+ coalesce('cable:'||t.physical_site_cable_id::text,
+ 'pair:'||i.endpoint_a||':'||i.endpoint_b||':'||i.network_key) cable_key
+ FROM identities i JOIN ops.linkiq_test t USING(test_uuid)
+ LEFT JOIN ref.site_cable c ON c.site_cable_id=t.physical_site_cable_id
+ WHERE t.physical_site_cable_id IS NULL OR c.lifecycle_status NOT IN ('REPLACED','DESTROYED','ABANDONED','RETIRED')
+), ranked AS (
+ SELECT e.*,max(reliable_test_time) OVER(PARTITION BY cable_key) newest_dated_test,
+ bool_or(reliable_test_time IS NULL) OVER(PARTITION BY cable_key) has_unknown_test_order
+ FROM evidence e
+)
+SELECT r.*,reliable_test_time=newest_dated_test AS latest_reliably_dated,
+ count(*) FILTER(WHERE reliable_test_time=newest_dated_test) OVER(PARTITION BY cable_key)>1 AS latest_time_tied
+FROM ranked r;
+CREATE VIEW ref.site_network_availability AS
+SELECT DISTINCT v.site_waypoint_id,n.site_network_id,n.network_code,t.physical_site_cable_id AS site_cable_id
+FROM ref.site_flw_cable_test t
+JOIN ref.site_network n ON ref.site_network_key(n.network_code)=t.network_key
+CROSS JOIN LATERAL (VALUES(t.endpoint_a),(t.endpoint_b)) v(site_waypoint_id)
+WHERE (SELECT count(*) FROM ref.site_network x WHERE ref.site_network_key(x.network_code)=t.network_key)=1;
+
 -- Use stable LOR prop lineage, never Display names as keys or UID as asset ID.
 CREATE VIEW ref.site_controller_network_requirement AS
 WITH addresses AS (
@@ -267,24 +336,24 @@ WITH addresses AS (
  JOIN lor_snap.v_current_sub_props sp ON sp.master_prop_id=p.prop_id AND sp.import_run_id=p.import_run_id
  WHERE upper(coalesce(sp.device_type,'')) NOT IN ('NONE','DMX')
 ), matching AS (
- SELECT c.controller_id,lower(btrim(a.network)) network FROM ref.controller c JOIN addresses a USING(controller_id)
+ SELECT c.controller_id,ref.site_network_key(a.network) network FROM ref.controller c JOIN addresses a USING(controller_id)
  WHERE CASE WHEN btrim(a.uid) ~* '^[0-9a-f]{1,2}$'
  THEN ('x'||lpad(btrim(a.uid),2,'0'))::bit(8)::integer BETWEEN c.lor_uid_start AND c.lor_uid_end ELSE false END
 )
 SELECT c.controller_id,c.lor_network,
- CASE WHEN count(DISTINCT m.network)=1 AND min(m.network)=lower(btrim(c.lor_network))
+ CASE WHEN count(DISTINCT m.network)=1 AND min(m.network)=ref.site_network_key(c.lor_network)
  THEN min(m.network) END required_network,
- CASE WHEN count(DISTINCT m.network)=1 AND min(m.network)=lower(btrim(c.lor_network))
+ CASE WHEN count(DISTINCT m.network)=1 AND min(m.network)=ref.site_network_key(c.lor_network)
  THEN 'CONFIRMED' ELSE 'LOR_NETWORK_UNRESOLVED' END requirement_status
 FROM ref.controller c LEFT JOIN matching m USING(controller_id) GROUP BY c.controller_id,c.lor_network;
 
 CREATE VIEW ref.site_controller_placement_eligibility AS
 SELECT DISTINCT r.controller_id,a.site_waypoint_id,r.required_network,a.site_network_id
 FROM ref.site_controller_network_requirement r JOIN ref.site_network_availability a
- ON lower(btrim(a.network_code))=r.required_network
+ ON ref.site_network_key(a.network_code)=r.required_network
 JOIN ref.site_network n USING(site_network_id)
 WHERE r.requirement_status='CONFIRMED' AND n.network_kind='LOR'
-AND (SELECT count(*) FROM ref.site_network x WHERE lower(btrim(x.network_code))=r.required_network)=1;
+AND (SELECT count(*) FROM ref.site_network x WHERE ref.site_network_key(x.network_code)=r.required_network)=1;
 
 -- Recorded amps are not verified branch-input amps. Keep physical-copy loads
 -- distinct, and exclude ambiguous many-controller allocation from the subtotal.
@@ -391,6 +460,7 @@ BEGIN
  SELECT jsonb_build_object('revision',revision,'access',access) INTO result FROM ref.site_power_revision;
  result:=result||jsonb_build_object('network_requirements',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_controller_network_requirement t),'[]'::jsonb));
  result:=result||jsonb_build_object('placement_eligibility',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_controller_placement_eligibility t),'[]'::jsonb));
+ result:=result||jsonb_build_object('flw_cable_tests',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_flw_cable_test t),'[]'::jsonb));
  result:=result||jsonb_build_object('circuit_loads',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_circuit_load t),'[]'::jsonb));
  result:=result||jsonb_build_object('load_lineage',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_circuit_load_lineage t),'[]'::jsonb));
  result:=result||jsonb_build_object('waypoint_power_sources',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_waypoint_power_sources t),'[]'::jsonb));
@@ -429,7 +499,7 @@ DECLARE actor record; rev bigint; before_row jsonb; after_row jsonb; prior ops.s
  child_no integer:=0;
 BEGIN
  -- Deny retired network mutation even for replay IDs or privileged Crew.
- IF p_kind='network' THEN RAISE EXCEPTION 'Network membership is read-only; use governed GIS reconciliation' USING ERRCODE='42501'; END IF;
+ IF p_kind='network' THEN RAISE EXCEPTION 'Network membership is read-only; reconcile FLW endpoint evidence' USING ERRCODE='42501'; END IF;
  -- Fail closed even if a legacy actor resolver returns NULL for an unassigned role.
  IF NOT coalesce((ref.site_power_access(p_email)->>'can_edit')::boolean,false) THEN
   RAISE EXCEPTION 'Production Crew circuit access required' USING ERRCODE='42501'; END IF;
@@ -609,7 +679,7 @@ BEGIN
    END IF;
    IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_controller_placement_eligibility
     WHERE controller_id=(expected->>'controller_id')::bigint AND site_waypoint_id=(expected->>'site_waypoint_id')::bigint) THEN
-    RAISE EXCEPTION 'Controller placement held: required LOR network lacks a current reviewed GIS route at this waypoint' USING ERRCODE='23514';
+    RAISE EXCEPTION 'Controller placement held: required LOR network lacks resolved FLW endpoint evidence at this waypoint' USING ERRCODE='23514';
    END IF;
   END IF;
   allowed:=allowed||ARRAY['verified_by_person_id','verified_at','updated_at'];

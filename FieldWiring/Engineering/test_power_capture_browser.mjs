@@ -403,12 +403,12 @@ try {
   assert.equal(await page.locator("#deployment-supply-link").getAttribute("href"),"circuits");
   await db.query("UPDATE ref.controller SET lor_network=$1 WHERE controller_id=104",[previousNetwork]);
   // Restore test-only route evidence after proving the distinct confirmed-network gap.
-  await db.exec("UPDATE ref.site_cable SET lifecycle_status='RETIRED'");
+  await db.exec("UPDATE ops.linkiq_intake_review SET proposal=jsonb_set(proposal,'{reasons}','[\"SOURCE_DELETED\"]')");
   page.once("dialog",d=>d.accept());
   await page.goto(base.replace("circuits","controllers?controller_id=101"));
   await page.locator("#deployment-network-status").waitFor();
-  assert.match(await page.locator("#deployment-network-status").innerText(),/reviewed GIS network path is missing/);
-  await db.exec("UPDATE ref.site_cable SET lifecycle_status='CURRENT'; DELETE FROM ref.site_waypoint WHERE site_waypoint_id=98");
+  assert.match(await page.locator("#deployment-network-status").innerText(),/FLW endpoint records/);
+  await db.exec("UPDATE ops.linkiq_intake_review SET proposal=jsonb_set(proposal,'{reasons}','[]'); DELETE FROM ref.site_waypoint WHERE site_waypoint_id=98");
   // Editing from Controller Inventory must update the same records visible at
   // the waypoint, retaining history and safely replaying an uncertain response.
   await page.goto(base.replace("circuits","controllers?controller_id=101"));
@@ -454,7 +454,7 @@ try {
   await page.goto(base.replace("circuits","cable-tests"));
   await page.getByText(/Revision \d+/).waitFor();
   await page.locator("#test-pair").selectOption("11:12");
-  assert.equal(await page.locator("#test-history article").count(),2);
+  assert.equal(await page.locator("#test-history article").count(),3);
   assert.match(await page.locator("#test-history").innerText(),/source-one/);
   assert.match(await page.locator("#test-history").innerText(),/source-two/);
   await page.locator("#test-pair").selectOption("unresolved");

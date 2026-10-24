@@ -48,6 +48,13 @@ INSERT INTO ref.site_cable_route_segment VALUES(1,1,1,1,'2026-02-03'),(2,1,2,1,'
 CREATE TABLE ops.linkiq_intake_review(source_sha256 text,test_uuid uuid,proposal jsonb,recorded_at timestamptz DEFAULT now());
 CREATE TABLE ops.linkiq_test(test_uuid uuid,physical_site_cable_id bigint,test_time_local text,test_status_code integer,identity_review_status text,first_seen_source_sha256 text,test_standard text,length_ft numeric,tester_original_name text);
 `);
+  // Imported FLW endpoint evidence, independent of mapped route completeness.
+  await db.exec(`INSERT INTO ops.linkiq_test VALUES
+ ('00000000-0000-0000-0000-000000000011',1,'2024-10-01',1,'REVIEWED','fixture','Cat6',123,'Outlet A TO Outlet B REG'),
+ ('00000000-0000-0000-0000-000000000012',2,'2024-10-02',1,'REVIEWED','fixture','Cat6',123,'Outlet B TO Pole REG');
+ INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal) VALUES
+ ('fixture','00000000-0000-0000-0000-000000000011','{"endpoint_candidates":[[11],[12]],"designation":"REG","reasons":[]}'),
+ ('fixture','00000000-0000-0000-0000-000000000012','{"endpoint_candidates":[[12],[99]],"designation":"REG","reasons":[]}');`);
   // Load the actual role policy and actor SQL used by the application. Only the
   // external People reconciliation dependency is stubbed to a fixed fixture mapping.
   await db.exec(`CREATE TABLE public.directus_roles(id uuid PRIMARY KEY,name text);

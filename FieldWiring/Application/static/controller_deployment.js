@@ -53,7 +53,7 @@
       networkStatus.textContent=eligibleCount
         ? `${eligibleCount} eligible network waypoint(s) for ${requirement?.lor_network || "the current network"}.`
         : requirement?.requirement_status==="CONFIRMED"
-          ? `No eligible network waypoints for ${requirement.lor_network || requirement.required_network}. Its reviewed GIS network path is missing or needs reconciliation.`
+          ? `No eligible network waypoints for ${requirement.lor_network || requirement.required_network}. Its FLW endpoint records are missing or need reconciliation.`
           : "No eligible network waypoints: this controller's current LOR network requirement is unresolved. Reconcile its Display assignments and LOR programming first.";
       // Preserve a recorded placement when its evidence later becomes unresolved;
       // it may be retained or disconnected, never silently reassigned.
@@ -79,7 +79,7 @@
       }
       circuits(connection?.site_power_circuit_id);
       outlet.onchange=()=>circuits(null);
-      node("p","Network choices require current LOR programming and a reviewed GIS path. Power records the actual outlet and circuit separately. Choosing Not connected retires that connection and retains its history.",form);
+      node("p","Network choices require current LOR programming and FLW endpoint/network evidence. Power records the actual outlet and circuit separately. Choosing Not connected retires that connection and retains its history.",form);
       const save=node("button","Save connections",form);save.type="submit";save.id="deployment-save";
       const refresh=node("button","Reload connections",host);refresh.type="button";refresh.onclick=()=>{if(mayLeave())render(controllerId);};
       for(const s of [location,outlet,circuit,save])s.disabled=!data.access.can_edit;

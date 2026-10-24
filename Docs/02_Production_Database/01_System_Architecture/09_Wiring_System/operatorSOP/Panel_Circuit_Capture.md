@@ -63,12 +63,12 @@ If an outlet has **No supplying circuit recorded**, open **Manage panel / circui
 assignments**, assign that waypoint to its actual breaker leg, then return and
 **Reload connections**. Do not guess a circuit from the waypoint name. A missing
 network choice is reported separately: either current LOR programming is unresolved,
-or the required network lacks an eligible reviewed GIS path. Panel inventory may
+or the required network lacks resolved FLW endpoint records. Panel inventory may
 be saved before those network records are resolved; Controller network placement
 still requires them.
 
 Network placement offers Network or Combo waypoints only when current LOR
-programming and reviewed GIS paths establish eligibility. Power outlet choices
+programming and FLW endpoint/network records establish eligibility. Power outlet choices
 are Power or Combo waypoints with a recorded supplying circuit. Network location
 and actual plugged-in power outlet remain separate facts.
 
@@ -127,7 +127,7 @@ Follow the applicable authorized field procedure for the physical work.
 
 ## Network, load and waypoint review — integrated candidate
 
-- Controller installation offers only locations with the Controller's current LOR network confirmed by a reviewed GIS route. If none appear, resolve the source with the GIS/LOR owner. Crew cannot assign networks. A Combo label or a passing cable test alone is insufficient.
+- Controller installation offers only locations with the Controller's current LOR network recorded at either FLW cable endpoint. If none appear, resolve the source with the FLW/LOR owner. Crew cannot assign networks. A Combo label alone is insufficient. GPX route review is not required for this connection.
 - Each branch leg shows its recorded Display-current subtotal and breaker rating. Open the load details for contributing Displays and gaps. INCOMPLETE means it is not verified usable capacity; missing or ambiguous demand is not zero.
 - Edit the panel's planned show-season and off-season supply independently of breaker settings. Record actual panel switching or utility evidence under Seasonal power activities by selecting the panel target. A utility request is not confirmation.
 - Open a waypoint's electrical-source section to see recorded supplying circuits, upstream panels/main breakers, ownership/meter information and dated evidence. Check unresolved sources and follow field isolation and testing procedures. Planned OFF is never proof of absence of voltage.
