@@ -597,3 +597,35 @@ self/cycle/fanout, wrong origin, terminated predecessor and retirement denial;
 reordering, stale edits, exact replay, rollback, shared-screen persistence, unknown
 order display and authorization. Reuse the current disposable runner and migration
 chain. Current review exited cleanly; new exact-head browser acceptance is pending.
+
+## October 24 reciprocal IN / OUT correction — controlling operator requirement
+
+V0.4.16 is not accepted: recording only a predecessor and a terminal selector does
+not expose the physical controller ports. Both screens must present editable IN and
+OUT. OUT includes eligible controllers, terminating resistor and the named return
+waypoint. Saving A OUT → B establishes B IN ← A; editing B IN establishes the same
+relationship and A's displayed OUT. Store one edge using the existing predecessor
+field; do not add a second independently editable successor column or another schema.
+
+Extend the existing audited command boundary with an atomic controller_ports command.
+It changes the selected installation and, if needed, the previous/new downstream
+installation under the existing revision lock. Validate the completed graph before
+commit. Retain audit before/after for every affected controller and preserve retired
+origin records. Detaching an edge makes the released port UNKNOWN, never invents a
+new waypoint cable or deletes the remaining chain. A known OUT may coexist with an
+unknown IN; this supersedes V0.4.16's requirement for a known predecessor input.
+Occupied controller ports must not be silently stolen: reconcile an existing input
+or output explicitly. Reject self/circular links, fanout, different current LOR
+networks/origins and ineligible FLW origins. Network and power remain independent.
+
+Required operator examples (not automatically installed or verified):
+RA-00 → 1001 → 1002 → 1003 → 1004 → resistor OR return to RA-00 (unverified);
+ST-01 → 1005 → 1006 → 1036 → return to ST-01 (unverified).
+Show each controller's IN and OUT with names and verification status, including
+both ends when the operator navigates to the neighboring controller. Use the same
+port editor from Controller Inventory and Waypoint Connections. Tests must start
+with an unassigned next controller and prove it is selectable from OUT, persisted
+reciprocally, replaceable without invented wiring, and protected on stale/replay,
+invalid graphs, existing occupied ports and rollback. No replacement preview may
+be started while the current review holds port 8898/source lock; current V0.4.16
+review has no subsequent clean-exit receipt yet. Production unchanged.
