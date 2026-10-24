@@ -495,6 +495,7 @@ try {
   await page.locator("#deployment-save").click();
   await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
   assert.match(await page.locator(".controller-port-summary").innerText(),/CTRL 103[\s\S]*CTRL 104[\s\S]*return/);
+  assert.equal(await page.locator(".controller-port-summary td").first().evaluate(n=>getComputedStyle(n).borderTopStyle),"solid");
   assert.deepEqual((await db.query("SELECT controller_id,upstream_controller_id FROM ref.site_controller_installation WHERE active ORDER BY controller_id")).rows.map(r=>[r.controller_id,r.upstream_controller_id]),[[101,null],[102,101],[103,102],[104,103]]);
   // Separate read-only history retains retests and unresolved identities.
   await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-23',1,'REVIEWED','source-one','Cat6',100,'first'),(gen_random_uuid(),1,'2026-10-24',2,'REVIEWED','source-two','Cat6',101,'retest'),(gen_random_uuid(),NULL,NULL,NULL,'UNMATCHED','source-three',NULL,NULL,'unresolved')");

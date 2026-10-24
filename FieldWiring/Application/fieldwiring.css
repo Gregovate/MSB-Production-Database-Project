@@ -180,8 +180,3 @@ footer.hint { margin-top:16px; }
   .brand { flex-wrap:wrap; }
   .header-actions { margin-left:0; flex-wrap:wrap; }
 }
-
-/* Physical network ports share a compact, wrapping layout on both screens. */
-.controller-port-summary { width:100%; table-layout:fixed; border-collapse:collapse; margin:1rem 0; }
-.controller-port-summary th, .controller-port-summary td { text-align:center; padding:.65rem; border:1px solid currentColor; overflow-wrap:anywhere; }
-#network-port-editor { max-width:50rem; }
