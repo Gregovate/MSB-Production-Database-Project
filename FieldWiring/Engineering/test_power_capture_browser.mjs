@@ -345,11 +345,12 @@ try {
   // Network equipment is recorded at its Combo waypoint, not forced into
   // the LOR Controller model inventory.
   await page.getByRole("button",{name:"Add new equipment",exact:true}).click();
-  await dialog.locator("[name=device_name]").fill("A5 PoE switch");
-  await dialog.locator("[name=device_kind]").selectOption("POE_SWITCH");
+  await dialog.locator("[name=device_name]").selectOption("TRENDnet TI-PGLC50 · 5-port PoE+");
+  assert.equal(await dialog.locator("[name=device_kind]").inputValue(),"POE_SWITCH");
+  assert.equal(await dialog.locator("[name=device_kind]").isVisible(),false);
   assert.equal(await dialog.locator("[name=site_waypoint_id]").inputValue(),"12");
   await save();
-  assert.match(await page.locator("#equipment").innerText(),/A5 PoE switch · POE_SWITCH/);
+  assert.match(await page.locator("#equipment").innerText(),/TRENDnet TI-PGLC50 · 5-port PoE\+ · POE_SWITCH/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_kind='POE_SWITCH' AND site_waypoint_id=12")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,4);
   await page.screenshot({path:"/tmp/power-panel-desktop.png",fullPage:true});
