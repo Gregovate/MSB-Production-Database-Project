@@ -258,7 +258,7 @@ try {
   assert.equal(breakerNotes.rows[0].verification_status,"UNVERIFIED");
   const groupedRow=page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:"Breaker 18/20 grouped",exact:true})});
   for (const leg of ["18","20"]) {
-    await groupedRow.getByRole("button",{name:`Circuit ${leg} — Assign waypoints`,exact:true}).click();
+    await groupedRow.getByRole("button",{name:new RegExp(`^Circuit ${leg} —`)}).click();
     await dialog.locator('input[name=waypoint][value="12"]').check();
     assert.equal(await dialog.locator("[name=also_other_leg]").count(),1);
     if (leg==="18") await dialog.locator("[name=also_other_leg]").check();
