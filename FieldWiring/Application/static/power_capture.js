@@ -48,7 +48,7 @@
   function stamp(r, p) {
     el(
       "p",
-      `${r.active ? "Active" : "Retired"} · ${r.verification_status} · ${r.source_evidence}`,
+      `${r.active ? "Active" : "Retired"} · ${r.verification_status || "UNVERIFIED"}${r.source_evidence ? " · " + r.source_evidence : ""}`,
       p,
     );
     if (r.verified_at)
@@ -375,7 +375,7 @@
         text("panel_name", "Readable panel name", true),
         text("panel_identification", "Panel identification / label"),
         select("site_waypoint_id", "Associated waypoint (optional)", waypoints),
-        select("owner_name", "Equipment owner (optional)", options([["MSB","MSB"],["Utility","Utility"],["Other","Other"]])) ,
+        select("owner_name", "Equipment owner (optional)", options([["MSB", "MSB"], ["Utility", "Utility"], ["Other", "Other"]])),
         text(
           "meter_information",
           "Known meter identifier(s) / relationship notes",
@@ -390,13 +390,16 @@
         ),
         text("circuit_code", "Breaker / circuit designation", true),
         text("description", "Notes (optional)"),
-        {
-          ...text("breaker_rating_amps", "Breaker rating (amps)"),
-          type: "number",
-        },
-        { ...text("voltage", "Voltage"), type: "number" },
-        { ...text("poles", "Pole count"), type: "number" },
-        text("ganged_device", "Ganged device information"),
+        select("breaker_rating_amps", "Known breaker rating (A)", options(
+          [15, 20, 30, 40, 50, 90, 100, 200].map((a) => [a, String(a)]),
+        )),
+        select("voltage", "Known voltage", options(
+          [120, 208, 240, 277, 480].map((v) => [v, String(v)]),
+        )),
+        select("poles", "Pole count", options(
+          [1, 2, 3].map((n) => [n, String(n)]),
+        )),
+        text("ganged_device", "Grouped breaker notes (optional)"),
         choose("show_desired_state", "Show season desired state", [
           "UNKNOWN",
           "ON",
@@ -418,10 +421,10 @@
           "OTHER",
         ]),
         select("site_waypoint_id", "Waypoint (optional)", waypoints),
-        text("owner_name", "Equipment owner"),
+        select("owner_name", "Equipment owner (optional)", options([["MSB", "MSB"], ["Utility", "Utility"], ["Other", "Other"]])),
         text("utility_asset_id", "Utility asset reference (optional)"),
         text("rating", "Rating / model (optional)"),
-        text("description", "Description"),
+        text("description", "Notes (optional)"),
       ],
       feed: [
         select(
