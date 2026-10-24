@@ -110,6 +110,15 @@ await cmd("circuit", {
   site_panel_id: p2.target_id,
   circuit_code: "1",
 });
+await cmd("panel", { panel_name: "Panel B label corrected" }, p2.target_id);
+const correctedPanel = await db.query(
+  "SELECT verification_status,verified_by_person_id,verified_at FROM ref.site_panel WHERE site_panel_id=$1",
+  [p2.target_id],
+);
+assert.equal(correctedPanel.rows[0].verification_status, "UNVERIFIED");
+assert.equal(correctedPanel.rows[0].verified_by_person_id, null);
+assert.equal(correctedPanel.rows[0].verified_at, null);
+n++;
 const uuid = crypto.randomUUID(),
   payload = { ...base, panel_name: "Replay" };
 const first = await cmd(
