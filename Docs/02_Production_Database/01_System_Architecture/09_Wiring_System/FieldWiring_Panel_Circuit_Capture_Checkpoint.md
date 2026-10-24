@@ -115,3 +115,12 @@ PostgreSQL 16 Production-clone migration/grant checks; protected role and operat
 review; release approval; governed migration/source deployment; live field check.
 No schema migration has been run on Production, no GPX source was changed, and
 no issue is closed. No operator deployment command is ready yet.
+
+
+## October 23 operator simplification — current source candidate
+
+Greg wants the field workflow as simple as accepted breaker assignment: dropdown selections, only meaningful required identifiers, optional Notes instead of arbitrary free-text verification/evidence blockers. The generic device editor is for equipment inventory (DIN rail supplies, network switches, extenders, repeaters), not normal breaker entry. Combo means power **and** network, independently of whether the physical asset is a network box or light pole. Filter eligible selection by maintained physical classification and capability, never by a name substring.
+
+Current PR #454 source work removes blank-source-evidence save rejection in the uninstalled candidate schema/commands, defaults ordinary new records to UNVERIFIED, and simplifies normal forms/assignment notes. The existing author/time and command audit remain mandatory. **Actual seasonal field evidence events retain their nonempty observation requirement** because otherwise the system could record empty work. A VERIFIED assertion still requires governed evidence/actor logic; ordinary save does not falsely claim verification.
+
+This is a **partial candidate**, not yet released: existing panel/circuit identity strings and device identification remain typed because structured master-list/catalog and blocker-free breaker group integration are still unfinished. Do not label the whole interface dropdown-only. #319 waypoint/type integration and combined schema acceptance remain prerequisites. Reconcile existing regression expectations and test the save paths before disposable/browser review; do not deploy or promote while those gates are open.
