@@ -15,7 +15,7 @@ CREATE TABLE ref.person(person_id integer PRIMARY KEY);
 CREATE TABLE ref.controller_model(controller_model_id bigint PRIMARY KEY,model_code text);
 CREATE TABLE ref.controller(controller_id bigint PRIMARY KEY,controller_model_id bigint REFERENCES ref.controller_model,serial_number text);
 INSERT INTO ref.controller_model VALUES(1,'RS485 fixture'),(2,'PoE fixture');
-INSERT INTO ref.controller VALUES(101,1,'fixture-101'),(102,1,'fixture-102'),(103,2,'fixture-103');
+INSERT INTO ref.controller VALUES(101,1,'fixture-101'),(102,1,'fixture-102'),(103,2,'fixture-103'),(104,2,'fixture-104');
 CREATE TABLE ref.season(season_year integer PRIMARY KEY);
 CREATE TABLE ref.site_waypoint(site_waypoint_id bigint PRIMARY KEY,canonical_label text,waypoint_type text);
 CREATE TABLE ref.site_waypoint_alias(site_waypoint_id bigint,alias_text text,accepted_by text,accepted_at timestamptz);
