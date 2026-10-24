@@ -1,5 +1,18 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+
+## Network identity versus path versus consumer — clarified October 24
+
+**Three different relationships must stay separate:**
+
+1. **LOR network → physical Controller:** the LOR configuration assigns the network to a Controller. That Controller is the equipment **consumer** of the network. Preserve the LOR Controller/network identity and its existing managed authority; do not infer or edit it from GPX waypoint names or from crew circuit entry.
+2. **GIS network path → waypoints:** the surveyed physical network cable/path is represented by GIS traces and associated maintained waypoint endpoint/location identities. The waypoint is **where network infrastructure is located**, not necessarily the owner of a network assignment. Network designations written in GPX waypoint descriptions are source annotations to reconcile against the physical track and controller identity, **not a replacement Controller-to-LOR-network assignment authority**.
+3. **FLW / LinkIQ test → endpoints:** an FLW observation documents the test between the same identified waypoints/endpoints, with measurement and provenance. It does not create Controller-to-network assignments or GIS path geometry.
+
+A Controller installed at a waypoint can consume a particular physical path. Join `LOR network ↔ Controller`, `Controller installation ↔ waypoint`, and `GIS route ↔ endpoints` by maintained IDs, with actual evidence and unresolved cases explicit. Do **not** assume that network at waypoint means every Controller there belongs to that network, that a Combo name identifies its network, or that matching labels prove a cable connection.
+
+**FieldWiring Production Crew only define electrical circuit/power assignment information.** No Crew network assignment creation or editing in FieldWiring, and no extra manual network assignment form. Show read-only sourced path/Controller information when validated, and flag gaps for owning LOR/GIS reconciliation. Preserve original GPX and FLW records.
+
 ## Network route and FLW authority — operator ruling, October 24, 2026
 
 This paragraph **supersedes prior references to Production Crew editing circuit/network relationships together**. Production Crew **may define circuit information only** in FieldWiring (panels, breakers, circuit legs and assigned existing power outlet waypoints); they cannot create, assign, or correct network IDs or memberships.
