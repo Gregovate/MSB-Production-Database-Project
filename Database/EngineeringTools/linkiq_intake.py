@@ -43,6 +43,8 @@ def propose_test(test, lookup, cables, existing=None, previous_labels=()):
     preferred = active[0] if active else first
     label = preferred['display_cable_name'] or ''
     endpoint_ids = []
+    endpoint_labels = []
+    qualifier = None
     candidate_ids = []
     designation = None
     parsed = re.fullmatch(
@@ -54,6 +56,8 @@ def propose_test(test, lookup, cables, existing=None, previous_labels=()):
         reasons.append('NAME_REQUIRES_REVIEW')
     else:
         designation = label_key(parsed[3])
+        endpoint_labels = [label_key(parsed[1]), label_key(parsed[2])]
+        qualifier = label_key(parsed[4]) if parsed[4] else None
         for endpoint in (parsed[1], parsed[2]):
             ids = sorted(lookup.get(label_key(endpoint), set()))
             endpoint_ids.append(ids)
@@ -99,5 +103,6 @@ def propose_test(test, lookup, cables, existing=None, previous_labels=()):
     status = 'RETAINED_REVIEWED' if reviewed and not reasons else 'REVIEW_REQUIRED'
     return {'test_uuid': test['test_uuid'], 'status': status,
             'display_label': label, 'designation': designation,
+            'endpoint_labels': endpoint_labels, 'qualifier': qualifier,
             'endpoint_candidates': endpoint_ids, 'cable_candidates': candidate_ids,
             'retained_cable_id': binding, 'reasons': sorted(set(reasons))}

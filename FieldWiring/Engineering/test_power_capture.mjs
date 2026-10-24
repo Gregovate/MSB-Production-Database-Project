@@ -580,6 +580,21 @@ await cmd("controller_installation",{controller_id:103,site_waypoint_id:11});
 assert.equal(finalSnapshot.linkiq_evidence[0].test_standard,"Cat6");
 assert.equal(Number(finalSnapshot.linkiq_evidence[0].length_ft),123);
 n+=2;
+// A remote distribution panel can name its known upstream panel without
+// fabricating the not-yet-inventoried feeder breaker.
+const source15=await cmd("panel",{panel_name:"Panel 15"});
+const remoteFE=await cmd("panel",{panel_name:"Panel FE-00",supply_panel_id:source15.target_id});
+await denied(()=>cmd("panel",{supply_panel_id:remoteFE.target_id},source15.target_id),"23514");
+await denied(()=>cmd("panel",{supply_panel_id:remoteFE.target_id},remoteFE.target_id),"23514");
+await denied(()=>cmd("panel",{active:false},source15.target_id),"23514");
+const feeder15=await cmd("breaker",{site_panel_id:source15.target_id,breaker_name:"FE feeder",breaker_role:"BRANCH",pole_count:2});
+await denied(()=>cmd("panel",{supply_breaker_id:competing.target_id},remoteFE.target_id),"23514");
+await cmd("panel",{supply_breaker_id:feeder15.target_id},remoteFE.target_id);
+await cmd("panel",{supply_breaker_id:null},remoteFE.target_id);
+const remoteState=(await db.query("SELECT ref.site_power_snapshot('crew@example.test') x")).rows[0].x.panels.find(p=>p.site_panel_id===remoteFE.target_id);
+assert.equal(remoteState.supply_panel_id,source15.target_id);
+assert.equal(remoteState.supply_breaker_id,null);
+n+=2;
 console.log(
   `PASS: ${n} SQL command/denial checks plus snapshot, audit, seasonal and rollback assertions (isolated PGlite PostgreSQL; no Production connection).`,
 );

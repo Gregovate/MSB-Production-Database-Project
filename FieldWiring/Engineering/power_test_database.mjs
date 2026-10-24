@@ -45,6 +45,7 @@ INSERT INTO ref.site_track VALUES(1,'CURRENT','2026-01-01');
 INSERT INTO ref.site_route_segment VALUES(1,11,12,'REVIEWED','2026-02-01'),(2,12,99,'REVIEWED','2026-02-01');
 INSERT INTO ref.site_route_source_track VALUES(1,1,'NET','2026-02-02'),(2,1,'NET','2026-02-02');
 INSERT INTO ref.site_cable_route_segment VALUES(1,1,1,1,'2026-02-03'),(2,1,2,1,'2026-02-03');
+CREATE TABLE ops.linkiq_intake_review(source_sha256 text,test_uuid uuid,proposal jsonb,recorded_at timestamptz DEFAULT now());
 CREATE TABLE ops.linkiq_test(test_uuid uuid,physical_site_cable_id bigint,test_time_local text,test_status_code integer,identity_review_status text,first_seen_source_sha256 text,test_standard text,length_ft numeric,tester_original_name text);
 `);
   // Load the actual role policy and actor SQL used by the application. Only the

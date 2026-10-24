@@ -171,3 +171,22 @@ def test_panel_shorthand_gps_names_and_collisions_preserve_identity():
     assert keys['DIFFERENT MAP NAME'] == {3}
     assert '' not in keys
     assert 'COMMAND CENTER' not in keys  # Trailer is not an area-name alias.
+
+@pytest.mark.parametrize('designation', ['AUX-E','SPARE-01','E1.31','INET'])
+def test_source_pair_labels_survive_without_reviewed_cable_or_waypoint(designation):
+    test = sample()
+    test['source_appearances'][0]['display_cable_name'] = f'FE-02B TO FE-02 {designation}'
+    proposal = propose_test(test, waypoint_lookup([], []), [])
+    assert proposal['endpoint_labels'] == ['FE-02B', 'FE-02']
+    assert proposal['designation'] == designation
+    assert proposal['endpoint_candidates'] == [[], []]
+    assert proposal['retained_cable_id'] is None
+    assert proposal['status'] == 'REVIEW_REQUIRED'
+
+
+def test_source_pair_preserves_parallel_designation_qualifier():
+    test = sample()
+    test['source_appearances'][0]['display_cable_name'] = 'CL-05 TO CL-07 REG RET'
+    proposal = propose_test(test, waypoint_lookup([], []), [])
+    assert proposal['endpoint_labels'] == ['CL-05', 'CL-07']
+    assert proposal['qualifier'] == 'RET'

@@ -436,6 +436,40 @@ try {
   await page.locator("#test-pair").selectOption("unresolved");
   assert.equal(await page.locator("#test-history article").count(),1);
   assert.equal(await page.locator("#cable-history button").count(),0);
+  // Parsed FLW labels remain browsable before waypoint/cable reconciliation.
+  await db.exec(`INSERT INTO ops.linkiq_test VALUES
+    ('11111111-1111-4111-8111-111111111111',NULL,'2026-10-20',1,'UNMATCHED','flw-source','10BASE-T',210,'FE-02B TO FE-02 AUX-E'),
+    ('22222222-2222-4222-8222-222222222222',NULL,'2026-10-20',1,'UNMATCHED','flw-source','10BASE-T',209,'FE-02B TO FE-02 SPARE-01');
+    INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal)
+    VALUES ('flw-source','11111111-1111-4111-8111-111111111111','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"AUX-E","display_label":"FE-02B TO FE-02 AUX-E"}'),
+    ('flw-source','22222222-2222-4222-8222-222222222222','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"SPARE-01","display_label":"FE-02B TO FE-02 SPARE-01"}');`);
+  await page.reload();await page.getByText(/Revision \d+/).waitFor();
+  await page.locator("#test-pair").selectOption('label:["FE-02","FE-02B"]');
+  assert.equal(await page.locator("#test-history article").count(),2);
+  assert.equal(await page.locator("#test-history h3").count(),2);
+  assert.match(await page.locator("#test-history").innerText(),/physical cable unreviewed/);
+  // Save Panel 15 as FE-00's supply even when it has no recorded breakers.
+  await page.goto(base);await page.getByText(/Revision \d+/).waitFor();
+  for(const name of ["Panel 15","Panel FE-00"]) {
+    await page.getByRole("button",{name:"Add panel",exact:true}).click();
+    await dialog.locator("[name=panel_name]").fill(name);await save();
+  }
+  await page.locator("#panels").getByRole("button",{name:"Panel FE-00",exact:true}).click();
+  await page.getByRole("button",{name:"Meter / upstream supply",exact:true}).click();
+  const source15=(await db.query("SELECT site_panel_id FROM ref.site_panel WHERE panel_name='Panel 15'")).rows[0].site_panel_id;
+  await dialog.locator("[name=supply_panel_id]").selectOption(String(source15));
+  assert.equal(await dialog.locator("[name=supply_breaker_id] option").count(),1);
+  await save();
+  assert.match(await page.locator(".power-main").innerText(),/Panel 15.*feeder breaker unknown/);
+  // Prefix suggestions prioritize A5 while keeping power-pole exceptions.
+  await db.exec("UPDATE ref.site_panel SET panel_name='PANEL A5-00' WHERE panel_name='A5 panel'; UPDATE ref.site_waypoint SET canonical_label='A5-02' WHERE site_waypoint_id=12; UPDATE ref.site_waypoint SET canonical_label='Light Pole 13' WHERE site_waypoint_id=13");
+  await page.goto(`${base}?circuit=${movedCircuit}`);
+  await dialog.waitFor({state:"visible"});
+  const choices=await dialog.locator("input[name=waypoint]").evaluateAll(nodes=>nodes.map(n=>n.value));
+  assert.ok(choices.indexOf("12")<choices.indexOf("13"));
+  assert.match(await dialog.innerText(),/circuit may have no discovered waypoint/);
+  page.once("dialog",d=>d.accept());await dialog.locator("#cancel").click();
+  await dialog.waitFor({state:"hidden"});
   await page.goto(base);
   await page.getByText(/Revision \d+/).waitFor();
   await page.screenshot({path:"/tmp/power-panel-desktop.png",fullPage:true});

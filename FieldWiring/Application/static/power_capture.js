@@ -260,11 +260,12 @@
       };
       el("p", `Meter: ${selected.meter_information || "Not recorded"}`, main);
       const supply = data.breakers.find(b=>b.site_power_breaker_id===selected.supply_breaker_id);
+      if (!supply && selected.supply_panel_id) el("p",`Remote supply panel: ${panel(selected.supply_panel_id)?.panel_name || "Unknown"} — feeder breaker unknown`,main);
       if (supply) el("p", `Remote main / supply: ${panel(supply.site_panel_id)?.panel_name} — ${supply.breaker_name}`, main);
       button("Meter / upstream supply",()=>openSupply(selected),main,true);
       const mains = breakers.filter(b => b.breaker_role === "MAIN");
       mains.forEach(b => drawBreaker(b,main));
-      if (!mains.length && !selected.supply_breaker_id) {
+      if (!mains.length && !selected.supply_breaker_id && !selected.supply_panel_id) {
         el("p", "Main breaker not recorded; rating unknown", main);
         button("Record main breaker",()=>openSchedule({site_panel_id:panelId,breaker_role:"MAIN"}),main,true);
       }
@@ -426,7 +427,10 @@
         const mains=data.breakers.filter(b=>b.active && b.site_panel_id===current.site_panel_id && b.breaker_role==="MAIN");
         mains.forEach(b=>breakerIds.add(b.site_power_breaker_id));
         const upstream=data.breakers.find(b=>b.site_power_breaker_id===current.supply_breaker_id);
-        if(!upstream){if(!mains.length)el("p","Main/upstream isolation point unknown.",root);break;}
+        if(!upstream){
+          if(current.supply_panel_id) {el("p","Upstream panel recorded; specific feeder breaker/isolation point unknown.",root);current=panel(current.supply_panel_id);continue;}
+          if(!mains.length)el("p","Main/upstream isolation point unknown.",root);break;
+        }
         breakerIds.add(upstream.site_power_breaker_id);current=panel(upstream.site_panel_id);
         if(current && seen.has(current.site_panel_id))el("p","Upstream topology cycle: resolve before relying on isolation instructions.",root);
       }
@@ -580,22 +584,34 @@
   function renderCableHistory() {
     const selector=$("test-pair"), prior=selector.value;
     const tests=data.linkiq_evidence || [];
-    const pair=t=>t.endpoint_a && t.endpoint_b ? [t.endpoint_a,t.endpoint_b].sort((a,b)=>a-b).join(":") : "unresolved";
-    const pairs=new Map(tests.map(t=>[pair(t),t]));
+    // Reuse persisted intake proposals: source-declared endpoints do not create
+    // reviewed cable bindings, route continuity or network availability.
+    const endpoints=t=>{
+      if(t.endpoint_a && t.endpoint_b) return {key:[t.endpoint_a,t.endpoint_b].sort((a,b)=>a-b).join(":"),label:[t.endpoint_a,t.endpoint_b].sort((a,b)=>a-b).map(waypointName).join(" ↔ ")};
+      const proposal=t.source_pair || {}, ids=proposal.endpoint_candidates || [];
+      if(ids.length===2 && ids.every(x=>x.length===1) && ids[0][0]!==ids[1][0]) {
+        const pair=ids.map(x=>x[0]).sort((a,b)=>a-b);return {key:pair.join(":"),label:pair.map(waypointName).join(" ↔ ")};
+      }
+      const labels=proposal.endpoint_labels || [];
+      if(labels.length===2 && labels[0]!==labels[1]) {const pair=[...labels].sort();return {key:"label:"+JSON.stringify(pair),label:pair.join(" ↔ ")+" (source labels; waypoint match unresolved)"};}
+      return {key:"unresolved",label:"Unparsed / ambiguous endpoint labels"};
+    };
+    const pairs=new Map(tests.map(t=>{const pair=endpoints(t);return [pair.key,pair.label];}));
     selector.replaceChildren(); el("option","Select endpoint pair",selector).value="";
-    for(const [key,t] of pairs) el("option",key==="unresolved" ? "Unresolved cable / endpoints" : key.split(":").map(waypointName).join(" ↔ "),selector).value=key;
+    for(const [key,label] of pairs) el("option",label,selector).value=key;
     selector.value=prior;
     const root=$("test-history");root.replaceChildren();
     if(!tests.length) el("p","No retained cable tests.",root);
-    const selected=tests.filter(t=>pair(t)===selector.value);
-    const cables=[...new Set(selected.map(t=>t.cable_id))];
-    for(const id of cables) {
-      const section=el("section",undefined,root);el("h3",id ? `Physical cable ${id}` : "Unresolved physical cable",section);
-      for(const t of selected.filter(t=>t.cable_id===id).sort((a,b)=>String(b.test_time||"").localeCompare(String(a.test_time||"")))) {
+    const selected=tests.filter(t=>endpoints(t).key===selector.value);
+    const cableKey=t=>t.cable_id ? `Physical cable ${t.cable_id}` : `Source designation ${t.source_pair?.designation || "unknown"}${t.source_pair?.qualifier ? " / "+t.source_pair.qualifier : ""} — physical cable unreviewed`;
+    for(const key of new Set(selected.map(cableKey))) {
+      const section=el("section",undefined,root);el("h3",key,section);
+      for(const t of selected.filter(t=>cableKey(t)===key).sort((a,b)=>String(b.test_time||"").localeCompare(String(a.test_time||"")))) {
         const entry=el("article",undefined,section); entry.className="power-record";
         el("h4",`${t.test_time || "Time unknown"} · ${t.test_uuid}`,entry);
         el("p",`Raw result code: ${t.status_code ?? "Unknown"} · Standard: ${t.test_standard || "Unknown"} · Length: ${t.length_ft ?? "Unknown"} ft · Review: ${t.review_status || "Unknown"}`,entry);
-        el("p",`Original test name: ${t.original_name || "Unknown"} · Source SHA-256: ${t.source_sha256 || "Unknown"}`,entry);
+        if(t.source_pair) el("p",`FLW source label: ${t.source_pair.display_label} · Designation: ${t.source_pair.designation || "Unknown"} · Source: ${t.source_pair.source_sha256 || "Unknown"}`,entry);
+        el("p",`Original test name: ${t.original_name || "Unknown"} · First source SHA-256: ${t.source_sha256 || "Unknown"}`,entry);
       }
     }
   }
@@ -624,7 +640,8 @@
         select("site_waypoint_id", "Associated waypoint (optional)", waypoints),
         select("owner_name", "Panel owner (optional)", ownerOptions()),
         {...text("year_installed", "Year installed (optional)"), type: "number"},
-        select("supply_breaker_id", "Remote supply breaker (leave blank for local main)", options(data.breakers.filter(b=>b.active).map(b=>[b.site_power_breaker_id,`${panel(b.site_panel_id)?.panel_name} / ${b.breaker_name}`]))),
+        select("supply_panel_id", "Remote supply panel (optional)", options(data.panels.filter(p=>p.active).map(p=>[p.site_panel_id,p.panel_name]))),
+        select("supply_breaker_id", "Remote feeder breaker (unknown allowed)", options(data.breakers.filter(b=>b.active).map(b=>[b.site_power_breaker_id,`${panel(b.site_panel_id)?.panel_name} / ${b.breaker_name}`]))),
         text(
           "meter_information",
           "Known meter identifier(s) / relationship notes",
@@ -890,6 +907,20 @@
       if(row.site_waypoint_id) form.elements.site_waypoint_id.closest("label").hidden=true;
       $("edit-title").textContent=row.site_power_device_id ? "Correct equipment" : "Add equipment";
     }
+    if(kind==="panel") {
+      const form=$("edit-form"), upstream=form.elements.supply_panel_id, feeder=form.elements.supply_breaker_id;
+      for(const option of Array.from(upstream.options)) if(option.value===String(row.site_panel_id)) option.remove();
+      const recorded=data.breakers.find(b=>b.site_power_breaker_id===row.supply_breaker_id);
+      upstream.value=row.supply_panel_id || recorded?.site_panel_id || "";
+      const refresh=()=>{
+        const previous=feeder.value;feeder.replaceChildren();el("option","Unknown / not recorded",feeder).value="";
+        data.breakers.filter(b=>b.active && b.site_panel_id!==row.site_panel_id && (!upstream.value || b.site_panel_id===Number(upstream.value))).forEach(b=>{el("option",`${panel(b.site_panel_id)?.panel_name} / ${b.breaker_name}`,feeder).value=b.site_power_breaker_id;});
+        feeder.value=previous;
+      };
+      upstream.onchange=refresh;refresh();feeder.value=row.supply_breaker_id || "";
+      feeder.onchange=()=>{const b=data.breakers.find(b=>b.site_power_breaker_id===Number(feeder.value));if(b){upstream.value=b.site_panel_id;refresh();}};
+      el("p","A known remote panel can be saved before its feeder breaker is inventoried. Unknown breaker means the isolation point is still unresolved.",$("edit-fields"));
+    }
     if (kind === "controller_power_connection") {
       const form=$("edit-form"), waypoint=form.elements.site_waypoint_id, choice=form.elements.site_power_circuit_id;
       const refresh=()=>{
@@ -1053,7 +1084,14 @@
         f.source_circuit_id === c.site_power_circuit_id &&
         f.destination_waypoint_id,
     );
-    data.waypoints.filter(w=>isElectricalEndpoint(w) || direct.some(f=>f.destination_waypoint_id===w.id)).forEach((w) => {
+    const owner=panel(c.site_panel_id);
+    const prefix=(owner?.panel_name || "").toUpperCase().match(/(?:^|\s)([A-Z0-9]{2})-00(?:\s|$)/)?.[1] ||
+      (wp(owner?.site_waypoint_id)?.name || "").toUpperCase().match(/(?:^|\s)([A-Z0-9]{2})-00(?:\s|$)/)?.[1];
+    const matches=w=>!!prefix && [w.name,...(w.aliases||[])].some(n=>String(n).toUpperCase().startsWith(prefix+"-"));
+    if(prefix) el("p",`${prefix} waypoints are listed first. Powered poles and other exceptions remain selectable. Prefixes do not assign a circuit.`,$("edit-fields"));
+    el("p","A circuit may have no discovered waypoint, including non-show lighting. Keep its description and seasonal instructions; no waypoint does not mean no load.",$("edit-fields"));
+    data.waypoints.filter(w=>isElectricalEndpoint(w) || direct.some(f=>f.destination_waypoint_id===w.id))
+      .sort((a,b)=>Number(matches(b))-Number(matches(a)) || a.name.localeCompare(b.name,undefined,{numeric:true})).forEach((w) => {
       const l = el("label", undefined, list),
         i = el("input", undefined, l);
       i.type = "checkbox";

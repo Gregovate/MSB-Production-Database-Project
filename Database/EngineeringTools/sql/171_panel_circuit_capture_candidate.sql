@@ -35,6 +35,7 @@ CREATE TABLE ref.site_panel (
  panel_name text NOT NULL CHECK (btrim(panel_name)<>''),
  site_waypoint_id bigint REFERENCES ref.site_waypoint(site_waypoint_id),
  owner_name text, year_installed integer CHECK (year_installed BETWEEN 1900 AND 2100), panel_identification text, meter_information text, supply_breaker_id bigint,
+ supply_panel_id bigint REFERENCES ref.site_panel(site_panel_id),
  active boolean NOT NULL DEFAULT true,
  source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
@@ -353,9 +354,9 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'Breaker not found' USING ERRCODE='P0002'; END IF;
  WITH RECURSIVE supplied_panels(id) AS (
   SELECT site_panel_id FROM ref.site_panel WHERE active AND
-   (supply_breaker_id=p_breaker OR (b.breaker_role='MAIN' AND site_panel_id=b.site_panel_id))
-  UNION SELECT p.site_panel_id FROM supplied_panels s JOIN ref.site_power_breaker upstream ON upstream.site_panel_id=s.id AND upstream.active
-   JOIN ref.site_panel p ON p.supply_breaker_id=upstream.site_power_breaker_id AND p.active
+   (supply_breaker_id=p_breaker OR (b.breaker_role='MAIN' AND (site_panel_id=b.site_panel_id OR supply_panel_id=b.site_panel_id)))
+  UNION SELECT p.site_panel_id FROM supplied_panels s JOIN ref.site_panel p ON p.active AND
+    (p.supply_panel_id=s.id OR EXISTS(SELECT 1 FROM ref.site_power_breaker upstream WHERE upstream.site_panel_id=s.id AND upstream.active AND p.supply_breaker_id=upstream.site_power_breaker_id))
  ) SELECT coalesce(array_agg(id),ARRAY[]::bigint[]) INTO affected_panels FROM supplied_panels;
  WITH RECURSIVE walk AS (
   SELECT c.site_power_circuit_id,c.breaker_pole,f.destination_waypoint_id,f.destination_device_id,
@@ -393,7 +394,7 @@ BEGIN
  result:=result||jsonb_build_object('circuit_loads',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_circuit_load t),'[]'::jsonb));
  result:=result||jsonb_build_object('load_lineage',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_circuit_load_lineage t),'[]'::jsonb));
  result:=result||jsonb_build_object('waypoint_power_sources',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_waypoint_power_sources t),'[]'::jsonb));
- result:=result||jsonb_build_object('route_evidence',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_route_source_track t),'[]'::jsonb),'linkiq_evidence',coalesce((SELECT jsonb_agg(jsonb_build_object('test_uuid',t.test_uuid,'cable_id',t.physical_site_cable_id,'endpoint_a',c.endpoint_a_waypoint_id,'endpoint_b',c.endpoint_b_waypoint_id,'test_time',t.test_time_local,'status_code',t.test_status_code,'review_status',t.identity_review_status,'source_sha256',t.first_seen_source_sha256,'test_standard',t.test_standard,'length_ft',t.length_ft,'original_name',t.tester_original_name)) FROM ops.linkiq_test t LEFT JOIN ref.site_cable c ON c.site_cable_id=t.physical_site_cable_id),'[]'::jsonb));
+ result:=result||jsonb_build_object('route_evidence',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_route_source_track t),'[]'::jsonb),'linkiq_evidence',coalesce((SELECT jsonb_agg(jsonb_build_object('test_uuid',t.test_uuid,'cable_id',t.physical_site_cable_id,'endpoint_a',c.endpoint_a_waypoint_id,'endpoint_b',c.endpoint_b_waypoint_id,'test_time',t.test_time_local,'status_code',t.test_status_code,'review_status',t.identity_review_status,'source_sha256',t.first_seen_source_sha256,'test_standard',t.test_standard,'length_ft',t.length_ft,'original_name',t.tester_original_name,'source_pair',(SELECT r.proposal || jsonb_build_object('source_sha256',r.source_sha256) FROM ops.linkiq_intake_review r WHERE r.test_uuid=t.test_uuid ORDER BY r.recorded_at DESC,r.source_sha256 LIMIT 1))) FROM ops.linkiq_test t LEFT JOIN ref.site_cable c ON c.site_cable_id=t.physical_site_cable_id),'[]'::jsonb));
  result:=result||jsonb_build_object('panels',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_panel t),'[]'::jsonb));
  result:=result||jsonb_build_object('cable_specs',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_power_cable_spec t),'[]'::jsonb));
  result:=result||jsonb_build_object('conductors',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_power_conductor t),'[]'::jsonb));
@@ -517,7 +518,7 @@ BEGIN
   allowed:=ARRAY['impact_reviewed','site_power_action_id','season_year','event_kind','condition','observed_at','evidence','corrects_event_id'];
  ELSE
   CASE p_kind
-  WHEN 'panel' THEN table_name:='site_panel'; key_name:='site_panel_id'; allowed:=ARRAY['show_desired_state','restoration_desired_state','panel_name','site_waypoint_id','owner_name','year_installed','panel_identification','meter_information','supply_breaker_id','active','source_evidence','verification_status'];
+  WHEN 'panel' THEN table_name:='site_panel'; key_name:='site_panel_id'; allowed:=ARRAY['show_desired_state','restoration_desired_state','panel_name','site_waypoint_id','owner_name','year_installed','panel_identification','meter_information','supply_panel_id','supply_breaker_id','active','source_evidence','verification_status'];
   WHEN 'cable_spec' THEN table_name:='site_power_cable_spec'; key_name:='site_power_cable_spec_id'; allowed:=ARRAY['site_cable_id','cable_specification','active','source_evidence','verification_status'];
   WHEN 'conductor' THEN table_name:='site_power_conductor'; key_name:='site_power_conductor_id'; allowed:=ARRAY['site_cable_id','conductor_label','conductor_role','active','source_evidence','verification_status'];
   WHEN 'conductor_circuit' THEN table_name:='site_power_conductor_circuit'; key_name:='site_power_conductor_circuit_id'; allowed:=ARRAY['site_power_conductor_id','site_power_circuit_id','active','source_evidence','verification_status'];
@@ -640,16 +641,23 @@ BEGIN
     SELECT 1 FROM supplied s LEFT JOIN ref.site_power_device d ON d.site_power_device_id=s.device_id AND d.active
     WHERE s.circuit_id=cp.site_power_circuit_id AND (s.waypoint_id=cp.site_waypoint_id OR d.site_waypoint_id=cp.site_waypoint_id)))
   ) THEN RAISE EXCEPTION 'Controller outlet connection requires an active circuit feed to a Power or Combo waypoint; retire dependent connections before changing supply' USING ERRCODE='23514'; END IF;
-  IF EXISTS(SELECT 1 FROM ref.site_panel p JOIN ref.site_power_breaker b ON b.site_power_breaker_id=p.supply_breaker_id
-    JOIN ref.site_panel upstream ON upstream.site_panel_id=b.site_panel_id
-    WHERE p.active AND (NOT b.active OR NOT upstream.active OR b.site_panel_id=p.site_panel_id
-      OR EXISTS(SELECT 1 FROM ref.site_power_breaker m WHERE m.site_panel_id=p.site_panel_id AND m.active AND m.breaker_role='MAIN'))) THEN
-   RAISE EXCEPTION 'Remote supply requires an active breaker in another active panel and no conflicting local main' USING ERRCODE='23514'; END IF;
+  -- A known upstream panel may precede inventory of its feeder breaker.
+  -- Never manufacture an isolation device or accept contradictory ancestry.
+  IF EXISTS(SELECT 1 FROM ref.site_panel p
+    LEFT JOIN ref.site_power_breaker b ON b.site_power_breaker_id=p.supply_breaker_id
+    LEFT JOIN ref.site_panel upstream ON upstream.site_panel_id=coalesce(p.supply_panel_id,b.site_panel_id)
+    WHERE p.active AND (p.supply_panel_id IS NOT NULL OR p.supply_breaker_id IS NOT NULL)
+      AND (NOT upstream.active OR upstream.site_panel_id=p.site_panel_id
+        OR (p.supply_breaker_id IS NOT NULL AND (NOT b.active OR
+          (p.supply_panel_id IS NOT NULL AND p.supply_panel_id<>b.site_panel_id)))
+        OR EXISTS(SELECT 1 FROM ref.site_power_breaker m WHERE m.site_panel_id=p.site_panel_id AND m.active AND m.breaker_role='MAIN'))) THEN
+   RAISE EXCEPTION 'Remote supply requires a consistent active upstream panel/breaker and no conflicting local main' USING ERRCODE='23514'; END IF;
   IF EXISTS(WITH RECURSIVE supply(id,path,cycle) AS (
     SELECT site_panel_id,ARRAY[site_panel_id],false FROM ref.site_panel WHERE active
-    UNION ALL SELECT b.site_panel_id,s.path||b.site_panel_id,b.site_panel_id=ANY(s.path)
+    UNION ALL SELECT coalesce(p.supply_panel_id,b.site_panel_id),s.path||coalesce(p.supply_panel_id,b.site_panel_id),coalesce(p.supply_panel_id,b.site_panel_id)=ANY(s.path)
     FROM supply s JOIN ref.site_panel p ON p.site_panel_id=s.id
-    JOIN ref.site_power_breaker b ON b.site_power_breaker_id=p.supply_breaker_id WHERE NOT s.cycle AND p.active)
+    LEFT JOIN ref.site_power_breaker b ON b.site_power_breaker_id=p.supply_breaker_id
+    WHERE NOT s.cycle AND p.active AND coalesce(p.supply_panel_id,b.site_panel_id) IS NOT NULL)
     SELECT 1 FROM supply WHERE cycle) THEN
    RAISE EXCEPTION 'Panel supply relationships form a cycle' USING ERRCODE='23514'; END IF;
   -- Revision locking serializes commands; reject overlapping occupied slots.

@@ -8,7 +8,9 @@ Crew can maintain these records. Managers maintain waypoint names and positions.
 1. Open **Panel Circuits** and select the existing panel. Use **Add panel** only
    for an unrecorded panel. Its record owns the GPX waypoint, owner and meter.
 2. Use **Meter / upstream supply** beside the main for meter changes or an actual
-   supplying breaker in another panel. Use **Record main breaker** for a local main.
+   supply panel and, when known, its feeder breaker. For FE-00 supplied by Panel 15,
+   select Panel 15 even if the feeder breaker is not yet inventoried; leave that
+   breaker unknown. Use **Record main breaker** for a local main.
 3. Select an unrecorded position in the diagram to add a breaker. Set poles and
    whole-number amps; a two-pole selection proposes same-side positions such as
    18/20. Verify these against the installed panel before saving. Enter seasonal
@@ -25,6 +27,12 @@ positions are entry controls, not confirmation of empty installed slots. Unknown
 or nonstandard positions remain in the reconciliation section. Legacy circuits
 without breaker membership have a separate collapsed reconciliation workflow.
 A5 fixture dimensions do not automatically create Production breaker records.
+
+Matching panel-prefix waypoints (A5, CL, GG, FE, etc.) appear first in assignments.
+Powered poles and other exceptions remain available. No prefix selects a circuit
+automatically. Circuits without discovered waypoints are valid: describe security,
+bathroom or other non-show lighting and record their seasonal instructions without
+creating a dummy waypoint. Missing waypoint coverage does not mean no load.
 
 ## Outlet power and controller connections
 
@@ -64,7 +72,10 @@ conductor records are available in the equipment screen's engineering disclosure
 Open **Cable Test History** and select the connected waypoint pair. Each physical
 cable retains its separate test history, including retests, UUID, raw result code,
 test standard, measured length and source hash. Unresolved bindings have their own
-choice. This information is read-only and does not establish a network path or
+choice. Parsed FLW endpoint pairs and cable designations are also shown before
+physical cable review, retaining the source labels and distinguishing AUX, SPARE,
+E1.31 and other designations. These source-declared pairs do not approve a cable
+identity or GIS route. This information is read-only and does not establish a network path or
 prove electrical isolation.
 
 Correct conflicting evidence without publishing competing active breaker supplies.
