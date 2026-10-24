@@ -124,6 +124,7 @@ try {
     .waitFor();
   await page.getByRole("button", { name: "Add panel", exact: true }).click();
   await dialog.locator("[name=panel_name]").fill("A5 panel");
+  assert.equal(await dialog.locator("[name=active]").count(), 0);
   assert.equal(await dialog.locator("[name=source_evidence]").getAttribute("required"), null);
   assert.equal(await dialog.locator("[name=verification_status]").count(), 0);
   await save();
