@@ -217,6 +217,9 @@
           const names=[...new Set(paths(c.site_power_circuit_id).map(x=>x.waypoint?.name || "Unknown waypoint"))];
           const leg=button(`Circuit ${c.circuit_code} — ${names.join(", ") || "Assign waypoints"}`,()=>openAssignments(c),row,true);
           leg.className="power-circuit-leg"; leg.dataset.circuitId=c.site_power_circuit_id;
+          for (const id of [...new Set(paths(c.site_power_circuit_id).map(x=>x.waypoint?.id).filter(Boolean))]) {
+            button(`Open ${waypointName(id)} / equipment`,()=>viewWaypoint(id),row);
+          }
         });
         el("p", `Season: ${b.show_desired_state} · Non-season: ${b.restoration_desired_state}`, row);
         const impact = (data.breaker_impacts || []).find(x => x.breaker.site_power_breaker_id === b.site_power_breaker_id);
@@ -302,7 +305,7 @@
     data.waypoints.forEach(w=>{const o=el("option",`${w.name} (${w.type})`,waypointSelect);o.value=w.id;});
     waypointSelect.value=priorWaypoint;
     const detailWaypoint=Number(priorWaypoint);
-    const combo=wp(detailWaypoint)?.type?.trim().toLowerCase()==="out-combo";
+    const combo=isComboWaypoint(wp(detailWaypoint) || {});
     $("combo-network-box").hidden=!combo;
     $("waypoint-supply").replaceChildren();
     data.circuits.filter(c=>c.active && paths(c.site_power_circuit_id).some(x=>x.waypoint?.id===detailWaypoint))
@@ -324,6 +327,9 @@
     (data.controller_installations || []).filter(i=>i.site_waypoint_id===detailWaypoint).forEach(i=>{
       const asset=data.controller_options.find(c=>c.id===i.controller_id);
       record($("equipment"),`Controller ${i.controller_id} · ${asset?.model || "Unknown model"} · ${asset?.serial || "No serial recorded"}`,i,"controller_installation");
+    });
+    data.devices.filter(d=>d.site_waypoint_id===detailWaypoint).forEach(d=>{
+      record($("equipment"),`${d.device_name} · ${d.device_kind}`,d,"device");
     });
     $("conductor-detail").replaceChildren();
     ["cable_spec", "conductor", "conductor_circuit"].forEach(kind => {
@@ -373,6 +379,14 @@
       "add-network",
       "add-action",
     ].forEach((id) => ($(id).disabled = !data.access.can_edit));
+  }
+  function viewWaypoint(waypointId) {
+    if (!waypointId || !wp(waypointId)) return;
+    const section=$("waypoint-detail");
+    section.open=true;
+    $("detail-waypoint").value=String(waypointId);
+    render();
+    section.scrollIntoView({block:"start",behavior:"instant"});
   }
   function renderActions() {
     const root = $("actions");
