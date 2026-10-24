@@ -220,8 +220,12 @@ BEGIN
    (p_data->>'observed_at')::timestamptz,p_data->>'evidence',(p_data->>'corrects_event_id')::bigint,
    to_jsonb(action_row),actor.directus_user_id,actor.person_id,lower(btrim(p_email))) RETURNING event_id,to_jsonb(setup_power_activity_event) INTO target,after_row;
  ELSE
-  IF nullif(btrim(p_data->>'source_evidence'),'') IS NULL OR NOT p_data ? 'verification_status' THEN
-   RAISE EXCEPTION 'Source evidence and explicit verification status required' USING ERRCODE='22023'; END IF;
+  -- Ordinary field records are attributable through the governed actor/audit;
+  -- a note or explicit verification claim is not required to save.
+  IF p_data ? 'verification_status' AND
+     p_data->>'verification_status' NOT IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING') THEN
+    RAISE EXCEPTION 'Invalid reference verification state' USING ERRCODE='22023';
+  END IF;
   IF p_id IS NOT NULL THEN
    EXECUTE format('SELECT to_jsonb(t) FROM ref.%I t WHERE %I=$1 FOR UPDATE',table_name,key_name) INTO before_row USING p_id;
    IF before_row IS NULL THEN RAISE EXCEPTION 'Record not found' USING ERRCODE='P0002'; END IF;
