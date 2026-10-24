@@ -18,7 +18,7 @@ CREATE TABLE ref.site_controller_installation (
  controller_id bigint NOT NULL REFERENCES ref.controller(controller_id),
  site_waypoint_id bigint NOT NULL REFERENCES ref.site_waypoint(site_waypoint_id),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -34,7 +34,7 @@ CREATE TABLE ref.site_panel (
  site_waypoint_id bigint REFERENCES ref.site_waypoint(site_waypoint_id),
  owner_name text, panel_identification text, meter_information text, supply_breaker_id bigint,
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -56,7 +56,7 @@ CREATE TABLE ref.site_power_breaker (
  show_desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK(show_desired_state IN ('UNKNOWN','ON','OFF')),
  restoration_desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK(restoration_desired_state IN ('UNKNOWN','ON','OFF')),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -75,7 +75,7 @@ CREATE TABLE ref.site_power_circuit (
  show_desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK (show_desired_state IN ('UNKNOWN','ON','OFF')),
  restoration_desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK (restoration_desired_state IN ('UNKNOWN','ON','OFF')),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -88,7 +88,7 @@ CREATE TABLE ref.site_power_cable_spec (
  site_cable_id bigint NOT NULL UNIQUE REFERENCES ref.site_cable(site_cable_id),
  cable_specification text NOT NULL CHECK(btrim(cable_specification)<>''),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -100,7 +100,7 @@ CREATE TABLE ref.site_power_conductor (
  conductor_label text NOT NULL CHECK(btrim(conductor_label)<>''),
  conductor_role text NOT NULL CHECK(conductor_role IN ('HOT','NEUTRAL','GROUND','UNKNOWN')),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -111,7 +111,7 @@ CREATE TABLE ref.site_power_conductor_circuit (
  site_power_conductor_id bigint NOT NULL REFERENCES ref.site_power_conductor(site_power_conductor_id),
  site_power_circuit_id bigint NOT NULL REFERENCES ref.site_power_circuit(site_power_circuit_id),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -125,7 +125,7 @@ CREATE TABLE ref.site_controller_power_connection (
  site_waypoint_id bigint NOT NULL REFERENCES ref.site_waypoint(site_waypoint_id),
  site_power_circuit_id bigint NOT NULL REFERENCES ref.site_power_circuit(site_power_circuit_id),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -139,7 +139,7 @@ CREATE TABLE ref.site_power_device (
  site_waypoint_id bigint REFERENCES ref.site_waypoint(site_waypoint_id),
  owner_name text, utility_asset_id text, rating text, description text,
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -155,7 +155,7 @@ CREATE TABLE ref.site_power_feed (
  CHECK (num_nonnulls(destination_waypoint_id,destination_device_id)=1),
  CHECK (source_device_id IS DISTINCT FROM destination_device_id OR source_device_id IS NULL),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -166,7 +166,7 @@ CREATE TABLE ref.site_waypoint_network (
  site_waypoint_id bigint NOT NULL REFERENCES ref.site_waypoint(site_waypoint_id),
  site_network_id bigint NOT NULL REFERENCES ref.site_network(site_network_id),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -185,7 +185,7 @@ CREATE TABLE ref.site_power_action (
  prerequisite_action_ids bigint[] NOT NULL DEFAULT '{}',
  CHECK (num_nonnulls(site_power_breaker_id,site_power_circuit_id,site_power_device_id)=1),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -437,8 +437,12 @@ BEGIN
    (p_data->>'observed_at')::timestamptz,p_data->>'evidence',(p_data->>'corrects_event_id')::bigint,
    to_jsonb(action_row)||CASE WHEN action_row.site_power_breaker_id IS NOT NULL THEN jsonb_build_object('impact',ref.site_power_breaker_impact(p_email,action_row.site_power_breaker_id)) ELSE '{}'::jsonb END,actor.directus_user_id,actor.person_id,lower(btrim(p_email))) RETURNING event_id,to_jsonb(setup_power_activity_event) INTO target,after_row;
  ELSE
-  IF nullif(btrim(p_data->>'source_evidence'),'') IS NULL OR NOT p_data ? 'verification_status' THEN
-   RAISE EXCEPTION 'Source evidence and explicit verification status required' USING ERRCODE='22023'; END IF;
+  -- Routine assignments require no operator-authored note or verification;
+  -- the existing command audit still records actor and revision.
+  IF p_data ? 'verification_status' AND
+     p_data->>'verification_status' NOT IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING') THEN
+    RAISE EXCEPTION 'Invalid reference verification status' USING ERRCODE='22023';
+  END IF;
   IF p_id IS NOT NULL THEN
    EXECUTE format('SELECT to_jsonb(t) FROM ref.%I t WHERE %I=$1 FOR UPDATE',table_name,key_name) INTO before_row USING p_id;
    IF before_row IS NULL THEN RAISE EXCEPTION 'Record not found' USING ERRCODE='P0002'; END IF;
@@ -454,7 +458,7 @@ BEGIN
   expected:=coalesce(before_row,'{}'::jsonb)||p_data||jsonb_build_object('verified_by_person_id',verified,'verified_at',verified_time,'updated_at',clock_timestamp());
   -- jsonb_populate_record enforces native PostgreSQL field types. Omitted fields
   -- retain prior values on corrections; inserts receive explicit safe defaults.
-  IF p_id IS NULL THEN expected:=jsonb_build_object('active',true,'breaker_role','UNKNOWN','show_desired_state','UNKNOWN',
+  IF p_id IS NULL THEN expected:=jsonb_build_object('verification_status','UNVERIFIED','active',true,'breaker_role','UNKNOWN','show_desired_state','UNKNOWN',
    'restoration_desired_state','UNKNOWN','desired_state','UNKNOWN','prerequisite_action_ids','[]'::jsonb)||expected; END IF;
   IF p_kind='controller_power_connection' AND p_id IS NOT NULL AND (
     expected->'controller_id' IS DISTINCT FROM before_row->'controller_id'
