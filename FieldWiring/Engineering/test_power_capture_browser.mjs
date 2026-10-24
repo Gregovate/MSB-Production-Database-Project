@@ -263,7 +263,7 @@ try {
     if (leg==="18") await dialog.locator("[name=also_other_leg]").check();
     await evidence(); await save();
   }
-  await groupedRow.locator("summary").click();
+  await groupedRow.getByText("Recorded affected endpoints — not verified isolation",{exact:true}).click();
   assert.match(await groupedRow.innerText(),/20 A · 2 poles/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 18/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 20/);
