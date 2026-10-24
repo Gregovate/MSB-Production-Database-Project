@@ -36,7 +36,7 @@
       }
       const form=node("form",undefined,host); form.id="deployment-form";
       const choose=(id,label)=>{const l=node("label",label,form);l.style.display="block";const s=node("select",undefined,l);s.id=id;s.style.maxWidth="100%";node("option","Not connected",s).value="";return s;};
-      const location=choose("deployment-network","Network waypoint ");
+      const location=choose("deployment-network","Network connection waypoint ");
       const networkStatus=node("p",undefined,form);networkStatus.id="deployment-network-status";
       networkStatus.setAttribute("role","status");
       const outlet=choose("deployment-outlet","Power outlet waypoint ");

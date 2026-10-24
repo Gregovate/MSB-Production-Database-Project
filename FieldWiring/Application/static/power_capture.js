@@ -373,7 +373,7 @@
     $("networks").replaceChildren();
     const available=(data.networks || []).filter(n=>n.site_waypoint_id===detailWaypoint);
     available.forEach(n=>el("p",`${n.network_code} · reviewed cable ${n.site_cable_id}`, $("networks")));
-    if (!available.length) el("p","No confirmed network path. Controller placement is held pending GIS reconciliation.",$("networks"));
+    if (!available.length) el("p","No resolved FLW network endpoints at this waypoint. Reconcile the FLW endpoint records before network placement.",$("networks"));
     renderCableHistory();
     renderSafety(detailWaypoint);
     const year = $("season").value;
