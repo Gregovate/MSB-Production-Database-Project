@@ -937,6 +937,18 @@
       for (const l of list.children)
         l.hidden = !l.dataset.search.includes(search.value.toLowerCase());
     };
+    // An explicit both-legs choice is offered only for a known two-leg breaker.
+    // The other leg's unrelated waypoint assignments are never replaced.
+    const siblings=data.circuits.filter(other=>
+      other.active && c.site_power_breaker_id &&
+      other.site_power_breaker_id===c.site_power_breaker_id &&
+      other.site_power_circuit_id!==c.site_power_circuit_id);
+    if (siblings.length===1 && data.breakers.some(b=>b.site_power_breaker_id===c.site_power_breaker_id && b.pole_count===2)) {
+      const label=el("label","Also add checked waypoints to the other breaker leg (keep its existing destinations)",$("edit-fields"));
+      const both=el("input",undefined,label);
+      both.type="checkbox"; both.name="also_other_leg"; both.value=String(siblings[0].site_power_circuit_id);
+      both.checked=false;
+    }
     field(text("source_evidence", "Notes (optional)"), "");
     $("editor").showModal();
   }
@@ -1013,6 +1025,17 @@
             }),
           );
         });
+        const both=form.elements.namedItem("also_other_leg");
+        if (both?.checked) {
+          const siblingId=Number(both.value);
+          // This intentionally ADDS new direct feeds only; existing feeds on
+          // the other leg, including unrelated destinations, are preserved.
+          for (const id of selected) {
+            if (!data.feeds.some(f=>f.active && f.source_circuit_id===siblingId && f.destination_waypoint_id===id)) {
+              commands.push(command("feed",null,{...evidence,source_circuit_id:siblingId,destination_waypoint_id:id}));
+            }
+          }
+        }
       } else
         commands = [
           command(edit.kind, edit.row[keys[edit.kind]], readFields()),
