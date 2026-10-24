@@ -135,6 +135,11 @@
     $("status").textContent = "Loading current records…";
     try {
       data = await api("api/power");
+      const query=new URLSearchParams(location.search);
+      if(mode==="panels" && query.get("circuit") && !$("panel-detail").dataset.linkOpened) {
+        const target=circuit(Number(query.get("circuit")));
+        if(target) {panelId=target.site_panel_id;render();openAssignments(target);$("panel-detail").dataset.linkOpened="1";}
+      }
       render();
       const requested=new URLSearchParams(location.search).get("waypoint");
       if(requested && !$("waypoint-detail").dataset.linkOpened) {
@@ -332,12 +337,12 @@
     $("combo-network-box").hidden=mode==="equipment" ? !combo : !isNetworkWaypoint(wp(detailWaypoint) || {});
     $("waypoint-supply").replaceChildren();
     data.circuits.filter(c=>c.active && paths(c.site_power_circuit_id).some(x=>x.waypoint?.id===detailWaypoint))
-      .forEach(c=>button(circuitName(c.site_power_circuit_id),()=>openAssignments(c),$("waypoint-supply"),true));
+      .forEach(c=>button(circuitName(c.site_power_circuit_id),()=>{location.href=`circuits?circuit=${c.site_power_circuit_id}`;},$("waypoint-supply")));
     if (detailWaypoint) {
-      const label=el("label","Assign supplying circuit",$("waypoint-supply")), select=el("select",undefined,label);
+      const label=el("label","Manage supplying circuit on Panel Circuits",$("waypoint-supply")), select=el("select",undefined,label);
       el("option","Select panel / circuit",select).value="";
       data.circuits.filter(c=>c.active).forEach(c=>{el("option",circuitName(c.site_power_circuit_id),select).value=c.site_power_circuit_id;});
-      select.onchange=()=>{if(select.value) openAssignments(circuit(Number(select.value)));};
+      select.onchange=()=>{if(select.value) location.href=`circuits?circuit=${select.value}`;};
     }
     const powerOutlet=isElectricalEndpoint(wp(detailWaypoint) || {});
     $("outlet-controllers").hidden=!powerOutlet;

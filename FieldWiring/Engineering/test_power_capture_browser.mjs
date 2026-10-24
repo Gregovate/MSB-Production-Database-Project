@@ -339,6 +339,8 @@ try {
   await page.locator("#waypoint-supply select").selectOption(String(firstCircuit));
   await dialog.locator('input[name=waypoint][value="13"]').check();
   await evidence(); await save();
+  await page.goto(base.replace("circuits","waypoints?waypoint=13"));
+  await page.getByText(/Revision \d+/).waitFor();
   await page.getByRole("button",{name:"Connect controller to outlet",exact:true}).click();
   await dialog.locator("[name=controller_id]").selectOption("101");
   await dialog.locator("[name=site_power_circuit_id]").selectOption(String(firstCircuit));
@@ -390,6 +392,9 @@ try {
   assert.equal(await page.locator("#deployment-network").inputValue(),"12");
   assert.equal(await page.locator("#deployment-outlet").inputValue(),"13");
   await page.locator("#deployment-network").selectOption("11");
+  await page.locator("#deployment-outlet").selectOption("12");
+  const movedCircuit=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE circuit_code='18'")).rows[0].site_power_circuit_id;
+  await page.locator("#deployment-circuit").selectOption(String(movedCircuit));
   failNext=true;
   await page.locator("#deployment-save").click();
   await page.getByText(/Save outcome unknown/).waitFor();
@@ -397,6 +402,8 @@ try {
   await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_controller_installation WHERE controller_id=101 AND active")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_controller_installation WHERE controller_id=101 AND NOT active")).rows[0].n,1);
+  assert.equal((await db.query("SELECT site_waypoint_id FROM ref.site_controller_power_connection WHERE controller_id=101 AND active")).rows[0].site_waypoint_id,12);
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_controller_power_connection WHERE controller_id=101 AND NOT active")).rows[0].n,1);
   await page.goto(base.replace("circuits","waypoints?waypoint=11"));
   await page.getByText(/Revision \d+/).waitFor();
   assert.match(await page.locator("#installations").innerText(),/Controller 101/);
@@ -461,7 +468,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: actual browser panel/circuit creation, alias search, multi-select, retirement, safe retry, mobile width and read-only user.",
+    "PASS: focused panel/waypoint/equipment/history routes, shared Controller placement and power moves, retained history, exact batch retry, stale denial, network-only eligibility, retests, mobile width and read-only user.",
   );
 } finally {
   await browser.close();
