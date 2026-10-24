@@ -65,7 +65,7 @@
   function stamp(r, p) {
     el(
       "p",
-      `${r.active ? "Active" : "Retired"} · ${r.verification_status} · ${r.source_evidence}`,
+      `${r.active ? "Active" : "Retired"} · ${r.verification_status || "UNVERIFIED"}${r.source_evidence ? " · " + r.source_evidence : ""}`,
       p,
     );
     if (r.verified_at)
@@ -674,16 +674,7 @@
               label: "Active record (clear to retire)",
               type: "checkbox",
             },
-            choose(
-              "verification_status",
-              "Reference verification (explicitly select)",
-              ["UNKNOWN", "UNVERIFIED", "VERIFIED", "CONFLICTING"],
-            ),
-            text(
-              "source_evidence",
-              "Source / verification evidence / correction reason",
-              true,
-            ),
+            text("source_evidence", "Notes (optional)"),
           ],
     );
   }
