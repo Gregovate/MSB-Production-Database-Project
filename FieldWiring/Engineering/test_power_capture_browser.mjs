@@ -326,11 +326,20 @@ try {
   assert.match(await page.locator("#plugged-controllers").innerText(),/Controller 101/);
   await page.locator("#detail-waypoint").selectOption("12");
   for(const id of ["101","102"]) {
-    await page.getByRole("button",{name:"Install inventory item",exact:true}).click();
+    await page.getByRole("button",{name:"Install existing controller",exact:true}).click();
     await dialog.locator("[name=controller_id]").selectOption(id);
     await evidence();await save();
   }
   assert.equal(await page.locator("#equipment .power-record").count(),2);
+  // Network equipment is recorded at its Combo waypoint, not forced into
+  // the LOR Controller model inventory.
+  await page.getByRole("button",{name:"Add new equipment",exact:true}).click();
+  await dialog.locator("[name=device_name]").fill("A5 PoE switch");
+  await dialog.locator("[name=device_kind]").selectOption("POE_SWITCH");
+  assert.equal(await dialog.locator("[name=site_waypoint_id]").inputValue(),"12");
+  await save();
+  assert.match(await page.locator("#equipment").innerText(),/A5 PoE switch · POE_SWITCH/);
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_kind='POE_SWITCH' AND site_waypoint_id=12")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,4);
   await page.screenshot({path:"/tmp/power-panel-desktop.png",fullPage:true});
   await page.getByRole("button", {name:/Light mode|Dark mode/}).click();
