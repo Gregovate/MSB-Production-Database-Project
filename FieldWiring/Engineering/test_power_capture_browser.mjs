@@ -124,6 +124,8 @@ try {
     .waitFor();
   await page.getByRole("button", { name: "Add panel", exact: true }).click();
   await dialog.locator("[name=panel_name]").fill("A5 panel");
+  await dialog.locator("[name=owner_name]").selectOption("City Owned");
+  await dialog.locator("[name=year_installed]").fill("2018");
   assert.equal(await dialog.locator("[name=active]").count(), 0);
   assert.equal(await dialog.locator("[name=source_evidence]").getAttribute("required"), null);
   assert.equal(await dialog.locator("[name=verification_status]").count(), 0);
@@ -132,6 +134,9 @@ try {
     .locator("#panels")
     .getByRole("button", { name: "A5 panel", exact: true })
     .click();
+  const panelYear=await db.query("SELECT owner_name,year_installed FROM ref.site_panel WHERE panel_name='A5 panel'");
+  assert.equal(panelYear.rows[0].owner_name,"City Owned");
+  assert.equal(panelYear.rows[0].year_installed,2018);
   await page.getByText("Reconcile circuits with unknown breaker membership",{exact:true}).click();
   await page.getByRole("button", { name: "Reconcile legacy circuit", exact: true }).click();
   await dialog.locator("[name=circuit_code]").fill("legacy7");
@@ -269,6 +274,9 @@ try {
   assert.match(await groupedRow.innerText(),/A5 panel \/ 18/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 20/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1",[breakerId])).rows[0].n,2);
+  await groupedRow.getByRole("button",{name:/^Open Outlet B \/ equipment/}).first().click();
+  assert.equal(await page.locator("#waypoint-detail").getAttribute("open"),"");
+  assert.equal(await page.locator("#detail-waypoint").inputValue(),"12");
   assert.equal((await db.query("SELECT count(DISTINCT f.source_circuit_id)::int n FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id WHERE c.site_power_breaker_id=$1 AND f.destination_waypoint_id=12 AND f.active",[breakerId])).rows[0].n,2);
   assert.equal(await page.locator(".power-slot").count(),35);
   assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridRow),"9 / span 2");
