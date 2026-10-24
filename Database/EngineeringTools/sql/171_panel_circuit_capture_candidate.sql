@@ -480,7 +480,7 @@ BEGIN
  result:=result||jsonb_build_object('networks',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_network_availability t),'[]'::jsonb));
  result:=result||jsonb_build_object('actions',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_power_action t),'[]'::jsonb));
  RETURN result||jsonb_build_object(
- 'waypoints',coalesce((SELECT jsonb_agg(jsonb_build_object('id',w.site_waypoint_id,'name',w.canonical_label,'type',w.waypoint_type,
+ 'waypoints',coalesce((SELECT jsonb_agg(jsonb_build_object('id',w.site_waypoint_id,'name',w.canonical_label,'type',w.waypoint_type,'network_capable',EXISTS(SELECT 1 FROM ref.site_network_availability n WHERE n.site_waypoint_id=w.site_waypoint_id),
  'aliases',coalesce((SELECT jsonb_agg(a.alias_text) FROM ref.site_waypoint_alias a WHERE a.site_waypoint_id=w.site_waypoint_id AND a.accepted_at IS NOT NULL AND a.accepted_by IS NOT NULL),'[]'::jsonb)) ORDER BY w.canonical_label) FROM ref.site_waypoint w),'[]'::jsonb),
  'network_options',coalesce((SELECT jsonb_agg(to_jsonb(n) ORDER BY n.network_code) FROM ref.site_network n),'[]'::jsonb),
  'cable_options',coalesce((SELECT jsonb_agg(jsonb_build_object('id',site_cable_id,'name',coalesce(notes,'Cable '||site_cable_id::text))) FROM ref.site_cable),'[]'::jsonb),
@@ -674,9 +674,8 @@ BEGIN
       OR expected->'site_waypoint_id' IS DISTINCT FROM before_row->'site_waypoint_id') THEN
     RAISE EXCEPTION 'Retire the previous installation and create a new one to move equipment' USING ERRCODE='22023';
    END IF;
-   IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_waypoint WHERE site_waypoint_id=(expected->>'site_waypoint_id')::bigint AND regexp_split_to_array(lower(btrim(waypoint_type)), '[-_[:space:]]+') && ARRAY['network','net','combo']::text[]) THEN
-    RAISE EXCEPTION 'Controller installation requires a Network or Combo waypoint' USING ERRCODE='22023';
-   END IF;
+   -- FLW membership, not a GPX type or special endpoint name, controls network
+   -- placement. The independent power connection guard still requires an outlet.
    IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_controller_placement_eligibility
     WHERE controller_id=(expected->>'controller_id')::bigint AND site_waypoint_id=(expected->>'site_waypoint_id')::bigint) THEN
     RAISE EXCEPTION 'Controller placement held: required LOR network lacks resolved FLW endpoint evidence at this waypoint' USING ERRCODE='23514';

@@ -36,7 +36,7 @@ creating a dummy waypoint. Missing waypoint coverage does not mean no load.
 
 ## Outlet power and controller connections
 
-Open **Waypoint Connections** and select a Power, Network or Combo waypoint. Its
+Open **Waypoint Connections** and select a power outlet or any FLW-resolved network endpoint. Its
 **Outlet circuits** show the recorded supplies; select one to correct assignments.
 Use **Connect controller to outlet** to choose an existing inventory ID and the
 actual supplying circuit leg. At a two-circuit outlet, choose the leg the plug uses;
@@ -67,8 +67,11 @@ or the required network lacks resolved FLW endpoint records. Panel inventory may
 be saved before those network records are resolved; Controller network placement
 still requires them.
 
-Network placement offers Network or Combo waypoints only when current LOR
-programming and FLW endpoint/network records establish eligibility. Power outlet choices
+Network placement offers any uniquely resolved FLW endpoint carrying the current
+LOR network, including panels and distribution points without power. GPX type
+does not restrict network placement. The attachment waypoint can be the origin
+of a Controller daisy chain; this screen does not record Controller order or
+termination. Power outlet choices
 are Power or Combo waypoints with a recorded supplying circuit. Network location
 and actual plugged-in power outlet remain separate facts.
 
@@ -132,3 +135,12 @@ Follow the applicable authorized field procedure for the physical work.
 - Edit the panel's planned show-season and off-season supply independently of breaker settings. Record actual panel switching or utility evidence under Seasonal power activities by selecting the panel target. A utility request is not confirmation.
 - Open a waypoint's electrical-source section to see recorded supplying circuits, upstream panels/main breakers, ownership/meter information and dated evidence. Check unresolved sources and follow field isolation and testing procedures. Planned OFF is never proof of absence of voltage.
 - Park Map opens the same selected waypoint in FieldWiring. Cable-test evidence remains measurement history, separate from route availability.
+
+## Equipment expectations
+
+The waypoint network section flags multiple same-network cable paths for LOR
+branch/repeater verification. Multiple paths may instead be a continuing line;
+check the actual topology. INET/E1.31 endpoints prompt switch/power-supply checks
+at distribution points where runs approach 300 feet, and PoE checks for cameras.
+These prompts never create installed inventory. Record only actual components.
+The Racing Arch chain/termination remains unverified until checked in the field.

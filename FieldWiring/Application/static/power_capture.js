@@ -374,6 +374,18 @@
     const available=(data.networks || []).filter(n=>n.site_waypoint_id===detailWaypoint);
     [...new Set(available.map(n=>n.network_code))].forEach(code=>el("p",`${code} · FLW endpoint record`, $("networks")));
     if (!available.length) el("p","No resolved FLW network endpoints at this waypoint. Reconcile the FLW endpoint records before network placement.",$("networks"));
+    // Expectations are prompts only: no inventory writes or inferred installation.
+    for(const id of new Set(available.map(n=>n.site_network_id))) {
+      const net=(data.network_options || []).find(n=>n.site_network_id===id);
+      const code=net?.network_code || available.find(n=>n.site_network_id===id)?.network_code || "";
+      const key=code.trim().toUpperCase().replace(/^AUX[ -]+/,"AUX-");
+      const cables=(data.flw_cable_tests || []).filter(t=>t.network_key===key && [t.endpoint_a,t.endpoint_b].includes(detailWaypoint));
+      const neighbors=new Set(cables.map(t=>t.endpoint_a===detailWaypoint ? t.endpoint_b : t.endpoint_a));
+      if(net?.network_kind==="LOR" && neighbors.size>1)
+        el("p",`${code}: multiple cable paths. Verify whether this is a branch requiring a LOR repeater or a continuing line. No repeater inventory is inferred.`, $("networks"));
+      if(key==="INET" || key.startsWith("E1.31"))
+        el("p",`${code}: verify switch and power-supply inventory at distribution points where runs approach 300 ft; verify PoE for security cameras on the line. These are equipment expectations, not installed records.`, $("networks"));
+    }
     renderCableHistory();
     renderSafety(detailWaypoint);
     const year = $("season").value;
@@ -579,7 +591,7 @@
     const tokens=String(w.type||"").trim().toLowerCase().split(/[-_ ]+/);
     return ["power","combo"].some(t=>tokens.includes(t));
   };
-  const isNetworkWaypoint = w => String(w.type || "").toLowerCase().split(/[-_\s]+/).some(t=>["network","net","combo"].includes(t));
+  const isNetworkWaypoint = w => w.network_capable===true;
   const isDeploymentWaypoint = w => isElectricalEndpoint(w) || isNetworkWaypoint(w);
   function renderCableHistory() {
     const selector=$("test-pair"), prior=selector.value;
@@ -703,7 +715,7 @@
       ],
       controller_installation: [
         select("controller_id","Existing inventory item",options((data.controller_options || []).map(c=>[c.id,`#${c.id} · ${c.model} · ${c.serial || "No serial"}`])),true),
-        select("site_waypoint_id","Network location (Network or Combo)",options(data.waypoints.filter(isNetworkWaypoint).map(w=>[w.id,`${w.name} (${w.type})`])),true),
+        select("site_waypoint_id","Network attachment waypoint",options(data.waypoints.filter(isNetworkWaypoint).map(w=>[w.id,`${w.name} (${w.type})`])),true),
       ],
       device: [
         select("device_name", "Equipment / model", equipmentNameOptions(), true),

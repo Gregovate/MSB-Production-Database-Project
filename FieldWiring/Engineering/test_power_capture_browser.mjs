@@ -432,8 +432,8 @@ try {
   await page.getByText(/Revision \d+/).waitFor();
   assert.match(await page.locator("#installations").innerText(),/Controller 101/);
   assert.equal(await page.locator('#detail-waypoint option[value="10"]').count(),0);
-  // Network-only placement is eligible when the existing FLW endpoints resolve.
-  await db.exec("UPDATE ref.site_waypoint SET waypoint_type='Network' WHERE site_waypoint_id=11");
+  // A panel-typed waypoint stays eligible when FLW endpoints resolve.
+  await db.exec("UPDATE ref.site_waypoint SET waypoint_type='Panel' WHERE site_waypoint_id=11");
   await page.goto(base.replace("circuits","controllers?controller_id=102"));
   await page.locator("#deployment-network").waitFor();
   await page.locator("#deployment-network").selectOption("11");
@@ -515,6 +515,20 @@ try {
     ),
     true,
   );
+  // Equipment expectations are read-only; FLW endpoints remain valid without
+  // GPX network typing and no installed stock is created from network evidence.
+  const devicesBefore=(await db.query("SELECT count(*)::int n FROM ref.site_power_device")).rows[0].n;
+  await db.exec(`INSERT INTO ref.site_network VALUES(3,'INET','IP');
+    INSERT INTO ops.linkiq_test VALUES('00000000-0000-0000-0000-000000000099',NULL,'2024-01-01',1,'UNMATCHED','expectation','1000BASE-T',306,'Outlet B TO Pole INET');
+    INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal) VALUES('expectation','00000000-0000-0000-0000-000000000099','{"endpoint_candidates":[[12],[99]],"designation":"INET","reasons":[]}');`);
+  await page.goto(base.replace("circuits","waypoints?waypoint=12"));
+  await page.getByText(/Revision \d+/).waitFor();
+  assert.match(await page.locator("#networks").innerText(),/branch requiring a LOR repeater/);
+  assert.match(await page.locator("#networks").innerText(),/verify switch and power-supply inventory/);
+  assert.match(await page.locator("#networks").innerText(),/verify PoE/);
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device")).rows[0].n,devicesBefore);
+  await page.goto(base);
+  await page.getByText(/Revision \d+/).waitFor();
   user = "volunteer@example.test";
   await page.reload();
   await page.getByText("Read only", { exact: false }).waitFor();

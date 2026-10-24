@@ -7,7 +7,7 @@
   const node=(tag,text,parent)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(parent)parent.append(n);return n;};
   const tokens=w=>String(w.type||"").toLowerCase().split(/[-_\s]+/);
   const power=w=>tokens(w).some(t=>["power","combo"].includes(t));
-  const network=w=>tokens(w).some(t=>["network","net","combo"].includes(t));
+  const network=w=>w.network_capable===true;
   async function api(path,options) {
     const response=await fetch(path,options);
     let body;
@@ -79,7 +79,7 @@
       }
       circuits(connection?.site_power_circuit_id);
       outlet.onchange=()=>circuits(null);
-      node("p","Network choices require current LOR programming and FLW endpoint/network evidence. Power records the actual outlet and circuit separately. Choosing Not connected retires that connection and retains its history.",form);
+      node("p","Network choices require current LOR programming and FLW endpoint/network evidence. The network waypoint may be a direct connection or the origin of a controller chain; chain order is not recorded here. Power records the actual outlet and circuit separately. Choosing Not connected retires that connection and retains its history.",form);
       const save=node("button","Save connections",form);save.type="submit";save.id="deployment-save";
       const refresh=node("button","Reload connections",host);refresh.type="button";refresh.onclick=()=>{if(mayLeave())render(controllerId);};
       for(const s of [location,outlet,circuit,save])s.disabled=!data.access.can_edit;

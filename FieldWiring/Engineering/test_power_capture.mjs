@@ -472,7 +472,7 @@ n++;
 const install=await cmd("controller_installation",{...base,controller_id:101,site_waypoint_id:11});
 await cmd("controller_installation",{...base,controller_id:102,site_waypoint_id:11});
 await denied(()=>cmd("controller_installation",{...base,controller_id:101,site_waypoint_id:12}),"23505");
-await denied(()=>cmd("controller_installation",{...base,controller_id:103,site_waypoint_id:13}),"22023");
+await denied(()=>cmd("controller_installation",{...base,controller_id:103,site_waypoint_id:13}),"23514");
 await denied(()=>cmd("controller_installation",{...base,site_waypoint_id:12},install.target_id),"22023");
 await cmd("controller_installation",{...base,active:false},install.target_id);
 await cmd("controller_installation",{...base,controller_id:101,site_waypoint_id:12});
@@ -588,6 +588,18 @@ const remoteState=(await db.query("SELECT ref.site_power_snapshot('crew@example.
 assert.equal(remoteState.supply_panel_id,source15.target_id);
 assert.equal(remoteState.supply_breaker_id,null);
 n+=2;
+// GPX classification cannot veto an FLW-resolved network endpoint.
+const liveInstallation=(await db.query("SELECT site_controller_installation_id id FROM ref.site_controller_installation WHERE controller_id=103 AND active")).rows[0].id;
+await cmd("controller_installation",{active:false},liveInstallation);
+for(const [label,type] of [["RA-00","Panel"],["SW","Building"],["PO",""],["Other junction","Unclassified"]]) {
+ await db.query("UPDATE ref.site_waypoint SET canonical_label=$1,waypoint_type=$2 WHERE site_waypoint_id=11",[label,type]);
+ const endpointSnapshot=(await db.query("SELECT ref.site_power_snapshot('crew@example.test') x")).rows[0].x;
+ assert.equal(endpointSnapshot.waypoints.find(w=>w.id===11).network_capable,true);
+ const entry=await cmd("controller_installation",{controller_id:103,site_waypoint_id:11});
+ await cmd("controller_installation",{active:false},entry.target_id);
+}
+await db.exec("UPDATE ref.site_waypoint SET canonical_label='Outlet A',waypoint_type='Network' WHERE site_waypoint_id=11");
+n+=4;
 // FLW authority: unordered endpoints, multiple networks, old dates, latest failure.
 const immutableBefore=(await db.query("SELECT jsonb_agg(to_jsonb(t) ORDER BY test_uuid) evidence FROM ops.linkiq_test t")).rows[0].evidence;
 await db.exec(`INSERT INTO ref.site_network VALUES(3,'AUX-E','LOR');
