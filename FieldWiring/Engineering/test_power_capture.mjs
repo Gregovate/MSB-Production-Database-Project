@@ -268,7 +268,12 @@ assert.equal(
 assert.equal(
   snapshot.panels.find((x) => x.site_panel_id === p2.target_id)
     .verified_by_person_id,
-  1,
+  null,
+);
+assert.equal(
+  snapshot.panels.find((x) => x.site_panel_id === p2.target_id)
+    .verification_status,
+  "UNVERIFIED",
 );
 assert.ok(
   snapshot.history.every(
