@@ -144,6 +144,8 @@ try {
   await save();
   await page.getByText("Reconcile circuits with unknown breaker membership",{exact:true}).click();
   await page.getByRole("button", { name: "Assign multiple waypoints" }).click();
+  // A panel or unrelated reference waypoint is not an electrical endpoint.
+  assert.equal(await dialog.locator('input[name=waypoint][value="10"]').count(),0);
   await dialog.locator("[name=waypoint_search]").fill("Old Outlet A");
   assert.equal(await dialog.locator(".power-choices label:visible").count(), 1);
   await dialog.locator('input[name=waypoint][value="11"]').check();
