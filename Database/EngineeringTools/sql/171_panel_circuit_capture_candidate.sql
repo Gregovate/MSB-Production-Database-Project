@@ -298,7 +298,7 @@ END $f$;
 CREATE FUNCTION ref.site_power_command(p_email text,p_request uuid,p_revision bigint,p_kind text,p_id bigint,p_data jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ref,ops AS $f$
 DECLARE actor record; rev bigint; before_row jsonb; after_row jsonb; prior ops.site_power_edit_log%ROWTYPE;
- allowed text[]; expected jsonb; verified integer; verified_time timestamptz; target bigint;
+ allowed text[]; expected jsonb; request_fields jsonb; verified integer; verified_time timestamptz; target bigint;
  table_name text; key_name text; columns_sql text; values_sql text; updates_sql text;
  action_row ref.site_power_action%ROWTYPE; event_target bigint;
  child jsonb; evidence jsonb; leg jsonb; old_leg ref.site_power_circuit%ROWTYPE;
@@ -312,6 +312,8 @@ BEGIN
  SELECT * INTO STRICT actor FROM ref.setup_inventory_actor(p_email,false);
  IF p_request IS NULL OR p_revision IS NULL OR p_revision<0 OR p_data IS NULL OR jsonb_typeof(p_data)<>'object' THEN
  RAISE EXCEPTION 'Request ID, revision and structured fields required' USING ERRCODE='22023'; END IF;
+ -- Stable idempotency identity is the ORIGINAL request, not fields defaulted internally.
+ request_fields:=p_data;
  SELECT revision INTO rev FROM ref.site_power_revision WHERE singleton FOR UPDATE;
  SELECT * INTO prior FROM ops.site_power_edit_log WHERE request_id=p_request;
  IF FOUND THEN
@@ -384,7 +386,7 @@ BEGIN
   SELECT to_jsonb(b) INTO after_row FROM ref.site_power_breaker b WHERE site_power_breaker_id=target;
   UPDATE ref.site_power_revision SET revision=revision+1 WHERE singleton RETURNING revision INTO rev;
   INSERT INTO ops.site_power_edit_log(revision,request_id,command,target_id,payload,before_data,after_data,directus_user_id,person_id,operator_email)
-  VALUES(rev,p_request,p_kind,target,jsonb_build_object('id',p_id,'fields',p_data),before_row,after_row,actor.directus_user_id,actor.person_id,lower(btrim(p_email)));
+  VALUES(rev,p_request,p_kind,target,jsonb_build_object('id',p_id,'fields',request_fields),before_row,after_row,actor.directus_user_id,actor.person_id,lower(btrim(p_email)));
   RETURN jsonb_build_object('revision',rev,'target_id',target,'replayed',false);
  END IF;
  IF p_kind='event' THEN
