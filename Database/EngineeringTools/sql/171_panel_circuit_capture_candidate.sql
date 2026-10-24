@@ -23,7 +23,6 @@ CREATE TABLE ref.site_controller_installation (
  chain_end text NOT NULL DEFAULT 'UNKNOWN' CHECK (chain_end IN ('UNKNOWN','TERMINATOR','RETURN_TO_ORIGIN')),
  CHECK ((upstream_kind='CONTROLLER')=(upstream_controller_id IS NOT NULL)),
  CHECK (upstream_controller_id IS DISTINCT FROM controller_id),
- CHECK (upstream_kind<>'UNKNOWN' OR chain_end='UNKNOWN'),
  active boolean NOT NULL DEFAULT true,
  source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
@@ -495,6 +494,36 @@ BEGIN
  'events',coalesce((SELECT jsonb_agg(to_jsonb(e) ORDER BY event_id DESC) FROM ops.setup_power_activity_event e),'[]'::jsonb),
  'history',coalesce((SELECT jsonb_agg(to_jsonb(h) ORDER BY event_id DESC) FROM ops.site_power_edit_log h),'[]'::jsonb));
 END $f$;
+-- One graph validator for legacy corrections and atomic reciprocal port edits.
+CREATE FUNCTION ref.site_controller_chain_validate() RETURNS void
+LANGUAGE plpgsql SET search_path=pg_catalog,ref AS $chain$
+BEGIN
+   IF EXISTS (
+    SELECT 1 FROM ref.site_controller_installation child
+    LEFT JOIN ref.site_controller_installation parent ON parent.controller_id=child.upstream_controller_id AND parent.active
+    LEFT JOIN ref.site_controller_network_requirement cr ON cr.controller_id=child.controller_id
+    LEFT JOIN ref.site_controller_network_requirement pr ON pr.controller_id=parent.controller_id
+    WHERE child.active AND child.upstream_kind='CONTROLLER' AND
+     (parent.controller_id IS NULL OR parent.chain_end<>'UNKNOWN'
+      OR parent.site_waypoint_id<>child.site_waypoint_id
+      OR cr.requirement_status IS DISTINCT FROM 'CONFIRMED' OR pr.requirement_status IS DISTINCT FROM 'CONFIRMED'
+      OR cr.required_network IS DISTINCT FROM pr.required_network
+      OR NOT EXISTS(SELECT 1 FROM ref.site_controller_placement_eligibility e
+         WHERE e.controller_id=parent.controller_id AND e.site_waypoint_id=parent.site_waypoint_id))
+   ) THEN RAISE EXCEPTION 'Chain requires an active upstream controller with the same origin and LOR network, and no recorded ending; reconnect downstream controllers first' USING ERRCODE='23514'; END IF;
+   IF EXISTS(SELECT 1 FROM ref.site_controller_installation WHERE active AND upstream_controller_id IS NOT NULL
+       GROUP BY upstream_controller_id HAVING count(*)>1) THEN
+    RAISE EXCEPTION 'A controller can feed only one next controller; branching belongs at a distribution waypoint' USING ERRCODE='23514'; END IF;
+   IF EXISTS(WITH RECURSIVE chain(id,path,cycle) AS (
+      SELECT controller_id,ARRAY[controller_id],false FROM ref.site_controller_installation WHERE active
+      UNION ALL
+      SELECT i.upstream_controller_id,c.path||i.upstream_controller_id,i.upstream_controller_id=ANY(c.path)
+      FROM chain c JOIN ref.site_controller_installation i ON i.controller_id=c.id AND i.active
+      WHERE NOT c.cycle AND i.upstream_controller_id IS NOT NULL)
+      SELECT 1 FROM chain WHERE cycle) THEN
+    RAISE EXCEPTION 'Controller chain cannot contain circular controller dependencies; use Return to origin for the final cable' USING ERRCODE='23514'; END IF;
+END $chain$;
+REVOKE ALL ON FUNCTION ref.site_controller_chain_validate() FROM PUBLIC;
 CREATE FUNCTION ref.site_power_command(p_email text,p_request uuid,p_revision bigint,p_kind text,p_id bigint,p_data jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ref,ops AS $f$
 DECLARE actor record; rev bigint; before_row jsonb; after_row jsonb; prior ops.site_power_edit_log%ROWTYPE;
@@ -504,6 +533,10 @@ DECLARE actor record; rev bigint; before_row jsonb; after_row jsonb; prior ops.s
  child jsonb; evidence jsonb; leg jsonb; old_leg ref.site_power_circuit%ROWTYPE;
  old_feed ref.site_power_feed%ROWTYPE; breaker_data jsonb; circuit_id bigint; waypoint_id bigint;
  child_no integer:=0;
+ port_in bigint; port_out bigint; old_out bigint; port_origin bigint; affected bigint[];
+ port_current ref.site_controller_installation%ROWTYPE;
+ port_neighbor ref.site_controller_installation%ROWTYPE;
+ port_end text;
 BEGIN
  -- Deny retired network mutation even for replay IDs or privileged Crew.
  IF p_kind='network' THEN RAISE EXCEPTION 'Network membership is read-only; reconcile FLW endpoint evidence' USING ERRCODE='42501'; END IF;
@@ -525,6 +558,93 @@ BEGIN
   RETURN jsonb_build_object('revision',prior.revision,'target_id',prior.target_id,'replayed',true);
  END IF;
  IF rev<>p_revision THEN RAISE EXCEPTION 'Another edit was saved. Reload before saving your changes.' USING ERRCODE='40001'; END IF;
+ IF p_kind='controller_ports' THEN
+  -- One stored predecessor edge serves both physical ports. Change both views
+  -- atomically under the existing revision lock; never store a competing OUT edge.
+  IF p_id IS NULL OR p_id<=0 OR NOT p_data ?& ARRAY['site_waypoint_id','in_kind','in_controller_id','out_kind','out_controller_id']
+    OR (SELECT count(*) FROM jsonb_object_keys(p_data))<>5
+    OR coalesce(p_data->>'in_kind','') NOT IN ('UNKNOWN','WAYPOINT','CONTROLLER')
+    OR coalesce(p_data->>'out_kind','') NOT IN ('UNKNOWN','CONTROLLER','TERMINATOR','RETURN_TO_ORIGIN') THEN
+   RAISE EXCEPTION 'Controller IN and OUT require complete structured port fields' USING ERRCODE='22023'; END IF;
+  port_in:=(p_data->>'in_controller_id')::bigint;
+  port_out:=(p_data->>'out_controller_id')::bigint;
+  port_origin:=(p_data->>'site_waypoint_id')::bigint;
+  port_end:=CASE WHEN p_data->>'out_kind' IN ('TERMINATOR','RETURN_TO_ORIGIN') THEN p_data->>'out_kind' ELSE 'UNKNOWN' END;
+  IF ((p_data->>'in_kind'='CONTROLLER') IS DISTINCT FROM (port_in IS NOT NULL))
+    OR ((p_data->>'out_kind'='CONTROLLER') IS DISTINCT FROM (port_out IS NOT NULL))
+    OR port_in=p_id OR port_out=p_id
+    OR (port_origin IS NULL AND (p_data->>'in_kind'<>'UNKNOWN' OR p_data->>'out_kind'<>'UNKNOWN')) THEN
+   RAISE EXCEPTION 'Choose valid IN and OUT ports and a network origin; a controller cannot connect to itself' USING ERRCODE='23514'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM ref.controller WHERE controller_id=p_id) THEN
+   RAISE EXCEPTION 'Controller inventory item not found' USING ERRCODE='P0002'; END IF;
+  SELECT * INTO port_current FROM ref.site_controller_installation WHERE controller_id=p_id AND active;
+  SELECT controller_id INTO old_out FROM ref.site_controller_installation WHERE upstream_controller_id=p_id AND active;
+  affected:=array_remove(ARRAY[p_id,old_out,port_out,port_current.upstream_controller_id,port_in],NULL);
+  SELECT coalesce(jsonb_agg(to_jsonb(i) ORDER BY i.site_controller_installation_id),'[]'::jsonb) INTO before_row
+    FROM ref.site_controller_installation i WHERE i.controller_id=ANY(affected) AND i.active;
+  IF port_origin IS NOT NULL AND NOT EXISTS(SELECT 1 FROM ref.site_controller_placement_eligibility
+       WHERE controller_id=p_id AND site_waypoint_id=port_origin) THEN
+   RAISE EXCEPTION 'Controller origin requires its current LOR network in resolved FLW endpoints' USING ERRCODE='23514'; END IF;
+  IF port_in IS NOT NULL AND EXISTS(SELECT 1 FROM ref.site_controller_installation
+       WHERE active AND upstream_controller_id=port_in AND controller_id<>p_id) THEN
+   RAISE EXCEPTION 'Selected IN controller already has another OUT connection; reconcile that connection first' USING ERRCODE='23514'; END IF;
+  IF port_out IS NOT NULL THEN
+   IF NOT EXISTS(SELECT 1 FROM ref.site_controller_placement_eligibility e
+       JOIN ref.site_controller_network_requirement r ON r.controller_id=p_id
+       WHERE e.controller_id=port_out AND e.site_waypoint_id=port_origin AND e.required_network=r.required_network) THEN
+    RAISE EXCEPTION 'OUT controller must share the current LOR network and FLW origin' USING ERRCODE='23514'; END IF;
+   SELECT * INTO port_neighbor FROM ref.site_controller_installation WHERE controller_id=port_out AND active;
+   IF FOUND AND (port_neighbor.site_waypoint_id<>port_origin OR
+       (port_neighbor.upstream_kind<>'UNKNOWN' AND port_neighbor.upstream_controller_id IS DISTINCT FROM p_id)) THEN
+    RAISE EXCEPTION 'Selected OUT controller already has an IN connection or different origin; reconcile that connection first' USING ERRCODE='23514'; END IF;
+  END IF;
+  -- Removing an edge leaves an explicitly unknown IN, preserving the rest of
+  -- that controller's chain and known ending. Never invent a replacement cable.
+  IF old_out IS NOT NULL AND old_out IS DISTINCT FROM port_out THEN
+   UPDATE ref.site_controller_installation SET upstream_kind='UNKNOWN',upstream_controller_id=NULL,
+     verification_status='UNVERIFIED',verified_by_person_id=NULL,verified_at=NULL,updated_at=clock_timestamp()
+     WHERE controller_id=old_out AND active;
+  END IF;
+  IF port_current.site_controller_installation_id IS NOT NULL AND
+       (port_origin IS NULL OR port_origin<>port_current.site_waypoint_id) THEN
+   UPDATE ref.site_controller_installation SET active=false,updated_at=clock_timestamp()
+     WHERE site_controller_installation_id=port_current.site_controller_installation_id;
+   port_current.site_controller_installation_id:=NULL;
+  END IF;
+  IF port_origin IS NOT NULL THEN
+   IF port_current.site_controller_installation_id IS NULL THEN
+    INSERT INTO ref.site_controller_installation(controller_id,site_waypoint_id,upstream_kind,upstream_controller_id,chain_end)
+     VALUES(p_id,port_origin,p_data->>'in_kind',port_in,port_end);
+   ELSE
+    UPDATE ref.site_controller_installation SET upstream_kind=p_data->>'in_kind',upstream_controller_id=port_in,chain_end=port_end,
+      verification_status='UNVERIFIED',verified_by_person_id=NULL,verified_at=NULL,updated_at=clock_timestamp()
+      WHERE site_controller_installation_id=port_current.site_controller_installation_id;
+   END IF;
+  END IF;
+  IF port_out IS NOT NULL THEN
+   IF port_neighbor.site_controller_installation_id IS NULL THEN
+    INSERT INTO ref.site_controller_installation(controller_id,site_waypoint_id,upstream_kind,upstream_controller_id)
+      VALUES(port_out,port_origin,'CONTROLLER',p_id);
+   ELSE
+    UPDATE ref.site_controller_installation SET upstream_kind='CONTROLLER',upstream_controller_id=p_id,
+      verification_status='UNVERIFIED',verified_by_person_id=NULL,verified_at=NULL,updated_at=clock_timestamp()
+      WHERE site_controller_installation_id=port_neighbor.site_controller_installation_id;
+   END IF;
+  END IF;
+  -- A changed incoming edge also changes its old/new predecessor's displayed
+  -- OUT. Demote their verification, but never manufacture an explicit OUT row.
+  IF port_current.upstream_controller_id IS DISTINCT FROM port_in THEN
+   UPDATE ref.site_controller_installation SET verification_status='UNVERIFIED',verified_by_person_id=NULL,verified_at=NULL,updated_at=clock_timestamp()
+     WHERE active AND controller_id IN (port_current.upstream_controller_id,port_in);
+  END IF;
+  PERFORM ref.site_controller_chain_validate();
+  SELECT coalesce(jsonb_agg(to_jsonb(i) ORDER BY i.site_controller_installation_id),'[]'::jsonb) INTO after_row
+    FROM ref.site_controller_installation i WHERE i.controller_id=ANY(affected) AND (i.active OR i.site_controller_installation_id IN (SELECT (x->>'site_controller_installation_id')::bigint FROM jsonb_array_elements(before_row) x));
+  UPDATE ref.site_power_revision SET revision=revision+1 WHERE singleton RETURNING revision INTO rev;
+  INSERT INTO ops.site_power_edit_log(revision,request_id,command,target_id,payload,before_data,after_data,directus_user_id,person_id,operator_email)
+   VALUES(rev,p_request,p_kind,p_id,jsonb_build_object('id',p_id,'fields',request_fields),before_row,after_row,actor.directus_user_id,actor.person_id,lower(btrim(p_email)));
+  RETURN jsonb_build_object('revision',rev,'target_id',p_id,'replayed',false);
+ END IF;
  IF p_kind='breaker_schedule' THEN
   IF (SELECT count(*) FROM jsonb_object_keys(p_data))<>4 OR NOT p_data ?& ARRAY['breaker','legs','show_desired_state','restoration_desired_state']
     OR jsonb_typeof(p_data->'breaker')<>'object' OR jsonb_typeof(p_data->'legs')<>'array'
@@ -701,34 +821,7 @@ BEGIN
    EXECUTE format('UPDATE ref.%I t SET %s FROM jsonb_populate_record(NULL::ref.%I,$1) r WHERE t.%I=$2 RETURNING t.%I,to_jsonb(t)',
     table_name,updates_sql,table_name,key_name,key_name) INTO target,after_row USING expected,p_id;
   END IF;
-  -- Commands hold the shared revision lock. Validate the resulting graph, so a
-  -- parent cannot be retired, moved or terminated underneath a recorded child.
-  IF p_kind='controller_installation' THEN
-   IF EXISTS (
-    SELECT 1 FROM ref.site_controller_installation child
-    LEFT JOIN ref.site_controller_installation parent ON parent.controller_id=child.upstream_controller_id AND parent.active
-    LEFT JOIN ref.site_controller_network_requirement cr ON cr.controller_id=child.controller_id
-    LEFT JOIN ref.site_controller_network_requirement pr ON pr.controller_id=parent.controller_id
-    WHERE child.active AND child.upstream_kind='CONTROLLER' AND
-     (parent.controller_id IS NULL OR parent.upstream_kind='UNKNOWN' OR parent.chain_end<>'UNKNOWN'
-      OR parent.site_waypoint_id<>child.site_waypoint_id
-      OR cr.requirement_status IS DISTINCT FROM 'CONFIRMED' OR pr.requirement_status IS DISTINCT FROM 'CONFIRMED'
-      OR cr.required_network IS DISTINCT FROM pr.required_network
-      OR NOT EXISTS(SELECT 1 FROM ref.site_controller_placement_eligibility e
-         WHERE e.controller_id=parent.controller_id AND e.site_waypoint_id=parent.site_waypoint_id))
-   ) THEN RAISE EXCEPTION 'Chain requires an active upstream controller with recorded order, the same origin and LOR network, and no recorded ending; reconnect downstream controllers first' USING ERRCODE='23514'; END IF;
-   IF EXISTS(SELECT 1 FROM ref.site_controller_installation WHERE active AND upstream_controller_id IS NOT NULL
-       GROUP BY upstream_controller_id HAVING count(*)>1) THEN
-    RAISE EXCEPTION 'A controller can feed only one next controller; branching belongs at a distribution waypoint' USING ERRCODE='23514'; END IF;
-   IF EXISTS(WITH RECURSIVE chain(id,path,cycle) AS (
-      SELECT controller_id,ARRAY[controller_id],false FROM ref.site_controller_installation WHERE active
-      UNION ALL
-      SELECT i.upstream_controller_id,c.path||i.upstream_controller_id,i.upstream_controller_id=ANY(c.path)
-      FROM chain c JOIN ref.site_controller_installation i ON i.controller_id=c.id AND i.active
-      WHERE NOT c.cycle AND i.upstream_controller_id IS NOT NULL)
-      SELECT 1 FROM chain WHERE cycle) THEN
-    RAISE EXCEPTION 'Controller chain cannot contain circular controller dependencies; use Return to origin for the final cable' USING ERRCODE='23514'; END IF;
-  END IF;
+  IF p_kind='controller_installation' THEN PERFORM ref.site_controller_chain_validate(); END IF;
   IF EXISTS (
    WITH RECURSIVE supplied(circuit_id,waypoint_id,device_id,visited) AS (
     SELECT f.source_circuit_id,f.destination_waypoint_id,f.destination_device_id,ARRAY[f.site_power_feed_id]

@@ -19,9 +19,9 @@
     if(saving) return false;
     return !(dirty||pending) || confirm("Discard deployment edits? If a save outcome is unknown, reload the records before editing again.");
   }
-  async function render(controllerId) {
+  async function render(controllerId, mount=null, initialWaypoint=null) {
     const ticket=++generation; dirty=false;pending=null;
-    const host=root();host.replaceChildren();node("h3","Waypoint connections",host);
+    const host=mount || root();host.replaceChildren();node("h3",`CTRL ${controllerId} · Network IN / OUT`,host);
     const status=node("p","Loading deployment records…",host);status.setAttribute("role","status");
     try {
       const data=await api("api/power");if(ticket!==generation)return;
@@ -29,21 +29,18 @@
       const connection=data.controller_power_connections.find(x=>x.active&&x.controller_id===controllerId);
       const name=id=>data.waypoints.find(w=>w.id===id)?.name||`Waypoint ${id}`;
       const circuitName=id=>{const c=data.circuits.find(x=>x.site_power_circuit_id===id);return c ? `${data.panels.find(x=>x.site_panel_id===c.site_panel_id)?.panel_name||"Panel"} / ${c.circuit_code}` : `Circuit ${id}`;};
-      node("p",`Network waypoint: ${installation ? name(installation.site_waypoint_id) : "Not connected"}`,host);
+      node("p",`Network origin: ${installation ? name(installation.site_waypoint_id) : "Not connected"}`,host);
       node("p",`Power outlet: ${connection ? `${name(connection.site_waypoint_id)} · ${circuitName(connection.site_power_circuit_id)}` : "Not connected"}`,host);
       for(const id of new Set([installation?.site_waypoint_id,connection?.site_waypoint_id].filter(Boolean))) {
         const link=node("a",`Open ${name(id)}`,host);link.href=`waypoints?waypoint=${id}`;node("span"," · ",host);
       }
       const form=node("form",undefined,host); form.id="deployment-form";
       const choose=(id,label)=>{const l=node("label",label,form);l.style.display="block";const s=node("select",undefined,l);s.id=id;s.style.maxWidth="100%";node("option","Not connected",s).value="";return s;};
-      const location=choose("deployment-network","Network connection waypoint ");
+      const location=choose("deployment-network","Network origin waypoint ");
       const networkStatus=node("p",undefined,form);networkStatus.id="deployment-network-status";
       networkStatus.setAttribute("role","status");
-      const upstream=choose("deployment-upstream","Connected from ");
-      const ending=choose("deployment-ending","Last controller ending ");
-      ending.replaceChildren();
-      for(const [value,label] of [["UNKNOWN","Not recorded / continues to next controller"],["TERMINATOR","Terminating resistor"],["RETURN_TO_ORIGIN","Return cable to originating waypoint"]]) node("option",label,ending).value=value;
-      ending.value=installation?.chain_end || "UNKNOWN";
+      const upstream=choose("deployment-upstream","IN — cable comes from ");
+      const ending=choose("deployment-out","OUT — cable goes to ");
       const outlet=choose("deployment-outlet","Power outlet waypoint ");
       const circuit=choose("deployment-circuit","Actual supplying circuit ");
       const supplyStatus=node("p",undefined,form);supplyStatus.id="deployment-supply-status";
@@ -65,15 +62,15 @@
       if(installation && !Array.from(location.options).some(o=>o.value===String(installation.site_waypoint_id))) {
         node("option",`${name(installation.site_waypoint_id)} — recorded; eligibility unresolved`,location).value=installation.site_waypoint_id;
       }
-      location.value=installation?.site_waypoint_id||"";
+      location.value=installation?.site_waypoint_id || initialWaypoint || "";
       function upstreamChoices(selected) {
         upstream.replaceChildren();
-        node("option","Connection order not recorded",upstream).value="UNKNOWN";
-        node("option","Direct from originating waypoint",upstream).value="WAYPOINT";
+        node("option","Not recorded",upstream).value="UNKNOWN";
+        node("option",location.value ? name(Number(location.value)) : "Select network origin first",upstream).value="WAYPOINT";
         const active=data.controller_installations.filter(i=>i.active);
         const descendants=new Set([controllerId]);
         for(let changed=true;changed;) {changed=false;for(const i of active) if(descendants.has(i.upstream_controller_id)&&!descendants.has(i.controller_id)){descendants.add(i.controller_id);changed=true;}}
-        for(const i of active.filter(i=>i.site_waypoint_id===Number(location.value)&&!descendants.has(i.controller_id)&&i.upstream_kind!=="UNKNOWN"&&i.chain_end==="UNKNOWN")) {
+        for(const i of active.filter(i=>i.site_waypoint_id===Number(location.value)&&!descendants.has(i.controller_id)&&i.chain_end==="UNKNOWN")) {
           const req=data.network_requirements.find(r=>r.controller_id===i.controller_id);
           if(req?.requirement_status!=="CONFIRMED"||req.required_network!==requirement?.required_network)continue;
           if(active.some(child=>child.upstream_controller_id===i.controller_id&&child.controller_id!==controllerId))continue;
@@ -83,9 +80,40 @@
         upstream.value=selected || "WAYPOINT";
       }
       upstreamChoices(installation ? (installation.upstream_controller_id || installation.upstream_kind || "UNKNOWN") : null);
-      location.onchange=()=>upstreamChoices(null);
+
       const successor=data.controller_installations.find(i=>i.active&&i.upstream_controller_id===controllerId);
-      node("p",`Next connection: ${successor ? `CTRL ${successor.controller_id}` : installation?.chain_end==="TERMINATOR" ? "Terminating resistor" : installation?.chain_end==="RETURN_TO_ORIGIN" ? `Return to ${name(installation.site_waypoint_id)}` : "Ending not recorded"}`,host);
+      function outChoices(selected) {
+        ending.replaceChildren();
+        node("option","Not recorded",ending).value="UNKNOWN";
+        node("option","Terminating resistor",ending).value="TERMINATOR";
+        node("option",location.value ? `${name(Number(location.value))} — return cable` : "Return cable (select origin first)",ending).value="RETURN_TO_ORIGIN";
+        const active=data.controller_installations.filter(i=>i.active), ancestors=new Set([controllerId]);
+        let current=active.find(i=>i.controller_id===Number(upstream.value));
+        while(current&&!ancestors.has(current.controller_id)){ancestors.add(current.controller_id);current=active.find(i=>i.controller_id===current.upstream_controller_id);}
+        for(const c of data.controller_options) {
+          if(ancestors.has(c.id))continue;
+          const req=data.network_requirements.find(r=>r.controller_id===c.id);
+          if(req?.requirement_status!=="CONFIRMED"||req.required_network!==requirement?.required_network)continue;
+          if(!data.placement_eligibility.some(e=>e.controller_id===c.id&&e.site_waypoint_id===Number(location.value)))continue;
+          const i=active.find(i=>i.controller_id===c.id);
+          if(i&&(i.site_waypoint_id!==Number(location.value)||(i.upstream_kind!=="UNKNOWN"&&i.upstream_controller_id!==controllerId)))continue;
+          node("option",`CTRL ${c.id}`,ending).value=String(c.id);
+        }
+        if(selected&&!Array.from(ending.options).some(o=>o.value===String(selected)))node("option",`CTRL ${selected} — recorded; reconcile connection`,ending).value=selected;
+        ending.value=selected || "UNKNOWN";
+      }
+      outChoices(successor?.controller_id || installation?.chain_end);
+      location.onchange=()=>{upstreamChoices(null);outChoices(null);};
+      upstream.onchange=()=>outChoices(ending.value);
+      const summary=node("table",undefined,host);summary.className="controller-port-summary";
+      const headings=node("tr",undefined,node("thead",undefined,summary));for(const text of ["IN","Controller","OUT"])node("th",text,headings);
+      const values=node("tr",undefined,node("tbody",undefined,summary));
+      node("td",installation?.upstream_kind==="CONTROLLER"?`CTRL ${installation.upstream_controller_id}`:installation?.upstream_kind==="WAYPOINT"?name(installation.site_waypoint_id):"Not recorded",values);
+      node("td",`CTRL ${controllerId}`,values);
+      node("td",successor?`CTRL ${successor.controller_id}`:installation?.chain_end==="TERMINATOR"?"Terminating resistor":installation?.chain_end==="RETURN_TO_ORIGIN"?`${name(installation.site_waypoint_id)} — return`:"Not recorded",values);
+      host.insertBefore(summary,form);
+      const verification=node("p",`Wiring verification: ${installation?.verification_status || "UNVERIFIED"}`,host);
+      host.insertBefore(verification,form);
       if(installation) {
         // Follow explicit controller links only; RETURN_TO_ORIGIN is an ending,
         // never another predecessor edge that would manufacture a closed ring.
@@ -105,7 +133,7 @@
         }
         node("p",labels.join(" → "),host).id="deployment-chain";
       }
-      if(successor) node("p","Reconnect the next controller first before moving or disconnecting this controller. To extend a terminated chain, clear its ending first.",form);
+
       for(const w of data.waypoints.filter(power)) node("option",`${w.name} (${w.type})`,outlet).value=w.id;
       if(connection&&!Array.from(outlet.options).some(o=>o.value===String(connection.site_waypoint_id))) node("option",`${name(connection.site_waypoint_id)} — recorded; reconcile capability`,outlet).value=connection.site_waypoint_id;
       outlet.value=connection?.site_waypoint_id||"";
@@ -124,9 +152,9 @@
       }
       circuits(connection?.site_power_circuit_id);
       outlet.onchange=()=>circuits(null);
-      node("p","Network choices require current LOR programming and FLW endpoint/network evidence. Select the originating waypoint and what this controller connects from. Record a resistor or return cable only on the last controller. An unrecorded ending is not proof of termination. Power records the actual outlet and circuit separately. Choosing Not connected retires that connection and retains its history.",form);
+      node("p","Network choices require current LOR programming and FLW endpoint/network evidence. Choose the actual IN and OUT. Selecting another controller updates both ends together. Changing OUT releases the previous controller’s IN to Not recorded; it does not invent replacement wiring. Occupied ports must be reconciled first. Saved wiring remains unverified. Power records the actual outlet and circuit separately. Choosing Not connected retires that connection and retains its history.",form);
       const save=node("button","Save connections",form);save.type="submit";save.id="deployment-save";
-      const refresh=node("button","Reload connections",host);refresh.type="button";refresh.onclick=()=>{if(mayLeave())render(controllerId);};
+      const refresh=node("button","Reload connections",host);refresh.type="button";refresh.onclick=()=>{if(mayLeave())render(controllerId,host,initialWaypoint);};
       for(const s of [location,upstream,ending,outlet,circuit,save])s.disabled=!data.access.can_edit;
       status.textContent=data.access.can_edit ? "Current shared waypoint records loaded." : "Read only";
       form.onchange=()=>{dirty=true;};
@@ -137,13 +165,12 @@
           const command=(kind,id,fields)=>({kind,id,fields,request_id:crypto.randomUUID()});
           const nextNetwork=Number(location.value)||null, nextOutlet=Number(outlet.value)||null, nextCircuit=Number(circuit.value)||null;
           if(nextOutlet&&!nextCircuit){status.textContent="Select the actual supplying circuit.";return;}
-          const topology={upstream_kind:["UNKNOWN","WAYPOINT"].includes(upstream.value)?upstream.value:"CONTROLLER",upstream_controller_id:Number(upstream.value)||null,chain_end:ending.value};
-          if(nextNetwork!==(installation?.site_waypoint_id||null)) {
-            if(installation)retires.push(command("controller_installation",installation.site_controller_installation_id,{active:false}));
-            if(nextNetwork)creates.push(command("controller_installation",null,{controller_id:controllerId,site_waypoint_id:nextNetwork,...topology}));
-          }
-          if(nextNetwork && nextNetwork===installation?.site_waypoint_id && (topology.upstream_kind!==(installation.upstream_kind || "UNKNOWN") || topology.upstream_controller_id!==(installation.upstream_controller_id || null) || topology.chain_end!==(installation.chain_end || "UNKNOWN"))) {
-            creates.push(command("controller_installation",installation.site_controller_installation_id,topology));
+          const inKind=nextNetwork ? (["UNKNOWN","WAYPOINT"].includes(upstream.value)?upstream.value:"CONTROLLER") : "UNKNOWN";
+          const outKind=nextNetwork ? (["UNKNOWN","TERMINATOR","RETURN_TO_ORIGIN"].includes(ending.value)?ending.value:"CONTROLLER") : "UNKNOWN";
+          const ports={site_waypoint_id:nextNetwork,in_kind:inKind,in_controller_id:nextNetwork?(Number(upstream.value)||null):null,out_kind:outKind,out_controller_id:nextNetwork?(Number(ending.value)||null):null};
+          const oldOut=successor ? "CONTROLLER" : (installation?.chain_end || "UNKNOWN");
+          if(nextNetwork!==(installation?.site_waypoint_id||null)||inKind!==(installation?.upstream_kind||"UNKNOWN")||ports.in_controller_id!==(installation?.upstream_controller_id||null)||outKind!==oldOut||ports.out_controller_id!==(successor?.controller_id||null)) {
+            creates.push(command("controller_ports",controllerId,ports));
           }
           if(nextOutlet!==(connection?.site_waypoint_id||null)||nextCircuit!==(connection?.site_power_circuit_id||null)) {
             if(connection)retires.push(command("controller_power_connection",connection.site_controller_power_connection_id,{active:false}));
@@ -155,7 +182,7 @@
         saving=true;save.disabled=true;refresh.disabled=true;status.textContent="Saving connections…";
         try {
           await api("api/power/commands",{method:"POST",headers:{"Content-Type":"application/json","X-MSB-Power-Command":"1"},body:JSON.stringify(pending)});
-          pending=null;dirty=false;await render(controllerId);
+          pending=null;dirty=false;await render(controllerId,host,initialWaypoint);
         } catch(e) {
           status.textContent=e.message;
           if(e.status&&e.status<500) {

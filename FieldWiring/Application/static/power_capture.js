@@ -160,7 +160,7 @@
     box.className = "power-record";
     el("h3", title, box);
     stamp(r, box);
-    button("Edit / correct", () => kind === "breaker" ? openSchedule(r) : open(kind, r), box, true);
+    button(kind==="controller_installation"&&r.active ? "Edit IN / OUT" : "Edit / correct", () => kind==="controller_installation"&&r.active ? openPorts(r.controller_id) : kind === "breaker" ? openSchedule(r) : open(kind, r), box, true);
     return box;
   }
   function render() {
@@ -357,7 +357,17 @@
     (data.controller_installations || []).filter(i=>i.site_waypoint_id===detailWaypoint).forEach(i=>{
       const asset=data.controller_options.find(c=>c.id===i.controller_id);
       if(i.active && !(data.placement_eligibility || []).some(e=>e.controller_id===i.controller_id && e.site_waypoint_id===i.site_waypoint_id)) el("p",`Controller ${i.controller_id}: current network eligibility unresolved; recorded placement retained for reconciliation.`,$("equipment"));
-      record($("installations"),`Controller ${i.controller_id} · from ${i.upstream_kind==="CONTROLLER" ? "CTRL "+i.upstream_controller_id : i.upstream_kind==="WAYPOINT" ? wp(i.site_waypoint_id)?.name : "order not recorded"} · ${i.chain_end==="TERMINATOR" ? "terminating resistor" : i.chain_end==="RETURN_TO_ORIGIN" ? "return to origin" : "ending not recorded / continues"} · ${asset?.model || "Unknown model"}`,i,"controller_installation");
+      const box=el("div",undefined,$("installations"));box.className="power-record";
+      el("h3",`CTRL ${i.controller_id}`,box);stamp(i,box);
+      const next=data.controller_installations.find(c=>c.active&&c.upstream_controller_id===i.controller_id);
+      const table=el("table",undefined,box);table.className="controller-port-summary";
+      const head=el("tr",undefined,el("thead",undefined,table));["IN","Controller","OUT"].forEach(t=>el("th",t,head));
+      const row=el("tr",undefined,el("tbody",undefined,table));
+      el("td",i.upstream_kind==="CONTROLLER"?`CTRL ${i.upstream_controller_id}`:i.upstream_kind==="WAYPOINT"?wp(i.site_waypoint_id)?.name:"Not recorded",row);
+      el("td",`CTRL ${i.controller_id}`,row);
+      el("td",next?`CTRL ${next.controller_id}`:i.chain_end==="TERMINATOR"?"Terminating resistor":i.chain_end==="RETURN_TO_ORIGIN"?`${wp(i.site_waypoint_id)?.name} — return`:"Not recorded",row);
+      if(i.active)button("Edit IN / OUT",()=>openPorts(i.controller_id),box,true);
+
     });
     data.devices.filter(d=>d.site_waypoint_id===detailWaypoint).forEach(d=>{
       record($("equipment"),`${d.device_name} · ${d.device_kind}`,d,"device");
@@ -713,13 +723,6 @@
         select("site_waypoint_id","Outlet waypoint",options(data.waypoints.filter(isElectricalEndpoint).map(w=>[w.id,w.name])),true),
         select("site_power_circuit_id","Supplying circuit leg",circuits,true),
       ],
-      controller_installation: [
-        select("controller_id","Existing inventory item",options((data.controller_options || []).map(c=>[c.id,`#${c.id} · ${c.model} · ${c.serial || "No serial"}`])),true),
-        select("site_waypoint_id","Originating network waypoint",options(data.waypoints.filter(isNetworkWaypoint).map(w=>[w.id,`${w.name} (${w.type})`])),true),
-        choose("upstream_kind","Connected from",["UNKNOWN","WAYPOINT","CONTROLLER"]),
-        select("upstream_controller_id","Previous controller (when Connected from = CONTROLLER)",options([])),
-        choose("chain_end","Last controller ending",["UNKNOWN","TERMINATOR","RETURN_TO_ORIGIN"]),
-      ],
       device: [
         select("device_name", "Equipment / model", equipmentNameOptions(), true),
         choose("device_kind", "Equipment type", [
@@ -886,6 +889,26 @@
     }
     return n;
   }
+  // The same port editor runs on both screens; no independent successor state.
+  function openPorts(controllerId=null) {
+    if(!data.access.can_edit)return;
+    $("edit-form").hidden=true;
+    const area=el("section",undefined,$("editor"));area.id="network-port-editor";
+    const label=el("label","Controller",area), choice=el("select",undefined,label);choice.id="port-controller";
+    el("option","Select controller",choice).value="";
+    for(const c of data.controller_options)el("option",`CTRL ${c.id}`,choice).value=c.id;
+    choice.value=controllerId || "";
+    const host=el("div",undefined,area);
+    const show=()=>{if(choice.value)window.MSBControllerDeployment.render(Number(choice.value),host,Number($("detail-waypoint").value));};
+    let selected=choice.value;
+    choice.onchange=()=>{if(!window.MSBControllerDeployment.mayLeave()){choice.value=selected;return;}selected=choice.value;show();};
+    button("Done",closePorts,area);
+    $("editor").showModal();show();
+  }
+  function closePorts() {
+    if(!window.MSBControllerDeployment.mayLeave())return;
+    $("network-port-editor")?.remove();$("edit-form").hidden=false;$("editor").close();load();
+  }
   function open(kind, row = {}) {
     if (!data.access.can_edit) return;
     pending = null;
@@ -954,49 +977,6 @@
         for(const name of ["controller_id","site_waypoint_id","site_power_circuit_id"]) form.elements[name].disabled=true;
         el("p","To move this plug-in connection, retire it and record the new outlet/circuit. History is retained.",$("edit-fields"));
       }
-    }
-    if (kind === "controller_installation" && !row.site_controller_installation_id) {
-      const form=$("edit-form"), controller=form.elements.controller_id, location=form.elements.site_waypoint_id;
-      const refresh=()=>{
-        const selected=location.value || String(row.site_waypoint_id || "");
-        location.replaceChildren(); el("option","Select a confirmed location",location).value="";
-        const eligible=new Set((data.placement_eligibility || []).filter(x=>x.controller_id===Number(controller.value)).map(x=>x.site_waypoint_id));
-        data.waypoints.filter(w=>isNetworkWaypoint(w) && eligible.has(w.id)).forEach(w=>{el("option",w.name,location).value=w.id;});
-        location.value=selected;
-      };
-      controller.onchange=refresh;refresh();
-      el("p","Only locations with the required current LOR network and FLW endpoint/network evidence are selectable. Reconcile unresolved FLW endpoints; network membership is read-only.",$("edit-fields"));
-    }
-    if (kind === "controller_installation" && row.site_controller_installation_id) {
-      $("edit-form").elements.controller_id.disabled=true;
-      $("edit-form").elements.site_waypoint_id.disabled=true;
-      el("p","To move this item, retire this installation, then install the same inventory ID at its new network box.",$("edit-fields"));
-    }
-    if (kind === "controller_installation") {
-      const form=$("edit-form"), controller=form.elements.controller_id, location=form.elements.site_waypoint_id,
-        upstream=form.elements.upstream_controller_id, source=form.elements.upstream_kind;
-      source.value=row.upstream_kind || (row.site_controller_installation_id ? "UNKNOWN" : "WAYPOINT");
-      form.elements.chain_end.value=row.chain_end || "UNKNOWN";
-      function refreshChain() {
-        const prior=upstream.value || row.upstream_controller_id;
-        upstream.replaceChildren();el("option","Select previous controller",upstream).value="";
-        const id=Number(controller.value), active=data.controller_installations.filter(i=>i.active);
-        const descendants=new Set([id]);
-        for(let changed=true;changed;) {changed=false;for(const i of active) if(descendants.has(i.upstream_controller_id)&&!descendants.has(i.controller_id)){descendants.add(i.controller_id);changed=true;}}
-        const req=data.network_requirements.find(r=>r.controller_id===id);
-        for(const i of active.filter(i=>i.site_waypoint_id===Number(location.value)&&!descendants.has(i.controller_id)&&i.upstream_kind!=="UNKNOWN"&&i.chain_end==="UNKNOWN")) {
-          const parent=data.network_requirements.find(r=>r.controller_id===i.controller_id);
-          if(parent?.requirement_status!=="CONFIRMED"||parent.required_network!==req?.required_network)continue;
-          if(active.some(c=>c.upstream_controller_id===i.controller_id&&c.controller_id!==id))continue;
-          el("option",`CTRL ${i.controller_id}`,upstream).value=i.controller_id;
-        }
-        if(prior&&!Array.from(upstream.options).some(o=>o.value===String(prior))) el("option",`CTRL ${prior} — recorded; reconcile`,upstream).value=prior;
-        upstream.value=source.value==="CONTROLLER" ? (prior || "") : "";
-        upstream.required=source.value==="CONTROLLER";
-        upstream.closest("label").hidden=source.value!=="CONTROLLER";
-      }
-      controller.addEventListener("change",refreshChain);location.addEventListener("change",refreshChain);source.addEventListener("change",refreshChain);refreshChain();
-      el("p","WAYPOINT means directly from the origin; CONTROLLER records the previous controller. UNKNOWN leaves order unrecorded. Only the last controller can have a TERMINATOR or RETURN_TO_ORIGIN. Clear that ending before extending a chain. Reconnect downstream controllers before moving or retiring their predecessor.",$("edit-fields"));
     }
     if (kind === "breaker") {
       const form = $("edit-form"), role = form.elements.breaker_role, positions = form.elements.panel_positions;
@@ -1307,10 +1287,10 @@
   };
   $("editor").addEventListener("cancel", (e) => {
     e.preventDefault();
-    $("cancel").click();
+    if($("network-port-editor"))closePorts();else $("cancel").click();
   });
   $("connect-controller").onclick=()=>open("controller_power_connection",{site_waypoint_id:Number($("detail-waypoint").value)});
-  $("install-controller").onclick=()=>open("controller_installation",{site_waypoint_id:Number($("detail-waypoint").value)});
+  $("install-controller").onclick=()=>openPorts();
   $("detail-waypoint").onchange=()=>render();
   $("reload").onclick = load;
   $("find").oninput = () => data && render();

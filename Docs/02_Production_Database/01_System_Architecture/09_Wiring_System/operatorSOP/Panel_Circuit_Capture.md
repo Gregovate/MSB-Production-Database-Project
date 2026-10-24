@@ -145,26 +145,33 @@ at distribution points where runs approach 300 feet, and PoE checks for cameras.
 These prompts never create installed inventory. Record only actual components.
 The Racing Arch chain/termination remains unverified until checked in the field.
 
-## Record controller chain order (V0.4.16 candidate)
+## Wire controller IN and OUT (V0.4.17 candidate)
 
-In Controllers, select the originating **Network connection waypoint**. For the
-first controller select **Connected from → Direct from originating waypoint**.
-Save it, then select the next controller, the same origin, and its preceding
-**CTRL** in Connected from. Repeat in physical cable order. The preceding controller
-must already be connected on the same LOR network. Power outlet can remain
-**Not connected** while recording network wiring; selecting an outlet requires its
-actual circuit.
+The Controller screen and **Edit IN / OUT** at a waypoint use the same editor.
+Stage selection still filters the Controller list. Network wiring can continue
+across stages; the LOR network and FLW origin determine eligible connections.
 
-On the last controller select **Terminating resistor** or **Return cable to
-originating waypoint**. For example RA-00 → 1001 → 1002 → 1003 → 1004 may end
-with either a resistor or a return cable to RA-00 for onward continuation.
-**Not recorded / continues to next controller** does not confirm termination.
-Existing origin-only records show **Connection order not recorded** until entered.
+1. Select the **Network origin waypoint**.
+2. Set **IN — cable comes from** to the named waypoint or preceding Controller.
+3. Set **OUT — cable goes to** to the next Controller, **Terminating resistor**,
+   or the named waypoint's **return cable**. An unassigned next Controller is
+   selectable when its current LOR network and origin agree.
+4. Save. Choosing 1002 as 1001's OUT also records 1001 as 1002's IN, in the same
+   transaction. Open either controller or the waypoint to see the same connection.
+5. Power outlet can stay **Not connected** until its supplying circuit is entered.
 
-Waypoint Connections edits the same records: WAYPOINT means direct from the origin,
-CONTROLLER means the selected Previous controller, and UNKNOWN leaves order unrecorded.
-TERMINATOR and RETURN_TO_ORIGIN are the two last-controller endings. Reconnect
-children before moving or retiring their predecessor. Clear a recorded ending
-before extending the chain. The system rejects branching at a controller, circular
-controller links and different origins/networks. It never automatically rewires
-other controllers or creates repeater inventory. Corrections retain audit history.
+Examples supplied by Greg: Racing Arches RA-00 → 1001 → 1002 → 1003 → 1004,
+probably ending with a terminating resistor (UNVERIFIED). Elf Choir ST-01 → 1005
+→ 1006 → 1036 → ST-01, returning for continuation toward the Stars. Do not treat
+this return as the network's end. These examples are not automatically installed
+records or field verification. Save the actual observation; new/corrected wiring
+remains UNVERIFIED.
+
+Changing OUT releases the old next-controller IN to **Not recorded** without
+inventing a waypoint connection or deleting the remaining chain. Changing IN
+updates the former and new predecessor's displayed OUT. Occupied ports cannot be
+silently taken from another connection: reconcile those first. A return cable is
+not a controller dependency loop. Different LOR networks/origins, controller loops
+and multiple connections from one controller OUT are rejected. Save failures roll
+back both ends; stale edits require reload; uncertain saves retain an identical
+retry request. Before/after audit history covers all affected controllers.

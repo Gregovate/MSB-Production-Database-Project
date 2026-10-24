@@ -386,3 +386,25 @@ reciprocally, replaceable without invented wiring, and protected on stale/replay
 invalid graphs, existing occupied ports and rollback. No replacement preview may
 be started while the current review holds port 8898/source lock; current V0.4.16
 review has no subsequent clean-exit receipt yet. Production unchanged.
+
+### V0.4.17 reciprocal ports implementation / latest field clarification
+
+The shared editor presents IN → Controller → OUT and allows selecting an unassigned
+next controller from OUT. The atomic controller_ports command maintains one stored
+edge, updates both screen views, preserves released chains with unknown input,
+rejects occupied ports/cycles/network mismatches and records affected rows in audit.
+No second successor column or duplicate inventory was introduced. Both screens now
+use this same editor rather than separate topology forms. Stage filtering is unchanged.
+
+Greg confirms stage filtering works. Racing Arches probably ends with a resistor;
+that remains UNVERIFIED. Elf Choir returns via ST-01 for continuation toward Stars;
+do not label it a terminated network. These are documentation/test examples only,
+not seeded installed wiring. Latest operator receipt after V0.4.16 review confirms
+CLEAN EXIT and free port 8898/GIS source lock. Next launch still rechecks both.
+
+Local FieldWiring 220 tests and isolated SQL 281 command/denial checks PASS, including
+both supplied controller sequences, reciprocal saves, released input, occupied
+ports, known termination with unknown input, audit, rollback, role denial and replay.
+Exact-head actual browser/PostGIS/regression CI pending at preparation. Existing
+PR #319 handoff will identify final passing SHA and review checklist. Production
+and original GIS/FLW sources remain unchanged; no new preview launched here.

@@ -648,7 +648,9 @@ await denied(()=>chainCommand({upstream_kind:"CONTROLLER",upstream_controller_id
 await chainCommand({chain_end:"UNKNOWN"},chainIds[3]);
 await denied(()=>chainCommand({upstream_kind:"CONTROLLER",upstream_controller_id:104},chainIds[0]),"23514");
 await denied(()=>chainCommand({upstream_controller_id:101},chainIds[2]),"23514");
-await denied(()=>chainCommand({upstream_kind:"UNKNOWN"},chainIds[0]),"23514");
+// Known OUT edges remain meaningful while an IN is unrecorded.
+await chainCommand({upstream_kind:"UNKNOWN"},chainIds[0]);
+await chainCommand({upstream_kind:"WAYPOINT"},chainIds[0]);
 await denied(()=>chainCommand({chain_end:"TERMINATOR"},chainIds[3],chainRevision-1),"40001");
 await denied(()=>chainCommand({chain_end:"TERMINATOR"},chainIds[3],chainRevision,crypto.randomUUID(),"volunteer@example.test"),"42501");
 // Failed batch rolls back the valid first edit, its audit and revision too.
@@ -671,6 +673,70 @@ await chainCommand({chain_end:"RETURN_TO_ORIGIN"},replacement.target_id,replayRe
 assert.equal((await chainCommand({chain_end:"RETURN_TO_ORIGIN"},replacement.target_id,replayRevision,replayRequest)).replayed,true);
 assert.ok((await chainDb.query("SELECT ref.site_power_snapshot('crew@example.test') s")).rows[0].s.history.some(h=>h.before_data?.upstream_controller_id===103&&h.after_data?.upstream_kind==="WAYPOINT"));
 await chainDb.close();
+
+// Reciprocal physical ports, using Greg's two concrete examples as synthetic data.
+const portsDb=await createFixtureDatabase();
+await portsDb.exec(`
+ UPDATE ref.site_waypoint SET canonical_label=CASE site_waypoint_id WHEN 11 THEN 'RA-00' WHEN 12 THEN 'ST-01' ELSE canonical_label END;
+ UPDATE ref.site_network SET network_code=CASE site_network_id WHEN 1 THEN 'AUX-E' ELSE 'AUX-J' END;
+ UPDATE ops.linkiq_intake_review SET proposal=jsonb_set(proposal,'{designation}','"AUX-E"');
+ UPDATE ops.linkiq_intake_review SET proposal=jsonb_set(proposal,'{designation}','"AUX-J"') WHERE proposal->'endpoint_candidates'='[[12],[99]]'::jsonb;
+ INSERT INTO ref.controller(controller_id,controller_model_id,serial_number,lor_network,lor_uid_start,lor_uid_end)
+ SELECT id,1,'ports-'||id,CASE WHEN id<1005 THEN 'AUX-E' ELSE 'AUX-J' END,1,1 FROM unnest(ARRAY[1001,1002,1003,1004,1005,1006,1036]) id;
+ INSERT INTO ref.display SELECT controller_id,'Display '||controller_id,'prop-'||controller_id,1,2 FROM ref.controller WHERE controller_id>=1000;
+ INSERT INTO ref.controller_display SELECT controller_id,controller_id,NULL FROM ref.controller WHERE controller_id>=1000;
+ INSERT INTO lor_snap.v_current_props SELECT d.lor_prop_id,d.lor_prop_id,1,c.lor_network,'01','LOR' FROM ref.display d JOIN ref.controller c ON c.controller_id=d.display_id WHERE c.controller_id>=1000;
+`);
+let portsRev=0;
+const ports=async(id,origin,input,output,rev=portsRev,uuid=crypto.randomUUID(),email='crew@example.test')=>{
+ const f={site_waypoint_id:origin,in_kind:typeof input==='number'?'CONTROLLER':input,in_controller_id:typeof input==='number'?input:null,out_kind:typeof output==='number'?'CONTROLLER':output,out_controller_id:typeof output==='number'?output:null};
+ const r=(await portsDb.query("SELECT ref.site_power_command($1,$2::uuid,$3,'controller_ports',$4,$5::jsonb) r",[email,uuid,rev,id,JSON.stringify(f)])).rows[0].r;portsRev=r.revision;n++;return r;
+};
+const portRow=async id=>(await portsDb.query("SELECT * FROM ref.site_controller_installation WHERE active AND controller_id=$1",[id])).rows[0];
+await ports(1001,11,'WAYPOINT',1002);
+assert.equal((await portRow(1002)).upstream_controller_id,1001);
+await ports(1002,11,1001,1003);
+await ports(1003,11,1002,1004);
+await ports(1004,11,1003,'TERMINATOR');
+assert.equal((await portRow(1004)).chain_end,'TERMINATOR');
+await ports(1004,11,1003,'RETURN_TO_ORIGIN');
+assert.equal((await portRow(1004)).verification_status,'UNVERIFIED');
+await ports(1005,12,'WAYPOINT',1006);
+await ports(1006,12,1005,1036);
+await ports(1036,12,1006,'RETURN_TO_ORIGIN');
+assert.equal((await portRow(1036)).site_waypoint_id,12);
+assert.equal((await portRow(1036)).upstream_controller_id,1006);
+await denied(()=>ports(1001,11,'WAYPOINT',1001),'23514');
+await denied(()=>ports(1004,11,1003,1001),'23514');
+await denied(()=>ports(1001,11,'WAYPOINT',1003),'23514'); // occupied IN
+await denied(()=>ports(1004,11,1001,'TERMINATOR'),'23514'); // occupied OUT
+await denied(()=>ports(1001,11,'WAYPOINT',1005),'23514'); // wrong network
+await denied(()=>ports(1004,12,1003,'TERMINATOR'),'23514'); // wrong origin
+await denied(()=>ports(1004,11,1003,'TERMINATOR',portsRev-1),'40001');
+await denied(()=>ports(1004,11,1003,'TERMINATOR',portsRev,crypto.randomUUID(),'volunteer@example.test'),'42501');
+const portsReplayId=crypto.randomUUID(),portsOldRev=portsRev;
+await ports(1004,11,1003,'TERMINATOR',portsOldRev,portsReplayId);
+assert.equal((await ports(1004,11,1003,'TERMINATOR',portsOldRev,portsReplayId)).replayed,true);
+// Replace OUT: release the previous IN without inventing a direct waypoint feed.
+await ports(1002,11,1001,'UNKNOWN');
+assert.equal((await portRow(1003)).upstream_kind,'UNKNOWN');
+assert.equal((await portRow(1004)).upstream_controller_id,1003);
+await ports(1001,11,'WAYPOINT',1003);
+assert.equal((await portRow(1002)).upstream_kind,'UNKNOWN');
+assert.equal((await portRow(1003)).upstream_controller_id,1001);
+// Editing IN is the very same edge, reflected immediately in the predecessor OUT.
+await ports(1003,11,1002,1004);
+assert.equal((await portsDb.query('SELECT count(*)::int n FROM ref.site_controller_installation WHERE active AND upstream_controller_id=1001')).rows[0].n,0);
+assert.equal((await portRow(1003)).upstream_controller_id,1002);
+const beforePorts=(await portsDb.query("SELECT ref.site_power_snapshot('crew@example.test') s")).rows[0].s;
+await denied(()=>ports(1002,11,1004,1003),'23514'); // cycle / terminated predecessor, no partial detach
+assert.deepEqual((await portsDb.query("SELECT ref.site_power_snapshot('crew@example.test') s")).rows[0].s,beforePorts);
+assert.ok(beforePorts.history.some(h=>h.command==='controller_ports'&&Array.isArray(h.before_data)&&h.after_data.some(i=>i.controller_id===1003)));
+await ports(1003,null,'UNKNOWN','UNKNOWN');
+assert.equal(await portRow(1003),undefined);
+assert.equal((await portRow(1004)).upstream_kind,'UNKNOWN');
+assert.equal((await portRow(1004)).chain_end,'TERMINATOR');
+await portsDb.close();
 console.log(
   `PASS: ${n} SQL command/denial checks plus snapshot, audit, seasonal and rollback assertions (isolated PGlite PostgreSQL; no Production connection).`,
 );
