@@ -458,7 +458,7 @@
   const options = (items) => items.map(([value, label]) => ({ value, label }));
   const ownerOptions = () => options(
     [...new Set([
-      "MSB", "Utility", "Other",
+      "City Owned", "MSB Owned",
       ...data.panels.map(p => p.owner_name),
       ...data.devices.map(d => d.owner_name),
     ].filter(Boolean))].sort().map(name => [name, name]),
@@ -493,7 +493,8 @@
         text("panel_name", "Readable panel name", true),
         text("panel_identification", "Panel identification / label"),
         select("site_waypoint_id", "Associated waypoint (optional)", waypoints),
-        select("owner_name", "Equipment owner (optional)", ownerOptions()),
+        select("owner_name", "Panel owner (optional)", ownerOptions()),
+        {...text("year_installed", "Year installed (optional)"), type: "number"},
         select("supply_breaker_id", "Remote supply breaker (leave blank for local main)", options(data.breakers.filter(b=>b.active).map(b=>[b.site_power_breaker_id,`${panel(b.site_panel_id)?.panel_name} / ${b.breaker_name}`]))),
         text(
           "meter_information",
@@ -818,7 +819,7 @@
   function openSupply(p) {
     open("panel", p);
     $("edit-title").textContent=`${p.panel_name} — meter / upstream supply`;
-    for (const name of ["panel_name","panel_identification","site_waypoint_id","owner_name","active"])
+    for (const name of ["panel_name","panel_identification","site_waypoint_id","owner_name","year_installed","active"])
       $("edit-form").elements[name].closest("label").hidden=true;
     const supply=$("edit-form").elements.supply_breaker_id;
     for (const option of Array.from(supply.options)) {
