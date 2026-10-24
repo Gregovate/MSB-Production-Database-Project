@@ -375,7 +375,7 @@
         text("panel_name", "Readable panel name", true),
         text("panel_identification", "Panel identification / label"),
         select("site_waypoint_id", "Associated waypoint (optional)", waypoints),
-        text("owner_name", "Equipment owner"),
+        select("owner_name", "Equipment owner (optional)", options([["MSB","MSB"],["Utility","Utility"],["Other","Other"]])) ,
         text(
           "meter_information",
           "Known meter identifier(s) / relationship notes",
@@ -389,7 +389,7 @@
           true,
         ),
         text("circuit_code", "Breaker / circuit designation", true),
-        text("description", "Description"),
+        text("description", "Notes (optional)"),
         {
           ...text("breaker_rating_amps", "Breaker rating (amps)"),
           type: "number",
@@ -419,8 +419,8 @@
         ]),
         select("site_waypoint_id", "Waypoint (optional)", waypoints),
         text("owner_name", "Equipment owner"),
-        text("utility_asset_id", "Utility asset identification"),
-        text("rating", "Known rating"),
+        text("utility_asset_id", "Utility asset reference (optional)"),
+        text("rating", "Rating / model (optional)"),
         text("description", "Description"),
       ],
       feed: [
@@ -541,16 +541,8 @@
               label: "Active record (clear to retire)",
               type: "checkbox",
             },
-            choose(
-              "verification_status",
-              "Reference verification (explicitly select)",
-              ["UNKNOWN", "UNVERIFIED", "VERIFIED", "CONFLICTING"],
-            ),
-            text(
-              "source_evidence",
-              "Source / verification evidence / correction reason",
-              true,
-            ),
+            
+            text("source_evidence", "Notes (optional)"),
           ],
     );
   }
