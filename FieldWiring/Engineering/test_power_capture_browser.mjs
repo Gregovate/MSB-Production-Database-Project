@@ -123,7 +123,9 @@ try {
     .waitFor();
   await page.getByRole("button", { name: "Add panel", exact: true }).click();
   await dialog.locator("[name=panel_name]").fill("A5 panel");
-  await evidence();
+  // Empty optional note must not block ordinary field registration.
+  assert.equal(await dialog.locator("[name=source_evidence]").getAttribute("required"), null);
+  assert.equal(await dialog.locator("[name=verification_status]").count(), 0);
   await save();
   await page
     .locator("#panels")
@@ -131,7 +133,8 @@ try {
     .click();
   await page.getByRole("button", { name: "Add circuit", exact: true }).click();
   await dialog.locator("[name=circuit_code]").fill("7");
-  await evidence();
+  assert.equal(await dialog.locator("[name=verification_status]").count(), 0);
+  await dialog.locator("[name=breaker_rating_amps]").selectOption("20");
   await save();
   await page.getByRole("button", { name: "Assign multiple waypoints" }).click();
   await dialog.locator("[name=waypoint_search]").fill("Old Outlet A");
@@ -139,7 +142,7 @@ try {
   await dialog.locator('input[name=waypoint][value="11"]').check();
   await dialog.locator("[name=waypoint_search]").fill("");
   await dialog.locator('input[name=waypoint][value="12"]').check();
-  await evidence();
+  assert.equal(await dialog.locator("[name=verification_status]").count(), 0);
   await save();
   assert.equal(
     (
