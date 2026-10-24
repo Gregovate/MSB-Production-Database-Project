@@ -490,7 +490,7 @@
   const isElectricalEndpoint = (w) => {
     // Endpoint eligibility is based on the maintained waypoint TYPE, never
     // display-name text. Unknown types are not silently treated as outlets.
-    const tokens=String(w.type||"").trim().toLowerCase().split(/[-_\\s]+/);
+    const tokens=String(w.type||"").trim().toLowerCase().split(/[-_ ]+/);
     return ["power","out","outlet","combo"].some(t=>tokens.includes(t));
   };
   function specs(kind) {
