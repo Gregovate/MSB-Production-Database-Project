@@ -85,11 +85,17 @@ await denied(
     cmd("panel", { ...base, panel_name: "spoof", verified_by_person_id: 2 }),
   "22023",
 );
-await denied(
-  () =>
-    cmd("panel", { ...base, panel_name: "no evidence", source_evidence: " " }),
-  "22023",
+// Normal field capture never requires an arbitrary evidence note or manual verification.
+const simple = await cmd("panel", { panel_name: "No note needed" });
+assert.ok(simple.target_id > 0);
+n++;
+const simpleRow = await db.query(
+  "SELECT source_evidence, verification_status FROM ref.site_panel WHERE site_panel_id=$1",
+  [simple.target_id],
 );
+assert.equal(simpleRow.rows[0].source_evidence, null);
+assert.equal(simpleRow.rows[0].verification_status, "UNVERIFIED");
+n++;
 await denied(() => cmd('panel', {...base, active:false}, p.target_id), '23514');
 await denied(() => cmd('circuit', {...base, active:false}, c.target_id), '23514');
 const p2 = await cmd("panel", {
