@@ -211,7 +211,7 @@ try {
   await page.getByText(/Revision \d+/).waitFor();
   await page.locator("#detail-waypoint").selectOption("11");
   assert.equal(await page.getByRole("button",{name:"Assign network",exact:true}).count(),0);
-  assert.match(await page.locator("#networks").innerText(),/REG.*reviewed cable/);
+  assert.match(await page.locator("#networks").innerText(),/REG.*FLW endpoint record/);
   assert.match(await page.locator("#waypoint-safety").innerText(),/do not prove absence of voltage/);
   await page.goto(base);
   await page.getByText(/Revision \d+/).waitFor();
