@@ -416,7 +416,7 @@ await denied(()=>cmd("breaker",{...base,site_panel_id:remote.target_id,breaker_n
 await denied(()=>cmd("breaker",{...base,active:false},schedule.target_id),"23514");
 // Inventory identity is reused for enclosure placement AND independent plug-in supply.
 // Combo capability applies to both outlet boxes and light poles.
-const comboPole=await cmd("controller_installation",{controller_id:104,site_waypoint_id:14});
+const comboPole=await cmd("controller_installation",{controller_id:104,site_waypoint_id:99});
 assert.ok(comboPole.target_id > 0);
 n++;
 const install=await cmd("controller_installation",{...base,controller_id:101,site_waypoint_id:11});
