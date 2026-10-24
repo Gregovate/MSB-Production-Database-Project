@@ -154,3 +154,14 @@ PostgreSQL 16 Production-clone migration/grant checks; protected role and operat
 review; release approval; governed migration/source deployment; live field check.
 No schema migration has been run on Production, no GPX source was changed, and
 no issue is closed. No operator deployment command is ready yet.
+
+
+## October 24 operator simplification integrated with #319 grouped breaker
+
+This candidate reuses #319's permanent breaker/pole/circuit design; #454's older circuit-owned breaker schema is **not** an additional install step. Field entry uses existing identity selectors and dropdowns for amp rating, pole count, equipment owner, and equipment category. Routine site-reference records and controller/waypoint assignments require no manually selected verification or free-form evidence; a blank optional note is valid and saves as UNVERIFIED. Security-definer command attribution, revision/audit trail, role restrictions and append-only seasonal work observations remain authoritative. Only observed work evidence retains its mandatory description; blank reference notes are not fabricated.
+
+**Combo is a power-plus-network capability**, not a physical-box class. The existing `ref.site_waypoint.waypoint_type` is structured source classification: controller installation and supplied-power eligibility recognize an independent `combo` type token on OUT-Combo boxes or Combo poles. They never inspect the human waypoint name. Actual production waypoint type labels are a field validation gate; unrecognized classifications must remain unselectable instead of guessing.
+
+Electronic equipment types include DIN power supply, Ethernet switch, PoE switch, extender, splitter and RS485 repeater as separate typed options, without creating inventory records from example purchase links. Actual network/electrical details remain optional until observed.
+
+Source commits on PR319 incorporate the #454 low-friction improvements and isolated regression cases. **Do not deploy #454's older power DDL alongside the #319 canonical migration.** Operator disposable/browser acceptance, current main currency, source lock/review ownership and governed deployment are separate pending gates; passing GitHub CI is not permission to mutate Production.
