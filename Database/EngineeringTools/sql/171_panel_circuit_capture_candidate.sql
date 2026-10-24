@@ -331,7 +331,7 @@ BEGIN
     OR coalesce(p_data->>'restoration_desired_state','') NOT IN ('UNKNOWN','ON','OFF') THEN
    RAISE EXCEPTION 'Invalid breaker schedule fields' USING ERRCODE='22023'; END IF;
   breaker_data:=p_data->'breaker';
-  evidence:=jsonb_build_object('source_evidence',breaker_data->>'source_evidence','verification_status',breaker_data->>'verification_status');
+  evidence:=jsonb_build_object('source_evidence',breaker_data->>'source_evidence','verification_status',coalesce(breaker_data->>'verification_status','UNVERIFIED'));
   SELECT to_jsonb(b) INTO before_row FROM ref.site_power_breaker b WHERE site_power_breaker_id=p_id;
   IF p_id IS NOT NULL AND (before_row IS NULL OR NOT (before_row->>'active')::boolean) THEN
    RAISE EXCEPTION 'Active breaker not found' USING ERRCODE='P0002'; END IF;
