@@ -560,3 +560,40 @@ Every uniquely resolved FLW endpoint carrying the required network is eligible r
 At INET/E1.31 distribution points, prompt inventory/verification of switches and power supplies where contiguous runs approach roughly 300 feet, and PoE for any security cameras on the line. Multiple same-network neighboring endpoints flag possible LOR branching for repeater verification, not a proven branch or installed repeater. These are read-only equipment expectations. Do not create installed equipment from length, graph shape or network membership. Existing actual inventory is entered only from known equipment. Preserve the Racing Arch chain as unverified recollection.
 
 Operator confirms the latest disposable review CLEAN EXIT and port/source-lock release. Next candidate needs exact-head tests and a fresh lock/port preflight; this is not Production deployment approval.
+
+## October 24 controller chain order — required before release
+
+Greg requires the physical order, not only the shared network origin. Extend the existing
+`ref.site_controller_installation` with `upstream_kind` (UNKNOWN, WAYPOINT,
+CONTROLLER), nullable `upstream_controller_id`, and `chain_end` (UNKNOWN,
+TERMINATOR, RETURN_TO_ORIGIN). The existing waypoint remains the chain origin.
+UNKNOWN preserves incomplete observations; never infer a direct connection from
+an older origin-only record. A controller predecessor is an existing inventory ID,
+not another inventory or wiring system. Controller-to-display wiring is unchanged.
+
+Both supported endings are explicit: RA-00 → 1001 → 1002 → 1003 → 1004 → RA-00
+(return cable for onward continuation), or the same chain ending in a terminating
+resistor. Return is an end designation at the origin, not a controller dependency
+and not an inferred closed electrical ring. Only a last controller may have a
+recorded ending. UNKNOWN allows incomplete inventory and is never called verified.
+
+A predecessor must be active, have recorded upstream order, share the origin and
+confirmed current LOR network, and have no other downstream controller. Every
+member retains the existing FLW/LOR placement gate. Reject self-links, controller
+cycles, controller branching, mixed networks/origins, and dangling dependencies.
+Multiple independent chains at a waypoint are allowed; repeater equipment remains
+a field verification expectation, never automatically installed inventory.
+
+Use the existing serialized revision-checked command and audit history. Topology
+corrections on an existing installation retain before/after audit evidence. Changing
+origin continues to retire/create installations. Rewire or disconnect downstream
+controllers first before retiring/moving their predecessor. Clear a recorded chain
+ending before extending it. Do not silently cascade moves, change downstream wiring,
+or invent termination. Controller Inventory and Waypoint Connections edit the same
+fields; power remains independent and network-only saves remain possible.
+
+Required regression: a four-controller ordered chain and both endings; mixed network,
+self/cycle/fanout, wrong origin, terminated predecessor and retirement denial;
+reordering, stale edits, exact replay, rollback, shared-screen persistence, unknown
+order display and authorization. Reuse the current disposable runner and migration
+chain. Current review exited cleanly; new exact-head browser acceptance is pending.
