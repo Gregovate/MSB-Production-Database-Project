@@ -232,7 +232,7 @@ WITH RECURSIVE edges AS (
  FROM ref.site_cable_route_segment cr JOIN ref.site_route_segment rs USING(site_route_segment_id)
  WHERE rs.review_status='REVIEWED' AND cr.reviewed_at>=rs.reviewed_at
  AND EXISTS(SELECT 1 FROM ref.site_route_source_track st JOIN ref.site_track t USING(site_track_id)
-   WHERE st.site_route_segment_id=rs.site_route_segment_id AND st.source_class IN ('NET','PRI')
+   WHERE st.site_route_segment_id=rs.site_route_segment_id AND st.source_class IN ('NET','PRI','HV')
    AND t.lifecycle_status='CURRENT' AND st.reviewed_at>=t.changed_at
    AND cr.reviewed_at>=st.reviewed_at)
 ), walk AS (

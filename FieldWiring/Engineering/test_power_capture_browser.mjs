@@ -344,7 +344,9 @@ try {
   await page.getByRole("button",{name:"Install existing controller",exact:true}).click();
   await dialog.locator("[name=controller_id]").selectOption("103");
   assert.equal(await dialog.locator("[name=site_waypoint_id] option").count(),1);
+  page.once("dialog",prompt=>prompt.accept());
   await dialog.locator("#cancel").click();
+  await dialog.waitFor({state:"hidden"});
   await db.exec("UPDATE ref.site_track SET changed_at='2026-01-01'");
   await page.locator("#reload").click();
   await page.getByText(/Revision \d+/).waitFor();

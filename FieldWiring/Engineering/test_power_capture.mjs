@@ -484,7 +484,7 @@ for(const [change,restore] of [
  ["UPDATE ref.site_route_segment SET review_status='REVIEW_REQUIRED' WHERE site_route_segment_id=1","UPDATE ref.site_route_segment SET review_status='REVIEWED' WHERE site_route_segment_id=1"],
  ["UPDATE ref.site_track SET changed_at='2027-01-01'","UPDATE ref.site_track SET changed_at='2026-01-01'"],
  ["UPDATE ref.site_track SET lifecycle_status='RETIRED'","UPDATE ref.site_track SET lifecycle_status='CURRENT'"],
- ["UPDATE ref.site_route_source_track SET source_class='HV'","UPDATE ref.site_route_source_track SET source_class='NET'"],
+ ["DELETE FROM ref.site_route_source_track WHERE site_route_segment_id=1","INSERT INTO ref.site_route_source_track VALUES(1,1,'NET','2026-02-02')"],
  ["UPDATE ref.site_cable_route_segment SET traversal_direction=-1 WHERE site_cable_id=1","UPDATE ref.site_cable_route_segment SET traversal_direction=1 WHERE site_cable_id=1"],
  ["UPDATE ref.site_cable_route_segment SET segment_order=2 WHERE site_cable_id=1","UPDATE ref.site_cable_route_segment SET segment_order=1 WHERE site_cable_id=1"],
  ["UPDATE ref.site_cable SET lifecycle_status='FAILED' WHERE site_cable_id=1","UPDATE ref.site_cable SET lifecycle_status='CURRENT' WHERE site_cable_id=1"],
@@ -498,6 +498,10 @@ for(const [change,restore] of [
  await db.exec(restore);
  assert.equal((await availability()).length,1);
 }
+// An explicitly reviewed network cable may follow a shared power-trench trace.
+await db.exec("UPDATE ref.site_route_source_track SET source_class='HV'");
+assert.equal((await availability()).length,1);
+await db.exec("UPDATE ref.site_route_source_track SET source_class='NET'");
 // A passing FLW observation cannot substitute for a reviewed route.
 await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-24',1,'REVIEWED','fixture'); UPDATE ref.site_route_segment SET review_status='REVIEW_REQUIRED' WHERE site_route_segment_id=1");
 await denied(()=>cmd("controller_installation",{controller_id:103,site_waypoint_id:11}),"23514");
