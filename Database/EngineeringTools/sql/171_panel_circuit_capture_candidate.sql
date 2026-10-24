@@ -135,7 +135,7 @@ CREATE UNIQUE INDEX site_controller_one_power_connection ON ref.site_controller_
 CREATE TABLE ref.site_power_device (
  site_power_device_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  device_name text NOT NULL CHECK (btrim(device_name)<>''),
- device_kind text NOT NULL CHECK (device_kind IN ('FUSE','DISCONNECT','OUTLET','LIGHT_POLE','OTHER')),
+ device_kind text NOT NULL CHECK (device_kind IN ('FUSE','DISCONNECT','OUTLET','LIGHT_POLE','POWER_SUPPLY','ETHERNET_SWITCH','POE_SWITCH','ETHERNET_EXTENDER','ETHERNET_SPLITTER','RS485_REPEATER','OTHER')),
  site_waypoint_id bigint REFERENCES ref.site_waypoint(site_waypoint_id),
  owner_name text, utility_asset_id text, rating text, description text,
  active boolean NOT NULL DEFAULT true,
