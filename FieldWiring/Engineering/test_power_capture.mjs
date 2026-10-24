@@ -85,11 +85,15 @@ await denied(
     cmd("panel", { ...base, panel_name: "spoof", verified_by_person_id: 2 }),
   "22023",
 );
-await denied(
-  () =>
-    cmd("panel", { ...base, panel_name: "no evidence", source_evidence: " " }),
-  "22023",
+// A normal Crew panel save requires no free-text verification or evidence.
+const simple = await cmd("panel", { panel_name: "Field capture without notes" });
+const simpleStatus = await db.query(
+  "SELECT source_evidence,verification_status FROM ref.site_panel WHERE site_panel_id=$1",
+  [simple.target_id],
 );
+assert.equal(simpleStatus.rows[0].source_evidence, null);
+assert.equal(simpleStatus.rows[0].verification_status, "UNVERIFIED");
+n++;
 await denied(() => cmd('panel', {...base, active:false}, p.target_id), '23514');
 await denied(() => cmd('circuit', {...base, active:false}, c.target_id), '23514');
 const p2 = await cmd("panel", {
