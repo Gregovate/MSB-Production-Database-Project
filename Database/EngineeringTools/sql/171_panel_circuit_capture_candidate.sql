@@ -613,7 +613,7 @@ BEGIN
  END IF;
  UPDATE ref.site_power_revision SET revision=revision+1 WHERE singleton RETURNING revision INTO rev;
  INSERT INTO ops.site_power_edit_log(revision,request_id,command,target_id,payload,before_data,after_data,directus_user_id,person_id,operator_email)
- VALUES(rev,p_request,p_kind,target,jsonb_build_object('id',p_id,'fields',p_data),before_row,after_row,actor.directus_user_id,actor.person_id,lower(btrim(p_email)));
+ VALUES(rev,p_request,p_kind,target,jsonb_build_object('id',p_id,'fields',request_fields),before_row,after_row,actor.directus_user_id,actor.person_id,lower(btrim(p_email)));
  RETURN jsonb_build_object('revision',rev,'target_id',target,'replayed',false);
 END $f$;
 REVOKE ALL ON FUNCTION ref.site_power_access(text),ref.site_power_snapshot(text),ref.site_power_command(text,uuid,bigint,text,bigint,jsonb) FROM PUBLIC;
