@@ -181,3 +181,21 @@ The final source fixes:
 - new-record forms hide the irrelevant retirement checkbox. Existing records retain governed retirement and audit controls.
 
 No current-Production clone, browser/physical operator acceptance, PR merge, migration or live server/source publication has occurred. The previously recorded GIS source lock must be owner-verified before any new review. Release gate: exact #319 source identity, existing disposable runner/port ownership, current PG16+PostGIS clone, protected Crew/Manager behavior and operator acceptance, then separate authorized #37 Production boundary. Retain #454 draft as reconciliation evidence, but never install its old power migration with this canonical candidate.
+
+
+## October 24 follow-up: operator feedback corrections to previous browser candidate
+
+The operator rejected another source-only handoff because it had omitted changes already requested from the previous on-screen review. Source engineering continues within the **existing #319 grouped-breaker candidate**, not a new deployment, separate schema or duplicate app.
+
+Actual operator requests and current candidate response:
+
+- **Panel:** optional installation year (4-digit whole-year, unknown blank), selected owner **City Owned / MSB Owned** (retained legacy values remain selectable). Panel meter remains panel-owned.
+- **Circuit picker:** use structured power-capable waypoint classification; hide Panel/Stage and other non-endpoint types from ordinary assignment, while retaining already-recorded exceptional legacy assignments for reconciliation. Combo means both power and network and can apply to either a box or a light pole, not a name-substring test.
+- **Grouped 2-pole breaker:** offer explicit **also add selected waypoint(s) to the other leg**, default OFF. Preserve the other leg's unrelated waypoints and distinct permanent circuit identities. Never parse a location name as verified physical wiring. Different endpoints per leg remain supported.
+- **Waypoint/equipment navigation:** a direct **Open waypoint / equipment** control next to recorded circuit destinations expands the correct existing section and selects that waypoint without forcing a search below the panel board.
+- **Add new equipment:** a visible action at the selected Combo location is separate from **Install existing controller**. Use the existing `ref.site_power_device` identities and category choices for DIN power supplies, industrial Ethernet/PoE switches, VDSL extenders, RJ45 splitters and RS485 repeaters. Model selections are dropdowns of supplied example models and retained records; selecting one supplies the category automatically. These are catalog choices, not fabricated installed stock. Physical instance IDs are database-generated. A free-text description is optional Notes.
+- **Routine save:** no mandatory verification or evidence text, and no fictitious auto-generated evidence. Existing role, append-only audit, safe idempotent retry, season event verification boundaries and restored current power references remain authoritative.
+
+Mandatory stable identities such as a new panel designation and meter identifier still require factual operator input; the general target remains dropdown-based selection plus optional notes rather than redundant free-form fields. Equipment catalogs can evolve through a later governed reference editor, not a new parallel ownership system.
+
+As of this checkpoint, source changes and browser regression tests have been committed on #319. **This is engineering source, not accepted Production review.** Exact-head GitHub CI completion, current-Production PostgreSQL 16 disposable validation, protected operator acceptance, and #37 authorized release are separate gates. Never launch an overlapping preview while source-lock ownership is unresolved.
