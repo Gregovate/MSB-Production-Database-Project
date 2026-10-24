@@ -293,17 +293,17 @@ try {
   await page.getByRole("button",{name:"Record main breaker",exact:true}).click();
   assert.equal(await dialog.locator("[name=panel_positions]").isVisible(), false);
   await dialog.locator("[name=breaker_name]").fill("Main disconnect");
-  await dialog.locator("[name=rated_amps]").fill("200");
-  await dialog.locator("[name=pole_count]").fill("2");
+  await dialog.locator("[name=rated_amps]").selectOption("200");
+  await dialog.locator("[name=pole_count]").selectOption("2");
   await evidence(); await save();
   assert.match(await page.locator(".power-main").innerText(),/200 A · 2 poles · MAIN/);
   // Fill remaining A5 positions through the same diagram entry used by the operator.
   for (const start of [1,2,5,6,9,10,13,14,17,21,22,25,26,29,30,33,34]) {
     await page.getByRole("button",{name:`Position ${start} · Add breaker`,exact:true}).click();
-    await dialog.locator("[name=pole_count]").fill("2");
+    await dialog.locator("[name=pole_count]").selectOption("2");
     await dialog.locator("[name=pole_count]").blur();
     assert.equal(await dialog.locator("[name=panel_positions]").inputValue(),`${start}/${start+2}`);
-    await dialog.locator("[name=rated_amps]").fill("20");
+    await dialog.locator("[name=rated_amps]").selectOption("20");
     await save();
   }
   assert.equal(await page.locator(".power-slot-grid .power-breaker").count(),18);
