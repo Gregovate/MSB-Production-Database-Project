@@ -587,13 +587,7 @@
     $("save-status").textContent = "";
     $("save").disabled = false;
     edit.specs.forEach((s) =>
-      field(
-        s,
-        s.key === "verification_status"
-          ? "UNVERIFIED"
-          : (row[s.key] ??
-              (s.key.includes("desired_state") ? "UNKNOWN" : undefined)),
-      ),
+      field(s, row[s.key] ?? (s.key.includes("desired_state") ? "UNKNOWN" : undefined)),
     );
     $("editor").showModal();
   }
@@ -640,21 +634,7 @@
       for (const l of list.children)
         l.hidden = !l.dataset.search.includes(search.value.toLowerCase());
     };
-    field(
-      select(
-        "verification_status",
-        "Assignment verification",
-        options(
-          ["UNKNOWN", "UNVERIFIED", "VERIFIED", "CONFLICTING"].map((x) => [
-            x,
-            x,
-          ]),
-        ),
-        true,
-      ),
-      "UNVERIFIED",
-    );
-    field(text("source_evidence", "Source / correction evidence", true), "");
+    field(text("source_evidence", "Notes (optional)"), "");
     $("editor").showModal();
   }
   function readFields() {
@@ -701,7 +681,7 @@
         );
         const evidence = {
           source_evidence: form.elements.source_evidence.value.trim(),
-          verification_status: form.elements.verification_status.value,
+          verification_status: "UNVERIFIED",
         };
         commands = direct
           .filter((f) => !selected.includes(f.destination_waypoint_id))
