@@ -456,6 +456,19 @@
     required,
   });
   const options = (items) => items.map(([value, label]) => ({ value, label }));
+  const ownerOptions = () => options(
+    [...new Set([
+      "MSB", "Utility", "Other",
+      ...data.panels.map(p => p.owner_name),
+      ...data.devices.map(d => d.owner_name),
+    ].filter(Boolean))].sort().map(name => [name, name]),
+  );
+  const ratingOptions = () => options(
+    [...new Set([
+      15,20,30,40,50,90,100,200,
+      ...data.breakers.map(b => Number(b.rated_amps)).filter(x => Number.isFinite(x) && x > 0),
+    ])].sort((a,b) => a-b).map(x => [x, String(x)]),
+  );
   // Only the structured waypoint type is authoritative. "Combo" means
   // power + network; it is independent of a pole versus an outlet box.
   const isComboWaypoint = (w) =>
@@ -480,7 +493,7 @@
         text("panel_name", "Readable panel name", true),
         text("panel_identification", "Panel identification / label"),
         select("site_waypoint_id", "Associated waypoint (optional)", waypoints),
-        select("owner_name", "Equipment owner (optional)", options([["MSB","MSB"],["Utility","Utility"],["Other","Other"]])),
+        select("owner_name", "Equipment owner (optional)", ownerOptions()),
         select("supply_breaker_id", "Remote supply breaker (leave blank for local main)", options(data.breakers.filter(b=>b.active).map(b=>[b.site_power_breaker_id,`${panel(b.site_panel_id)?.panel_name} / ${b.breaker_name}`]))),
         text(
           "meter_information",
@@ -505,7 +518,7 @@
         text("breaker_name", "Breaker designation", true),
         choose("breaker_role", "Main or branch breaker", ["UNKNOWN","MAIN","BRANCH"]),
         text("panel_positions", "Branch panel positions in pole order (for example 18/20 or 18,20; blank if unknown)"),
-        select("rated_amps", "Breaker rating (A)", options([15,20,30,40,50,90,100,200].map(x=>[x,String(x)]))),
+        select("rated_amps", "Breaker rating (A)", ratingOptions()),
         select("pole_count", "Pole count", options([1,2,3].map(x=>[x,String(x)]))),
       ],
       circuit: [
@@ -556,7 +569,7 @@
           "OTHER",
         ]),
         select("site_waypoint_id", "Waypoint (optional)", waypoints),
-        select("owner_name", "Equipment owner (optional)", options([["MSB","MSB"],["Utility","Utility"],["Other","Other"]])),
+        select("owner_name", "Equipment owner (optional)", ownerOptions()),
         text("utility_asset_id", "Utility asset identification"),
         text("rating", "Known rating"),
         text("description", "Notes (optional)"),
@@ -823,7 +836,7 @@
     field(text("breaker_name","Breaker designation (optional; defaults to positions)"),row.breaker_name);
     const positions=field(text("panel_positions","Positions / circuits (for example 18/20)"),row.panel_positions);
     positions.closest("label").hidden=role==="MAIN";
-    field(select("rated_amps","Breaker rating (A)",options([15,20,30,40,50,90,100,200].map(x=>[x,String(x)]))),row.rated_amps);
+    field(select("rated_amps","Breaker rating (A)",ratingOptions()),row.rated_amps);
     const poles=field(select("pole_count","Poles",options([1,2,3].map(x=>[x,String(x)])),true),row.pole_count || (role==="MAIN"?2:1));
     field(text("source_evidence","Breaker notes / correction reason (optional)"),"");
     const states=options(["UNKNOWN","ON","OFF"].map(v=>[v,v]));
