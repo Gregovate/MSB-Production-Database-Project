@@ -823,8 +823,8 @@
     field(text("breaker_name","Breaker designation (optional; defaults to positions)"),row.breaker_name);
     const positions=field(text("panel_positions","Positions / circuits (for example 18/20)"),row.panel_positions);
     positions.closest("label").hidden=role==="MAIN";
-    field({...text("rated_amps","Amps per pole"),type:"number"},row.rated_amps);
-    const poles=field({...text("pole_count","Poles"),type:"number"},row.pole_count || (role==="MAIN"?2:1));
+    field(select("rated_amps","Breaker rating (A)",options([15,20,30,40,50,90,100,200].map(x=>[x,String(x)]))),row.rated_amps);
+    const poles=field(select("pole_count","Poles",options([1,2,3].map(x=>[x,String(x)])),true),row.pole_count || (role==="MAIN"?2:1));
     field(text("source_evidence","Breaker notes / correction reason (optional)"),"");
     const states=options(["UNKNOWN","ON","OFF"].map(v=>[v,v]));
     field(select("show_desired_state","Season ON / OFF",states,true),row.show_desired_state || "UNKNOWN");
@@ -849,7 +849,7 @@
         breaker:{site_panel_id:row.site_panel_id,breaker_role:role,
           breaker_name:form.elements.breaker_name.value.trim() || (role==="MAIN"?"Main":slots?.join("/")),
           panel_positions:slots,pole_count:count,rated_amps:form.elements.rated_amps.value?Number(form.elements.rated_amps.value):null,
-          source_evidence:form.elements.source_evidence.value.trim() || "Operator breaker schedule entry; field verification pending",
+          source_evidence:form.elements.source_evidence.value.trim() || null,
           verification_status:"UNVERIFIED"},
         show_desired_state:form.elements.show_desired_state.value,restoration_desired_state:form.elements.restoration_desired_state.value,
         legs:role==="MAIN" ? [] : Array.from({length:count},(_,i)=>{
