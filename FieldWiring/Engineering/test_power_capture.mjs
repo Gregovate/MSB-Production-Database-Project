@@ -356,6 +356,18 @@ const spareBreaker=await cmd("breaker",{...base,site_panel_id:groupedPanel.targe
 await denied(()=>cmd("circuit",{...base,site_power_breaker_id:spareBreaker.target_id,breaker_pole:1},legB.target_id),"23514");
 await denied(()=>cmd("circuit",{...base,site_power_breaker_id:null,breaker_pole:null},legB.target_id),"23514");
 
+// Every waypoint type shares the same one-breaker rule, including indirect feeds.
+await db.exec("INSERT INTO ref.site_waypoint VALUES (31,'Power cardinality','Power'),(32,'Pole cardinality','Pole-Combo'),(33,'Network cardinality','Network')");
+for (const waypoint of [31,32,33]) {
+ const first=await cmd("feed",{...base,source_circuit_id:legA.target_id,destination_waypoint_id:waypoint});
+ const second=await cmd("feed",{...base,source_circuit_id:legB.target_id,destination_waypoint_id:waypoint});
+ await denied(()=>cmd("feed",{...base,source_circuit_id:competingLeg.target_id,destination_waypoint_id:waypoint}),"23514");
+ await cmd("feed",{active:false},first.target_id);
+ await cmd("feed",{active:false},second.target_id);
+ await cmd("feed",{...base,source_circuit_id:competingLeg.target_id,destination_waypoint_id:waypoint});
+ assert.equal(Number((await db.query("SELECT count(*) n FROM ref.site_power_feed WHERE destination_waypoint_id=$1 AND NOT active",[waypoint])).rows[0].n),2);
+}
+
 let impact = (await db.query("SELECT ref.site_power_breaker_impact('crew@example.test',$1) AS x",[breaker.target_id])).rows[0].x;
 assert.equal(impact.breaker.rated_amps,20);
 assert.equal(impact.missing_pole_membership,false);

@@ -701,7 +701,7 @@ BEGIN
    walk(a,b,path,cycle) AS (SELECT a,b,ARRAY[a,b],a=b FROM edges UNION ALL
     SELECT w.a,e.b,w.path||e.b,e.b=ANY(w.path) FROM walk w JOIN edges e ON e.a=w.b WHERE NOT w.cycle)
    SELECT 1 FROM walk WHERE cycle) THEN RAISE EXCEPTION 'Documented feed would form a cycle' USING ERRCODE='23514'; END IF;
-  -- A combo box may contain two legs of ONE breaker, never competing
+  -- Every waypoint may receive multiple legs of ONE breaker, never competing
   -- breakers. Follow actual active device/feed edges; names prove nothing.
   IF EXISTS (
    WITH RECURSIVE supplied AS (
@@ -725,11 +725,10 @@ BEGIN
       ON d.site_power_device_id=s.destination_device_id
    ) SELECT 1 FROM endpoints e JOIN ref.site_waypoint w
      ON w.site_waypoint_id=e.waypoint_id
-    WHERE lower(btrim(w.waypoint_type))='out-combo'
     GROUP BY e.waypoint_id HAVING count(DISTINCT
       CASE WHEN e.site_power_breaker_id IS NOT NULL THEN 'B:'||e.site_power_breaker_id
            ELSE 'UNKNOWN-C:'||e.site_power_circuit_id END)>1
-  ) THEN RAISE EXCEPTION 'OUT-Combo box cannot be supplied by different breakers or unresolved competing circuits; review its direct and equipment feeds' USING ERRCODE='23514'; END IF;
+  ) THEN RAISE EXCEPTION 'A waypoint cannot be supplied by different breakers or unresolved competing circuits; review its direct and equipment feeds' USING ERRCODE='23514'; END IF;
   IF p_kind='action' THEN
    IF EXISTS(SELECT 1 FROM ref.site_power_action a,unnest(a.prerequisite_action_ids) x
       WHERE NOT EXISTS(SELECT 1 FROM ref.site_power_action b WHERE b.site_power_action_id=x)) THEN

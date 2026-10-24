@@ -1021,6 +1021,12 @@
       i.name = "waypoint";
       i.value = w.id;
       i.checked = direct.some((f) => f.destination_waypoint_id === w.id);
+      const competing = data.circuits.filter(other => other.active &&
+        other.site_power_circuit_id !== c.site_power_circuit_id &&
+        (!c.site_power_breaker_id || other.site_power_breaker_id !== c.site_power_breaker_id) &&
+        paths(other.site_power_circuit_id).some(x => x.waypoint?.id === w.id));
+      i.disabled = competing.length > 0 && !i.checked;
+      if (competing.length) el("span", ` · Already supplied by ${competing.map(x => circuitName(x.site_power_circuit_id)).join(", ")}. Retire that supply before reassignment.`, l);
       l.append(
         document.createTextNode(
           ` ${w.name} (${w.type})${w.aliases.length ? " · " + w.aliases.join(", ") : ""}`,
