@@ -124,7 +124,8 @@ try {
     .waitFor();
   await page.getByRole("button", { name: "Add panel", exact: true }).click();
   await dialog.locator("[name=panel_name]").fill("A5 panel");
-  await evidence();
+  assert.equal(await dialog.locator("[name=source_evidence]").getAttribute("required"), null);
+  assert.equal(await dialog.locator("[name=verification_status]").count(), 0);
   await save();
   await page
     .locator("#panels")
@@ -133,7 +134,7 @@ try {
   await page.getByText("Reconcile circuits with unknown breaker membership",{exact:true}).click();
   await page.getByRole("button", { name: "Reconcile legacy circuit", exact: true }).click();
   await dialog.locator("[name=circuit_code]").fill("legacy7");
-  await evidence();
+  assert.equal(await dialog.locator("[name=verification_status]").count(), 0);
   await save();
   await page.getByText("Reconcile circuits with unknown breaker membership",{exact:true}).click();
   await page.getByRole("button", { name: "Assign multiple waypoints" }).click();
@@ -142,7 +143,7 @@ try {
   await dialog.locator('input[name=waypoint][value="11"]').check();
   await dialog.locator("[name=waypoint_search]").fill("");
   await dialog.locator('input[name=waypoint][value="12"]').check();
-  await evidence();
+  assert.equal(await dialog.locator("[name=verification_status]").count(), 0);
   await save();
   assert.equal(
     (
