@@ -368,6 +368,22 @@ for (const waypoint of [31,32,33]) {
  assert.equal(Number((await db.query("SELECT count(*) n FROM ref.site_power_feed WHERE destination_waypoint_id=$1 AND NOT active",[waypoint])).rows[0].n),2);
 }
 
+// Continuations preserve each circuit identity: both poles may extend to the
+// same downstream waypoint, but a different breaker's circuit cannot enter it.
+await db.exec("INSERT INTO ref.site_waypoint VALUES (34,'Two-pole continuation','Power'),(35,'Single-pole origin','Power'),(36,'Single-pole continuation','Power')");
+await cmd("feed",{...base,source_device_id:socketA.target_id,destination_waypoint_id:34});
+await cmd("feed",{...base,source_device_id:socketB.target_id,destination_waypoint_id:34});
+const singleOutlet=await cmd("device",{...base,device_name:"Single-pole continuation outlet",device_kind:"OUTLET",site_waypoint_id:35});
+await cmd("feed",{...base,source_circuit_id:competingLeg.target_id,destination_device_id:singleOutlet.target_id});
+await cmd("feed",{...base,source_device_id:singleOutlet.target_id,destination_waypoint_id:36});
+await denied(()=>cmd("feed",{...base,source_device_id:singleOutlet.target_id,destination_waypoint_id:34}),"23514");
+await denied(()=>cmd("feed",{...base,source_device_id:socketA.target_id,destination_waypoint_id:36}),"23514");
+await denied(()=>cmd("feed",{...base,source_circuit_id:legB.target_id,destination_waypoint_id:35}),"23514");
+const continued=(await db.query("SELECT ref.site_power_snapshot('crew@example.test') x")).rows[0].x.waypoint_power_sources;
+assert.deepEqual([...new Set(continued.filter(x=>x.site_waypoint_id===34).map(x=>x.site_power_circuit_id))].sort(),[legA.target_id,legB.target_id].sort());
+assert.deepEqual([...new Set(continued.filter(x=>x.site_waypoint_id===36).map(x=>x.site_power_circuit_id))],[competingLeg.target_id]);
+n+=2;
+
 let impact = (await db.query("SELECT ref.site_power_breaker_impact('crew@example.test',$1) AS x",[breaker.target_id])).rows[0].x;
 assert.equal(impact.breaker.rated_amps,20);
 assert.equal(impact.missing_pole_membership,false);

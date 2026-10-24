@@ -507,3 +507,14 @@ Combo Equipment owns location-specific additional installed equipment UI, reusin
 ### Breaker-to-waypoint cardinality correction
 
 One breaker may supply multiple waypoints. Every waypoint, regardless of type, may resolve to at most one active breaker through its direct and equipment feed paths. Multiple circuit legs of the same breaker remain allowed; different breakers or unresolved competing circuit identities are rejected. Historical retired feeds remain available. Moving an assignment requires retiring the previous supply before activating the replacement; dependent controller connections must be reconciled in the same governed workflow. The assignment picker identifies conflicting supplies rather than offering an invalid second breaker.
+
+### Single-pole and two-pole continuation rule — explicit operator clarification
+
+The exclusivity boundary is the supplying breaker identity, **not a single circuit per waypoint**.
+
+- A two-pole breaker has two separately identified circuits. Both may serve one waypoint; either or both circuits may continue to additional waypoints. Each continuation retains its original circuit and breaker identity.
+- A single-pole breaker has one circuit. That circuit may serve one waypoint and continue to additional waypoints, retaining the same circuit and breaker identity.
+- No destination waypoint may receive a circuit from another breaker, whether the competing supply arrives directly or through any number of intermediate equipment/feed connections. This rule applies at every waypoint along the recorded path.
+- Circuits from the two poles remain distinct; sharing a waypoint does not join the circuits electrically or combine their load ratings. Waypoint names do not establish circuit membership or physical continuity.
+
+Examples: breaker A5 2/4 may supply both circuits 2 and 4 at one waypoint; circuit 2 may continue to A5-02A and A5-02B while circuit 4 continues to A5-04. None of those waypoints may also receive a circuit from a different breaker. A single-pole breaker 6 may supply several other waypoints, but its circuit cannot extend into any waypoint already supplied by breaker 2/4. Use the existing circuit/feed records for these relationships; no duplicate schema or inferred wiring.
