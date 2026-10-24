@@ -456,6 +456,10 @@
     required,
   });
   const options = (items) => items.map(([value, label]) => ({ value, label }));
+  // Only the structured waypoint type is authoritative. "Combo" means
+  // power + network; it is independent of a pole versus an outlet box.
+  const isComboWaypoint = (w) =>
+    String(w.type || "").trim().toLowerCase().split(/[-_\s]+/).includes("combo");
   function specs(kind) {
     const waypoints = options(
       data.waypoints.map((w) => [w.id, `${w.name} (${w.type})`]),
@@ -476,7 +480,7 @@
         text("panel_name", "Readable panel name", true),
         text("panel_identification", "Panel identification / label"),
         select("site_waypoint_id", "Associated waypoint (optional)", waypoints),
-        text("owner_name", "Equipment owner"),
+        select("owner_name", "Equipment owner (optional)", options([["MSB","MSB"],["Utility","Utility"],["Other","Other"]])),
         select("supply_breaker_id", "Remote supply breaker (leave blank for local main)", options(data.breakers.filter(b=>b.active).map(b=>[b.site_power_breaker_id,`${panel(b.site_panel_id)?.panel_name} / ${b.breaker_name}`]))),
         text(
           "meter_information",
@@ -501,8 +505,8 @@
         text("breaker_name", "Breaker designation", true),
         choose("breaker_role", "Main or branch breaker", ["UNKNOWN","MAIN","BRANCH"]),
         text("panel_positions", "Branch panel positions in pole order (for example 18/20 or 18,20; blank if unknown)"),
-        {...text("rated_amps", "Breaker rating (A; do not add poles together)"), type: "number"},
-        {...text("pole_count", "Pole count"), type: "number"},
+        select("rated_amps", "Breaker rating (A)", options([15,20,30,40,50,90,100,200].map(x=>[x,String(x)]))),
+        select("pole_count", "Pole count", options([1,2,3].map(x=>[x,String(x)]))),
       ],
       circuit: [
         select(
@@ -512,7 +516,7 @@
           true,
         ),
         text("circuit_code", "Circuit designation", true),
-        text("description", "Description"),
+        text("description", "Notes (optional)"),
         select("site_power_breaker_id", "Supplying breaker (unknown allowed)", options((data.breakers || []).map(b => [b.site_power_breaker_id,b.breaker_name]))),
         {...text("breaker_pole", "Pole within breaker (1, 2…; not panel position)"), type: "number"},
         { ...text("voltage", "Voltage"), type: "number" },
@@ -534,7 +538,7 @@
       ],
       controller_installation: [
         select("controller_id","Existing inventory item",options((data.controller_options || []).map(c=>[c.id,`#${c.id} · ${c.model} · ${c.serial || "No serial"}`])),true),
-        select("site_waypoint_id","OUT-Combo network box",options(data.waypoints.filter(w=>w.type?.trim().toLowerCase()==="out-combo").map(w=>[w.id,w.name])),true),
+        select("site_waypoint_id","Power + network location (Combo box or pole)",options(data.waypoints.filter(isComboWaypoint).map(w=>[w.id,`${w.name} (${w.type})`])),true),
       ],
       device: [
         text("device_name", "Equipment name / identification", true),
@@ -546,10 +550,10 @@
           "OTHER",
         ]),
         select("site_waypoint_id", "Waypoint (optional)", waypoints),
-        text("owner_name", "Equipment owner"),
+        select("owner_name", "Equipment owner (optional)", options([["MSB","MSB"],["Utility","Utility"],["Other","Other"]])),
         text("utility_asset_id", "Utility asset identification"),
         text("rating", "Known rating"),
-        text("description", "Description"),
+        text("description", "Notes (optional)"),
       ],
       feed: [
         select(
