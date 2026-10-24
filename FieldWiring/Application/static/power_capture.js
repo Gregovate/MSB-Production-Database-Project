@@ -357,7 +357,7 @@
     (data.controller_installations || []).filter(i=>i.site_waypoint_id===detailWaypoint).forEach(i=>{
       const asset=data.controller_options.find(c=>c.id===i.controller_id);
       if(i.active && !(data.placement_eligibility || []).some(e=>e.controller_id===i.controller_id && e.site_waypoint_id===i.site_waypoint_id)) el("p",`Controller ${i.controller_id}: current network eligibility unresolved; recorded placement retained for reconciliation.`,$("equipment"));
-      record($("installations"),`Controller ${i.controller_id} · ${asset?.model || "Unknown model"} · ${asset?.serial || "No serial recorded"}`,i,"controller_installation");
+      record($("installations"),`Controller ${i.controller_id} · from ${i.upstream_kind==="CONTROLLER" ? "CTRL "+i.upstream_controller_id : i.upstream_kind==="WAYPOINT" ? wp(i.site_waypoint_id)?.name : "order not recorded"} · ${i.chain_end==="TERMINATOR" ? "terminating resistor" : i.chain_end==="RETURN_TO_ORIGIN" ? "return to origin" : "ending not recorded / continues"} · ${asset?.model || "Unknown model"}`,i,"controller_installation");
     });
     data.devices.filter(d=>d.site_waypoint_id===detailWaypoint).forEach(d=>{
       record($("equipment"),`${d.device_name} · ${d.device_kind}`,d,"device");
@@ -715,7 +715,10 @@
       ],
       controller_installation: [
         select("controller_id","Existing inventory item",options((data.controller_options || []).map(c=>[c.id,`#${c.id} · ${c.model} · ${c.serial || "No serial"}`])),true),
-        select("site_waypoint_id","Network attachment waypoint",options(data.waypoints.filter(isNetworkWaypoint).map(w=>[w.id,`${w.name} (${w.type})`])),true),
+        select("site_waypoint_id","Originating network waypoint",options(data.waypoints.filter(isNetworkWaypoint).map(w=>[w.id,`${w.name} (${w.type})`])),true),
+        choose("upstream_kind","Connected from",["UNKNOWN","WAYPOINT","CONTROLLER"]),
+        select("upstream_controller_id","Previous controller (when Connected from = CONTROLLER)",options([])),
+        choose("chain_end","Last controller ending",["UNKNOWN","TERMINATOR","RETURN_TO_ORIGIN"]),
       ],
       device: [
         select("device_name", "Equipment / model", equipmentNameOptions(), true),
@@ -968,6 +971,32 @@
       $("edit-form").elements.controller_id.disabled=true;
       $("edit-form").elements.site_waypoint_id.disabled=true;
       el("p","To move this item, retire this installation, then install the same inventory ID at its new network box.",$("edit-fields"));
+    }
+    if (kind === "controller_installation") {
+      const form=$("edit-form"), controller=form.elements.controller_id, location=form.elements.site_waypoint_id,
+        upstream=form.elements.upstream_controller_id, source=form.elements.upstream_kind;
+      source.value=row.upstream_kind || (row.site_controller_installation_id ? "UNKNOWN" : "WAYPOINT");
+      form.elements.chain_end.value=row.chain_end || "UNKNOWN";
+      function refreshChain() {
+        const prior=upstream.value || row.upstream_controller_id;
+        upstream.replaceChildren();el("option","Select previous controller",upstream).value="";
+        const id=Number(controller.value), active=data.controller_installations.filter(i=>i.active);
+        const descendants=new Set([id]);
+        for(let changed=true;changed;) {changed=false;for(const i of active) if(descendants.has(i.upstream_controller_id)&&!descendants.has(i.controller_id)){descendants.add(i.controller_id);changed=true;}}
+        const req=data.network_requirements.find(r=>r.controller_id===id);
+        for(const i of active.filter(i=>i.site_waypoint_id===Number(location.value)&&!descendants.has(i.controller_id)&&i.upstream_kind!=="UNKNOWN"&&i.chain_end==="UNKNOWN")) {
+          const parent=data.network_requirements.find(r=>r.controller_id===i.controller_id);
+          if(parent?.requirement_status!=="CONFIRMED"||parent.required_network!==req?.required_network)continue;
+          if(active.some(c=>c.upstream_controller_id===i.controller_id&&c.controller_id!==id))continue;
+          el("option",`CTRL ${i.controller_id}`,upstream).value=i.controller_id;
+        }
+        if(prior&&!Array.from(upstream.options).some(o=>o.value===String(prior))) el("option",`CTRL ${prior} — recorded; reconcile`,upstream).value=prior;
+        upstream.value=source.value==="CONTROLLER" ? (prior || "") : "";
+        upstream.required=source.value==="CONTROLLER";
+        upstream.closest("label").hidden=source.value!=="CONTROLLER";
+      }
+      controller.addEventListener("change",refreshChain);location.addEventListener("change",refreshChain);source.addEventListener("change",refreshChain);refreshChain();
+      el("p","WAYPOINT means directly from the origin; CONTROLLER records the previous controller. UNKNOWN leaves order unrecorded. Only the last controller can have a TERMINATOR or RETURN_TO_ORIGIN. Clear that ending before extending a chain. Reconnect downstream controllers before moving or retiring their predecessor.",$("edit-fields"));
     }
     if (kind === "breaker") {
       const form = $("edit-form"), role = form.elements.breaker_role, positions = form.elements.panel_positions;

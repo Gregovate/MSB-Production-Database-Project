@@ -144,3 +144,27 @@ check the actual topology. INET/E1.31 endpoints prompt switch/power-supply check
 at distribution points where runs approach 300 feet, and PoE checks for cameras.
 These prompts never create installed inventory. Record only actual components.
 The Racing Arch chain/termination remains unverified until checked in the field.
+
+## Record controller chain order (V0.4.16 candidate)
+
+In Controllers, select the originating **Network connection waypoint**. For the
+first controller select **Connected from → Direct from originating waypoint**.
+Save it, then select the next controller, the same origin, and its preceding
+**CTRL** in Connected from. Repeat in physical cable order. The preceding controller
+must already be connected on the same LOR network. Power outlet can remain
+**Not connected** while recording network wiring; selecting an outlet requires its
+actual circuit.
+
+On the last controller select **Terminating resistor** or **Return cable to
+originating waypoint**. For example RA-00 → 1001 → 1002 → 1003 → 1004 may end
+with either a resistor or a return cable to RA-00 for onward continuation.
+**Not recorded / continues to next controller** does not confirm termination.
+Existing origin-only records show **Connection order not recorded** until entered.
+
+Waypoint Connections edits the same records: WAYPOINT means direct from the origin,
+CONTROLLER means the selected Previous controller, and UNKNOWN leaves order unrecorded.
+TERMINATOR and RETURN_TO_ORIGIN are the two last-controller endings. Reconnect
+children before moving or retiring their predecessor. Clear a recorded ending
+before extending the chain. The system rejects branching at a controller, circular
+controller links and different origins/networks. It never automatically rewires
+other controllers or creates repeater inventory. Corrections retain audit history.

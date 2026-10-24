@@ -17,6 +17,13 @@ CREATE TABLE ref.site_controller_installation (
  site_controller_installation_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  controller_id bigint NOT NULL REFERENCES ref.controller(controller_id),
  site_waypoint_id bigint NOT NULL REFERENCES ref.site_waypoint(site_waypoint_id),
+ -- Origin remains stable; order and ending are explicit observations, never inferred.
+ upstream_kind text NOT NULL DEFAULT 'UNKNOWN' CHECK (upstream_kind IN ('UNKNOWN','WAYPOINT','CONTROLLER')),
+ upstream_controller_id bigint REFERENCES ref.controller(controller_id),
+ chain_end text NOT NULL DEFAULT 'UNKNOWN' CHECK (chain_end IN ('UNKNOWN','TERMINATOR','RETURN_TO_ORIGIN')),
+ CHECK ((upstream_kind='CONTROLLER')=(upstream_controller_id IS NOT NULL)),
+ CHECK (upstream_controller_id IS DISTINCT FROM controller_id),
+ CHECK (upstream_kind<>'UNKNOWN' OR chain_end='UNKNOWN'),
  active boolean NOT NULL DEFAULT true,
  source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
@@ -597,7 +604,7 @@ BEGIN
   WHEN 'device' THEN table_name:='site_power_device'; key_name:='site_power_device_id'; allowed:=ARRAY['device_name','device_kind','site_waypoint_id','owner_name','utility_asset_id','rating','description','active','source_evidence','verification_status'];
   WHEN 'feed' THEN table_name:='site_power_feed'; key_name:='site_power_feed_id'; allowed:=ARRAY['source_circuit_id','source_device_id','destination_waypoint_id','destination_device_id','active','source_evidence','verification_status'];
   WHEN 'controller_power_connection' THEN table_name:='site_controller_power_connection'; key_name:='site_controller_power_connection_id'; allowed:=ARRAY['controller_id','site_waypoint_id','site_power_circuit_id','active','source_evidence','verification_status'];
-  WHEN 'controller_installation' THEN table_name:='site_controller_installation'; key_name:='site_controller_installation_id'; allowed:=ARRAY['controller_id','site_waypoint_id','active','source_evidence','verification_status'];
+  WHEN 'controller_installation' THEN table_name:='site_controller_installation'; key_name:='site_controller_installation_id'; allowed:=ARRAY['controller_id','site_waypoint_id','upstream_kind','upstream_controller_id','chain_end','active','source_evidence','verification_status'];
 
   WHEN 'action' THEN table_name:='site_power_action'; key_name:='site_power_action_id'; allowed:=ARRAY['site_panel_id','action_name','site_power_breaker_id','site_power_circuit_id','site_power_device_id','phase','action_kind','desired_state','responsible_party','instructions','prerequisite_action_ids','active','source_evidence','verification_status'];
   ELSE RAISE EXCEPTION 'Unknown circuit command' USING ERRCODE='22023'; END CASE;
@@ -662,7 +669,7 @@ BEGIN
   -- jsonb_populate_record enforces native PostgreSQL field types. Omitted fields
   -- retain prior values on corrections; inserts receive explicit safe defaults.
   IF p_id IS NULL THEN expected:=jsonb_build_object('verification_status','UNVERIFIED','active',true,'breaker_role','UNKNOWN','show_desired_state','UNKNOWN',
-   'restoration_desired_state','UNKNOWN','desired_state','UNKNOWN','prerequisite_action_ids','[]'::jsonb)||expected; END IF;
+   'upstream_kind','UNKNOWN','chain_end','UNKNOWN','restoration_desired_state','UNKNOWN','desired_state','UNKNOWN','prerequisite_action_ids','[]'::jsonb)||expected; END IF;
   IF p_kind='controller_power_connection' AND p_id IS NOT NULL AND (
     expected->'controller_id' IS DISTINCT FROM before_row->'controller_id'
     OR expected->'site_waypoint_id' IS DISTINCT FROM before_row->'site_waypoint_id'
@@ -693,6 +700,34 @@ BEGIN
     RAISE EXCEPTION 'A circuit cannot change panel identity; retire and define the correct circuit' USING ERRCODE='22023'; END IF;
    EXECUTE format('UPDATE ref.%I t SET %s FROM jsonb_populate_record(NULL::ref.%I,$1) r WHERE t.%I=$2 RETURNING t.%I,to_jsonb(t)',
     table_name,updates_sql,table_name,key_name,key_name) INTO target,after_row USING expected,p_id;
+  END IF;
+  -- Commands hold the shared revision lock. Validate the resulting graph, so a
+  -- parent cannot be retired, moved or terminated underneath a recorded child.
+  IF p_kind='controller_installation' THEN
+   IF EXISTS (
+    SELECT 1 FROM ref.site_controller_installation child
+    LEFT JOIN ref.site_controller_installation parent ON parent.controller_id=child.upstream_controller_id AND parent.active
+    LEFT JOIN ref.site_controller_network_requirement cr ON cr.controller_id=child.controller_id
+    LEFT JOIN ref.site_controller_network_requirement pr ON pr.controller_id=parent.controller_id
+    WHERE child.active AND child.upstream_kind='CONTROLLER' AND
+     (parent.controller_id IS NULL OR parent.upstream_kind='UNKNOWN' OR parent.chain_end<>'UNKNOWN'
+      OR parent.site_waypoint_id<>child.site_waypoint_id
+      OR cr.requirement_status IS DISTINCT FROM 'CONFIRMED' OR pr.requirement_status IS DISTINCT FROM 'CONFIRMED'
+      OR cr.required_network IS DISTINCT FROM pr.required_network
+      OR NOT EXISTS(SELECT 1 FROM ref.site_controller_placement_eligibility e
+         WHERE e.controller_id=parent.controller_id AND e.site_waypoint_id=parent.site_waypoint_id))
+   ) THEN RAISE EXCEPTION 'Chain requires an active upstream controller with recorded order, the same origin and LOR network, and no recorded ending; reconnect downstream controllers first' USING ERRCODE='23514'; END IF;
+   IF EXISTS(SELECT 1 FROM ref.site_controller_installation WHERE active AND upstream_controller_id IS NOT NULL
+       GROUP BY upstream_controller_id HAVING count(*)>1) THEN
+    RAISE EXCEPTION 'A controller can feed only one next controller; branching belongs at a distribution waypoint' USING ERRCODE='23514'; END IF;
+   IF EXISTS(WITH RECURSIVE chain(id,path,cycle) AS (
+      SELECT controller_id,ARRAY[controller_id],false FROM ref.site_controller_installation WHERE active
+      UNION ALL
+      SELECT i.upstream_controller_id,c.path||i.upstream_controller_id,i.upstream_controller_id=ANY(c.path)
+      FROM chain c JOIN ref.site_controller_installation i ON i.controller_id=c.id AND i.active
+      WHERE NOT c.cycle AND i.upstream_controller_id IS NOT NULL)
+      SELECT 1 FROM chain WHERE cycle) THEN
+    RAISE EXCEPTION 'Controller chain cannot contain circular controller dependencies; use Return to origin for the final cable' USING ERRCODE='23514'; END IF;
   END IF;
   IF EXISTS (
    WITH RECURSIVE supplied(circuit_id,waypoint_id,device_id,visited) AS (

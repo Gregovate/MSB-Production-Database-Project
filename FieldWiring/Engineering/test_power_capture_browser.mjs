@@ -449,6 +449,39 @@ try {
   page.once("dialog",d=>d.accept());
   await page.getByRole("button",{name:"Reload connections",exact:true}).click();
   await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  // Record physical order on Controller Inventory, then correct the same record
+  // from Waypoint Connections. These saves do not require a power circuit.
+  await page.locator("#deployment-upstream").selectOption("101");
+  await page.locator("#deployment-ending").selectOption("TERMINATOR");
+  await page.locator("#deployment-save").click();
+  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.reload();await page.locator("#deployment-upstream").waitFor();
+  assert.equal(await page.locator("#deployment-upstream").inputValue(),"101");
+  assert.equal(await page.locator("#deployment-ending").inputValue(),"TERMINATOR");
+  await page.goto(base.replace("circuits","waypoints?waypoint=11"));
+  await page.getByText(/Revision \d+/).waitFor();
+  const chainRecord=page.locator("#installations .power-record").filter({has:page.getByRole("heading",{name:/Controller 102 · from CTRL 101/})});
+  await chainRecord.getByRole("button",{name:"Edit / correct",exact:true}).click();
+  assert.equal(await dialog.locator("[name=upstream_controller_id]").inputValue(),"101");
+  await dialog.locator("[name=chain_end]").selectOption("RETURN_TO_ORIGIN");
+  await save();
+  await page.goto(base.replace("circuits","controllers?controller_id=102"));
+  await page.locator("#deployment-ending").waitFor();
+  assert.equal(await page.locator("#deployment-ending").inputValue(),"RETURN_TO_ORIGIN");
+  // An ending must be explicitly cleared before extending through another controller.
+  await page.locator("#deployment-ending").selectOption("UNKNOWN");
+  await page.locator("#deployment-save").click();
+  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  for(const id of [103,104]) {
+    await page.goto(base.replace("circuits",`controllers?controller_id=${id}`));
+    await page.locator("#deployment-network").waitFor();
+    await page.locator("#deployment-network").selectOption("11");
+    await page.locator("#deployment-upstream").selectOption(String(id-1));
+    if(id===104) await page.locator("#deployment-ending").selectOption("RETURN_TO_ORIGIN");
+    await page.locator("#deployment-save").click();
+    await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  }
+  assert.deepEqual((await db.query("SELECT controller_id,upstream_controller_id FROM ref.site_controller_installation WHERE active ORDER BY controller_id")).rows.map(r=>[r.controller_id,r.upstream_controller_id]),[[101,null],[102,101],[103,102],[104,103]]);
   // Separate read-only history retains retests and unresolved identities.
   await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-23',1,'REVIEWED','source-one','Cat6',100,'first'),(gen_random_uuid(),1,'2026-10-24',2,'REVIEWED','source-two','Cat6',101,'retest'),(gen_random_uuid(),NULL,NULL,NULL,'UNMATCHED','source-three',NULL,NULL,'unresolved')");
   await page.goto(base.replace("circuits","cable-tests"));

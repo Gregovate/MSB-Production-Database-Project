@@ -626,6 +626,51 @@ await db.exec(`INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,prop
 assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_flw_cable_test WHERE test_uuid='00000000-0000-0000-0000-000000000022'")).rows[0].n,0);
 assert.deepEqual((await db.query("SELECT jsonb_agg(to_jsonb(t) ORDER BY test_uuid) evidence FROM ops.linkiq_test t WHERE first_seen_source_sha256<>'flw'")).rows[0].evidence,immutableBefore);
 n+=9;
+
+// Independent four-controller graph: no assumptions from earlier power fixtures.
+const chainDb=await createFixtureDatabase();
+let chainRevision=0;
+const chainCommand=async(fields,id=null,rev=chainRevision,uuid=crypto.randomUUID(),email="crew@example.test")=>{
+ const r=(await chainDb.query("SELECT ref.site_power_command($1,$2::uuid,$3,'controller_installation',$4,$5::jsonb) result",[email,uuid,rev,id,JSON.stringify(fields)])).rows[0].result;
+ chainRevision=r.revision;n++;return r;
+};
+const chainIds=[];
+for(const id of [101,102,103,104]) {
+ chainIds.push((await chainCommand({controller_id:id,site_waypoint_id:11,upstream_kind:id===101?"WAYPOINT":"CONTROLLER",upstream_controller_id:id===101?null:id-1})).target_id);
+}
+await chainCommand({chain_end:"TERMINATOR"},chainIds[3]);
+assert.deepEqual((await chainDb.query("SELECT controller_id,upstream_controller_id FROM ref.site_controller_installation WHERE active ORDER BY controller_id")).rows.map(r=>[r.controller_id,r.upstream_controller_id]),[[101,null],[102,101],[103,102],[104,103]]);
+await chainCommand({chain_end:"RETURN_TO_ORIGIN"},chainIds[3]);
+await denied(()=>chainCommand({chain_end:"TERMINATOR"},chainIds[0]),"23514");
+await denied(()=>chainCommand({active:false},chainIds[1]),"23514");
+await denied(()=>chainCommand({upstream_controller_id:102},chainIds[1]),"23514");
+await denied(()=>chainCommand({upstream_kind:"CONTROLLER",upstream_controller_id:104},chainIds[0]),"23514");
+await chainCommand({chain_end:"UNKNOWN"},chainIds[3]);
+await denied(()=>chainCommand({upstream_kind:"CONTROLLER",upstream_controller_id:104},chainIds[0]),"23514");
+await denied(()=>chainCommand({upstream_controller_id:101},chainIds[2]),"23514");
+await denied(()=>chainCommand({upstream_kind:"UNKNOWN"},chainIds[0]),"23514");
+await denied(()=>chainCommand({chain_end:"TERMINATOR"},chainIds[3],chainRevision-1),"40001");
+await denied(()=>chainCommand({chain_end:"TERMINATOR"},chainIds[3],chainRevision,crypto.randomUUID(),"volunteer@example.test"),"42501");
+// Failed batch rolls back the valid first edit, its audit and revision too.
+const beforeChain=(await chainDb.query("SELECT ref.site_power_snapshot('crew@example.test') s")).rows[0].s;
+await chainDb.exec("BEGIN");
+await chainCommand({chain_end:"TERMINATOR"},chainIds[3]);
+await denied(()=>chainCommand({active:false},chainIds[0]),"23514");
+await chainDb.exec("ROLLBACK");chainRevision=beforeChain.revision;
+assert.deepEqual((await chainDb.query("SELECT ref.site_power_snapshot('crew@example.test') s")).rows[0].s,beforeChain);
+// Reordering explicitly reconnects children; origin/network mismatch cannot slip in.
+await chainCommand({upstream_kind:"WAYPOINT",upstream_controller_id:null},chainIds[3]);
+await chainCommand({active:false},chainIds[2]);
+await denied(()=>chainCommand({controller_id:103,site_waypoint_id:12,upstream_kind:"CONTROLLER",upstream_controller_id:102}),"23514");
+await chainDb.exec("UPDATE ref.controller SET lor_network='AUX-A' WHERE controller_id=103; UPDATE lor_snap.v_current_props SET network='AUX-A' WHERE raw_prop_id='prop-103'");
+await denied(()=>chainCommand({controller_id:103,site_waypoint_id:11,upstream_kind:"CONTROLLER",upstream_controller_id:102}),"23514");
+await chainDb.exec("UPDATE ref.controller SET lor_network='REG' WHERE controller_id=103; UPDATE lor_snap.v_current_props SET network='REG' WHERE raw_prop_id='prop-103'");
+const replacement=await chainCommand({controller_id:103,site_waypoint_id:11,upstream_kind:"CONTROLLER",upstream_controller_id:104});
+const replayRequest=crypto.randomUUID(),replayRevision=chainRevision;
+await chainCommand({chain_end:"RETURN_TO_ORIGIN"},replacement.target_id,replayRevision,replayRequest);
+assert.equal((await chainCommand({chain_end:"RETURN_TO_ORIGIN"},replacement.target_id,replayRevision,replayRequest)).replayed,true);
+assert.ok((await chainDb.query("SELECT ref.site_power_snapshot('crew@example.test') s")).rows[0].s.history.some(h=>h.before_data?.upstream_controller_id===103&&h.after_data?.upstream_kind==="WAYPOINT"));
+await chainDb.close();
 console.log(
   `PASS: ${n} SQL command/denial checks plus snapshot, audit, seasonal and rollback assertions (isolated PGlite PostgreSQL; no Production connection).`,
 );

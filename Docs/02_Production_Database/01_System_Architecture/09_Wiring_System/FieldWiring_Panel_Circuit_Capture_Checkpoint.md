@@ -336,3 +336,21 @@ self/cycle/fanout, wrong origin, terminated predecessor and retirement denial;
 reordering, stale edits, exact replay, rollback, shared-screen persistence, unknown
 order display and authorization. Reuse the current disposable runner and migration
 chain. Current review exited cleanly; new exact-head browser acceptance is pending.
+
+### V0.4.16-controller-chains implementation checkpoint
+
+The existing installation now records upstream kind/controller and chain ending.
+Controller Inventory shows the ordered chain and edits the same fields as Waypoint
+Connections. Network-only saves remain possible without an outlet/circuit. Database
+commands reject controller loops, fanout, terminated predecessors, dangling children
+and different origins/current LOR networks. Return-to-origin is explicitly accepted.
+Rewiring is audited; origin moves retain retire/create history and dependent children
+must be reconnected first. Old origin-only records remain UNKNOWN, not inferred direct.
+
+Local FieldWiring 220 tests and isolated PostgreSQL 257 command/denial checks PASS,
+including four controllers, both endings, reordering, rollback, roles, stale/replay
+and prior power/FLW protections. Existing actual-browser suite now exercises shared
+screen topology persistence and four-controller order; exact-head CI is pending at
+preparation. Use the existing PR #319 handoff for final SHA/status, not an older
+candidate. Operator supplied CLEAN EXIT and port/source-lock release before this
+work. Production and source files unchanged; no new preview launched here.
