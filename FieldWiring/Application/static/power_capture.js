@@ -473,6 +473,10 @@
   // power + network; it is independent of a pole versus an outlet box.
   const isComboWaypoint = (w) =>
     String(w.type || "").trim().toLowerCase().split(/[-_\s]+/).includes("combo");
+  const isElectricalEndpoint = (w) => {
+    const type=String(w.type||"").trim().toLowerCase();
+    return !["hydrant","fire hydrant","stage","manhole"].includes(type);
+  };
   function specs(kind) {
     const waypoints = options(
       data.waypoints.map((w) => [w.id, `${w.name} (${w.type})`]),
@@ -901,7 +905,7 @@
         f.source_circuit_id === c.site_power_circuit_id &&
         f.destination_waypoint_id,
     );
-    data.waypoints.forEach((w) => {
+    data.waypoints.filter(isElectricalEndpoint).forEach((w) => {
       const l = el("label", undefined, list),
         i = el("input", undefined, l);
       i.type = "checkbox";
