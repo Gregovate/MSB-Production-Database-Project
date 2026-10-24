@@ -477,6 +477,28 @@
       ...data.devices.map(d => d.owner_name),
     ].filter(Boolean))].sort().map(name => [name, name]),
   );
+  // A small controlled field-picker vocabulary, not installed inventory.
+  // Every Save creates/updates a separate database device ID at the waypoint.
+  const equipmentModels = [
+    ["Mean Well MDR-60-24 · 24 V 2.5 A", "POWER_SUPPLY"],
+    ["NDR 120 W · 48 V 2.5 A DIN supply", "POWER_SUPPLY"],
+    ["TRENDnet TI-PGLC50 · 5-port PoE+", "POE_SWITCH"],
+    ["Industrial 5-port Gigabit switch", "ETHERNET_SWITCH"],
+    ["VDSL Ethernet extender kit", "ETHERNET_EXTENDER"],
+    ["RJ45 1-to-2 Ethernet splitter", "ETHERNET_SPLITTER"],
+    ["RS485 network repeater", "RS485_REPEATER"],
+    ["Fuse", "FUSE"],
+    ["Disconnect", "DISCONNECT"],
+    ["Outlet", "OUTLET"],
+    ["Light pole", "LIGHT_POLE"],
+    ["Other equipment", "OTHER"],
+  ];
+  const equipmentNameOptions = () => options(
+    [...new Set([
+      ...equipmentModels.map(x=>x[0]),
+      ...data.devices.map(d=>d.device_name).filter(Boolean),
+    ])].map(name=>[name,name]),
+  );
   const ratingOptions = () => options(
     [...new Set([
       15,20,30,40,50,90,100,200,
@@ -575,7 +597,7 @@
         select("site_waypoint_id","Power + network location (Combo box or pole)",options(data.waypoints.filter(isComboWaypoint).map(w=>[w.id,`${w.name} (${w.type})`])),true),
       ],
       device: [
-        text("device_name", "Equipment name / identification", true),
+        select("device_name", "Equipment / model", equipmentNameOptions(), true),
         choose("device_kind", "Equipment type", [
           "FUSE",
           "DISCONNECT",
@@ -591,8 +613,8 @@
         ]),
         select("site_waypoint_id", "Waypoint (optional)", waypoints),
         select("owner_name", "Equipment owner (optional)", ownerOptions()),
-        text("utility_asset_id", "Utility asset identification"),
-        text("rating", "Known rating"),
+        text("utility_asset_id", "Existing utility asset reference (advanced)"),
+        text("rating", "Existing rating (advanced)"),
         text("description", "Notes (optional)"),
       ],
       feed: [
