@@ -1,5 +1,23 @@
 # Panel circuit definition and field capture
 
+## Controlling network, GIS, FLW and Crew authority — October 24, 2026
+
+**Operator correction; supersedes any older assertion that Production Crew may assign or edit networks in FieldWiring. They never had that authority.**
+
+| Subject | Authoritative evidence and ownership | Allowed FieldWiring action |
+|---|---|---|
+| Network identity at a waypoint | Maintained master GPX waypoint description, reconciled through the governed GIS source-intake process; `ref.site_network` supplies standardized network codes | **View only**. No manual Assign network, Create network, Replace network, or network relationship correction by Crew |
+| Physical network route/path | Surveyed and reviewed **GIS physical traces/tracks** and maintained endpoint relationships; preserve original GPX geometry, notes and provenance | **View only**. Do not infer a route from a network code, Circuit designation, Combo label, or physical proximity |
+| FLW / LinkIQ | FLW records **physical cable test observations between the same maintained waypoint endpoints** (instrument results, date, evidence); it does not declare the network route or rewrite the GPX master | **View test results**, and investigate discrepancies; never promote test data into authoritative route geometry |
+| Power panel, breaker, circuit and supplied outlets | Governed FieldWiring PostgreSQL circuit model and recorded Crew observations, with Directus authorization and audit | Production Crew **may define and correct circuit information** and associate supplying circuit legs with existing eligible power waypoints; never rename or move the master waypoint |
+
+**Combo** is a waypoint capability meaning both **power and network**, independent of whether the structure is a network box or light pole. Combo by itself is not a network ID or proof of any particular network trace.
+
+The GPX description's network assertions must be parsed according to the accepted source conventions and mapped to existing stable waypoint/network IDs. The database stores a queryable **projection**, not a second network authoring authority. Multiple confirmed memberships may exist. If the description is absent, ambiguous or inconsistent with a historical database relationship or GIS trace, preserve the conflict and mark it **unresolved**; do not guess, silently replace the GPX, or invite Crew to re-enter it. GIS source review resolves the discrepancy. Network route evidence and LinkIQ test evidence remain separate even when they share endpoint IDs.
+
+**UI and command consequence:** Normal FieldWiring should display sourced network memberships and their provenance/read-only status, not the current `Define network` / `Assign network` field-editor action. The underlying `network` write command must not remain available to Crew through an alternate API path. Design and code acceptance must verify that Crew still can save breaker/circuit data but cannot create/update network membership, and that GPX→PostGIS projection and FLW endpoint joins never fabricate physical topology. **The current candidate is CHANGES REQUIRED until these are implemented and tested.**
+
+
 | Document control | Value |
 |---|---|
 | Status | Implementation candidate; not deployed or operator accepted |
