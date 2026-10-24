@@ -91,3 +91,11 @@ Follow the applicable authorized field procedure for the physical work.
   and current GIS references must be installed before this workflow is usable.
 
 [Operator procedures](README.md)
+
+## Network, load and waypoint review — integrated candidate
+
+- Controller installation offers only locations with the Controller's current LOR network confirmed by a reviewed GIS route. If none appear, resolve the source with the GIS/LOR owner. Crew cannot assign networks. A Combo label or a passing cable test alone is insufficient.
+- Each branch leg shows its recorded Display-current subtotal and breaker rating. Open the load details for contributing Displays and gaps. INCOMPLETE means it is not verified usable capacity; missing or ambiguous demand is not zero.
+- Edit the panel's planned show-season and off-season supply independently of breaker settings. Record actual panel switching or utility evidence under Seasonal power activities by selecting the panel target. A utility request is not confirmation.
+- Open a waypoint's electrical-source section to see recorded supplying circuits, upstream panels/main breakers, ownership/meter information and dated evidence. Check unresolved sources and follow field isolation and testing procedures. Planned OFF is never proof of absence of voltage.
+- Park Map opens the same selected waypoint in FieldWiring. Cable-test evidence remains measurement history, separate from route availability.

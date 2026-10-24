@@ -138,7 +138,7 @@ AS $snapshot$
    'networks', coalesce((SELECT jsonb_agg(to_jsonb(n) ORDER BY n.site_network_id)
        FROM ref.site_network n),'[]'::jsonb),
    'memberships', coalesce((SELECT jsonb_agg(to_jsonb(m) ORDER BY m.site_waypoint_id,m.site_network_id)
-       FROM ref.site_waypoint_network m WHERE m.active),'[]'::jsonb),
+       FROM ref.site_network_availability m),'[]'::jsonb),
    -- Annual observations and desired states are distinct; render via power editor.
    'instructions', '[]'::jsonb,
    'power_actions', coalesce((SELECT jsonb_agg(to_jsonb(a) ORDER BY a.site_power_action_id)

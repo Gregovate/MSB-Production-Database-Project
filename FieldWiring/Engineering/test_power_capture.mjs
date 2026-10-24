@@ -181,8 +181,8 @@ await denied(
     }),
   "23514",
 );
-await cmd("network", { ...base, site_waypoint_id: 11, site_network_id: 1 });
-await cmd("network", { ...base, site_waypoint_id: 11, site_network_id: 2 });
+await denied(()=>cmd("network", { ...base, site_waypoint_id: 11, site_network_id: 1 }),"42501");
+await denied(()=>cmd("network", { ...base, site_waypoint_id: 11, site_network_id: 2 },null,"manager@example.test"),"42501");
 const a = await cmd("action", {
   ...base,
   action_name: "Utility off",
@@ -268,7 +268,7 @@ assert.equal(
   0,
 );
 assert.equal(snapshot.circuits[0].show_desired_state, "UNKNOWN");
-assert.equal(snapshot.networks.length, 2);
+assert.equal(snapshot.networks.length, 4);
 assert.equal(
   snapshot.waypoints.find((w) => w.id === 11).aliases[0],
   "Old Outlet A",
@@ -477,6 +477,70 @@ assert.equal(inventorySnapshot.controller_power_connections.filter(x=>x.controll
 assert.ok(inventorySnapshot.history.some(x=>x.command==='controller_power_connection' && x.before_data?.active===true && x.after_data?.active===false));
 await denied(()=>db.exec("SET ROLE fieldwiring_app; DELETE FROM ref.site_controller_installation"),"42501");
 await db.exec("RESET ROLE");
+// Final integrated design: unavailable or stale source facts fail closed at SQL.
+const availability=async()=> (await db.query("SELECT * FROM ref.site_controller_placement_eligibility WHERE controller_id=103 AND site_waypoint_id=11")).rows;
+assert.equal((await availability()).length,1);
+for(const [change,restore] of [
+ ["UPDATE ref.site_route_segment SET review_status='REVIEW_REQUIRED' WHERE site_route_segment_id=1","UPDATE ref.site_route_segment SET review_status='REVIEWED' WHERE site_route_segment_id=1"],
+ ["UPDATE ref.site_track SET changed_at='2027-01-01'","UPDATE ref.site_track SET changed_at='2026-01-01'"],
+ ["UPDATE ref.site_track SET lifecycle_status='RETIRED'","UPDATE ref.site_track SET lifecycle_status='CURRENT'"],
+ ["UPDATE ref.site_route_source_track SET source_class='HV'","UPDATE ref.site_route_source_track SET source_class='NET'"],
+ ["UPDATE ref.site_cable_route_segment SET traversal_direction=-1 WHERE site_cable_id=1","UPDATE ref.site_cable_route_segment SET traversal_direction=1 WHERE site_cable_id=1"],
+ ["UPDATE ref.site_cable_route_segment SET segment_order=2 WHERE site_cable_id=1","UPDATE ref.site_cable_route_segment SET segment_order=1 WHERE site_cable_id=1"],
+ ["UPDATE ref.site_cable SET lifecycle_status='FAILED' WHERE site_cable_id=1","UPDATE ref.site_cable SET lifecycle_status='CURRENT' WHERE site_cable_id=1"],
+ ["UPDATE ref.controller SET lor_network='AUX-A' WHERE controller_id=103","UPDATE ref.controller SET lor_network='REG' WHERE controller_id=103"],
+ ["UPDATE lor_snap.v_current_props SET network='AUX-A' WHERE raw_prop_id='prop-103'","UPDATE lor_snap.v_current_props SET network='REG' WHERE raw_prop_id='prop-103'"],
+ ["UPDATE lor_snap.v_current_props SET uid='invalid' WHERE raw_prop_id='prop-103'","UPDATE lor_snap.v_current_props SET uid='01' WHERE raw_prop_id='prop-103'"]
+]) {
+ await db.exec(change);
+ assert.equal((await availability()).length,0);
+ await denied(()=>cmd("controller_installation",{controller_id:103,site_waypoint_id:11}),"23514");
+ await db.exec(restore);
+ assert.equal((await availability()).length,1);
+}
+// A passing FLW observation cannot substitute for a reviewed route.
+await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-24',1,'REVIEWED','fixture'); UPDATE ref.site_route_segment SET review_status='REVIEW_REQUIRED' WHERE site_route_segment_id=1");
+await denied(()=>cmd("controller_installation",{controller_id:103,site_waypoint_id:11}),"23514");
+await db.exec("UPDATE ref.site_route_segment SET review_status='REVIEWED' WHERE site_route_segment_id=1");
+const installed=await cmd("controller_installation",{controller_id:103,site_waypoint_id:11});
+// Panel plans and evidence remain independent of branch plans and never imply OFF.
+await cmd("panel",{show_desired_state:"ON",restoration_desired_state:"OFF"},p.target_id);
+const pa=await cmd("action",{site_panel_id:p.target_id,action_name:"Panel utility shutdown",phase:"RESTORATION",action_kind:"REQUEST_UTILITY",desired_state:"OFF"});
+await cmd("event",{site_power_action_id:pa.target_id,season_year:2026,event_kind:"UTILITY_REQUESTED",condition:"UNKNOWN",observed_at:"2026-10-24T12:00:00Z",evidence:"Requested utility isolation; not confirmed"});
+await denied(()=>cmd("panel",{active:false},p.target_id),"23514");
+const panelState=(await db.query("SELECT * FROM ref.site_panel WHERE site_panel_id=$1",[p.target_id])).rows[0];
+assert.equal(panelState.restoration_desired_state,"OFF");
+assert.equal((await db.query("SELECT condition FROM ops.setup_power_activity_event WHERE site_power_action_id=$1",[pa.target_id])).rows[0].condition,"UNKNOWN");
+// Two actual Controllers on the same branch sum their distinct physical Displays.
+const load=async()=> (await db.query("SELECT * FROM ref.site_circuit_load WHERE site_power_circuit_id=$1",[downstreamCircuit])).rows[0];
+assert.equal(Number((await load()).recorded_display_amps),4);
+assert.equal((await load()).completeness,"INCOMPLETE");
+// Shared wiring lineage is not duplicate physical load. Each measured Display counts once.
+await db.exec("INSERT INTO ref.display VALUES(201,'Physical copy','copy',1,3); INSERT INTO ref.controller_display VALUES(103,201,101)");
+assert.equal(Number((await load()).recorded_display_amps),7);
+// A Display associated with two Controllers is ambiguous even on one circuit.
+await db.exec("INSERT INTO ref.controller_display VALUES(101,201,101)");
+assert.equal(Number((await load()).recorded_display_amps),4);
+assert.equal(Number((await load()).unresolved_displays),1);
+await db.exec("UPDATE ref.display SET amps_measured=NULL WHERE display_id=101; UPDATE ref.display SET amps_measured=0 WHERE display_id=103");
+assert.equal((await load()).recorded_display_amps,null);
+const missing=(await db.query("SELECT load_status FROM ref.site_circuit_load_lineage WHERE display_id IN (101,103)")).rows.map(x=>x.load_status);
+assert.ok(missing.includes("MISSING_AMPS") && missing.includes("ZERO_UNVERIFIED"));
+// Ratings never add poles together, and missing basis remains incomplete at either voltage.
+await db.exec("UPDATE ref.display SET amps_measured=2 WHERE display_id IN (101,103)");
+const rating=(await load()).rated_amps;
+assert.equal(Number((await load()).nominal_headroom_amps),Number(rating)-4);
+await cmd("circuit",{voltage:240},downstreamCircuit);
+assert.equal((await load()).completeness,"INCOMPLETE");
+assert.ok((await load()).warnings.includes("AMP_BASIS_AND_VOLTAGE_UNVERIFIED"));
+const finalSnapshot=(await db.query("SELECT ref.site_power_snapshot('crew@example.test') x")).rows[0].x;
+assert.ok(finalSnapshot.waypoint_power_sources.some(x=>x.site_waypoint_id===14 && x.site_power_circuit_id===downstreamCircuit));
+assert.ok(finalSnapshot.linkiq_evidence.some(x=>x.endpoint_a===11 && x.endpoint_b===12));
+assert.ok(finalSnapshot.load_lineage.some(x=>x.load_status==='NO_POWER_CONNECTION'));
+for(const view of ["site_network_availability","site_controller_placement_eligibility","site_circuit_load"]) {
+ assert.equal((await db.query("SELECT has_table_privilege('fieldwiring_app',$1,'INSERT,UPDATE,DELETE') allowed",["ref."+view])).rows[0].allowed,false);
+}
+n+=20;
 console.log(
   `PASS: ${n} SQL command/denial checks plus snapshot, audit, seasonal and rollback assertions (isolated PGlite PostgreSQL; no Production connection).`,
 );

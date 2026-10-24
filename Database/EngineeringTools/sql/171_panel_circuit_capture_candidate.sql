@@ -30,6 +30,8 @@ CREATE TABLE ref.site_power_revision (
 INSERT INTO ref.site_power_revision DEFAULT VALUES;
 CREATE TABLE ref.site_panel (
  site_panel_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ show_desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK(show_desired_state IN ('UNKNOWN','ON','OFF')),
+ restoration_desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK(restoration_desired_state IN ('UNKNOWN','ON','OFF')),
  panel_name text NOT NULL CHECK (btrim(panel_name)<>''),
  site_waypoint_id bigint REFERENCES ref.site_waypoint(site_waypoint_id),
  owner_name text, year_installed integer CHECK (year_installed BETWEEN 1900 AND 2100), panel_identification text, meter_information text, supply_breaker_id bigint,
@@ -174,6 +176,7 @@ CREATE TABLE ref.site_waypoint_network (
 );
 CREATE TABLE ref.site_power_action (
  site_power_action_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ site_panel_id bigint REFERENCES ref.site_panel(site_panel_id),
  action_name text NOT NULL CHECK (btrim(action_name)<>''),
  site_power_breaker_id bigint REFERENCES ref.site_power_breaker(site_power_breaker_id),
  site_power_circuit_id bigint REFERENCES ref.site_power_circuit(site_power_circuit_id),
@@ -183,7 +186,7 @@ CREATE TABLE ref.site_power_action (
  desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK (desired_state IN ('UNKNOWN','ON','OFF','REMOVED','INSTALLED')),
  responsible_party text, instructions text,
  prerequisite_action_ids bigint[] NOT NULL DEFAULT '{}',
- CHECK (num_nonnulls(site_power_breaker_id,site_power_circuit_id,site_power_device_id)=1),
+ CHECK (num_nonnulls(site_panel_id,site_power_breaker_id,site_power_circuit_id,site_power_device_id)=1),
  active boolean NOT NULL DEFAULT true,
  source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
@@ -219,6 +222,119 @@ CREATE TABLE ops.site_power_edit_log (
  operator_email text NOT NULL, recorded_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 -- Read capability does not invoke the identity reconciler (which can write).
+-- Derived availability requires a complete, directed, reviewed physical route.
+-- No waypoint annotation or FLW measurement participates in this decision.
+CREATE VIEW ref.site_network_availability AS
+WITH RECURSIVE edges AS (
+ SELECT cr.site_cable_id,cr.segment_order,rs.site_route_segment_id,
+ CASE cr.traversal_direction WHEN 1 THEN rs.endpoint_a_waypoint_id ELSE rs.endpoint_b_waypoint_id END a,
+ CASE cr.traversal_direction WHEN 1 THEN rs.endpoint_b_waypoint_id ELSE rs.endpoint_a_waypoint_id END b
+ FROM ref.site_cable_route_segment cr JOIN ref.site_route_segment rs USING(site_route_segment_id)
+ WHERE rs.review_status='REVIEWED' AND cr.reviewed_at>=rs.reviewed_at
+ AND EXISTS(SELECT 1 FROM ref.site_route_source_track st JOIN ref.site_track t USING(site_track_id)
+   WHERE st.site_route_segment_id=rs.site_route_segment_id AND st.source_class IN ('NET','PRI')
+   AND t.lifecycle_status='CURRENT' AND st.reviewed_at>=t.changed_at
+   AND cr.reviewed_at>=st.reviewed_at)
+), walk AS (
+ SELECT c.site_cable_id,c.site_network_id,c.endpoint_a_waypoint_id,c.endpoint_b_waypoint_id,
+ e.segment_order,e.b,ARRAY[e.a,e.b] visited
+ FROM ref.site_cable c JOIN edges e USING(site_cable_id)
+ WHERE e.segment_order=1 AND e.a=c.endpoint_a_waypoint_id
+ AND c.lifecycle_status IN ('CURRENT','REPAIRED') AND c.reviewed_by IS NOT NULL AND c.reviewed_at IS NOT NULL
+ UNION ALL
+ SELECT w.site_cable_id,w.site_network_id,w.endpoint_a_waypoint_id,w.endpoint_b_waypoint_id,
+ e.segment_order,e.b,w.visited||e.b FROM walk w JOIN edges e
+ ON e.site_cable_id=w.site_cable_id AND e.segment_order=w.segment_order+1 AND e.a=w.b
+ WHERE NOT e.b=ANY(w.visited)
+)
+SELECT DISTINCT v.site_waypoint_id,w.site_network_id,n.network_code,w.site_cable_id
+FROM walk w JOIN ref.site_network n USING(site_network_id)
+CROSS JOIN LATERAL (VALUES(w.endpoint_a_waypoint_id),(w.endpoint_b_waypoint_id)) v(site_waypoint_id)
+WHERE w.b=w.endpoint_b_waypoint_id AND w.segment_order=(SELECT max(segment_order) FROM ref.site_cable_route_segment WHERE site_cable_id=w.site_cable_id);
+
+-- Use stable LOR prop lineage, never Display names as keys or UID as asset ID.
+CREATE VIEW ref.site_controller_network_requirement AS
+WITH addresses AS (
+ SELECT cd.controller_id,p.network,p.uid FROM ref.controller_display cd
+ JOIN ref.display d ON d.display_id=coalesce(cd.wiring_source_display_id,cd.display_id)
+ JOIN lor_snap.v_current_props p ON p.raw_prop_id=d.lor_prop_id
+ WHERE upper(coalesce(p.device_type,'')) NOT IN ('NONE','DMX')
+ UNION
+ SELECT cd.controller_id,sp.network,sp.uid FROM ref.controller_display cd
+ JOIN ref.display d ON d.display_id=coalesce(cd.wiring_source_display_id,cd.display_id)
+ JOIN lor_snap.v_current_props p ON p.raw_prop_id=d.lor_prop_id
+ JOIN lor_snap.v_current_sub_props sp ON sp.master_prop_id=p.prop_id AND sp.import_run_id=p.import_run_id
+ WHERE upper(coalesce(sp.device_type,'')) NOT IN ('NONE','DMX')
+), matching AS (
+ SELECT c.controller_id,lower(btrim(a.network)) network FROM ref.controller c JOIN addresses a USING(controller_id)
+ WHERE CASE WHEN btrim(a.uid) ~* '^[0-9a-f]{1,2}$'
+ THEN ('x'||lpad(btrim(a.uid),2,'0'))::bit(8)::integer BETWEEN c.lor_uid_start AND c.lor_uid_end ELSE false END
+)
+SELECT c.controller_id,c.lor_network,
+ CASE WHEN count(DISTINCT m.network)=1 AND min(m.network)=lower(btrim(c.lor_network))
+ THEN min(m.network) END required_network,
+ CASE WHEN count(DISTINCT m.network)=1 AND min(m.network)=lower(btrim(c.lor_network))
+ THEN 'CONFIRMED' ELSE 'LOR_NETWORK_UNRESOLVED' END requirement_status
+FROM ref.controller c LEFT JOIN matching m USING(controller_id) GROUP BY c.controller_id,c.lor_network;
+
+CREATE VIEW ref.site_controller_placement_eligibility AS
+SELECT DISTINCT r.controller_id,a.site_waypoint_id,r.required_network,a.site_network_id
+FROM ref.site_controller_network_requirement r JOIN ref.site_network_availability a
+ ON lower(btrim(a.network_code))=r.required_network
+JOIN ref.site_network n USING(site_network_id)
+WHERE r.requirement_status='CONFIRMED' AND n.network_kind='LOR'
+AND (SELECT count(*) FROM ref.site_network x WHERE lower(btrim(x.network_code))=r.required_network)=1;
+
+-- Recorded amps are not verified branch-input amps. Keep physical-copy loads
+-- distinct, and exclude ambiguous many-controller allocation from the subtotal.
+CREATE VIEW ref.site_circuit_load_lineage AS
+SELECT d.display_id,d.display_name,d.amps_measured,cd.controller_id,cd.wiring_source_display_id,
+ cp.site_power_circuit_id,cp.site_waypoint_id,
+ (SELECT count(DISTINCT x.controller_id) FROM ref.controller_display x WHERE x.display_id=d.display_id) controller_count,
+ CASE WHEN d.display_status_id<>1 THEN 'INACTIVE_DISPLAY'
+ WHEN (SELECT count(DISTINCT x.controller_id) FROM ref.controller_display x WHERE x.display_id=d.display_id)<>1 THEN 'AMBIGUOUS_CONTROLLER'
+ WHEN cp.site_power_circuit_id IS NULL THEN 'NO_POWER_CONNECTION'
+ WHEN d.amps_measured IS NULL THEN 'MISSING_AMPS'
+ WHEN d.amps_measured=0 THEN 'ZERO_UNVERIFIED'
+ WHEN d.amps_measured<0 OR d.amps_measured>='Infinity'::numeric THEN 'INVALID_AMPS'
+ ELSE 'RECORDED_BASIS_UNVERIFIED' END load_status
+FROM ref.display d LEFT JOIN ref.controller_display cd USING(display_id)
+LEFT JOIN ref.site_controller_power_connection cp ON cp.controller_id=cd.controller_id AND cp.active;
+CREATE VIEW ref.site_circuit_load AS
+WITH physical AS (
+ SELECT DISTINCT site_power_circuit_id,display_id,amps_measured,load_status FROM ref.site_circuit_load_lineage
+), sums AS (
+ SELECT site_power_circuit_id,
+ sum(amps_measured) FILTER(WHERE load_status='RECORDED_BASIS_UNVERIFIED') recorded_display_amps,
+ count(*) FILTER(WHERE load_status<>'RECORDED_BASIS_UNVERIFIED') unresolved_displays
+ FROM physical GROUP BY site_power_circuit_id
+)
+SELECT c.site_power_circuit_id,c.site_power_breaker_id,c.breaker_pole,c.voltage,b.rated_amps,
+ s.recorded_display_amps,s.unresolved_displays,
+ b.rated_amps-s.recorded_display_amps nominal_headroom_amps,
+ 100*s.recorded_display_amps/nullif(b.rated_amps,0) nominal_utilization_percent,
+ 'INCOMPLETE'::text completeness,
+ ARRAY['AMP_BASIS_AND_VOLTAGE_UNVERIFIED','SELF_AND_AUXILIARY_LOAD_UNKNOWN','FIELD_LOAD_UNCONFIRMED','CONDUCTOR_RECEPTACLE_AND_CONTINUOUS_LOAD_LIMITS_UNVERIFIED']::text[] warnings
+FROM ref.site_power_circuit c LEFT JOIN ref.site_power_breaker b USING(site_power_breaker_id)
+LEFT JOIN sums s USING(site_power_circuit_id) WHERE c.active;
+
+-- Recorded feed topology remains separate from plans and observed voltage.
+CREATE VIEW ref.site_waypoint_power_sources AS
+WITH RECURSIVE paths AS (
+ SELECT f.source_circuit_id site_power_circuit_id,f.destination_waypoint_id,
+ f.destination_device_id,ARRAY[f.site_power_feed_id] feed_ids,ARRAY[f.verification_status] verification_states
+ FROM ref.site_power_feed f WHERE f.active AND f.source_circuit_id IS NOT NULL
+ UNION ALL
+ SELECT p.site_power_circuit_id,f.destination_waypoint_id,f.destination_device_id,
+ p.feed_ids||f.site_power_feed_id,p.verification_states||f.verification_status
+ FROM paths p JOIN ref.site_power_feed f ON f.source_device_id=p.destination_device_id
+ WHERE f.active AND NOT f.site_power_feed_id=ANY(p.feed_ids)
+)
+SELECT p.*,coalesce(p.destination_waypoint_id,d.site_waypoint_id) site_waypoint_id,
+ c.site_panel_id,c.site_power_breaker_id,c.breaker_pole
+FROM paths p LEFT JOIN ref.site_power_device d ON d.site_power_device_id=p.destination_device_id
+JOIN ref.site_power_circuit c USING(site_power_circuit_id);
+
 CREATE FUNCTION ref.site_power_access(p_email text) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path=pg_catalog,ref AS $f$
  SELECT coalesce((SELECT jsonb_build_object('can_read',can_read_setup,
@@ -272,6 +388,12 @@ BEGIN
  IF NOT coalesce((access->>'can_read')::boolean,false) THEN
  RAISE EXCEPTION 'FieldWiring circuit access denied' USING ERRCODE='42501'; END IF;
  SELECT jsonb_build_object('revision',revision,'access',access) INTO result FROM ref.site_power_revision;
+ result:=result||jsonb_build_object('network_requirements',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_controller_network_requirement t),'[]'::jsonb));
+ result:=result||jsonb_build_object('placement_eligibility',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_controller_placement_eligibility t),'[]'::jsonb));
+ result:=result||jsonb_build_object('circuit_loads',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_circuit_load t),'[]'::jsonb));
+ result:=result||jsonb_build_object('load_lineage',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_circuit_load_lineage t),'[]'::jsonb));
+ result:=result||jsonb_build_object('waypoint_power_sources',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_waypoint_power_sources t),'[]'::jsonb));
+ result:=result||jsonb_build_object('route_evidence',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_route_source_track t),'[]'::jsonb),'linkiq_evidence',coalesce((SELECT jsonb_agg(jsonb_build_object('test_uuid',t.test_uuid,'cable_id',t.physical_site_cable_id,'endpoint_a',c.endpoint_a_waypoint_id,'endpoint_b',c.endpoint_b_waypoint_id,'test_time',t.test_time_local,'status_code',t.test_status_code,'review_status',t.identity_review_status,'source_sha256',t.first_seen_source_sha256)) FROM ops.linkiq_test t LEFT JOIN ref.site_cable c ON c.site_cable_id=t.physical_site_cable_id),'[]'::jsonb));
  result:=result||jsonb_build_object('panels',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_panel t),'[]'::jsonb));
  result:=result||jsonb_build_object('cable_specs',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_power_cable_spec t),'[]'::jsonb));
  result:=result||jsonb_build_object('conductors',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_power_conductor t),'[]'::jsonb));
@@ -281,10 +403,10 @@ BEGIN
  result:=result||jsonb_build_object('circuits',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_power_circuit t),'[]'::jsonb));
  result:=result||jsonb_build_object('controller_power_connections',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_controller_power_connection t),'[]'::jsonb));
  result:=result||jsonb_build_object('controller_installations',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_controller_installation t),'[]'::jsonb));
- result:=result||jsonb_build_object('controller_options',coalesce((SELECT jsonb_agg(jsonb_build_object('id',c.controller_id,'model',m.model_code,'serial',c.serial_number) ORDER BY c.controller_id) FROM ref.controller c JOIN ref.controller_model m USING(controller_model_id)),'[]'::jsonb));
+ result:=result||jsonb_build_object('controller_options',coalesce((SELECT jsonb_agg(jsonb_build_object('id',c.controller_id,'model',m.model_code,'serial',c.serial_number,'lor_network',c.lor_network) ORDER BY c.controller_id) FROM ref.controller c JOIN ref.controller_model m USING(controller_model_id)),'[]'::jsonb));
  result:=result||jsonb_build_object('devices',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_power_device t),'[]'::jsonb));
  result:=result||jsonb_build_object('feeds',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_power_feed t),'[]'::jsonb));
- result:=result||jsonb_build_object('networks',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_waypoint_network t),'[]'::jsonb));
+ result:=result||jsonb_build_object('networks',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_network_availability t),'[]'::jsonb));
  result:=result||jsonb_build_object('actions',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_power_action t),'[]'::jsonb));
  RETURN result||jsonb_build_object(
  'waypoints',coalesce((SELECT jsonb_agg(jsonb_build_object('id',w.site_waypoint_id,'name',w.canonical_label,'type',w.waypoint_type,
@@ -305,6 +427,8 @@ DECLARE actor record; rev bigint; before_row jsonb; after_row jsonb; prior ops.s
  old_feed ref.site_power_feed%ROWTYPE; breaker_data jsonb; circuit_id bigint; waypoint_id bigint;
  child_no integer:=0;
 BEGIN
+ -- Deny retired network mutation even for replay IDs or privileged Crew.
+ IF p_kind='network' THEN RAISE EXCEPTION 'Network membership is read-only; use governed GIS reconciliation' USING ERRCODE='42501'; END IF;
  -- Fail closed even if a legacy actor resolver returns NULL for an unassigned role.
  IF NOT coalesce((ref.site_power_access(p_email)->>'can_edit')::boolean,false) THEN
   RAISE EXCEPTION 'Production Crew circuit access required' USING ERRCODE='42501'; END IF;
@@ -393,7 +517,7 @@ BEGIN
   allowed:=ARRAY['impact_reviewed','site_power_action_id','season_year','event_kind','condition','observed_at','evidence','corrects_event_id'];
  ELSE
   CASE p_kind
-  WHEN 'panel' THEN table_name:='site_panel'; key_name:='site_panel_id'; allowed:=ARRAY['panel_name','site_waypoint_id','owner_name','year_installed','panel_identification','meter_information','supply_breaker_id','active','source_evidence','verification_status'];
+  WHEN 'panel' THEN table_name:='site_panel'; key_name:='site_panel_id'; allowed:=ARRAY['show_desired_state','restoration_desired_state','panel_name','site_waypoint_id','owner_name','year_installed','panel_identification','meter_information','supply_breaker_id','active','source_evidence','verification_status'];
   WHEN 'cable_spec' THEN table_name:='site_power_cable_spec'; key_name:='site_power_cable_spec_id'; allowed:=ARRAY['site_cable_id','cable_specification','active','source_evidence','verification_status'];
   WHEN 'conductor' THEN table_name:='site_power_conductor'; key_name:='site_power_conductor_id'; allowed:=ARRAY['site_cable_id','conductor_label','conductor_role','active','source_evidence','verification_status'];
   WHEN 'conductor_circuit' THEN table_name:='site_power_conductor_circuit'; key_name:='site_power_conductor_circuit_id'; allowed:=ARRAY['site_power_conductor_id','site_power_circuit_id','active','source_evidence','verification_status'];
@@ -403,8 +527,8 @@ BEGIN
   WHEN 'feed' THEN table_name:='site_power_feed'; key_name:='site_power_feed_id'; allowed:=ARRAY['source_circuit_id','source_device_id','destination_waypoint_id','destination_device_id','active','source_evidence','verification_status'];
   WHEN 'controller_power_connection' THEN table_name:='site_controller_power_connection'; key_name:='site_controller_power_connection_id'; allowed:=ARRAY['controller_id','site_waypoint_id','site_power_circuit_id','active','source_evidence','verification_status'];
   WHEN 'controller_installation' THEN table_name:='site_controller_installation'; key_name:='site_controller_installation_id'; allowed:=ARRAY['controller_id','site_waypoint_id','active','source_evidence','verification_status'];
-  WHEN 'network' THEN table_name:='site_waypoint_network'; key_name:='site_waypoint_network_id'; allowed:=ARRAY['site_waypoint_id','site_network_id','active','source_evidence','verification_status'];
-  WHEN 'action' THEN table_name:='site_power_action'; key_name:='site_power_action_id'; allowed:=ARRAY['action_name','site_power_breaker_id','site_power_circuit_id','site_power_device_id','phase','action_kind','desired_state','responsible_party','instructions','prerequisite_action_ids','active','source_evidence','verification_status'];
+
+  WHEN 'action' THEN table_name:='site_power_action'; key_name:='site_power_action_id'; allowed:=ARRAY['site_panel_id','action_name','site_power_breaker_id','site_power_circuit_id','site_power_device_id','phase','action_kind','desired_state','responsible_party','instructions','prerequisite_action_ids','active','source_evidence','verification_status'];
   ELSE RAISE EXCEPTION 'Unknown circuit command' USING ERRCODE='22023'; END CASE;
  END IF;
  IF EXISTS(SELECT 1 FROM jsonb_object_keys(p_data) k WHERE NOT k=ANY(allowed)) THEN
@@ -482,6 +606,10 @@ BEGIN
    IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_waypoint WHERE site_waypoint_id=(expected->>'site_waypoint_id')::bigint AND regexp_split_to_array(lower(btrim(waypoint_type)), '[-_[:space:]]+') @> ARRAY['combo']::text[]) THEN
     RAISE EXCEPTION 'Controller installation requires a waypoint with Combo power-and-network capability' USING ERRCODE='22023';
    END IF;
+   IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_controller_placement_eligibility
+    WHERE controller_id=(expected->>'controller_id')::bigint AND site_waypoint_id=(expected->>'site_waypoint_id')::bigint) THEN
+    RAISE EXCEPTION 'Controller placement held: required LOR network lacks a current reviewed GIS route at this waypoint' USING ERRCODE='23514';
+   END IF;
   END IF;
   allowed:=allowed||ARRAY['verified_by_person_id','verified_at','updated_at'];
   SELECT string_agg(format('%I',k),','),string_agg(format('r.%I',k),','),string_agg(format('%I=r.%I',k,k),',')
@@ -540,6 +668,8 @@ BEGIN
   IF EXISTS(SELECT 1 FROM ref.site_power_action a JOIN ref.site_power_circuit c USING(site_power_circuit_id)
     WHERE a.active AND c.active AND c.site_power_breaker_id IS NOT NULL AND a.desired_state IN ('ON','OFF')) THEN
    RAISE EXCEPTION 'Switching a grouped circuit must target its breaker or the actual downstream device' USING ERRCODE='23514'; END IF;
+  IF EXISTS(SELECT 1 FROM ref.site_power_action a JOIN ref.site_panel p USING(site_panel_id) WHERE a.active AND NOT p.active) THEN
+   RAISE EXCEPTION 'Retire panel activities before retiring panel' USING ERRCODE='23514'; END IF;
   IF EXISTS(SELECT 1 FROM ref.site_power_action a JOIN ref.site_power_breaker b USING(site_power_breaker_id) WHERE a.active AND NOT b.active) THEN
    RAISE EXCEPTION 'Retire breaker actions before retiring breaker' USING ERRCODE='23514'; END IF;
   IF EXISTS(SELECT 1 FROM ref.site_power_conductor_circuit m

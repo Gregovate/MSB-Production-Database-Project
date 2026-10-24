@@ -2,13 +2,13 @@
 
 This subsystem documents how MSB presents, enriches, and operationally uses wiring information derived from LOR-authoritative show topology.
 
-## Panel circuit capture — October 23
+## Panel circuit capture — October 24
 
 The urgent #171/#230 capture workflow has a source candidate under #122.
 [Panel circuit checkpoint](FieldWiring_Panel_Circuit_Capture_Checkpoint.md) records
 the live catalog evidence, GIS dependencies and remaining acceptance gates.
 [Panel Circuit Design](FieldWiring_Panel_Circuit_Design.md) controls the candidate.
-V0.4.9-panel-diagram uses same-side spanning breaker blocks and circuit-click
+V0.4.10-integrated-power adds LOR/GIS-gated placement, per-pole recorded Display load, separate panel plans and waypoint safety evidence. It retains same-side spanning breaker blocks and circuit-click
 waypoint assignment, with panel meter/remote supply. Existing controller IDs link
 independently to outlet circuit connections and OUT-Combo network-box installations.
 The editor is not deployed or operator accepted.

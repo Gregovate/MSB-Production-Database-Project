@@ -25,7 +25,6 @@
     circuit: "site_power_circuit_id",
     device: "site_power_device_id",
     feed: "site_power_feed_id",
-    network: "site_waypoint_network_id",
     action: "site_power_action_id",
   };
   let data,
@@ -129,6 +128,10 @@
     try {
       data = await api("api/power");
       render();
+      const requested=new URLSearchParams(location.search).get("waypoint");
+      if(requested && !$("waypoint-detail").dataset.linkOpened) {
+        viewWaypoint(Number(requested));$("waypoint-detail").dataset.linkOpened="1";
+      }
       $("status").textContent =
         `${data.access.display_name} · ${data.access.can_edit ? "Production Crew editing available" : "Read only"} · Revision ${data.revision}`;
       $("status").dataset.error = "false";
@@ -199,6 +202,10 @@
         `Identification: ${selected.panel_identification || "Unknown"} · Meter information: ${selected.meter_information || "Unknown"}`,
         box,
       );
+      el("p",`Panel plan — show: ${selected.show_desired_state}; off-season: ${selected.restoration_desired_state}. Actual condition requires separate field evidence.`,box);
+      const unresolved=el("details",undefined,box);
+      el("summary","Unresolved Display loads (all locations)",unresolved);
+      (data.load_lineage || []).filter(x=>x.load_status!=="RECORDED_BASIS_UNVERIFIED").forEach(x=>el("p",`Display ${x.display_id} ${x.display_name} · Controller ${x.controller_id ?? "Unknown"} · ${x.load_status}`,unresolved));
       const board = el("section", undefined, detail); board.className = "power-panelboard";
       el("h3", "Panel schedule", board);
       el("p", "Odd positions left, even positions right. Select a circuit to assign its supplied waypoints. Verify installed numbering.", board);
@@ -216,6 +223,14 @@
         circuits.forEach(c => {
           const names=[...new Set(paths(c.site_power_circuit_id).map(x=>x.waypoint?.name || "Unknown waypoint"))];
           const leg=button(`Circuit ${c.circuit_code} — ${names.join(", ") || "Assign waypoints"}`,()=>openAssignments(c),row,true);
+          const load=(data.circuit_loads || []).find(x=>x.site_power_circuit_id===c.site_power_circuit_id);
+          if (load) {
+            const loads=el("details",undefined,row); loads.className="power-load";
+            el("summary",`Recorded Display subtotal: ${load.recorded_display_amps ?? "Unknown"} A / ${load.rated_amps ?? "Unknown"} A per pole · INCOMPLETE`,loads);
+            el("p",`Nominal headroom: ${load.nominal_headroom_amps ?? "Unknown"} A; nominal utilization: ${load.nominal_utilization_percent == null ? "Unknown" : Number(load.nominal_utilization_percent).toFixed(1)+"%"}. Basis/voltage unverified; excludes unresolved loads. This is not usable capacity.`,loads);
+            el("p","Controller/auxiliary consumption and field demand are unknown. Conductor, receptacle, shared-neutral and continuous-load limits require verification.",loads);
+            (data.load_lineage || []).filter(x=>x.site_power_circuit_id===c.site_power_circuit_id).forEach(x=>el("p",`Display ${x.display_id} ${x.display_name} → Controller ${x.controller_id}: ${x.amps_measured ?? "Unknown"} A · ${x.load_status}`,loads));
+          }
           leg.className="power-circuit-leg"; leg.dataset.circuitId=c.site_power_circuit_id;
           for (const id of [...new Set(paths(c.site_power_circuit_id).map(x=>x.waypoint?.id).filter(Boolean))]) {
             button(`Open ${waypointName(id)} / equipment`,()=>viewWaypoint(id),row);
@@ -326,6 +341,7 @@
     $("equipment").replaceChildren();
     (data.controller_installations || []).filter(i=>i.site_waypoint_id===detailWaypoint).forEach(i=>{
       const asset=data.controller_options.find(c=>c.id===i.controller_id);
+      if(i.active && !(data.placement_eligibility || []).some(e=>e.controller_id===i.controller_id && e.site_waypoint_id===i.site_waypoint_id)) el("p",`Controller ${i.controller_id}: current network eligibility unresolved; recorded placement retained for reconciliation.`,$("equipment"));
       record($("equipment"),`Controller ${i.controller_id} · ${asset?.model || "Unknown model"} · ${asset?.serial || "No serial recorded"}`,i,"controller_installation");
     });
     data.devices.filter(d=>d.site_waypoint_id===detailWaypoint).forEach(d=>{
@@ -340,14 +356,12 @@
     $("feeds").replaceChildren();
     data.feeds.filter(f=>f.destination_waypoint_id===detailWaypoint || device(f.destination_device_id)?.site_waypoint_id===detailWaypoint || device(f.source_device_id)?.site_waypoint_id===detailWaypoint).forEach((f) => record($("feeds"), feedName(f), f, "feed"));
     $("networks").replaceChildren();
-    data.networks.filter(n=>n.site_waypoint_id===detailWaypoint).forEach((n) =>
-      record(
-        $("networks"),
-        `${waypointName(n.site_waypoint_id)} · ${data.network_options.find((o) => o.site_network_id === n.site_network_id)?.network_code || "Unknown network"}`,
-        n,
-        "network",
-      ),
-    );
+    const available=(data.networks || []).filter(n=>n.site_waypoint_id===detailWaypoint);
+    available.forEach(n=>el("p",`${n.network_code} · reviewed cable ${n.site_cable_id}`, $("networks")));
+    if (!available.length) el("p","No confirmed network path. Controller placement is held pending GIS reconciliation.",$("networks"));
+    (data.linkiq_evidence || []).filter(t=>t.endpoint_a===detailWaypoint || t.endpoint_b===detailWaypoint).forEach(t=>
+      el("p",`LinkIQ ${t.test_uuid} · ${waypointName(t.endpoint_a)} ↔ ${waypointName(t.endpoint_b)} · result code ${t.status_code ?? "Unknown"} · ${t.test_time || "Time unknown"} · ${t.review_status} · measured evidence only`,$("networks")));
+    renderSafety(detailWaypoint);
     const year = $("season").value;
     $("season").replaceChildren();
     data.seasons.forEach((y) => {
@@ -376,9 +390,41 @@
       "add-panel",
       "add-device",
       "add-feed",
-      "add-network",
       "add-action",
     ].forEach((id) => ($(id).disabled = !data.access.can_edit));
+  }
+  function renderSafety(waypointId) {
+    const root=$("waypoint-safety");root.replaceChildren();
+    if(!waypointId) return;
+    el("h3","Recorded potential electrical sources",root);
+    el("p","Incomplete topology or alternate supplies may exist. Planned OFF and recorded events do not prove absence of voltage. Follow field isolation, lockout/tagout and voltage-testing procedures; utility equipment requires authorized utility coordination.",root);
+    const sources=(data.waypoint_power_sources || []).filter(x=>x.site_waypoint_id===waypointId);
+    data.panels.filter(p=>p.site_waypoint_id===waypointId).forEach(p=>sources.push({site_panel_id:p.site_panel_id,verification_states:[p.verification_status]}));
+    if(!sources.length) el("p","Supply path unknown — no de-energization assurance.",root);
+    const panelIds=new Set(), breakerIds=new Set(), circuitIds=new Set(), deviceIds=new Set();
+    sources.forEach(x=>{
+      if(x.site_power_circuit_id)circuitIds.add(x.site_power_circuit_id);if(x.destination_device_id)deviceIds.add(x.destination_device_id);
+      el("p",`${x.site_power_circuit_id ? circuitName(x.site_power_circuit_id) : "Panel at this waypoint"} · pole ${x.breaker_pole ?? "Unknown"} · feed evidence ${x.verification_states.join(" / ")}`,root);
+      let current=panel(x.site_panel_id), seen=new Set();
+      if(x.site_power_breaker_id)breakerIds.add(x.site_power_breaker_id);
+      while(current && !seen.has(current.site_panel_id)) {
+        seen.add(current.site_panel_id);panelIds.add(current.site_panel_id);
+        el("p",`${current.panel_name} · ${current.owner_name || "Owner unknown"} · ${waypointName(current.site_waypoint_id)} · meter ${current.meter_information || "Unknown"} · installed ${current.year_installed ?? "Unknown"} · panel plan show ${current.show_desired_state}, off-season ${current.restoration_desired_state}`,root);
+        const mains=data.breakers.filter(b=>b.active && b.site_panel_id===current.site_panel_id && b.breaker_role==="MAIN");
+        mains.forEach(b=>breakerIds.add(b.site_power_breaker_id));
+        const upstream=data.breakers.find(b=>b.site_power_breaker_id===current.supply_breaker_id);
+        if(!upstream){if(!mains.length)el("p","Main/upstream isolation point unknown.",root);break;}
+        breakerIds.add(upstream.site_power_breaker_id);current=panel(upstream.site_panel_id);
+        if(current && seen.has(current.site_panel_id))el("p","Upstream topology cycle: resolve before relying on isolation instructions.",root);
+      }
+    });
+    data.breakers.filter(b=>breakerIds.has(b.site_power_breaker_id)).forEach(b=>el("p",`Breaker ${b.breaker_name} · ${b.rated_amps ?? "Unknown"} A per pole · positions ${b.panel_positions?.join("/") || "Unknown"} · plan show ${b.show_desired_state}, off-season ${b.restoration_desired_state}`,root));
+    const actions=data.actions.filter(a=>panelIds.has(a.site_panel_id)||breakerIds.has(a.site_power_breaker_id)||circuitIds.has(a.site_power_circuit_id)||deviceIds.has(a.site_power_device_id));
+    actions.forEach(a=>{
+      el("p",`${a.action_name}: ${a.instructions || "Instructions unknown"}; responsible ${a.responsible_party || "Unknown"}; prerequisite activities ${a.prerequisite_action_ids.join(", ") || "None recorded"}`,root);
+      data.events.filter(e=>e.site_power_action_id===a.site_power_action_id).forEach(e=>el("p",`Evidence: ${e.season_year} · ${e.observed_at} · ${e.event_kind} · ${e.condition} · ${e.evidence}${data.events.some(c=>c.corrects_event_id===e.event_id)?" (corrected; historical)":""}`,root));
+    });
+    if(!actions.length)el("p","No field switching/utility verification activity recorded for these sources.",root);
   }
   function viewWaypoint(waypointId) {
     if (!waypointId || !wp(waypointId)) return;
@@ -393,7 +439,7 @@
     root.replaceChildren();
     const q = $("action-search").value.toLowerCase();
     data.actions.forEach((a) => {
-      const target = a.site_power_breaker_id ? `Breaker ${data.breakers.find(b => b.site_power_breaker_id === a.site_power_breaker_id)?.breaker_name || a.site_power_breaker_id}` : a.site_power_circuit_id
+      const target = a.site_panel_id ? `Panel ${panel(a.site_panel_id)?.panel_name || a.site_panel_id}` : a.site_power_breaker_id ? `Breaker ${data.breakers.find(b => b.site_power_breaker_id === a.site_power_breaker_id)?.breaker_name || a.site_power_breaker_id}` : a.site_power_circuit_id
         ? circuitName(a.site_power_circuit_id)
         : deviceName(a.site_power_device_id);
       const waypointNames = a.site_power_circuit_id
@@ -532,6 +578,8 @@
       select(key, label, options(values.map((v) => [v, v])), required);
     const fields = {
       panel: [
+        choose("show_desired_state", "Panel planned show-season supply", ["UNKNOWN","ON","OFF"]),
+        choose("restoration_desired_state", "Panel planned off-season supply", ["UNKNOWN","ON","OFF"]),
         text("panel_name", "Readable panel name", true),
         text("panel_identification", "Panel identification / label"),
         select("site_waypoint_id", "Associated waypoint (optional)", waypoints),
@@ -631,21 +679,8 @@
         ),
         select("destination_device_id", "To equipment", devices),
       ],
-      network: [
-        select("site_waypoint_id", "Waypoint", waypoints, true),
-        select(
-          "site_network_id",
-          "Network",
-          options(
-            data.network_options.map((n) => [
-              n.site_network_id,
-              n.network_code,
-            ]),
-          ),
-          true,
-        ),
-      ],
       action: [
+        select("site_panel_id", "Affected panel (choose exactly one target)", options(data.panels.map(p=>[p.site_panel_id,p.panel_name]))),
         text("action_name", "Activity name", true),
         select(
           "site_power_circuit_id",
@@ -829,6 +864,18 @@
         for(const name of ["controller_id","site_waypoint_id","site_power_circuit_id"]) form.elements[name].disabled=true;
         el("p","To move this plug-in connection, retire it and record the new outlet/circuit. History is retained.",$("edit-fields"));
       }
+    }
+    if (kind === "controller_installation" && !row.site_controller_installation_id) {
+      const form=$("edit-form"), controller=form.elements.controller_id, location=form.elements.site_waypoint_id;
+      const refresh=()=>{
+        const selected=location.value || String(row.site_waypoint_id || "");
+        location.replaceChildren(); el("option","Select a confirmed location",location).value="";
+        const eligible=new Set((data.placement_eligibility || []).filter(x=>x.controller_id===Number(controller.value)).map(x=>x.site_waypoint_id));
+        data.waypoints.filter(w=>isComboWaypoint(w) && eligible.has(w.id)).forEach(w=>{el("option",w.name,location).value=w.id;});
+        location.value=selected;
+      };
+      controller.onchange=refresh;refresh();
+      el("p","Only locations with the required current LOR network and a reviewed GIS route are selectable. Resolve missing paths through GIS; network membership is read-only.",$("edit-fields"));
     }
     if (kind === "controller_installation" && row.site_controller_installation_id) {
       $("edit-form").elements.controller_id.disabled=true;
@@ -1140,8 +1187,8 @@
   $("find").oninput = () => data && render();
   $("season").onchange = renderActions;
   $("action-search").oninput = () => data && renderActions();
-  for (const kind of ["panel", "device", "feed", "network", "action"])
-    $(`add-${kind}`).onclick = () => open(kind, ["device","network"].includes(kind) ? {site_waypoint_id:Number($("detail-waypoint").value)||undefined} : {});
+  for (const kind of ["panel", "device", "feed", "action"])
+    $(`add-${kind}`).onclick = () => open(kind, kind === "device" ? {site_waypoint_id:Number($("detail-waypoint").value)||undefined} : {});
   // Expose pure relationship resolution only to the isolated browser harness.
   window.MSBPowerCapture = { paths };
   load();

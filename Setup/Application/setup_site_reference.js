@@ -190,17 +190,20 @@
     if (lastEditMessage) line(body, lastEditMessage);
     const panel = byId(current.panels, id, 'site_waypoint_id');
     const powerLink = append(body, document.createElement('a'));
-    powerLink.href = '/fieldwiring/circuits';
+    powerLink.href = '/fieldwiring/circuits?waypoint=' + encodeURIComponent(id);
     powerLink.textContent = 'View or maintain panel circuits in FieldWiring';
 
     const ownCircuits = (current.circuits || []).filter(c => Number(c.panel_waypoint_id) === Number(id));
     const supplies = matchingCircuits(id);
-    line(body, 'Verified panel owner: ' + (panel?.owner_code || 'UNKNOWN — unreviewed'));
+    line(body, 'Recorded panel owner: ' + (panel?.owner_code || 'UNKNOWN — unreviewed'));
     if (panel || /panel/i.test(w.type || '')) line(body, 'Meter ID: ' + textValue(panel?.meter_identifier));
     const aliases = (current.aliases || []).filter(a => Number(a.waypoint_id) === Number(id));
     line(body, 'Reviewed names / aliases: ' + (aliases.length ?
       aliases.map(a => a.label).join('; ') : 'No alternate names reviewed'));
     heading(body, 'Power and switching');
+    if(panel) line(body,'Panel supply plan: show '+panel.show_desired_state+'; off-season '+panel.restoration_desired_state);
+    line(body,'Recorded sources may be incomplete. Planned OFF does not prove absence of voltage. Open FieldWiring for upstream isolation and dated field/utility evidence.');
+
     if (ownCircuits.length) for (const c of ownCircuits) {
       const dests = current.destinations.filter(d => Number(d.site_power_circuit_id) === Number(c.site_power_circuit_id));
       line(body, 'Circuit ' + c.circuit_code + (c.circuit_label ? ' (' + c.circuit_label + ')' : '')
@@ -217,7 +220,7 @@
         + ' / circuit ' + c.circuit_code + ' · ownership ' + c.owner_code);
     if (!ownCircuits.length && !supplies.length)
       line(body, 'Panel, breaker and supplying circuit: Not recorded / unreviewed');
-    heading(body, 'Actual reviewed network assignments');
+    heading(body, 'Networks confirmed by reviewed physical routes');
     const net = networkNames(id);
     line(body, net.length ? net.join(', ') : 'Not recorded / unreviewed (GPX track name is not assignment)');
     heading(body, 'Physical cables and LinkIQ tests');
@@ -408,14 +411,6 @@
               return () => ({waypoint_id:id,circuit_id:circuit.site_power_circuit_id});
             });
         }
-        for (const membership of current.memberships.filter(m => Number(m.site_waypoint_id) === Number(id))) {
-          const net = byId(current.networks,membership.site_network_id,'site_network_id');
-          action(edits, 'Production crew: remove network ' + (net?.network_code || membership.site_network_id),
-            'crew_remove_network', form => {
-              line(form, 'Remove this maintained assignment; do not change GPX geometry or historical LinkIQ tests.');
-              return () => ({waypoint_id:id,network_id:membership.site_network_id});
-            });
-        }
         for (const circuit of ownCircuits) {
           for (const instruction of current.instructions.filter(i =>
             Number(i.site_power_circuit_id) === Number(circuit.site_power_circuit_id))) {
@@ -428,11 +423,7 @@
               });
           }
         }
-        if (current.networks.length) action(edits, 'Production crew: assign maintained network', 'crew_assign_network', form => {
-          const net = choice(form, 'Known network', 'network_id',
-            current.networks.map(n=>[n.site_network_id,n.network_code]));
-          return () => ({waypoint_id:id,network_id:Number(net.value)});
-        });
+
       }
     }
   }

@@ -126,6 +126,8 @@ try {
   await dialog.locator("[name=panel_name]").fill("A5 panel");
   await dialog.locator("[name=owner_name]").selectOption("City Owned");
   await dialog.locator("[name=year_installed]").fill("2018");
+  await dialog.locator("[name=show_desired_state]").selectOption("ON");
+  await dialog.locator("[name=restoration_desired_state]").selectOption("OFF");
   assert.equal(await dialog.locator("[name=active]").count(), 0);
   assert.equal(await dialog.locator("[name=source_evidence]").getAttribute("required"), null);
   assert.equal(await dialog.locator("[name=verification_status]").count(), 0);
@@ -137,6 +139,7 @@ try {
   const panelYear=await db.query("SELECT owner_name,year_installed FROM ref.site_panel WHERE panel_name='A5 panel'");
   assert.equal(panelYear.rows[0].owner_name,"City Owned");
   assert.equal(panelYear.rows[0].year_installed,2018);
+  assert.match(await page.locator("#panel-detail").innerText(),/Panel plan — show: ON; off-season: OFF/);
   await page.getByText("Reconcile circuits with unknown breaker membership",{exact:true}).click();
   await page.getByRole("button", { name: "Reconcile legacy circuit", exact: true }).click();
   await dialog.locator("[name=circuit_code]").fill("legacy7");
@@ -199,20 +202,9 @@ try {
   );
   await page.locator("#waypoint-detail > summary").click();
   await page.locator("#detail-waypoint").selectOption("11");
-  for (const network of ["1", "2"]) {
-    await page
-      .getByRole("button", { name: "Assign network", exact: true })
-      .click();
-    await dialog.locator("[name=site_waypoint_id]").selectOption("11");
-    await dialog.locator("[name=site_network_id]").selectOption(network);
-    await evidence();
-    await save();
-  }
-  assert.equal(
-    (await db.query("SELECT count(*)::int AS n FROM ref.site_waypoint_network"))
-      .rows[0].n,
-    2,
-  );
+  assert.equal(await page.getByRole("button",{name:"Assign network",exact:true}).count(),0);
+  assert.match(await page.locator("#networks").innerText(),/REG.*reviewed cable/);
+  assert.match(await page.locator("#waypoint-safety").innerText(),/do not prove absence of voltage/);
   await page.locator("#seasonal-activities > summary").click();
   await page
     .getByRole("button", { name: "Define activity", exact: true })
@@ -337,6 +329,7 @@ try {
   await dialog.locator("[name=site_power_circuit_id]").selectOption(String(firstCircuit));
   await evidence();await save();
   assert.match(await page.locator("#plugged-controllers").innerText(),/Controller 101/);
+  assert.match(await page.locator("#panel-detail").innerText(),/Recorded Display subtotal: 2 A/);
   await page.locator("#detail-waypoint").selectOption("12");
   for(const id of ["101","102"]) {
     await page.getByRole("button",{name:"Install existing controller",exact:true}).click();
@@ -344,6 +337,17 @@ try {
     await evidence();await save();
   }
   assert.equal(await page.locator("#equipment .power-record").count(),2);
+  // A changed source must disappear from eligible locations on the next read.
+  await db.exec("UPDATE ref.site_track SET changed_at='2027-01-01'");
+  await page.locator("#reload").click();
+  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByRole("button",{name:"Install existing controller",exact:true}).click();
+  await dialog.locator("[name=controller_id]").selectOption("103");
+  assert.equal(await dialog.locator("[name=site_waypoint_id] option").count(),1);
+  await dialog.locator("#cancel").click();
+  await db.exec("UPDATE ref.site_track SET changed_at='2026-01-01'");
+  await page.locator("#reload").click();
+  await page.getByText(/Revision \d+/).waitFor();
   // Network equipment is recorded at its Combo waypoint, not forced into
   // the LOR Controller model inventory.
   await page.getByRole("button",{name:"Add new equipment",exact:true}).click();

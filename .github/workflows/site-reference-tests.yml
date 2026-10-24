@@ -91,6 +91,7 @@ jobs:
           RETURNS TABLE(directus_user_id uuid,person_id integer)
           LANGUAGE sql AS $$ SELECT '00000000-0000-0000-0000-000000000001'::uuid,1 WHERE $1='gis-ci@example.invalid' $$;
           SQL
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < FieldWiring/Engineering/power_lor_fixture.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_panel_circuit_capture_candidate.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_site_reference_operations_disposable_validation.sql

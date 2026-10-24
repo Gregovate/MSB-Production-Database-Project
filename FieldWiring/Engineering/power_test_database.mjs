@@ -28,6 +28,25 @@ INSERT INTO ref.fixture_user VALUES('crew@example.test',true,'Production Crew',1
 INSERT INTO ref.site_waypoint VALUES (10,'Panel A','Panel'),(11,'Outlet A','OUT-Combo'),(12,'Outlet B','OUT-Combo'),(13,'Power only','Power'),(99,'Light pole combo','Pole-Combo');
 INSERT INTO ref.site_waypoint_alias VALUES(11,'Old Outlet A','manager',now());
 INSERT INTO ref.site_network VALUES(1,'REG','LOR'),(2,'AUX-A','LOR');`);
+  await db.exec(readFileSync(path.join(root,"FieldWiring/Engineering/power_lor_fixture.sql"),"utf8"));
+  await db.exec(`
+UPDATE ref.controller SET lor_network='REG',lor_uid_start=1,lor_uid_end=1;
+INSERT INTO ref.display SELECT controller_id,'Display '||controller_id,'prop-'||controller_id,1,2 FROM ref.controller;
+INSERT INTO ref.controller_display SELECT controller_id,controller_id,NULL FROM ref.controller;
+INSERT INTO lor_snap.v_current_props SELECT lor_prop_id,lor_prop_id,1,'REG','01','LOR' FROM ref.display;
+ALTER TABLE ref.site_cable ADD COLUMN endpoint_a_waypoint_id bigint,ADD COLUMN endpoint_b_waypoint_id bigint,ADD COLUMN site_network_id bigint,ADD COLUMN lifecycle_status text,ADD COLUMN reviewed_by text,ADD COLUMN reviewed_at timestamptz;
+UPDATE ref.site_cable SET endpoint_a_waypoint_id=11,endpoint_b_waypoint_id=12,site_network_id=1,lifecycle_status='CURRENT',reviewed_by='Fixture',reviewed_at=now();
+INSERT INTO ref.site_cable VALUES(2,'Pole route',12,99,1,'CURRENT','Fixture',now());
+CREATE TABLE ref.site_track(site_track_id bigint PRIMARY KEY,lifecycle_status text,changed_at timestamptz);
+CREATE TABLE ref.site_route_segment(site_route_segment_id bigint PRIMARY KEY,endpoint_a_waypoint_id bigint,endpoint_b_waypoint_id bigint,review_status text,reviewed_at timestamptz);
+CREATE TABLE ref.site_cable_route_segment(site_cable_id bigint,segment_order integer,site_route_segment_id bigint,traversal_direction integer,reviewed_at timestamptz);
+CREATE TABLE ref.site_route_source_track(site_route_segment_id bigint,site_track_id bigint,source_class text,reviewed_at timestamptz);
+INSERT INTO ref.site_track VALUES(1,'CURRENT','2026-01-01');
+INSERT INTO ref.site_route_segment VALUES(1,11,12,'REVIEWED','2026-02-01'),(2,12,99,'REVIEWED','2026-02-01');
+INSERT INTO ref.site_route_source_track VALUES(1,1,'NET','2026-02-02'),(2,1,'NET','2026-02-02');
+INSERT INTO ref.site_cable_route_segment VALUES(1,1,1,1,'2026-02-03'),(2,1,2,1,'2026-02-03');
+CREATE TABLE ops.linkiq_test(test_uuid uuid,physical_site_cable_id bigint,test_time_local text,test_status_code integer,identity_review_status text,first_seen_source_sha256 text);
+`);
   // Load the actual role policy and actor SQL used by the application. Only the
   // external People reconciliation dependency is stubbed to a fixed fixture mapping.
   await db.exec(`CREATE TABLE public.directus_roles(id uuid PRIMARY KEY,name text);
