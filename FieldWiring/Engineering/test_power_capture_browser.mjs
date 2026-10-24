@@ -260,6 +260,8 @@ try {
   for (const leg of ["18","20"]) {
     await groupedRow.getByRole("button",{name:`Circuit ${leg} — Assign waypoints`,exact:true}).click();
     await dialog.locator('input[name=waypoint][value="12"]').check();
+    assert.equal(await dialog.locator("[name=also_other_leg]").count(),1);
+    if (leg==="18") await dialog.locator("[name=also_other_leg]").check();
     await evidence(); await save();
   }
   await groupedRow.locator("summary").click();
@@ -267,6 +269,7 @@ try {
   assert.match(await groupedRow.innerText(),/A5 panel \/ 18/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 20/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1",[breakerId])).rows[0].n,2);
+  assert.equal((await db.query("SELECT count(DISTINCT f.source_circuit_id)::int n FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id WHERE c.site_power_breaker_id=$1 AND f.destination_waypoint_id=12 AND f.active",[breakerId])).rows[0].n,2);
   assert.equal(await page.locator(".power-slot").count(),35);
   assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridRow),"9 / span 2");
   assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridColumn),"2");
