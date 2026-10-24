@@ -463,7 +463,7 @@ await cmd("feed",{...base,source_circuit_id:downstreamCircuit,destination_device
 await cmd("controller_power_connection",{...plugFields,controller_id:103,site_waypoint_id:14});
 await denied(()=>cmd("controller_power_connection",{...plugFields,controller_id:999999}),"23503");
 const inventorySnapshot=(await db.query("SELECT ref.site_power_snapshot('crew@example.test') AS x")).rows[0].x;
-assert.equal(inventorySnapshot.controller_options.length,3);
+assert.equal(inventorySnapshot.controller_options.length,4);
 assert.equal(inventorySnapshot.controller_installations.filter(x=>x.controller_id===101).length,2);
 assert.equal(inventorySnapshot.controller_power_connections.filter(x=>x.controller_id===101).length,2);
 assert.ok(inventorySnapshot.history.some(x=>x.command==='controller_power_connection' && x.before_data?.active===true && x.after_data?.active===false));
