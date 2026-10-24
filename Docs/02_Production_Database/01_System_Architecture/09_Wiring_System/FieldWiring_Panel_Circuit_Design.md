@@ -629,3 +629,22 @@ reciprocally, replaceable without invented wiring, and protected on stale/replay
 invalid graphs, existing occupied ports and rollback. No replacement preview may
 be started while the current review holds port 8898/source lock; current V0.4.16
 review has no subsequent clean-exit receipt yet. Production unchanged.
+
+## October 24 display names in network wiring
+
+Greg's AUX-I review shows a recorded cross-stage chain from WV-03 through eight
+Who Forest controllers and into Whoville, ending at CTRL 1061 with a resistor.
+He reports difficulty identifying Tree 8 (CTRL 1094) from asset IDs alone; the
+screenshots are evidence of the recorded chain, not confirmation that all intended
+controllers or the physical wiring are verified. The current repeat preview has
+no new CLEAN EXIT receipt yet.
+
+Display the assigned physical display name below each Controller ID in the IN /
+Controller / OUT table and alongside IDs in choices and the chain description.
+Use existing ref.controller_display/ref.display relationships already exposed in
+snapshot load_lineage, including controllers without power connections. Never use
+wiring-source template names in place of physical display names, infer tree order
+from IDs or stage order, rename controller assets, or copy names into installation
+records. Show all assigned display names and an explicit no-display fallback.
+Reuse the same labeling helpers on both screens. This is presentation only: network
+eligibility, topology, power, audit and stage filtering remain unchanged.
