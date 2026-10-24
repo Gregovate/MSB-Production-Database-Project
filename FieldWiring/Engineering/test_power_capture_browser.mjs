@@ -497,6 +497,21 @@ try {
   assert.match(await page.locator(".controller-port-summary").innerText(),/CTRL 103[\s\S]*CTRL 104[\s\S]*return/);
   assert.equal(await page.locator(".controller-port-summary td").first().evaluate(n=>getComputedStyle(n).borderTopStyle),"solid");
   assert.deepEqual((await db.query("SELECT controller_id,upstream_controller_id FROM ref.site_controller_installation WHERE active ORDER BY controller_id")).rows.map(r=>[r.controller_id,r.upstream_controller_id]),[[101,null],[102,101],[103,102],[104,103]]);
+  // Asset IDs and physical display names are independent. A wiring-source
+  // template must not replace the displayed physical copy's name.
+  await db.exec("UPDATE ref.display SET display_name='WF-Tree-08' WHERE display_id=104; UPDATE ref.display SET display_name='Template Tree' WHERE display_id=101; UPDATE ref.controller_display SET wiring_source_display_id=101 WHERE controller_id=104");
+  await page.reload();await page.locator("#deployment-chain").waitFor();
+  assert.equal(await page.locator(".controller-port-summary td").nth(1).locator(".controller-port-display").innerText(),"WF-Tree-08");
+  assert.match(await page.locator("#deployment-chain").innerText(),/CTRL 104 — WF-Tree-08/);
+  await page.goto(base.replace("circuits","controllers?controller_id=103"));
+  await page.locator("#deployment-out").waitFor();
+  assert.equal(await page.locator('#deployment-out option[value="104"]').innerText(),"CTRL 104 — WF-Tree-08");
+  await page.goto(base.replace("circuits","waypoints?waypoint=11"));
+  await page.getByText(/Revision \d+/).waitFor();
+  const namedRecord=page.locator("#installations .power-record").filter({has:page.getByRole("heading",{name:"CTRL 104",exact:true})});
+  assert.equal(await namedRecord.locator("td").nth(1).locator(".controller-port-display").innerText(),"WF-Tree-08");
+  assert.equal(await page.evaluate(()=>window.MSBControllerDeployment.controllerLabel({load_lineage:[]},999)),"CTRL 999 — No display assigned");
+  assert.equal(await page.evaluate(()=>window.MSBControllerDeployment.controllerLabel({load_lineage:[{controller_id:999,display_name:'Tree B'},{controller_id:999,display_name:'Tree A'}]},999)),"CTRL 999 — Tree A / Tree B");
   // Separate read-only history retains retests and unresolved identities.
   await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-23',1,'REVIEWED','source-one','Cat6',100,'first'),(gen_random_uuid(),1,'2026-10-24',2,'REVIEWED','source-two','Cat6',101,'retest'),(gen_random_uuid(),NULL,NULL,NULL,'UNMATCHED','source-three',NULL,NULL,'unresolved')");
   await page.goto(base.replace("circuits","cable-tests"));

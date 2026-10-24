@@ -8,6 +8,17 @@
   const tokens=w=>String(w.type||"").toLowerCase().split(/[-_\s]+/);
   const power=w=>tokens(w).some(t=>["power","combo"].includes(t));
   const network=w=>w.network_capable===true;
+  // Physical display assignments are already in the shared snapshot, even when
+  // no power connection exists. Never substitute a wiring-source template name.
+  const displayNames=(data,id)=>[...new Set((data.load_lineage || []).filter(x=>x.controller_id===Number(id)).map(x=>x.display_name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const displayText=(data,id)=>displayNames(data,id).join(" / ") || "No display assigned";
+  const controllerLabel=(data,id)=>`CTRL ${id} — ${displayText(data,id)}`;
+  function controllerCell(data,id,row) {
+    const cell=node("td",undefined,row);
+    node("strong",`CTRL ${id}`,cell);
+    const names=node("span",displayText(data,id),cell);names.className="controller-port-display";
+    return cell;
+  }
   async function api(path,options) {
     const response=await fetch(path,options);
     let body;
@@ -74,9 +85,9 @@
           const req=data.network_requirements.find(r=>r.controller_id===i.controller_id);
           if(req?.requirement_status!=="CONFIRMED"||req.required_network!==requirement?.required_network)continue;
           if(active.some(child=>child.upstream_controller_id===i.controller_id&&child.controller_id!==controllerId))continue;
-          node("option",`CTRL ${i.controller_id}`,upstream).value=String(i.controller_id);
+          node("option",controllerLabel(data,i.controller_id),upstream).value=String(i.controller_id);
         }
-        if(selected&&!Array.from(upstream.options).some(o=>o.value===String(selected))) node("option",`CTRL ${selected} — recorded; reconcile connection`,upstream).value=selected;
+        if(selected&&!Array.from(upstream.options).some(o=>o.value===String(selected))) node("option",`${controllerLabel(data,selected)} — recorded; reconcile connection`,upstream).value=selected;
         upstream.value=selected || "WAYPOINT";
       }
       upstreamChoices(installation ? (installation.upstream_controller_id || installation.upstream_kind || "UNKNOWN") : null);
@@ -97,9 +108,9 @@
           if(!data.placement_eligibility.some(e=>e.controller_id===c.id&&e.site_waypoint_id===Number(location.value)))continue;
           const i=active.find(i=>i.controller_id===c.id);
           if(i&&(i.site_waypoint_id!==Number(location.value)||(i.upstream_kind!=="UNKNOWN"&&i.upstream_controller_id!==controllerId)))continue;
-          node("option",`CTRL ${c.id}`,ending).value=String(c.id);
+          node("option",controllerLabel(data,c.id),ending).value=String(c.id);
         }
-        if(selected&&!Array.from(ending.options).some(o=>o.value===String(selected)))node("option",`CTRL ${selected} — recorded; reconcile connection`,ending).value=selected;
+        if(selected&&!Array.from(ending.options).some(o=>o.value===String(selected)))node("option",`${controllerLabel(data,selected)} — recorded; reconcile connection`,ending).value=selected;
         ending.value=selected || "UNKNOWN";
       }
       outChoices(successor?.controller_id || installation?.chain_end);
@@ -108,9 +119,11 @@
       const summary=node("table",undefined,host);summary.className="controller-port-summary";
       const headings=node("tr",undefined,node("thead",undefined,summary));for(const text of ["IN","Controller","OUT"])node("th",text,headings);
       const values=node("tr",undefined,node("tbody",undefined,summary));
-      node("td",installation?.upstream_kind==="CONTROLLER"?`CTRL ${installation.upstream_controller_id}`:installation?.upstream_kind==="WAYPOINT"?name(installation.site_waypoint_id):"Not recorded",values);
-      node("td",`CTRL ${controllerId}`,values);
-      node("td",successor?`CTRL ${successor.controller_id}`:installation?.chain_end==="TERMINATOR"?"Terminating resistor":installation?.chain_end==="RETURN_TO_ORIGIN"?`${name(installation.site_waypoint_id)} — return`:"Not recorded",values);
+      if(installation?.upstream_kind==="CONTROLLER")controllerCell(data,installation.upstream_controller_id,values);
+      else node("td",installation?.upstream_kind==="WAYPOINT"?name(installation.site_waypoint_id):"Not recorded",values);
+      controllerCell(data,controllerId,values);
+      if(successor)controllerCell(data,successor.controller_id,values);
+      else node("td",installation?.chain_end==="TERMINATOR"?"Terminating resistor":installation?.chain_end==="RETURN_TO_ORIGIN"?`${name(installation.site_waypoint_id)} — return`:"Not recorded",values);
       host.insertBefore(summary,form);
       const verification=node("p",`Wiring verification: ${installation?.verification_status || "UNVERIFIED"}`,host);
       host.insertBefore(verification,form);
@@ -126,7 +139,7 @@
         const labels=[first.upstream_kind==="WAYPOINT"?name(first.site_waypoint_id):"Upstream order not recorded"];
         seen.clear();let current=first;
         while(current&&!seen.has(current.controller_id)) {
-          seen.add(current.controller_id);labels.push(`CTRL ${current.controller_id}`);
+          seen.add(current.controller_id);labels.push(controllerLabel(data,current.controller_id));
           const next=active.find(i=>i.upstream_controller_id===current.controller_id);
           if(!next)labels.push(current.chain_end==="TERMINATOR"?"Terminating resistor":current.chain_end==="RETURN_TO_ORIGIN"?`Return to ${name(current.site_waypoint_id)}`:"Ending not recorded");
           current=next;
@@ -197,5 +210,5 @@
     } catch(e){if(ticket===generation)status.textContent=e.message;}
   }
   window.addEventListener("beforeunload",e=>{if(dirty||pending||saving){e.preventDefault();e.returnValue="";}});
-  window.MSBControllerDeployment={render,mayLeave};
+  window.MSBControllerDeployment={render,mayLeave,controllerLabel,controllerCell};
 })();

@@ -427,3 +427,17 @@ from IDs or stage order, rename controller assets, or copy names into installati
 records. Show all assigned display names and an explicit no-display fallback.
 Reuse the same labeling helpers on both screens. This is presentation only: network
 eligibility, topology, power, audit and stage filtering remain unchanged.
+
+### V0.4.18-display-names implementation
+
+Both screens reuse physical display names already supplied by snapshot load_lineage;
+no SQL, new schema, stored name copy or new assignment source is introduced. Names
+appear beneath IDs in port tables and alongside IDs in IN/OUT choices, controller
+selection and the full chain. All assigned names are shown; absent assignments have
+an explicit fallback. Existing wiring-source template names do not replace physical
+copy names. Local FieldWiring 220 tests PASS. Browser regression covers a physical
+copy with a different template name, choices, chain, both screens and multiple/no
+assignment labels. Exact-head CI pending at preparation. Latest AUX-I screenshots
+show a recorded cross-stage chain ending in a resistor, with physical verification
+still UNVERIFIED. No clean exit for this repeat review received yet; do not overlap
+reviews. Production/source files unchanged.

@@ -363,9 +363,11 @@
       const table=el("table",undefined,box);table.className="controller-port-summary";
       const head=el("tr",undefined,el("thead",undefined,table));["IN","Controller","OUT"].forEach(t=>el("th",t,head));
       const row=el("tr",undefined,el("tbody",undefined,table));
-      el("td",i.upstream_kind==="CONTROLLER"?`CTRL ${i.upstream_controller_id}`:i.upstream_kind==="WAYPOINT"?wp(i.site_waypoint_id)?.name:"Not recorded",row);
-      el("td",`CTRL ${i.controller_id}`,row);
-      el("td",next?`CTRL ${next.controller_id}`:i.chain_end==="TERMINATOR"?"Terminating resistor":i.chain_end==="RETURN_TO_ORIGIN"?`${wp(i.site_waypoint_id)?.name} — return`:"Not recorded",row);
+      if(i.upstream_kind==="CONTROLLER")window.MSBControllerDeployment.controllerCell(data,i.upstream_controller_id,row);
+      else el("td",i.upstream_kind==="WAYPOINT"?wp(i.site_waypoint_id)?.name:"Not recorded",row);
+      window.MSBControllerDeployment.controllerCell(data,i.controller_id,row);
+      if(next)window.MSBControllerDeployment.controllerCell(data,next.controller_id,row);
+      else el("td",i.chain_end==="TERMINATOR"?"Terminating resistor":i.chain_end==="RETURN_TO_ORIGIN"?`${wp(i.site_waypoint_id)?.name} — return`:"Not recorded",row);
       if(i.active)button("Edit IN / OUT",()=>openPorts(i.controller_id),box,true);
 
     });
@@ -896,7 +898,7 @@
     const area=el("section",undefined,$("editor"));area.id="network-port-editor";
     const label=el("label","Controller",area), choice=el("select",undefined,label);choice.id="port-controller";
     el("option","Select controller",choice).value="";
-    for(const c of data.controller_options)el("option",`CTRL ${c.id}`,choice).value=c.id;
+    for(const c of data.controller_options)el("option",window.MSBControllerDeployment.controllerLabel(data,c.id),choice).value=c.id;
     choice.value=controllerId || "";
     const host=el("div",undefined,area);
     const show=()=>{if(choice.value)window.MSBControllerDeployment.render(Number(choice.value),host,Number($("detail-waypoint").value));};

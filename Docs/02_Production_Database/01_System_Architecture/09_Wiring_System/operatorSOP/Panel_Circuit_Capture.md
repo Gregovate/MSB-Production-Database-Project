@@ -175,3 +175,11 @@ not a controller dependency loop. Different LOR networks/origins, controller loo
 and multiple connections from one controller OUT are rejected. Save failures roll
 back both ends; stale edits require reload; uncertain saves retain an identical
 retry request. Before/after audit history covers all affected controllers.
+
+### Identify displays while building a chain
+
+The IN / Controller / OUT table shows the physical display name below each asset
+ID, for example CTRL 1094 with WF-Tree-08. Controller choices and the chain include
+both ID and name. Names come from current Display assignments, not controller-number
+order or the reusable wiring-source template. Multiple assignments are listed;
+**No display assigned** is explicit. These labels do not alter any wiring or assignment.

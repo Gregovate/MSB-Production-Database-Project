@@ -1,4 +1,4 @@
-"""MSB FieldWiring browser API and static application host — V0.4.17-controller-ports."""
+"""MSB FieldWiring browser API and static application host — V0.4.18-display-names."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.4.17-controller-ports"
+APP_VERSION = "V0.4.18-display-names"
 BASE_DIR = Path(__file__).resolve().parent
 CONTROLLER_COMMAND_HEADER = "X-MSB-Controller-Command"
 app = Flask(__name__, root_path=str(BASE_DIR))
