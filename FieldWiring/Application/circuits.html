@@ -8,10 +8,10 @@
 <div class="power-toolbar"><button id="reload" type="button">Reload current records</button><label>Find panel or waypoint <input id="find" type="search" placeholder="Current name or retained alias"></label></div>
 <div class="power-layout"><aside class="card"><h2>Panels</h2><button id="add-panel" type="button">Add panel</button><div id="panels"></div></aside>
 <section class="card"><div id="panel-detail"><p>Select a panel to retrieve its circuits and assignments.</p></div></section></div>
-<details class="card" id="waypoint-detail"><summary>Waypoint supply / OUT-Combo network box</summary><label>Waypoint <select id="detail-waypoint"></select></label>
+<details class="card" id="waypoint-detail"><summary>Waypoint power / network equipment</summary><label>Waypoint <select id="detail-waypoint"></select></label>
 <section><h2>Outlet circuits</h2><div id="waypoint-supply"></div><p>Seasonal switching belongs to the supplying breaker.</p></section>
 <section id="outlet-controllers" hidden><h3>Controllers plugged into this outlet</h3><button id="connect-controller" type="button">Connect controller to outlet</button><div id="plugged-controllers"></div></section>
-<section id="combo-network-box" hidden><h2>Network box inventory</h2><p>The receptacle and network box share this OUT-Combo waypoint. Select existing inventory items installed in the network box.</p>
+<section id="combo-network-box" hidden><h2>Combo equipment</h2><p>Power and network are available at this Combo box or light pole. Install an existing Controller or add the actual equipment model here.</p>
 <a href="controllers">Controller inventory</a> <button id="install-controller" type="button">Install existing controller</button> <button id="add-device" type="button">Add new equipment</button><p class="hint">Add a switch, power supply, extender or repeater here. Controllers use the existing Controller inventory.</p><div id="equipment"></div>
 <h3>Network assignments</h3><button id="add-network" type="button">Assign network</button><div id="networks"></div>
 <details><summary>Intermediate electrical feeds and conductor engineering</summary><button id="add-feed" type="button">Add feed relationship</button><div id="feeds"></div><div id="conductor-detail"></div></details></section></details>
