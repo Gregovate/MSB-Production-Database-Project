@@ -241,7 +241,7 @@ try {
   await dialog.locator("[name=pole_count]").selectOption("2");
   await dialog.locator("[name=panel_positions]").fill("18,20");
   await dialog.locator("[name=panel_positions]").blur();
-  await evidence();
+  assert.equal(await dialog.locator("[name=source_evidence]").getAttribute("required"), null);
   await dialog.locator("[name=panel_positions]").fill("1/3 or 1,3?");
   await dialog.locator("#save").click();
   await dialog.getByText(/Enter panel positions such as/).waitFor();
@@ -253,6 +253,9 @@ try {
   assert.equal(await dialog.locator("[name=rated_amps]").locator("option[value=\"20\"]").count(), 1);
   await save();
   const breakerId=(await db.query("SELECT site_power_breaker_id FROM ref.site_power_breaker WHERE breaker_name='18/20 grouped'")).rows[0].site_power_breaker_id;
+  const breakerNotes=await db.query("SELECT source_evidence,verification_status FROM ref.site_power_breaker WHERE site_power_breaker_id=$1",[breakerId]);
+  assert.equal(breakerNotes.rows[0].source_evidence,null);
+  assert.equal(breakerNotes.rows[0].verification_status,"UNVERIFIED");
   const groupedRow=page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:"Breaker 18/20 grouped",exact:true})});
   for (const leg of ["18","20"]) {
     await groupedRow.getByRole("button",{name:`Circuit ${leg} — Assign waypoints`,exact:true}).click();
