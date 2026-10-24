@@ -37,10 +37,24 @@
       const form=node("form",undefined,host); form.id="deployment-form";
       const choose=(id,label)=>{const l=node("label",label,form);l.style.display="block";const s=node("select",undefined,l);s.id=id;s.style.maxWidth="100%";node("option","Not connected",s).value="";return s;};
       const location=choose("deployment-network","Network waypoint ");
+      const networkStatus=node("p",undefined,form);networkStatus.id="deployment-network-status";
+      networkStatus.setAttribute("role","status");
       const outlet=choose("deployment-outlet","Power outlet waypoint ");
       const circuit=choose("deployment-circuit","Actual supplying circuit ");
+      const supplyStatus=node("p",undefined,form);supplyStatus.id="deployment-supply-status";
+      supplyStatus.setAttribute("role","status");
+      const supplyLink=node("a","Manage panel / circuit assignments",form);
+      supplyLink.href="circuits";supplyLink.id="deployment-supply-link";supplyLink.hidden=true;
       const eligible=new Set(data.placement_eligibility.filter(x=>x.controller_id===controllerId).map(x=>x.site_waypoint_id));
       for(const w of data.waypoints.filter(w=>network(w)&&eligible.has(w.id))) node("option",`${w.name} (${w.type})`,location).value=w.id;
+      // Explain the existing authority's result without widening eligibility.
+      const requirement=(data.network_requirements || []).find(x=>x.controller_id===controllerId);
+      const eligibleCount=Array.from(location.options).filter(o=>o.value).length;
+      networkStatus.textContent=eligibleCount
+        ? `${eligibleCount} eligible network waypoint(s) for ${requirement?.lor_network || "the current network"}.`
+        : requirement?.requirement_status==="CONFIRMED"
+          ? `No eligible network waypoints for ${requirement.lor_network || requirement.required_network}. Its reviewed GIS network path is missing or needs reconciliation.`
+          : "No eligible network waypoints: this controller's current LOR network requirement is unresolved. Reconcile its Display assignments and LOR programming first.";
       // Preserve a recorded placement when its evidence later becomes unresolved;
       // it may be retained or disconnected, never silently reassigned.
       if(installation && !Array.from(location.options).some(o=>o.value===String(installation.site_waypoint_id))) {
@@ -53,7 +67,13 @@
       function circuits(selected) {
         circuit.replaceChildren();node("option",outlet.value ? "Select actual circuit" : "Not connected",circuit).value="";
         const ids=new Set(data.waypoint_power_sources.filter(x=>x.site_waypoint_id===Number(outlet.value)).map(x=>x.site_power_circuit_id));
-        for(const c of data.circuits.filter(c=>c.active&&ids.has(c.site_power_circuit_id))) node("option",circuitName(c.site_power_circuit_id),circuit).value=c.site_power_circuit_id;
+        const available=data.circuits.filter(c=>c.active&&ids.has(c.site_power_circuit_id));
+        supplyLink.hidden=!outlet.value;
+        supplyStatus.textContent=!outlet.value ? "Select the actual power outlet to see its recorded circuits."
+          : !available.length ? `No supplying circuit is recorded for ${name(Number(outlet.value))}. Assign this waypoint from Panel Circuits, then reload connections.`
+          : `${available.length} supplying circuit(s) recorded. Select the circuit this controller actually plugs into.`;
+        if(outlet.value&&!available.length) circuit.options[0].textContent="No supplying circuit recorded";
+        for(const c of available) node("option",circuitName(c.site_power_circuit_id),circuit).value=c.site_power_circuit_id;
         if(selected&&!Array.from(circuit.options).some(o=>o.value===String(selected))) node("option",`${circuitName(selected)} — recorded; reconcile supply`,circuit).value=selected;
         circuit.value=selected||"";circuit.required=!!outlet.value;
       }

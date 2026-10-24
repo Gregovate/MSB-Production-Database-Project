@@ -385,6 +385,25 @@ try {
   assert.match(await page.locator("#equipment").innerText(),/TRENDnet TI-PGLC50 · 5-port PoE\+ · POE_SWITCH/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_kind='POE_SWITCH' AND site_waypoint_id=12")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,4);
+  // Empty selectors must distinguish unresolved LOR from missing reviewed routes,
+  // and a known outlet with no circuit must point back to the existing editor.
+  await page.goto(base.replace("circuits","controllers?controller_id=104"));
+  await page.locator("#deployment-network-status").waitFor();
+  assert.match(await page.locator("#deployment-network-status").innerText(),/LOR network requirement is unresolved/);
+  await db.exec("INSERT INTO ref.site_waypoint VALUES(98,'Unassigned outlet','Power')");
+  await page.getByRole("button",{name:"Reload connections",exact:true}).click();
+  await page.locator('#deployment-outlet option[value="98"]').waitFor({state:"attached"});
+  await page.locator("#deployment-outlet").selectOption("98");
+  assert.match(await page.locator("#deployment-supply-status").innerText(),/No supplying circuit is recorded for Unassigned outlet/);
+  assert.equal(await page.locator("#deployment-circuit option").count(),1);
+  assert.equal(await page.locator("#deployment-supply-link").getAttribute("href"),"circuits");
+  // Restore test-only route evidence after proving the distinct confirmed-network gap.
+  await db.exec("UPDATE ref.site_cable SET lifecycle_status='RETIRED'");
+  page.once("dialog",d=>d.accept());
+  await page.goto(base.replace("circuits","controllers?controller_id=101"));
+  await page.locator("#deployment-network-status").waitFor();
+  assert.match(await page.locator("#deployment-network-status").innerText(),/reviewed GIS network path is missing/);
+  await db.exec("UPDATE ref.site_cable SET lifecycle_status='CURRENT'; DELETE FROM ref.site_waypoint WHERE site_waypoint_id=98");
   // Editing from Controller Inventory must update the same records visible at
   // the waypoint, retaining history and safely replaying an uncertain response.
   await page.goto(base.replace("circuits","controllers?controller_id=101"));

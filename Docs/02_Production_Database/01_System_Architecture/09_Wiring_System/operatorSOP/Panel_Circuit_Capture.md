@@ -59,6 +59,14 @@ associations and creates replacements atomically, retaining history. Choose
 from another screen; stale saves require a reload. After an uncertain response,
 retry the same Save rather than creating a new connection.
 
+If an outlet has **No supplying circuit recorded**, open **Manage panel / circuit
+assignments**, assign that waypoint to its actual breaker leg, then return and
+**Reload connections**. Do not guess a circuit from the waypoint name. A missing
+network choice is reported separately: either current LOR programming is unresolved,
+or the required network lacks an eligible reviewed GIS path. Panel inventory may
+be saved before those network records are resolved; Controller network placement
+still requires them.
+
 Network placement offers Network or Combo waypoints only when current LOR
 programming and reviewed GIS paths establish eligibility. Power outlet choices
 are Power or Combo waypoints with a recorded supplying circuit. Network location
