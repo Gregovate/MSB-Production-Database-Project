@@ -361,13 +361,13 @@ try {
     await evidence();await save();
   }
   assert.equal(await page.locator("#installations .power-record").count(),2);
-  // A changed source must disappear from eligible locations on the next read.
+  // GPX geometry updates do not erase FLW-backed network membership.
   await db.exec("UPDATE ref.site_track SET changed_at='2027-01-01'");
   await page.locator("#reload").click();
   await page.getByText(/Revision \d+/).waitFor();
   await page.getByRole("button",{name:"Install existing controller",exact:true}).click();
   await dialog.locator("[name=controller_id]").selectOption("103");
-  assert.equal(await dialog.locator("[name=site_waypoint_id] option").count(),1);
+  assert.equal(await dialog.locator("[name=site_waypoint_id] option").count(),4);
   page.once("dialog",prompt=>prompt.accept());
   await dialog.locator("#cancel").click();
   await dialog.waitFor({state:"hidden"});
@@ -387,7 +387,7 @@ try {
   assert.match(await page.locator("#equipment").innerText(),/TRENDnet TI-PGLC50 · 5-port PoE\+ · POE_SWITCH/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_kind='POE_SWITCH' AND site_waypoint_id=12")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,4);
-  // Empty selectors must distinguish unresolved LOR from missing reviewed routes,
+  // Empty selectors must distinguish unresolved LOR from missing FLW endpoints,
   // and a known outlet with no circuit must point back to the existing editor.
   const previousNetwork=(await db.query("SELECT lor_network FROM ref.controller WHERE controller_id=104")).rows[0].lor_network;
   await db.exec("UPDATE ref.controller SET lor_network=NULL WHERE controller_id=104");
@@ -402,7 +402,7 @@ try {
   assert.equal(await page.locator("#deployment-circuit option").count(),1);
   assert.equal(await page.locator("#deployment-supply-link").getAttribute("href"),"circuits");
   await db.query("UPDATE ref.controller SET lor_network=$1 WHERE controller_id=104",[previousNetwork]);
-  // Restore test-only route evidence after proving the distinct confirmed-network gap.
+  // Restore test-only FLW evidence after proving the distinct confirmed-network gap.
   await db.exec("UPDATE ops.linkiq_intake_review SET proposal=jsonb_set(proposal,'{reasons}','[\"SOURCE_DELETED\"]')");
   page.once("dialog",d=>d.accept());
   await page.goto(base.replace("circuits","controllers?controller_id=101"));
@@ -432,7 +432,7 @@ try {
   await page.getByText(/Revision \d+/).waitFor();
   assert.match(await page.locator("#installations").innerText(),/Controller 101/);
   assert.equal(await page.locator('#detail-waypoint option[value="10"]').count(),0);
-  // Network-only placement is eligible when the existing reviewed route is valid.
+  // Network-only placement is eligible when the existing FLW endpoints resolve.
   await db.exec("UPDATE ref.site_waypoint SET waypoint_type='Network' WHERE site_waypoint_id=11");
   await page.goto(base.replace("circuits","controllers?controller_id=102"));
   await page.locator("#deployment-network").waitFor();

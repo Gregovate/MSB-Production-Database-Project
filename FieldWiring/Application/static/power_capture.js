@@ -372,7 +372,7 @@
     data.feeds.filter(f=>f.destination_waypoint_id===detailWaypoint || device(f.destination_device_id)?.site_waypoint_id===detailWaypoint || device(f.source_device_id)?.site_waypoint_id===detailWaypoint).forEach((f) => record($("feeds"), feedName(f), f, "feed"));
     $("networks").replaceChildren();
     const available=(data.networks || []).filter(n=>n.site_waypoint_id===detailWaypoint);
-    available.forEach(n=>el("p",`${n.network_code} · reviewed cable ${n.site_cable_id}`, $("networks")));
+    [...new Set(available.map(n=>n.network_code))].forEach(code=>el("p",`${code} · FLW endpoint record`, $("networks")));
     if (!available.length) el("p","No resolved FLW network endpoints at this waypoint. Reconcile the FLW endpoint records before network placement.",$("networks"));
     renderCableHistory();
     renderSafety(detailWaypoint);
