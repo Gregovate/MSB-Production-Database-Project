@@ -488,8 +488,10 @@
   const isComboWaypoint = (w) =>
     String(w.type || "").trim().toLowerCase().split(/[-_\s]+/).includes("combo");
   const isElectricalEndpoint = (w) => {
-    const type=String(w.type||"").trim().toLowerCase();
-    return !["hydrant","fire hydrant","stage","manhole"].includes(type);
+    // Endpoint eligibility is based on the maintained waypoint TYPE, never
+    // display-name text. Unknown types are not silently treated as outlets.
+    const tokens=String(w.type||"").trim().toLowerCase().split(/[-_\\s]+/);
+    return ["power","out","outlet","combo"].some(t=>tokens.includes(t));
   };
   function specs(kind) {
     const waypoints = options(
@@ -919,7 +921,7 @@
         f.source_circuit_id === c.site_power_circuit_id &&
         f.destination_waypoint_id,
     );
-    data.waypoints.filter(isElectricalEndpoint).forEach((w) => {
+    data.waypoints.filter(w=>isElectricalEndpoint(w) || direct.some(f=>f.destination_waypoint_id===w.id)).forEach((w) => {
       const l = el("label", undefined, list),
         i = el("input", undefined, l);
       i.type = "checkbox";
