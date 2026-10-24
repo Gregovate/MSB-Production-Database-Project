@@ -191,7 +191,7 @@
       const box = record(detail, selected.panel_name, selected, "panel");
       el(
         "p",
-        `Location: ${selected.site_waypoint_id ? waypointName(selected.site_waypoint_id) : "Unknown"} · Owner: ${selected.owner_name || "Unknown"}`,
+        `Location: ${selected.site_waypoint_id ? waypointName(selected.site_waypoint_id) : "Unknown"} · Owner: ${selected.owner_name || "Unknown"} · Installed: ${selected.year_installed ?? "Unknown"}`,
         box,
       );
       el(
