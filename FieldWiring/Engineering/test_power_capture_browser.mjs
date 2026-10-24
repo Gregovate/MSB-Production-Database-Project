@@ -331,7 +331,7 @@ try {
     await evidence();await save();
   }
   assert.equal(await page.locator("#equipment .power-record").count(),2);
-  assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,3);
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,4);
   await page.screenshot({path:"/tmp/power-panel-desktop.png",fullPage:true});
   await page.getByRole("button", {name:/Light mode|Dark mode/}).click();
   const changedTheme = await page.locator("html").getAttribute("data-theme");
