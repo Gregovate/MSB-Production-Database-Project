@@ -8,12 +8,16 @@ on:
       - "Setup/Application/**"
       - "Setup/Acceptance/test_setup_gis_preview.py"
       - "FieldWiring/Application/**"
+      - "FieldWiring/Engineering/**"
+      - "Database/EngineeringTools/sql/171_panel_circuit_capture_candidate.sql"
       - ".github/workflows/setup205-regression.yml"
   pull_request:
     paths:
       - "Setup/Application/**"
       - "Setup/Acceptance/test_setup_gis_preview.py"
       - "FieldWiring/Application/**"
+      - "FieldWiring/Engineering/**"
+      - "Database/EngineeringTools/sql/171_panel_circuit_capture_candidate.sql"
       - ".github/workflows/setup205-regression.yml"
 
 permissions:
@@ -58,3 +62,17 @@ jobs:
         run: python -m pip install -r FieldWiring/Application/requirements.txt pytest
       - name: Execute full FieldWiring application regression
         run: python -m pytest -q -p no:cacheprovider FieldWiring/Application
+      - name: Node for isolated circuit command and browser checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned circuit test dependencies
+        working-directory: FieldWiring/Engineering
+        run: npm ci
+      - name: Execute isolated circuit PostgreSQL command acceptance
+        run: node FieldWiring/Engineering/test_power_capture.mjs
+      - name: Install browser for isolated circuit workflow
+        working-directory: FieldWiring/Engineering
+        run: npx playwright install --with-deps chromium
+      - name: Execute isolated circuit browser workflow
+        run: node FieldWiring/Engineering/test_power_capture_browser.mjs

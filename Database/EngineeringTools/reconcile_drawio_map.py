@@ -73,7 +73,20 @@ def geometry_matches(feature, points, records):
     segments = [coordinates] if geometry.get('type') == 'LineString' else coordinates
     if not segments:
         return {}
-    usable = [c for c in records if c['status'] not in ('ENDPOINT_CONFLICT', 'NETWORK_CONFLICT')]
+    # Lookup aliases are not additional physical waypoints. Collapse only by
+    # the already supplied stable point ID, never by name similarity/proximity.
+    # Keep genuinely distinct coincident IDs for the ambiguity check below.
+    identity_keys, aliases, unique_points = {}, {}, {}
+    for key, point in sorted(points.items()):
+        identity = point['id']
+        canonical = identity_keys.setdefault(identity, key)
+        if canonical in unique_points and unique_points[canonical]['xy'] != point['xy']:
+            raise ValueError('Waypoint aliases disagree on coordinates: ' + str(identity))
+        unique_points[canonical] = point
+        aliases[key] = canonical
+    points = unique_points
+    usable = [dict(c, endpoints=[aliases.get(e, e) for e in c['endpoints']])
+              for c in records if c['status'] not in ('ENDPOINT_CONFLICT', 'NETWORK_CONFLICT')]
     by_network = defaultdict(list)
     for cable in usable:
         by_network[cable['network']].append(cable)

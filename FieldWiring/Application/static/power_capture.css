@@ -1,0 +1,149 @@
+.power-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 3fr);
+  gap: 1rem;
+}
+.power-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: end;
+  margin: 1rem 0;
+}
+.power-toolbar label {
+  flex: 1;
+  min-width: 180px;
+}
+.power-record {
+  border-bottom: 1px solid #a8b3bf;
+  padding: 1rem 0;
+}
+.power-record p {
+  margin: 0.4rem 0;
+  overflow-wrap: anywhere;
+}
+.power-record button {
+  margin: 0.25rem;
+}
+.power-selected {
+  border-left: 5px solid #1464a5;
+  padding-left: 0.7rem;
+}
+dialog {
+  width: min(650px, 94vw);
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid #607085;
+  padding: 1.3rem;
+}
+dialog::backdrop {
+  background: #0008;
+}
+#edit-fields label {
+  display: block;
+  margin: 0.75rem 0;
+}
+#edit-fields input:not([type="checkbox"]),
+#edit-fields select,
+#edit-fields textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem;
+  font: inherit;
+}
+#edit-fields textarea {
+  min-height: 85px;
+}
+#edit-fields select[multiple] {
+  min-height: 160px;
+}
+#status,
+#save-status {
+  font-weight: 600;
+}
+#status[data-error="true"],
+#save-status {
+  color: #a12323;
+}
+.power-choices {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid #a8b3bf;
+  padding: 0.5rem;
+}
+.power-choices label {
+  padding: 0.25rem;
+}
+.power-badge {
+  font-size: 0.9em;
+  font-weight: 600;
+}
+summary {
+  cursor: pointer;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+button {
+  min-height: 42px;
+}
+#panels button {
+  width: 100%;
+  text-align: left;
+}
+@media (max-width: 700px) {
+  .power-layout {
+    grid-template-columns: 1fr;
+  }
+  .brand {
+    flex-wrap: wrap;
+  }
+  dialog {
+    padding: 1rem;
+  }
+}
+
+/* Panel schedule follows physical positions; repeated cells share one breaker ID. */
+.power-panelboard {border:2px solid #667788;padding:1rem;border-radius:.5rem}
+.power-main {max-width:34rem;margin:0 auto 1rem;border:2px solid #667788;padding:.75rem}
+.power-slot-grid {display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.power-slot {min-width:0;border:1px solid #667788;padding:.5rem;overflow-wrap:anywhere}
+.power-slot button {max-width:100%}
+
+/* Native dialogs must follow the same explicit theme as the page. */
+dialog { background: var(--panel); color: var(--ink); }
+#save-status { color: #b42318; }
+html[data-theme="dark"] #save-status { color: #ffaaa5; }
+
+/* One physical breaker spans adjacent rows on the same side of the panel. */
+.power-slot-grid { align-items: stretch; grid-auto-rows: minmax(48px, auto); gap: .4rem; }
+.power-slot { min-width: 0; padding: .4rem; }
+.power-breaker { margin: 0; padding: .35rem; height: 100%; box-sizing: border-box; }
+.power-breaker h3 { font-size: 1rem; margin: .2rem 0; }
+.power-breaker p { margin: .25rem 0; font-size: .85rem; }
+.power-circuit-leg { display: block; width: 100%; text-align: left; margin: .25rem 0; overflow-wrap: anywhere; }
+.power-choices label { display: flex; align-items: center; gap: .4rem; }
+.power-choices label[hidden], [hidden] { display: none !important; }
+.power-choices input[type=checkbox] { width: auto; flex: 0 0 auto; }
+@media (max-width: 600px) { .power-slot-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .power-slot button { font-size: .8rem; padding: .3rem; } }
+
+/* Each route exposes its own workflow while sharing records and commands. */
+nav[aria-label="Field wiring screens"] {padding: .8rem 1rem; line-height: 2;}
+body:not([data-power-screen="panels"]) .power-layout,
+body:not([data-power-screen="panels"]) #seasonal-activities,
+body:not([data-power-screen="panels"]) #panel-search,
+body[data-power-screen="panels"] #waypoint-detail,
+body[data-power-screen="tests"] #waypoint-detail,
+body[data-power-screen="tests"] #correction-history,
+body[data-power-screen="waypoints"] #add-device,
+body[data-power-screen="waypoints"] #equipment-help,
+body[data-power-screen="waypoints"] #equipment,
+body[data-power-screen="waypoints"] #feed-engineering,
+body[data-power-screen="equipment"] #outlet-supply-section,
+body[data-power-screen="equipment"] #outlet-controllers,
+body[data-power-screen="equipment"] #install-controller,
+body[data-power-screen="equipment"] #installations {display:none;}
+#test-history {overflow-wrap:anywhere;}

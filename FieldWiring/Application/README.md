@@ -4,6 +4,20 @@ Status: **PRODUCTION-OPERATIONAL — CONTROLLER INVENTORY INTEGRATION ACTIVE**
 
 This folder contains the browser-based FieldWiring application and the read-side Controller Inventory browser experience.
 
+## Panel circuit candidate — #171 / #230 under #122
+
+`V0.4.3-panel-circuit-capture` adds `/circuits` and guarded PostgreSQL capture
+commands inside this existing host. Crew can define panels/circuits, assign
+multiple current waypoints, correct feeds, record intermediate equipment and
+network memberships, and preserve separate seasonal observations/activity.
+This is a source candidate, not deployed behavior.
+
+[Panel Circuit Design](../../Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Panel_Circuit_Design.md)
+records the live catalog and mandatory #319 integration boundary. Its old power
+SQL cannot be applied alongside this candidate. The waypoint foundation and
+current approved source remain the separate GIS thread's responsibility.
+No generic database write role or separate user grant store is introduced.
+
 ## GIS v1 candidate — #171 / PR #318 (2026-10-10)
 
 The candidate landing page adds Park Map / GIS navigation to `/setup/locate/?view=fieldwiring`,

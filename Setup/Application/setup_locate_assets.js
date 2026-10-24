@@ -4,8 +4,7 @@
     UNKNOWN: 'assets/container-unknown.svg',
     LOADED: 'assets/container-loaded.svg',
     PARTIAL: 'assets/container-partial.svg',
-    EMPTY: 'assets/container-empty.svg',
-    DISPLAY: 'https://webassets.sheboyganlights.org/images/symbols/msb/T-Post.png'
+    EMPTY: 'assets/container-empty.svg'
   };
   const year = document.getElementById('asset-year');
   year.value = new Date().getFullYear();
@@ -83,10 +82,27 @@
     }
     for (const values of positions.values()) {
       const a = values[0];
-      const marker = L.marker(a.position, {icon: L.icon({iconUrl: container ? icons[a.load_state] || icons.UNKNOWN : icons.DISPLAY, iconSize: [32,32], iconAnchor: container ? [16,16] : [16,48]}), zIndexOffset: container ? 0 : 1000});
+      const marker = L.marker(a.position, {
+        icon: container
+          ? L.icon({iconUrl: icons[a.load_state] || icons.UNKNOWN,
+            iconSize: [32,32], iconAnchor: [16,16]})
+          : L.divIcon({className:'msb-reference-placeholder',
+            html:'<span aria-hidden="true"></span>',iconSize:[12,12],iconAnchor:[6,22]}),
+        zIndexOffset: container ? 0 : 1000
+      });
+      // Independent Displays sit above colocated Containers. Use reviewed SVG
+      // at natural width/height; no legacy T-Post PNG or inferred GPS movement.
+      if (!container) window.msbReferenceSymbols.setSymbol(marker, 'T-Post', {yOffset:16});
       const title = values.map(v => container ? 'C' + String(v.container_id).padStart(3, '0') : v.name).join(' · ');
       marker.bindTooltip(esc(title));
-      marker.bindPopup(values.map(v => popup(v, container)).join('<hr>'), {maxHeight: 360});
+      // Shared #171 rule: popup pointer centers 8px above the REAL icon's
+      // top edge. Symbol Manager accounts for iconAnchor + popupAnchor and
+      // refreshes after async SVG replacement and details disclosure.
+      window.msbReferenceSymbols.bindPopupAtIconTop(
+        marker,
+        values.map(v => popup(v, container)).join('<hr>'),
+        {maxHeight: 360}
+      );
       marker.addTo(group);
       for (const v of values) mapSearch.addAsset(v, container, marker);
     }
@@ -106,7 +122,16 @@
       if (requestedContainer && /^\d+$/.test(requestedContainer)) mapSearch.focusContainer(Number(requestedContainer));
       status.textContent = `${data.containers.length} Containers · ${data.displays.length} independent Displays · ${unlocated.children.length} unlocated · through event ${data.through_event_id}. Icons show recorded associations: Loaded / Partial / Empty / Unknown. Physical loads unconfirmed.`;
     } catch (error) {
-      if (current === sequence) status.textContent = `${error.message}. Previously loaded locations remain visible; they have not been refreshed. Refresh to retry.`;
+      if (current === sequence) {
+        // A failed live API must never leave apparently current movement positions.
+        layers.containers.clearLayers();
+        layers.displays.clearLayers();
+        unlocated.replaceChildren();
+        mapSearch.clearAssets();
+        status.textContent = 'CURRENT Container / Display locations unavailable (' +
+          error.message + '). No last-known locations are being represented as live. ' +
+          'Offline Park Map shows saved reference geography only.';
+      }
     } finally { if (current === sequence) refresh.disabled = false; }
   }
   refresh.addEventListener('click', load);
