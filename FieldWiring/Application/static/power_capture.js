@@ -717,7 +717,12 @@
   function open(kind, row = {}) {
     if (!data.access.can_edit) return;
     pending = null;
-    edit = { kind, row, specs: specs(kind) };
+    // New records always start active; hide the retirement control until an
+    // existing record is deliberately corrected. Default remains DB-owned.
+    edit = {
+      kind, row,
+      specs: specs(kind).filter((spec) => spec.key !== "active" || !!row[keys[kind]]),
+    };
     $("edit-title").textContent =
       kind === "event"
         ? "Record seasonal evidence"
