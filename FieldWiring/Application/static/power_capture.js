@@ -751,6 +751,10 @@
         const o = el("option", "Unknown / not specified", n);
         o.value = "";
       }
+      if (spec.key === "device_name" && !value) {
+        const o=el("option","Select equipment model",n);
+        o.value=""; o.disabled=true; o.selected=true;
+      }
       spec.options.forEach((x) => {
         const o = el("option", x.label, n);
         o.value = x.value;
@@ -763,8 +767,9 @@
       if (spec.type === "checkbox") n.checked = value !== false;
       else n.value = Array.isArray(value) ? value.join(",") : value ?? "";
       if (spec.type === "number") {
-        n.min = ["breaker_pole","pole_count","rated_amps"].includes(spec.key) ? "1" : "0.000001";
-        n.step = ["breaker_pole","pole_count","rated_amps"].includes(spec.key) ? "1" : "any";
+        n.min = spec.key === "year_installed" ? "1900" : ["breaker_pole","pole_count","rated_amps"].includes(spec.key) ? "1" : "0.000001";
+        n.step = ["year_installed","breaker_pole","pole_count","rated_amps"].includes(spec.key) ? "1" : "any";
+        if (spec.key === "year_installed") n.max="2100";
         if (spec.key === "rated_amps") n.setAttribute("list", "breaker-amp-options");
       }
     }
@@ -792,6 +797,25 @@
         row[s.key] ?? (s.key.includes("desired_state") ? "UNKNOWN" : undefined),
       ),
     );
+    if (kind === "device") {
+      const form=$("edit-form"), model=form.elements.device_name, type=form.elements.device_kind;
+      // One equipment-model choice automatically sets the governed type.
+      // Existing site devices retain their recorded names and classification.
+      const syncType=()=>{
+        const selected=equipmentModels.find(x=>x[0]===model.value);
+        const existing=data.devices.find(d=>d.device_name===model.value);
+        const kind=selected?.[1] || existing?.device_kind;
+        if(kind) type.value=kind;
+      };
+      model.addEventListener("change",syncType);
+      syncType();
+      type.closest("label").hidden=true;
+      for(const name of ["utility_asset_id","rating"]) {
+        if (!row[name]) form.elements[name].closest("label").hidden=true;
+      }
+      if(row.site_waypoint_id) form.elements.site_waypoint_id.closest("label").hidden=true;
+      $("edit-title").textContent=row.site_power_device_id ? "Correct equipment" : "Add equipment";
+    }
     if (kind === "controller_power_connection") {
       const form=$("edit-form"), waypoint=form.elements.site_waypoint_id, choice=form.elements.site_power_circuit_id;
       const refresh=()=>{
