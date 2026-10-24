@@ -199,3 +199,25 @@ Actual operator requests and current candidate response:
 Mandatory stable identities such as a new panel designation and meter identifier still require factual operator input; the general target remains dropdown-based selection plus optional notes rather than redundant free-form fields. Equipment catalogs can evolve through a later governed reference editor, not a new parallel ownership system.
 
 As of this checkpoint, source changes and browser regression tests have been committed on #319. **This is engineering source, not accepted Production review.** Exact-head GitHub CI completion, current-Production PostgreSQL 16 disposable validation, protected operator acceptance, and #37 authorized release are separate gates. Never launch an overlapping preview while source-lock ownership is unresolved.
+
+## New-thread handoff — final integrated design / October 24, 2026
+
+**Authoritative design:** [FieldWiring_Panel_Circuit_Design.md](FieldWiring_Panel_Circuit_Design.md), heading **Final integrated system design — October 24, 2026**. Follow the controlling section rather than earlier abandoned assumptions about network ownership or Crew network editing.
+
+**One project model, seven required capabilities:** Controller assignment to physically eligible waypoint; true network availability by reviewed GIS route at waypoint; surveyed power/network tracks; FLW LinkIQ cable tests between same permanent waypoint endpoints; Display→Controller→actual circuit demand versus branch breaker capacity; panel/meter/owner/position and source-aware waypoint safety; panel-level versus breaker-level show/off-season planned/actual states. These relationships are cumulative; do not replace existing identifiers/audits with new catalogs.
+
+**Authority:** LOR sets Controller→network and Display→Controller; GPX/GIS reviewed trace/waypoint endpoints define network physical availability and power/network route; FLW is measured link evidence, not route geometry; Controller location/circuit plug associations are Crew-capturable subject to required LOR network availability; Crew **cannot edit networks or GIS traces**. Normal GIS/FieldWiring projection is read-only for network membership. Combo means both power and network facilities, not a specific network.
+
+**Current code status:** #319 remains open with source changes to panel/branch breaker/editor/Combo and optional notes. Earlier exact SHA `f3588c27999333eb8c0be9546cfd72a27556973c` passed 7 GitHub CI checks, but **predates this final integrated design**. Latest checkpoint SHA must be refreshed and checked; don't quote the prior SHA as acceptance for new requirements. Draft #454 has an older incompatible power migration — never deploy both. The final Controller network availability gate, derived circuit amperage rollup, separate panel off-season supply state, safety projection, and network editor/API write denial are **not yet accepted as implemented**. Need reconcile current application and schemas, then implement and test.
+ 
+**Operator preview cleanup receipt:**
+```text
+Setup REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT
+PASS: preview port and GIS source lock are available.
+Connection to 192.168.5.9 closed.
+PASS: preview exited; port and GIS source lock available.
+```
+Interpretation: disposable browser preview teardown and postflight resource release PASS; **feature acceptance not granted** and no Production deployment. No remote report path shown. Another review requires fresh port/lock ownership check. The operator had identified CHANGES REQUIRED while reviewing.
+
+**Next thread engineering order:** refresh main/#319/#171/#230/#122 and current Server Management runbooks; inventory installed/pending LOR Controller-network/Display load/circuit mappings and GIS source/FLW IDs; resolve schema joins and source-of-truth boundaries; update controlled design before new migrations; implement network availability restriction + deny Crew network-write UI/API, per-leg capacity rollup, panel-level seasonal state/safety and comprehensive tests; run exact-head GitHub checks; prepare and execute only existing disposable PG16/PostGIS/port8898 protected browser review after an actual preflight; retain report; coordinate release under #122/#37. No new parallel app, runtime, mailer, waypoint authority or duplicate migration. No operator technical design or repeated approval request; only request a bounded test or actual release authorization at its proper gate.
+
