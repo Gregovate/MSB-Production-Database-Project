@@ -471,8 +471,8 @@ BEGIN
       OR expected->'site_waypoint_id' IS DISTINCT FROM before_row->'site_waypoint_id') THEN
     RAISE EXCEPTION 'Retire the previous installation and create a new one to move equipment' USING ERRCODE='22023';
    END IF;
-   IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_waypoint WHERE site_waypoint_id=(expected->>'site_waypoint_id')::bigint AND lower(btrim(waypoint_type))='out-combo') THEN
-    RAISE EXCEPTION 'Network-box equipment requires an OUT-Combo waypoint' USING ERRCODE='22023';
+   IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_waypoint WHERE site_waypoint_id=(expected->>'site_waypoint_id')::bigint AND regexp_split_to_array(lower(btrim(waypoint_type)), '[-_[:space:]]+') @> ARRAY['combo']::text[]) THEN
+    RAISE EXCEPTION 'Controller installation requires a waypoint with Combo power-and-network capability' USING ERRCODE='22023';
    END IF;
   END IF;
   allowed:=allowed||ARRAY['verified_by_person_id','verified_at','updated_at'];
@@ -500,10 +500,10 @@ BEGIN
     WHERE f.active AND NOT f.site_power_feed_id=ANY(s.visited)
    )
    SELECT 1 FROM ref.site_controller_power_connection cp JOIN ref.site_waypoint w USING(site_waypoint_id)
-   WHERE cp.active AND (lower(btrim(w.waypoint_type)) NOT IN ('power','out-power','out-combo') OR NOT EXISTS(
+   WHERE cp.active AND ((lower(btrim(w.waypoint_type)) NOT IN ('power','out-power') AND NOT (regexp_split_to_array(lower(btrim(w.waypoint_type)), '[-_[:space:]]+') @> ARRAY['combo']::text[])) OR NOT EXISTS(
     SELECT 1 FROM supplied s LEFT JOIN ref.site_power_device d ON d.site_power_device_id=s.device_id AND d.active
     WHERE s.circuit_id=cp.site_power_circuit_id AND (s.waypoint_id=cp.site_waypoint_id OR d.site_waypoint_id=cp.site_waypoint_id)))
-  ) THEN RAISE EXCEPTION 'Controller outlet connection requires an active circuit feed to a Power or OUT-Combo waypoint; retire dependent connections before changing supply' USING ERRCODE='23514'; END IF;
+  ) THEN RAISE EXCEPTION 'Controller outlet connection requires an active circuit feed to a Power or Combo waypoint; retire dependent connections before changing supply' USING ERRCODE='23514'; END IF;
   IF EXISTS(SELECT 1 FROM ref.site_panel p JOIN ref.site_power_breaker b ON b.site_power_breaker_id=p.supply_breaker_id
     JOIN ref.site_panel upstream ON upstream.site_panel_id=b.site_panel_id
     WHERE p.active AND (NOT b.active OR NOT upstream.active OR b.site_panel_id=p.site_panel_id
