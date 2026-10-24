@@ -86,7 +86,11 @@ await denied(
   "22023",
 );
 // A normal Crew panel save requires no free-text verification or evidence.
-const simple = await cmd("panel", { panel_name: "Field capture without notes" });
+const simpleFields={panel_name:"Field capture without notes"};
+const simpleUuid=crypto.randomUUID(), simpleRevision=revision;
+const simple = await cmd("panel", simpleFields, null, "crew@example.test", revision, simpleUuid);
+assert.equal((await cmd("panel", simpleFields, null, "crew@example.test", simpleRevision, simpleUuid)).replayed,true);
+n++;
 const simpleStatus = await db.query(
   "SELECT source_evidence,verification_status FROM ref.site_panel WHERE site_panel_id=$1",
   [simple.target_id],
