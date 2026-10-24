@@ -20,7 +20,7 @@ CREATE TABLE ref.site_panel (
  site_waypoint_id bigint REFERENCES ref.site_waypoint(site_waypoint_id),
  owner_name text, panel_identification text, meter_information text,
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -35,7 +35,7 @@ CREATE TABLE ref.site_power_circuit (
  show_desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK (show_desired_state IN ('UNKNOWN','ON','OFF')),
  restoration_desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK (restoration_desired_state IN ('UNKNOWN','ON','OFF')),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -48,7 +48,7 @@ CREATE TABLE ref.site_power_device (
  site_waypoint_id bigint REFERENCES ref.site_waypoint(site_waypoint_id),
  owner_name text, utility_asset_id text, rating text, description text,
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -64,7 +64,7 @@ CREATE TABLE ref.site_power_feed (
  CHECK (num_nonnulls(destination_waypoint_id,destination_device_id)=1),
  CHECK (source_device_id IS DISTINCT FROM destination_device_id OR source_device_id IS NULL),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -75,7 +75,7 @@ CREATE TABLE ref.site_waypoint_network (
  site_waypoint_id bigint NOT NULL REFERENCES ref.site_waypoint(site_waypoint_id),
  site_network_id bigint NOT NULL REFERENCES ref.site_network(site_network_id),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -93,7 +93,7 @@ CREATE TABLE ref.site_power_action (
  prerequisite_action_ids bigint[] NOT NULL DEFAULT '{}',
  CHECK (num_nonnulls(site_power_circuit_id,site_power_device_id)=1),
  active boolean NOT NULL DEFAULT true,
- source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ source_evidence text,
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
  verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -237,7 +237,7 @@ BEGIN
   expected:=coalesce(before_row,'{}'::jsonb)||p_data||jsonb_build_object('verified_by_person_id',verified,'verified_at',verified_time,'updated_at',clock_timestamp());
   -- jsonb_populate_record enforces native PostgreSQL field types. Omitted fields
   -- retain prior values on corrections; inserts receive explicit safe defaults.
-  IF p_id IS NULL THEN expected:=jsonb_build_object('active',true,'show_desired_state','UNKNOWN',
+  IF p_id IS NULL THEN expected:=jsonb_build_object('verification_status','UNVERIFIED','active',true,'show_desired_state','UNKNOWN',
    'restoration_desired_state','UNKNOWN','desired_state','UNKNOWN','prerequisite_action_ids','[]'::jsonb)||expected; END IF;
   allowed:=allowed||ARRAY['verified_by_person_id','verified_at','updated_at'];
   SELECT string_agg(format('%I',k),','),string_agg(format('r.%I',k),','),string_agg(format('%I=r.%I',k,k),',')
