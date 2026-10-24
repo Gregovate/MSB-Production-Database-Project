@@ -237,8 +237,8 @@ try {
   await page.locator("#panels").getByRole("button", {name:"A5 panel",exact:true}).click();
   await page.getByRole("button", {name:"Add branch breaker",exact:true}).click();
   await dialog.locator("[name=breaker_name]").fill("18/20 grouped");
-  await dialog.locator("[name=rated_amps]").fill("20");
-  await dialog.locator("[name=pole_count]").fill("2");
+  await dialog.locator("[name=rated_amps]").selectOption("20");
+  await dialog.locator("[name=pole_count]").selectOption("2");
   await dialog.locator("[name=panel_positions]").fill("18,20");
   await dialog.locator("[name=panel_positions]").blur();
   await evidence();
@@ -250,7 +250,7 @@ try {
   await dialog.locator("[name=panel_positions]").blur();
 
   await dialog.locator("[name=show_desired_state]").selectOption("ON");
-  assert.equal(await dialog.locator("[name=rated_amps]").getAttribute("step"), "1");
+  assert.equal(await dialog.locator("[name=rated_amps]").locator("option[value=\"20\"]").count(), 1);
   await save();
   const breakerId=(await db.query("SELECT site_power_breaker_id FROM ref.site_power_breaker WHERE breaker_name='18/20 grouped'")).rows[0].site_power_breaker_id;
   const groupedRow=page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:"Breaker 18/20 grouped",exact:true})});
