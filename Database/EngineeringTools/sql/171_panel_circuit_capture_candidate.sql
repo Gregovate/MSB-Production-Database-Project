@@ -453,6 +453,12 @@ BEGIN
      (before_row->>'destination_waypoint_id')::bigint,(before_row->>'site_waypoint_id')::bigint)
     AND lower(btrim(w.waypoint_type)) IN ('hydrant','fire hydrant','stage','manhole')) THEN
    RAISE EXCEPTION 'This waypoint type does not carry circuit or network assignments' USING ERRCODE='22023'; END IF;
+  -- Any routine correction without an explicit verification action demotes the
+  -- current reference to UNVERIFIED. Never keep old verifier attribution on
+  -- changed facts or falsely attribute verification to this Crew operator.
+  IF NOT p_data ? 'verification_status' THEN
+    p_data:=p_data||jsonb_build_object('verification_status','UNVERIFIED');
+  END IF;
   verified:=CASE WHEN p_data->>'verification_status'='VERIFIED' THEN actor.person_id ELSE NULL END;
   verified_time:=CASE WHEN verified IS NOT NULL THEN clock_timestamp() ELSE NULL END;
   expected:=coalesce(before_row,'{}'::jsonb)||p_data||jsonb_build_object('verified_by_person_id',verified,'verified_at',verified_time,'updated_at',clock_timestamp());
