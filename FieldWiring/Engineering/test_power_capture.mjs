@@ -30,7 +30,11 @@ async function cmd(
   n++;
   return r.rows[0].result;
 }
-const p = await cmd("panel", { ...base, panel_name: "Panel A" });
+const p = await cmd("panel", { ...base, panel_name: "Panel A", owner_name: "City Owned", year_installed: 2018 });
+const panelRecord=await db.query("SELECT owner_name,year_installed FROM ref.site_panel WHERE site_panel_id=$1",[p.target_id]);
+assert.equal(panelRecord.rows[0].owner_name,"City Owned");
+assert.equal(panelRecord.rows[0].year_installed,2018);
+n++;
 const c = await cmd("circuit", {
   ...base,
   site_panel_id: p.target_id,
