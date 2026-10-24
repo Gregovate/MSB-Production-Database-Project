@@ -25,7 +25,7 @@ CREATE TABLE ref.site_network(site_network_id bigint PRIMARY KEY,network_code te
 CREATE TABLE ref.fixture_user(email text PRIMARY KEY, active boolean,role_name text,person_id integer);
 INSERT INTO ref.person VALUES(1),(2); INSERT INTO ref.season VALUES(2026),(2025);
 INSERT INTO ref.fixture_user VALUES('crew@example.test',true,'Production Crew',1),('manager@example.test',true,'Manager',2),('volunteer@example.test',true,'Volunteer',1),('inactive@example.test',false,'Production Crew',1);
-INSERT INTO ref.site_waypoint VALUES (10,'Panel A','Panel'),(11,'Outlet A','OUT-Combo'),(12,'Outlet B','OUT-Combo'),(13,'Power only','Power');
+INSERT INTO ref.site_waypoint VALUES (10,'Panel A','Panel'),(11,'Outlet A','OUT-Combo'),(12,'Outlet B','OUT-Combo'),(13,'Power only','Power'),(14,'Light pole combo','Pole-Combo');
 INSERT INTO ref.site_waypoint_alias VALUES(11,'Old Outlet A','manager',now());
 INSERT INTO ref.site_network VALUES(1,'REG','LOR'),(2,'AUX-A','LOR');`);
   // Load the actual role policy and actor SQL used by the application. Only the
