@@ -1,5 +1,20 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+## Network route and FLW authority — operator ruling, October 24, 2026
+
+This paragraph **supersedes prior references to Production Crew editing circuit/network relationships together**. Production Crew **may define circuit information only** in FieldWiring (panels, breakers, circuit legs and assigned existing power outlet waypoints); they cannot create, assign, or correct network IDs or memberships.
+
+Three distinct records must not be conflated:
+
+1. **Master GPX waypoint descriptions:** operator-authored source for the network designation(s) associated with that waypoint. Accepted/reconciled source feeds the maintained relational lookup/projection; a second FieldWiring Assign network form is not authoritative.
+2. **GIS physical traces:** operator-surveyed network path geometry and logical endpoint links between stable waypoint identities; only reviewed GIS source promotion may alter network route facts. GPX waypoint network membership alone does **not** prove a traversable physical trace or segment.
+3. **FLW / LinkIQ:** read-only cable test measurements/observations between the **same two waypoint endpoints**. An FLW test is evidence about a tested link, not a GPX route, no matter what network label appears in a test file. Match to stable endpoint identity, retain source timestamp/raw test provenance, flag missing/conflicting matches and never invent topology.
+
+Maintain `ref.site_network` as the standardized dictionary of network codes, not a separate assignment editor. Normalize GPX descriptions only when a documented, unambiguous network token is present; multiple network designations are allowed if explicitly supported. Preserve unresolved/contradictory records and existing data until governed GIS reconciliation; no automatic overwrite or inferred Combo network identity. `Combo` indicates power **and** network availability on either a box or light pole, not which network or where its route goes.
+
+**Acceptance gate:** read-only network display sourced from accepted GPX; deny Crew network membership writes in both UI and database function; circuit writes remain allowed; GIS trace and FLW endpoints cross-reference stable waypoint IDs without one becoming the other's authority. Existing uninstalled network-command candidate is not accepted as currently exposed. Preserve original master GPX, physical tracks and FLW bytes/provenance through review.
+
+
 ## October 23 — recorded dependency report implementation checkpoint
 
 Implemented in the existing backend: `capture_gpx_dependencies` reads the 26
