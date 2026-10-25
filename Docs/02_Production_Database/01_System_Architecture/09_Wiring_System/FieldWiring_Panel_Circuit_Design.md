@@ -920,3 +920,14 @@ state table. Test target matrix, unknown states, grouped breakers, no-waypoint
 loads, ON/OFF history, corrections, prior-season completion isolation, permissions,
 retry/stale requests and panel-map navigation. Production and GIS sources remain
 untouched during engineering; prepare a governed disposable candidate for review.
+
+
+### October 25 — final-test implementation contract
+
+The panelboard uses green **Recorded ON**, red **Recorded OFF**, and gray **Not recorded**, with text labels and actor/time in both themes. Colors represent the latest uncorrected observation, never the desired state. One control operates on a grouped breaker, independent of waypoint membership. A brief impact review precedes recording physical work.
+
+The existing audited `site_power_command` gains an atomic `breaker_state` command. It resolves a reusable breaker/phase observation action and appends a REPORTED event in the existing append-only activity ledger. No second state table or task-progress authority is introduced. Stable request IDs, revision conflicts, actor authorization, impact snapshots, and replay protection remain enforced. Existing custom activities are retained. History is interpreted using the event's captured definition, so editing an action cannot move a historical observation to another breaker or phase.
+
+The checklist is across active panels, with setup/restoration and season selectors and Open, Completed, and Needs configuration views. Equal known targets are omitted. Completion requires the latest uncorrected observation to match the required state AND selected season/phase. Old observations remain visible without claiming current-season completion. Unknown observations supersede old known observations rather than reviving stale ON/OFF. Print uses the selected checklist view. Reusable task 57's October 9 crew report remains unchanged.
+
+Latest operator handoff: reusable preview CLEAN EXIT; port 8898 and GIS source lock available. New engineering and disposable acceptance remain pending; this is not Production deployment authorization.
