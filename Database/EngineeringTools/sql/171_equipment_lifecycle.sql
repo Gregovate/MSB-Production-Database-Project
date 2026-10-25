@@ -85,7 +85,7 @@ SELECT pg_get_functiondef('ref.site_power_command(text,uuid,bigint,text,bigint,j
 IF length(definition)-length(replace(definition,anchor,''))<>length(anchor) THEN RAISE EXCEPTION 'Equipment command anchor mismatch'; END IF;
 EXECUTE replace(definition,anchor,addition||anchor);
 SELECT pg_get_functiondef('ref.site_power_snapshot(text)'::regprocedure) INTO definition;
-anchor:=' RETURN result||jsonb_build_object('; 
+anchor:=' RETURN result||jsonb_build_object(';
 IF length(definition)-length(replace(definition,anchor,''))<>length(anchor) THEN RAISE EXCEPTION 'Equipment snapshot anchor mismatch'; END IF;
 EXECUTE replace(definition,anchor,$addition$
  result:=result||jsonb_build_object('equipment_events',coalesce((SELECT jsonb_agg(to_jsonb(e)||jsonb_build_object('operator_name',coalesce(nullif(btrim(concat_ws(' ',u.first_name,u.last_name)),''),'Name unavailable')) ORDER BY e.event_id DESC) FROM ops.site_equipment_event e LEFT JOIN public.directus_users u ON u.id=e.directus_user_id),'[]'::jsonb));
