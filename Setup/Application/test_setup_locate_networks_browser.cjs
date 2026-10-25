@@ -335,3 +335,16 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
     'The reference map must use the shared popup rule, not a separate legacy anchor');
   console.log('PASS: Container, independent Display and reference popups top-centered across icon replacement and disclosure');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
+// Panel checklist deep links select maintained wp IDs, never stale GPX IDs.
+{
+ const marker={_searchFeature:{properties:{id:'wp:42',name:'WV-00',type:'Panel'}},getLatLng(){return 'panel-point'},openPopup(){this.opened=true}};
+ context.layers.refs={eachLayer(fn){fn(marker)},addTo(){}};
+ context.search.reindexMapReferences();
+ context.search.focusWaypoint('42');
+ assert.equal(marker.opened,true);
+ assert.equal(elements['map-search-status'].textContent,'WV-00');
+ context.search.focusWaypoint('99999');
+ assert.match(elements['map-search-status'].textContent,/not available/);
+ console.log('PASS: checklist panel link focuses maintained waypoint and handles missing location');
+}

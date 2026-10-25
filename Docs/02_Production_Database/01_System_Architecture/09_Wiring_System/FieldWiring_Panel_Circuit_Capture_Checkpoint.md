@@ -674,3 +674,16 @@ notes on the board and labels assignment evidence separately. Note-only saves
 preserve feeds, breaker notes and the sibling circuit. Source-only; Production
 unchanged. Latest preview CLEAN EXIT has not yet been reported; do not launch
 another preview until the existing review exits and releases8898/source lock.
+
+
+## October 25 — PR457 seasonal state engineering / next disposable test
+
+Greg requested the final engineering candidate after confirming breaker/circuit notes save and display, and reusable preview CLEAN EXIT (8898 and GIS lock available). Implemented V0.4.25-breaker-state: text-labeled green ON/red OFF/gray unknown board state, season/phase context, grouped observation confirmation, change-only checklist with completed/configuration views, print, and maintained panel-waypoint map deep link. Existing note fixes remain included.
+
+`171_breaker_state.sql` narrowly extends the installed post-slot-count command body with atomic observation-action resolution and existing append-only event insertion. No new state tables, imports, inferred positions or task updates. A saved observation captures breaker impact and authenticated actor through existing commands. Read-only validation is `171_breaker_state_validation.sql`. The disposable runner allowlist includes this pair. Production already contains the slot-count migration: next preview applies ONLY the new breaker-state migration, never the initial GIS/FLW load or slot migration.
+
+Local checks: full FieldWiring application 220 passed; Setup application plus GIS preview contracts 902 passed; reference allowlist 10 passed; isolated existing command acceptance and new breaker-state acceptance passed; map deep-link and existing map harness passed. Actual Chromium and real PostGIS CI are required before handing off the exact candidate; CI disposition/exact SHA will be recorded in PR457. No local browser result is claimed. Protected operator acceptance and Production deployment remain pending.
+
+Release scope now includes an incremental database command change plus FieldWiring and Setup map scripts; later release requires the governed DATABASE-CHANGING maintenance procedure and source promotion for both application trees. Previous source-only notes-release classification is superseded. Production remains untouched during engineering. PR455 server report remains `/home/msbadmin/setup-deployment-reports/PR455-Panels-20261025T084618Z`; preserve snapshot/report evidence. Task57's October9 80% report is unchanged, and cannot establish which breakers were switched.
+
+Final test: check unchanged targets omitted, ON/OFF and OFF/ON setup/restoration requirements, no-waypoint and two-pole breakers, ON/OFF board colors and actor/time after reload, completed view, previous-season noncompletion, map panel focus, print, and retained breaker/circuit notes. Finish with ENTER and retain CLEAN EXIT/report. Existing laptop review worktree is reused; final exact-SHA command belongs in PR457 handoff.

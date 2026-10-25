@@ -656,7 +656,14 @@
       + ' · ' + snapshot.waypoints.length + ' waypoints · ' + snapshot.tracks.length + ' tracks';
     return snapshot;
   }
-  window.siteReferenceReady = refresh().catch(async error => {
+  let initialWaypointFocus=false;
+  function focusRequestedWaypoint() {
+    if(initialWaypointFocus) return;
+    initialWaypointFocus=true;
+    const id=new URLSearchParams(window.location.search).get('waypoint_id');
+    if(id && /^[1-9][0-9]*$/.test(id)) mapSearch.focusWaypoint(id);
+  }
+  window.siteReferenceReady = refresh().then(snapshot=>{focusRequestedWaypoint();return snapshot;}).catch(async error => {
     if (window.MSBRequiredGpxSha) {
       // Exact-source acceptance cannot fall back to older static/offline data.
       status.style.color = '#923b15';

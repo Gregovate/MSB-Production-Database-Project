@@ -290,6 +290,7 @@
         el("p", `${b.rated_amps ?? "Unknown"} A · ${b.pole_count ?? "Unknown"} poles · ${b.breaker_role || "UNKNOWN"}`, row);
         // Render existing notes as text, including breakers with no mapped endpoints.
         if (b.source_evidence) el("p", b.source_evidence, row).className="power-breaker-notes";
+        drawState(b,row);
         button("Breaker settings",()=>openSchedule(b),row,true);
         const circuits = data.circuits.filter(c => c.active && c.site_power_breaker_id === b.site_power_breaker_id)
           .sort((a,b)=>a.breaker_pole-b.breaker_pole);
@@ -310,7 +311,7 @@
             button(`Open ${waypointName(id)} / equipment`,()=>viewWaypoint(id),row).className="power-navigation";
           }
         });
-        el("p", `Season: ${b.show_desired_state} · Non-season: ${b.restoration_desired_state}`, row);
+        el("p", `Required for show: ${b.show_desired_state} · Off-season: ${b.restoration_desired_state}`, row);
         const impact = (data.breaker_impacts || []).find(x => x.breaker.site_power_breaker_id === b.site_power_breaker_id);
         const details = el("details", undefined, row); details.dataset.viewKey="impact:"+b.site_power_breaker_id;
         el("summary", "Connections · unverified", details);
@@ -475,6 +476,7 @@
       o.value = y;
     });
     if (data.seasons.includes(Number(year))) $("season").value = year;
+    renderChecklist();
     renderActions();
     $("history").replaceChildren();
     data.history.slice(0, 100).forEach((h) => {
@@ -543,6 +545,71 @@
     $("detail-waypoint").value=String(waypointId);
     render();
     section.scrollIntoView({block:"start",behavior:"instant"});
+  }
+  const states = window.MSBBreakerState;
+  function drawState(b, root) {
+    const e=states.latest(data.events,b.site_power_breaker_id);
+    const state=["ON","OFF"].includes(e?.condition)?e.condition:"UNKNOWN";
+    const box=el("div",undefined,root); box.className="power-switch-state";
+    const badge=el("strong",state==="UNKNOWN"?"Not recorded / unknown":`Recorded ${state}`,box);
+    badge.className="power-state power-state-"+state.toLowerCase();
+    if(e) el("small",`${new Date(e.observed_at).toLocaleString()} · ${e.operator_email} · Season ${e.season_year} · ${e.definition_snapshot.phase}`,box);
+    const controls=el("div",undefined,box); controls.className="power-toolbar power-state-controls";
+    for(const value of ["ON","OFF"]) {
+      const bttn=button(`Record ${value}`,()=>openState(b,value),controls,true);
+      bttn.className="power-record-state"; bttn.dataset.recordState=value;
+    }
+    return e;
+  }
+  function renderChecklist() {
+    $("breaker-checklist").hidden=mode!=="panels";
+    $("breaker-context").hidden=mode!=="panels";
+    if(mode!=="panels") return;
+    const root=$("breaker-checklist-rows"); root.replaceChildren();
+    const phase=$("breaker-phase").value, year=Number($("season").value), filter=$("breaker-filter").value;
+    const counts={open:0,completed:0,configuration:0,unchanged:0};
+    const rows=data.breakers.filter(b=>b.active && panel(b.site_panel_id)?.active)
+      .sort((a,b)=>panel(a.site_panel_id).panel_name.localeCompare(panel(b.site_panel_id).panel_name,undefined,{numeric:true}) || a.breaker_name.localeCompare(b.breaker_name,undefined,{numeric:true}));
+    for(const b of rows) {
+      const event=states.latest(data.events,b.site_power_breaker_id);
+      const state=states.classify(b,event,year,phase); counts[state]++;
+      if(state!==filter) continue;
+      const row=el("article",undefined,root); row.className="power-checklist-row"; row.dataset.breakerId=b.site_power_breaker_id;
+      const p=panel(b.site_panel_id);
+      el("h3",`${p.panel_name} — Breaker ${b.breaker_name}`,row).className="power-print-title";
+      button(`${p.panel_name} — Breaker ${b.breaker_name}`,()=>{panelId=b.site_panel_id;render();$("panel-detail").scrollIntoView({block:"start"});},row).className="power-navigation";
+      const descriptions=[b.source_evidence,...data.circuits.filter(c=>c.active && c.site_power_breaker_id===b.site_power_breaker_id).map(c=>c.description)].filter(Boolean);
+      if(descriptions.length) el("p",[...new Set(descriptions)].join(" · "),row);
+      el("p",`Required: ${phase==="RESTORATION"?b.restoration_desired_state:b.show_desired_state} · ${state==="configuration"?"Set both seasonal targets in Breaker settings":state==="completed"?"Completed":"Needs change / confirmation"}`,row);
+      drawState(b,row);
+      if(p.site_waypoint_id) {
+        const link=el("a",`Locate ${waypointName(p.site_waypoint_id)} on Park Map`,row);
+        link.href="/setup/locate/?view=fieldwiring&waypoint_id="+encodeURIComponent(p.site_waypoint_id);
+        link.className="power-navigation";
+      } else el("p","Panel map location not recorded",row);
+      if(state==="configuration") button("Breaker settings",()=>openSchedule(b),row,true);
+    }
+    $("breaker-progress").textContent=`${counts.completed} of ${counts.open+counts.completed} seasonal changes confirmed · ${counts.open} pending · ${counts.configuration} need configuration · ${counts.unchanged} unchanged targets omitted. Season ${year}, ${phase==="SETUP"?"setup":"restoration"}.`;
+    if(!root.children.length) el("p","No breakers in this view.",root);
+  }
+  function openState(b, condition) {
+    if(!data.access.can_edit) return;
+    pending=null; edit={kind:"breaker_state",row:b};
+    const phase=$("breaker-phase").value, year=Number($("season").value);
+    $("edit-title").textContent=`${panel(b.site_panel_id)?.panel_name} — Breaker ${b.breaker_name}: record ${condition}`;
+    $("edit-fields").replaceChildren(); $("save-status").textContent=""; $("save").disabled=false;
+    el("p",`Season ${year} · ${phase==="SETUP"?"Setup":"Restoration"}. This records physical work; it does not operate the breaker.`,$("edit-fields"));
+    const impact=data.breaker_impacts.find(x=>x.breaker.site_power_breaker_id===b.site_power_breaker_id);
+    const circuits=data.circuits.filter(c=>c.active && c.site_power_breaker_id===b.site_power_breaker_id);
+    el("p",`Grouped circuits: ${circuits.map(c=>c.circuit_code+(c.description?" — "+c.description:"")).join("; ") || "None recorded"}`, $("edit-fields"));
+    if(b.source_evidence) el("p",b.source_evidence,$("edit-fields"));
+    el("p",`Recorded endpoints: ${(impact?.paths||[]).map(x=>x.waypoint_name||"Unmapped endpoint").join(", ") || "No waypoint required"}. Recorded connections are not proof of isolation.`,$("edit-fields"));
+    if(impact?.missing_pole_membership) el("p","Circuit membership is incomplete.",$("edit-fields"));
+    const label=el("label",undefined,$("edit-fields"));
+    const check=el("input",undefined,label); check.type="checkbox"; check.name="impact_reviewed"; check.required=true;
+    label.append(document.createTextNode(` I reviewed the grouped breaker and recorded connections and observed this breaker ${condition}.`));
+    edit.read=()=>({season_year:year,phase,condition,observed_at:new Date().toISOString(),impact_reviewed:check.checked});
+    $("editor").showModal();
   }
   function renderActions() {
     const root = $("actions");
@@ -1272,7 +1339,9 @@
     try {
     if (!pending) {
       let commands;
-      if (edit.kind === "breaker_schedule") {
+      if (edit.kind === "breaker_state") {
+        commands=[command("breaker_state",edit.row.site_power_breaker_id,edit.read())];
+      } else if (edit.kind === "breaker_schedule") {
         commands=[command("breaker_schedule",edit.row.site_power_breaker_id,edit.read())];
       } else if (edit.kind === "assignments") {
         const form = $("edit-form"),
@@ -1379,7 +1448,13 @@
   $("detail-waypoint").onchange=()=>render();
   $("reload").onclick = load;
   $("find").oninput = () => data && render();
-  $("season").onchange = renderActions;
+  $("season").onchange = () => {renderChecklist(); renderActions();};
+  $("breaker-phase").onchange = renderChecklist;
+  $("breaker-filter").onchange = renderChecklist;
+  $("print-breakers").onclick = () => window.print();
+  let checklistWasOpen=false;
+  window.addEventListener("beforeprint",()=>{checklistWasOpen=$("breaker-checklist").open;$("breaker-checklist").open=true;});
+  window.addEventListener("afterprint",()=>{$("breaker-checklist").open=checklistWasOpen;});
   $("action-search").oninput = () => data && renderActions();
   for (const kind of ["panel", "device", "feed", "action"])
     $(`add-${kind}`).onclick = () => open(kind, kind === "device" ? {site_waypoint_id:Number($("detail-waypoint").value)||undefined} : {});

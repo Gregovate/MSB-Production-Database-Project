@@ -100,5 +100,6 @@ CREATE FUNCTION ref.reconcile_directus_person_identity(p_email text) RETURNS TAB
   await db.exec(sql);
   await db.exec(readFileSync(path.join(root,"Database/EngineeringTools/sql/171_panel_slot_count.sql"),"utf8"));
 
+  await db.exec(readFileSync(path.join(root,"Database/EngineeringTools/sql/171_breaker_state.sql"),"utf8"));
   return db;
 }

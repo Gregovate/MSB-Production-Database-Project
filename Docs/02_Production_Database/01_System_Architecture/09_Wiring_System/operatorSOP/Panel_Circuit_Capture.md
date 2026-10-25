@@ -219,3 +219,12 @@ The breaker rating picker includes 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70,
 80, 90, 100, 110, 125, 150, 175 and 200 A, plus existing saved ratings without
 duplicates. Back to panel and browser Back restore the selected panel, filter,
 expanded details and scroll position within the same browser tab.
+
+
+### Seasonal breaker work — PR457 candidate
+
+1. On Panel Circuits, choose Season and Work (Setup or Restoration). Panelboard **Recorded ON** is green, **Recorded OFF** is red; gray means no known recorded position. The label shows who recorded it and when. Required show/off-season states remain separate.
+2. Expand **Seasonal breaker checklist**. The default lists breakers needing change or confirmation. Equal known targets (ON/ON or OFF/OFF) are omitted. Use **Needs configuration** for unknown targets; use **Completed** to review this season's work. A previous season's observation remains visible but is not current-season completion.
+3. After physical work, press **Record ON** or **Record OFF**, review the whole breaker and recorded connections, check the observation acknowledgment, and Save. No waypoint is required. A two-pole breaker has one shared switch record. The control records your work; it does not remotely switch electrical equipment or certify isolation.
+4. Use **Locate … on Park Map** for a panel with a mapped waypoint. **Print checklist** prints the selected view. Keep the crew report for task 57 as history; the checklist does not rewrite its reported percentage.
+5. Use Seasonal power activities / Correct this event to correct a mistaken observation; history remains append-only. A failed confirmation permits retrying the same Save safely; a stale revision requires reload and fresh impact review.
