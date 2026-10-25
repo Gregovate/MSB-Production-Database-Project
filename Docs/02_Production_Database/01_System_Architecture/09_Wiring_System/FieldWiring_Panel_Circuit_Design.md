@@ -856,3 +856,18 @@ waypoint or automatic feed. Keep optional waypoint assignment available and labe
 it optional; absence of a waypoint is not proof of spare or disconnected hardware.
 Test save/reopen/reload/other-setting preservation and no-waypoint breakers.
 This source-only correction is a new candidate, not yet approved or deployed.
+
+### October25 review — independent circuit notes
+
+Greg's next PR457 review confirms breaker notes persist and optional waypoints
+are useful. Screenshot2 shows Upper Panel GFI's on breaker2/4; breaker6/8 is
+cropped, so its Lower Panel GFI's display is not established by that image.
+Screenshot4 proves the assignment evidence Notes field cannot save without a
+feed change. Add Circuit notes using existing site_power_circuit.description,
+loaded and saved independently of waypoint selections through existing audited
+circuit commands. Display each leg's notes immediately alongside that circuit.
+Keep breaker notes separate, and label feed evidence Assignment correction note.
+A circuit-note-only edit must not create feeds, reverify existing feeds, change
+other-leg notes, or alter breaker notes. Clearing circuit notes is allowed.
+Test no-waypoint and unchanged-waypoint saves, refresh and sibling isolation.
+No schema change or migration; continue PR457, acceptance remains pending.
