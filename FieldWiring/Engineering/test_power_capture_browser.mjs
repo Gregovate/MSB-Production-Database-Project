@@ -287,7 +287,9 @@ try {
   await page.goto(base);
   await page.getByText(/Revision \d+/).waitFor();
   await page.locator("#panels").getByRole("button",{name:"A5 panel",exact:true}).click();
-  assert.equal(await page.locator(".power-slot").count(),35);
+  // Unknown size shows only occupied extent through slot 20; one card spans two slots.
+  assert.equal(await page.locator(".power-slot").count(),19);
+  assert.match(await page.locator("#panel-detail").innerText(),/Number of slots not recorded/);
   assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridRow),"9 / span 2");
   assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridColumn),"2");
   const savedIds=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 ORDER BY breaker_pole",[breakerId])).rows;
