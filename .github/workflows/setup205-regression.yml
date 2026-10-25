@@ -74,6 +74,8 @@ jobs:
           node FieldWiring/Engineering/test_power_capture.mjs
           node FieldWiring/Engineering/test_breaker_state.mjs
           node FieldWiring/Engineering/test_power_snapshot_performance.mjs
+          node FieldWiring/Engineering/test_equipment_lifecycle.mjs
+          node FieldWiring/Engineering/test_cable_history.mjs
       - name: Install browser for isolated circuit workflow
         working-directory: FieldWiring/Engineering
         run: npx playwright install --with-deps chromium

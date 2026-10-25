@@ -10,7 +10,7 @@
   document.querySelector("h1").textContent=title; document.title=`${title} — MSB Field Wiring`;
   $("waypoint-detail").open=true;
   $("cable-history").hidden=mode!=="tests";
-  if(mode==="equipment") $("equipment-heading").textContent="Installed Combo equipment";
+  if(mode==="equipment") $("equipment-heading").textContent="Installed equipment and spares";
   // Reuse the FieldWiring preference; no separate theme authority for this page.
   function setTheme(theme) {
     document.documentElement.dataset.theme = theme;
@@ -406,12 +406,12 @@
     renderPanels();
     const waypointSelect = $("detail-waypoint"), priorWaypoint = waypointSelect.value;
     waypointSelect.replaceChildren();
-    el("option", "Select a waypoint", waypointSelect).value="";
-    data.waypoints.filter(w=>mode==="equipment" ? isComboWaypoint(w) : isDeploymentWaypoint(w)).forEach(w=>{const o=el("option",`${w.name} (${w.type})`,waypointSelect);o.value=w.id;});
+    el("option", mode==="equipment"?"Uninstalled / spares":"Select a waypoint", waypointSelect).value="";
+    data.waypoints.filter(w=>mode==="equipment" || isDeploymentWaypoint(w)).forEach(w=>{const o=el("option",`${w.name} (${w.type})`,waypointSelect);o.value=w.id;});
     waypointSelect.value=priorWaypoint;
     const detailWaypoint=Number(priorWaypoint);
     const combo=isComboWaypoint(wp(detailWaypoint) || {});
-    $("combo-network-box").hidden=mode==="equipment" ? !combo : !isNetworkWaypoint(wp(detailWaypoint) || {});
+    $("combo-network-box").hidden=mode==="equipment" ? false : !isNetworkWaypoint(wp(detailWaypoint) || {});
     $("waypoint-supply").replaceChildren();
     data.circuits.filter(c=>c.active && paths(c.site_power_circuit_id).some(x=>x.waypoint?.id===detailWaypoint))
       .forEach(c=>button(circuitName(c.site_power_circuit_id),()=>{location.href=`circuits?circuit=${c.site_power_circuit_id}`;},$("waypoint-supply")));
@@ -447,8 +447,10 @@
       if(i.active)button("Edit IN / OUT",()=>openPorts(i.controller_id),box,true);
 
     });
-    data.devices.filter(d=>d.site_waypoint_id===detailWaypoint).forEach(d=>{
-      record($("equipment"),`${d.device_name} · ${d.device_kind}`,d,"device");
+    data.devices.filter(d=>d.site_waypoint_id===detailWaypoint || (mode==="equipment" && !detailWaypoint && !d.site_waypoint_id)).forEach(d=>{
+      const item=el("section",undefined,$("equipment"));
+      record(item,`${d.device_name} · ${d.device_kind}`,d,"device");
+      window.MSBEquipmentCapture.render(data,d,item,load);
     });
     $("conductor-detail").replaceChildren();
     ["cable_spec", "conductor", "conductor_circuit"].forEach(kind => {
@@ -475,6 +477,7 @@
         el("p",`${code}: verify switch and power-supply inventory at distribution points where runs approach 300 ft; verify PoE for security cameras on the line. These are equipment expectations, not installed records.`, $("networks"));
     }
     renderCableHistory();
+    if(detailWaypoint){const link=el("a","Cable tests for this waypoint",$("equipment"));link.href=`cable-tests?waypoint=${detailWaypoint}`;}
     renderSafety(detailWaypoint);
     const year = $("season").value;
     $("season").replaceChildren();
@@ -770,45 +773,10 @@
   const isNetworkWaypoint = w => w.network_capable===true;
   const isDeploymentWaypoint = w => isElectricalEndpoint(w) || isNetworkWaypoint(w);
   function renderCableHistory() {
-    const selector=$("test-pair"), prior=selector.value;
-    const tests=data.linkiq_evidence || [];
-    const chronology=new Map((data.flw_cable_tests || []).map(t=>[t.test_uuid,t]));
-    // Reuse persisted intake proposals: source-declared endpoints do not create
-    // reviewed cable bindings or route geometry. Resolved endpoints supply networks.
-    const endpoints=t=>{
-      if(t.endpoint_a && t.endpoint_b) return {key:[t.endpoint_a,t.endpoint_b].sort((a,b)=>a-b).join(":"),label:[t.endpoint_a,t.endpoint_b].sort((a,b)=>a-b).map(waypointName).join(" ↔ ")};
-      const proposal=t.source_pair || {}, ids=proposal.endpoint_candidates || [];
-      if(ids.length===2 && ids.every(x=>x.length===1) && ids[0][0]!==ids[1][0]) {
-        const pair=ids.map(x=>x[0]).sort((a,b)=>a-b);return {key:pair.join(":"),label:pair.map(waypointName).join(" ↔ ")};
-      }
-      const labels=proposal.endpoint_labels || [];
-      if(labels.length===2 && labels[0]!==labels[1]) {const pair=[...labels].sort();return {key:"label:"+JSON.stringify(pair),label:pair.join(" ↔ ")+" (source labels; waypoint match unresolved)"};}
-      return {key:"unresolved",label:"Unparsed / ambiguous endpoint labels"};
-    };
-    const pairs=new Map(tests.map(t=>{const pair=endpoints(t);return [pair.key,pair.label];}));
-    selector.replaceChildren(); el("option","Select endpoint pair",selector).value="";
-    for(const [key,label] of pairs) el("option",label,selector).value=key;
-    selector.value=prior;
-    const root=$("test-history");root.replaceChildren();
-    if(!tests.length) el("p","No retained cable tests.",root);
-    const selected=tests.filter(t=>endpoints(t).key===selector.value);
-    const cableKey=t=>t.cable_id ? `Physical cable ${t.cable_id}` : `Source designation ${chronology.get(t.test_uuid)?.network_key || t.source_pair?.designation || "unknown"} — physical cable unreviewed`;
-    for(const key of new Set(selected.map(cableKey))) {
-      const section=el("section",undefined,root);el("h3",key,section);
-      for(const t of selected.filter(t=>cableKey(t)===key).sort((a,b)=>String(b.test_time||"").localeCompare(String(a.test_time||"")))) {
-        const entry=el("article",undefined,section); entry.className="power-record";
-        const dated=chronology.get(t.test_uuid);
-        const clockUnset=!t.test_time || /^1970-/.test(t.test_time);
-        el("h4",`${clockUnset ? "Tester date unset / unknown" : t.test_time} · ${t.test_uuid}`,entry);
-        if(dated?.latest_reliably_dated) el("p",`Latest dated test${dated.has_unknown_test_order || dated.latest_time_tied ? " — test order uncertain" : ""}`,entry);
-        if(dated?.has_unknown_test_order) el("p","This cable also has tests without a reliable date; their order cannot be established.",entry);
-        el("p",`Raw result code: ${t.status_code ?? "Unknown"} · Standard: ${t.test_standard || "Unknown"} · Length: ${t.length_ft ?? "Unknown"} ft · Review: ${t.review_status || "Unknown"}`,entry);
-        if(t.source_pair) el("p",`FLW source label: ${t.source_pair.display_label} · Designation: ${t.source_pair.designation || "Unknown"} · Source: ${t.source_pair.source_sha256 || "Unknown"}`,entry);
-        el("p",`Original test name: ${t.original_name || "Unknown"} · First source SHA-256: ${t.source_sha256 || "Unknown"}`,entry);
-      }
-    }
+    if(mode!=="tests")return;
+    $("test-pair").closest("label").hidden=true;
+    window.MSBCableHistory.render(data,$("test-history"));
   }
-  $("test-pair").onchange=renderCableHistory;
   function specs(kind) {
     const waypoints = options(
       data.waypoints.map((w) => [w.id, `${w.name} (${w.type})`]),
@@ -891,7 +859,7 @@
         select("site_power_circuit_id","Supplying circuit leg",circuits,true),
       ],
       device: [
-        select("device_name", "Equipment / model", equipmentNameOptions(), true),
+        text("device_name", "Equipment / model (Unknown model is allowed)", true),
         choose("device_kind", "Equipment type", [
           "FUSE",
           "DISCONNECT",
@@ -1109,13 +1077,16 @@
         const kind=selected?.[1] || existing?.device_kind;
         if(kind) type.value=kind;
       };
+      const suggestions=el("datalist",undefined,$("edit-fields"));suggestions.id="equipment-models";
+      equipmentNameOptions().forEach(x=>el("option",undefined,suggestions).value=x.value);
+      model.setAttribute("list",suggestions.id);
       model.addEventListener("change",syncType);
       syncType();
-      type.closest("label").hidden=true;
+      type.closest("label").hidden=false;
       for(const name of ["utility_asset_id","rating"]) {
-        if (!row[name]) form.elements[name].closest("label").hidden=true;
+        form.elements[name].closest("label").hidden=false;
       }
-      if(row.site_waypoint_id) form.elements.site_waypoint_id.closest("label").hidden=true;
+      if(row.site_power_device_id) form.elements.site_waypoint_id.closest("label").hidden=true;
       $("edit-title").textContent=row.site_power_device_id ? "Correct equipment" : "Add equipment";
     }
     if(kind==="panel") {

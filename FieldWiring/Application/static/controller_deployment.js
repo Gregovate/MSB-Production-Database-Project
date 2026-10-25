@@ -75,6 +75,8 @@
       const ending=choose("deployment-out","OUT — cable goes to ");
       const outlet=choose("deployment-outlet","Power outlet waypoint ");
       const circuit=choose("deployment-circuit","Actual supplying circuit ");
+      for(const control of [location,upstream,ending])control.closest("label").classList.add("connection-network");
+      for(const control of [outlet,circuit])control.closest("label").classList.add("connection-power");
       const supplyStatus=node("p",undefined,form);supplyStatus.id="deployment-supply-status";
       supplyStatus.setAttribute("role","status");
       const supplyLink=node("a","Manage panel / circuit assignments",form);
@@ -173,7 +175,8 @@
           if(!next)labels.push(current.chain_end==="TERMINATOR"?"Terminating resistor":current.chain_end==="RETURN_TO_ORIGIN"?`Return to ${name(current.site_waypoint_id)}`:"Ending not recorded");
           current=next;
         }
-        node("p",labels.join(" → "),host).id="deployment-chain";
+        const chain=node("ol",undefined,host);chain.id="deployment-chain";
+        for(const label of labels){const item=node("li",label,chain);if(label===controllerLabel(data,controllerId))item.setAttribute("aria-current","true");}
       }
 
       for(const w of data.waypoints.filter(power)) node("option",`${w.name} (${w.type})`,outlet).value=w.id;
@@ -195,8 +198,8 @@
       circuits(connection?.site_power_circuit_id);
       outlet.onchange=()=>circuits(null);
       node("p","Network choices require current LOR programming and FLW endpoint/network evidence. Choose the actual IN and OUT. Selecting another controller updates both ends together. Changing OUT releases the previous controller’s IN to Not recorded; it does not invent replacement wiring. Occupied ports must be reconciled first. Saved wiring remains unverified. Power records the actual outlet and circuit separately. Choosing Not connected retires that connection and retains its history.",form);
-      const save=node("button","Save connections",form);save.type="submit";save.id="deployment-save";
-      const refresh=node("button","Reload connections",host);refresh.type="button";refresh.onclick=()=>{if(mayLeave())render(controllerId,host,initialWaypoint);};
+      const save=node("button","Save connections",form);save.type="submit";save.id="deployment-save";save.className="equipment-save";
+      const refresh=node("button","Reload connections",host);refresh.type="button";refresh.className="deployment-reload";refresh.onclick=()=>{if(mayLeave())render(controllerId,host,initialWaypoint);};
       for(const s of [location,upstream,ending,outlet,circuit,save])s.disabled=!data.access.can_edit;
       status.textContent=data.access.can_edit ? "Current shared waypoint records loaded." : "Read only";
       form.onchange=()=>{dirty=true;};

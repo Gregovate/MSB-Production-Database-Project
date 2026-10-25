@@ -18,6 +18,7 @@ const app = path.resolve(
   "../Application",
 );
 const db = await createFixtureDatabase();
+for(const migration of ['171_power_snapshot_performance.sql','171_equipment_lifecycle.sql'])await db.exec(await readFile(path.join(app,'../../Database/EngineeringTools/sql',migration),'utf8'));
 let user = "crew@example.test",
   failNext = false;
 const server = createServer(async (req, res) => {
@@ -467,14 +468,22 @@ try {
   await page.goto(base.replace("circuits","equipment?waypoint=12"));
   await page.getByText(/Revision \d+/).waitFor();
   await page.getByRole("button",{name:"Add new equipment",exact:true}).click();
-  await dialog.locator("[name=device_name]").selectOption("TRENDnet TI-PGLC50 · 5-port PoE+");
-  assert.equal(await dialog.locator("[name=device_kind]").inputValue(),"POE_SWITCH");
-  assert.equal(await dialog.locator("[name=device_kind]").isVisible(),false);
+  await dialog.locator("[name=device_name]").fill("TRENDnet TI-PGLC50 · 5-port PoE+");
+  await dialog.locator("[name=device_kind]").selectOption("POE_SWITCH");
+  assert.equal(await dialog.locator("[name=device_kind]").isVisible(),true);
   assert.equal(await dialog.locator("[name=site_waypoint_id]").inputValue(),"12");
   await save();
   assert.match(await page.locator("#equipment").innerText(),/TRENDnet TI-PGLC50 · 5-port PoE\+ · POE_SWITCH/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_kind='POE_SWITCH' AND site_waypoint_id=12")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,4);
+  await page.getByRole('button',{name:'Record test / failure',exact:true}).last().click();
+  const eventDialog=page.locator('dialog[open]');
+  await eventDialog.locator('[name=condition]').selectOption('FAILED');
+  await eventDialog.locator('[name=observed_at]').fill('');
+  await eventDialog.locator('[name=notes]').fill('Fixture failure');
+  await eventDialog.getByRole('button',{name:'Save',exact:true}).click();
+  await page.getByText('Condition: FAILED',{exact:false}).waitFor();
+  assert.equal((await db.query("SELECT count(*)::int n FROM ops.site_equipment_event WHERE condition='FAILED'")).rows[0].n,1);
   // Empty selectors must distinguish unresolved LOR from missing FLW endpoints,
   // and a known outlet with no circuit must point back to the existing editor.
   const previousNetwork=(await db.query("SELECT lor_network FROM ref.controller WHERE controller_id=104")).rows[0].lor_network;
@@ -663,12 +672,13 @@ try {
   await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-23',1,'REVIEWED','source-one','Cat6',100,'first'),(gen_random_uuid(),1,'2026-10-24',2,'REVIEWED','source-two','Cat6',101,'retest'),(gen_random_uuid(),NULL,NULL,NULL,'UNMATCHED','source-three',NULL,NULL,'unresolved')");
   await page.goto(base.replace("circuits","cable-tests"));
   await page.getByText(/Revision \d+/).waitFor();
-  await page.locator("#test-pair").selectOption("11:12");
+  await page.locator('[data-filter="waypoint"]').selectOption("11");
   assert.equal(await page.locator("#test-history article").count(),3);
-  assert.match(await page.locator("#test-history").innerText(),/source-one/);
-  assert.match(await page.locator("#test-history").innerText(),/source-two/);
-  await page.locator("#test-pair").selectOption("unresolved");
-  assert.equal(await page.locator("#test-history article").count(),1);
+  assert.match(await page.locator("#test-history").textContent(),/source-one/);
+  assert.match(await page.locator("#test-history").textContent(),/source-two/);
+  await page.locator('[data-filter="waypoint"]').selectOption("");
+  await page.locator('[data-filter="network"]').selectOption("Unresolved");
+  assert.match(await page.locator("#test-history").textContent(),/source-three/);
   assert.equal(await page.locator("#cable-history button").count(),0);
   // Parsed FLW labels remain browsable before waypoint/cable reconciliation.
   await db.exec(`INSERT INTO ops.linkiq_test VALUES
@@ -678,10 +688,9 @@ try {
     VALUES ('flw-source','11111111-1111-4111-8111-111111111111','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"AUX-E","display_label":"FE-02B TO FE-02 AUX-E"}'),
     ('flw-source','22222222-2222-4222-8222-222222222222','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"SPARE-01","display_label":"FE-02B TO FE-02 SPARE-01"}');`);
   await page.reload();await page.getByText(/Revision \d+/).waitFor();
-  await page.locator("#test-pair").selectOption('label:["FE-02","FE-02B"]');
-  assert.equal(await page.locator("#test-history article").count(),2);
-  assert.equal(await page.locator("#test-history h3").count(),2);
-  assert.match(await page.locator("#test-history").innerText(),/physical cable unreviewed/);
+  await page.locator('[data-filter="network"]').selectOption("AUX-E");
+  assert.equal(await page.locator("#test-history article").count(),1);
+  assert.match(await page.locator("#test-history").textContent(),/FE-02/);
   // Save Panel 15 as FE-00's supply even when it has no recorded breakers.
   await page.goto(base);await page.getByText(/Revision \d+/).waitFor();
   for(const name of ["Panel 15","Panel FE-00"]) {
