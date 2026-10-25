@@ -495,3 +495,44 @@ sort test to both pickers, preserving eligibility sets and selected values in bo
 sort modes. Exact-head CI pending at preparation; final results and candidate pin
 belong to the existing PR #319 handoff. V0.4.19 left-list accepted and CLEAN EXIT
 received. V0.4.20 picker review pending. Production and source files unchanged.
+
+
+## October 25 Production approval and observed live baseline
+
+Greg approved V0.4.20-picker-sort at 439ab237beaae4ac648e7590f824a774969cd84f
+for Production after ALL SORTS PASS and CLEAN EXIT. This approval persists.
+No repeat feature review is required for unchanged accepted application bytes.
+
+Read-only host receipt:
+- shared /opt/fieldwiring: 17c522c4f8ec06549bf7a6d9e8530c61276203f7, clean;
+  FieldWiring V0.4.2-controller-uid-explorer, postgres/ok.
+- /opt/msb-setup: e3c39f2781b5a97648dce1f00965110becd2edd6, clean;
+  Setup V0.3.87-catalog-scene-refresh-r3, postgres/ok.
+- Controller real/ONLINE, database_fenced=false, read continuity OFF,
+  last_error=null; all seven governed services/containers active/running,
+  including Work Management. NAS mounted; replication current_run_ok=true.
+- Local/NAS PostgreSQL and Directus backups available. The controller's October 22
+  snapshot is historical, not this release's frozen rollback archive.
+- Remote printservice sessions are normal while ONLINE; the controller fence,
+  not a manual edit pause, must exclude them during the mutation window.
+
+Current server runbooks were retrieved: Production_Database_Change_Deployment_Runbook,
+Production_Database_Maintenance_Mode, FieldWiring_Production_Runtime and
+Setup_Production_Runtime. Their historical SHA labels do not override this receipt.
+
+Full #319 is DATABASE-CHANGING. Reuse setup_maintenance_deploy.py and its existing
+profile pattern, deployment lock, controller, journal and fail-closed containment.
+The September Controller launcher is not this release's installer. Never run it.
+The source acceptance helper explicitly targets the disposable database and must
+not be redirected to Production or have that guard weakened.
+
+Before finalizing the release profile, collect current GIS/FLW catalog, row counts,
+source bindings and operator capability using 171_site_production_preflight.sql.
+This read-only transaction also establishes whether bootstrap is applicable or
+existing stable identities require reconciliation; no TRUNCATE/recreate shortcut.
+Verify the two accepted content-addressed cache files without changing their bytes.
+No new schema, runner, source parser, Directus grant store or inventory is authorized.
+Do not copy a preview database or disposable operator wiring into Production.
+Release profile, its fault tests, exact migration/source identities and the merged
+release target remain pending. No maintenance entry, merge or Production mutation
+has occurred. Scope approval is not a claim that deployment engineering is complete.
