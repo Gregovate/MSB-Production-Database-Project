@@ -838,3 +838,21 @@ Storage evidence: database 413 MB; ops.site_source_observation 111 MB and
 ops.linkiq_test 79 MB dominate newly retained source evidence. These are physical
 relation sizes, not exact attribution of the compressed 142M dump. No retention
 change is part of this release. All source evidence remains preserved.
+
+### October 25 — breaker notes after PR455 deployment
+
+Greg reported PR455 server deployment PASS, report
+/home/msbadmin/setup-deployment-reports/PR455-Panels-20261025T084618Z.
+Protected browser review found breaker notes appear unsaved and are absent from
+the board. The editor initializes existing source_evidence to empty, allowing a
+later settings save to overwrite it. Use the existing persisted notes/evidence
+field; initialize from the saved breaker and render it as plain text on its card.
+An explicit clear may remove the current note; unrelated settings edits must
+preserve it. No parallel notes table, new schema or audit rewrite.
+
+Panel14 breaker14 Gate Power and breaker16 Gate Lights can have notes without
+waypoints. Panel receptacle circuits2/4 and6/8 likewise need no fabricated panel
+waypoint or automatic feed. Keep optional waypoint assignment available and label
+it optional; absence of a waypoint is not proof of spare or disconnected hardware.
+Test save/reopen/reload/other-setting preservation and no-waypoint breakers.
+This source-only correction is a new candidate, not yet approved or deployed.
