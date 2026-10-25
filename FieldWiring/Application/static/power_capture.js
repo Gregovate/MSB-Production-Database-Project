@@ -1228,7 +1228,7 @@
       if (!row.site_power_breaker_id && first>0 && count>0 && count<=3)
         positions.value=Array.from({length:count},(_,i)=>first+2*i).join("/");
     };
-    el("p","Save breaker settings. Waypoint assignment is optional: gate loads and receptacles at the panel can be recorded without a waypoint. Existing assignments and circuit IDs are retained.",$("edit-fields"));
+    el("p","Save breaker settings. Waypoint assignment is optional: gate loads and receptacles at the panel can be recorded without a waypoint. Unused extra circuit legs can be removed by reducing poles and positions. Connected breakers must be disconnected first; history is retained.",$("edit-fields"));
     edit.read=()=>{
       const form=$("edit-form");
       const raw=positions.value.trim();
@@ -1251,6 +1251,17 @@
         })
       };
     };
+    if (row.site_power_breaker_id && role === "BRANCH") {
+      // Explicit removal uses the same atomic command/retry path as other edits.
+      button("Remove mistaken breaker", () => {
+        pending = null;
+        edit = {kind:"breaker_remove", row};
+        $("edit-title").textContent = `Remove breaker ${row.breaker_name}?`;
+        $("edit-fields").replaceChildren();
+        el("p", "Remove this unassigned breaker and free its positions. Circuit records and history are retained. Active connections must be reassigned first.", $("edit-fields"));
+        $("save-status").textContent = "";
+      }, $("edit-fields"));
+    }
     $("editor").showModal();
   }
   function openAssignments(c) {
@@ -1366,6 +1377,8 @@
       let commands;
       if (edit.kind === "breaker_schedule") {
         commands=[command("breaker_schedule",edit.row.site_power_breaker_id,edit.read())];
+      } else if (edit.kind === "breaker_remove") {
+        commands=[command("breaker_remove",edit.row.site_power_breaker_id,{})];
       } else if (edit.kind === "assignments") {
         const form = $("edit-form"),
           selected = Array.from(
