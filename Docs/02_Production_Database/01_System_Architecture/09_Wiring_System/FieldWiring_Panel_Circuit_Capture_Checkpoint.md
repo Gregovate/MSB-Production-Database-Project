@@ -1,5 +1,11 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## PR463 disposable review — changes required
+
+Greg rejected the ea080130 cable-history experience: poor browser response, nonexistent AUX-1/AUX-2 network choices, and unrelated site entries in the waypoint filter. This is not browser acceptance. The correction uses unambiguous existing network catalog matches, cable-test endpoint choices including unresolved source labels, cached/indexed evidence projection, lazy history details, and a Cable History-only render path. It changes no SQL or Production data. Invalid source designations remain evidence under Unresolved; no alias conversion or import is performed.
+
+Local filter/identity/cache regressions and JS syntax checks pass. A synthetic 240-waypoint/475-FLW/517-evidence Node benchmark of 100 repeated projections measured 351.76 ms before and 2.45 ms after (cache reuse included); this is not browser load latency or Production timing. Local Chromium execution was blocked by a missing Playwright browser executable; exact-head CI and renewed disposable browser review remain required. Retain the active preview's cleanup report before starting a replacement preview. PR460 protected Production acceptance remains pending independently.
+
 ## PR463 — V0.4.28 setup/test recording candidate
 
 Implemented on feature/171-setup-equipment-review for disposable review only. Exact SHA and CI evidence are pinned in PR463. Reuses existing controller/site-device inventories and adds one append-only site-device event history (not another inventory). Controller lifecycle and label behavior remain with the existing controller subsystem. TEST/correction, MOVE/remove and replacement from an existing spare are covered; current installation changes are timestamped now, not backdated. Labels remain low priority.

@@ -1,5 +1,11 @@
 # Panel circuit definition and field capture
 
+## Disposable review correction — October 25, cable history
+
+The ea080130 candidate is not accepted: Greg reports poor browser response, nonexistent AUX-1/AUX-2 network choices, and a site-wide waypoint picker instead of cable-test points. Network choices must come from the existing network catalog and require an unambiguous normalized match; raw FLW designations remain source evidence and must never create network identities or be silently translated to another network. Unmatched designations remain browsable under Unresolved.
+
+The test-point selector must be derived from retained cable-test endpoints, including source endpoint labels when reconciliation has not assigned waypoint IDs. Exclude unrelated site areas and waypoints with no retained tests. Preserve ID-based equipment links, original labels, dates, lengths and uncertain chronology. Filter changes operate on a cached projection of the current snapshot; opening this screen must not render unrelated power, report or equipment surfaces. Older test details are built only when expanded. These are browser/query-consumer corrections; no migration, source reimport or Production write is authorized. Regression must cover invalid AUX designations, unresolved FE-02/FE-02B test points, unrelated site entries and retained history. Production-scale browser timing and renewed disposable acceptance remain required.
+
 ## Current Production receipt — PR460, October 25
 
 Greg supplied `STAGE server deployment PASS; protected browser and documentation closeout pending` and the wrapper's `#171 PERFORMANCE SERVER DEPLOYMENT PASS` after SSH cleanly returned. Report: `/home/msbadmin/setup-deployment-reports/PR460-Performance-20261025T152418Z`.

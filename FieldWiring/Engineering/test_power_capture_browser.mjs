@@ -695,15 +695,19 @@ try {
   await page.goto(base.replace("circuits","cable-tests"));
   await page.getByText(/Revision \d+/).waitFor();
   await page.locator('[data-filter="waypoint"]').selectOption("11");
-  assert.equal(await page.locator("#test-history article").count(),3);
+  assert.equal(await page.locator("#test-history article").count(),0);
+  for(const detail of await page.locator("#test-history details").all()) await detail.locator("summary").click();
+  await page.waitForFunction(()=>document.querySelectorAll("#test-history article").length===3);
   assert.match(await page.locator("#test-history").textContent(),/source-one/);
   assert.match(await page.locator("#test-history").textContent(),/source-two/);
   await page.locator('[data-filter="waypoint"]').selectOption("");
   await page.locator('[data-filter="network"]').selectOption("Unresolved");
-  assert.match(await page.locator("#test-history").textContent(),/source-three/);
+  for(const detail of await page.locator("#test-history details").all()) await detail.locator("summary").click();
+  await page.getByText(/source-three/).waitFor();
   assert.equal(await page.locator("#cable-history button").count(),0);
   // Parsed FLW labels remain browsable before waypoint/cable reconciliation.
-  await db.exec(`INSERT INTO ops.linkiq_test VALUES
+  await db.exec(`INSERT INTO ref.site_network VALUES(80,'AUX-E','LOR');
+    INSERT INTO ops.linkiq_test VALUES
     ('11111111-1111-4111-8111-111111111111',NULL,'2026-10-20',1,'UNMATCHED','flw-source','10BASE-T',210,'FE-02B TO FE-02 AUX-E'),
     ('22222222-2222-4222-8222-222222222222',NULL,'2026-10-20',1,'UNMATCHED','flw-source','10BASE-T',209,'FE-02B TO FE-02 SPARE-01');
     INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal)
@@ -711,7 +715,11 @@ try {
     ('flw-source','22222222-2222-4222-8222-222222222222','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"SPARE-01","display_label":"FE-02B TO FE-02 SPARE-01"}');`);
   await page.reload();await page.getByText(/Revision \d+/).waitFor();
   await page.locator('[data-filter="network"]').selectOption("AUX-E");
-  assert.equal(await page.locator("#test-history article").count(),1);
+  assert.equal(await page.locator("#test-history article").count(),0);
+  await page.locator('[data-filter="waypoint"]').selectOption("label:FE-02B");
+  await page.locator("#test-history details summary").click();
+  await page.waitForFunction(()=>document.querySelectorAll("#test-history article").length===1);
+  assert.equal(await page.locator("#panels button").count(),0);
   assert.match(await page.locator("#test-history").textContent(),/FE-02/);
   // Save Panel 15 as FE-00's supply even when it has no recorded breakers.
   await page.goto(base);await page.getByText(/Revision \d+/).waitFor();

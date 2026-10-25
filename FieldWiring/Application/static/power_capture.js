@@ -193,7 +193,7 @@
         if(previousPanel) back.textContent=`Back to ${previousPanel.panel_name}`; else {back.remove(); navigation.querySelector('a[href^="circuits"]').href="circuits";}
       }
       const requested=new URLSearchParams(location.search).get("waypoint");
-      if(requested && !$("waypoint-detail").dataset.linkOpened) {
+      if(mode!=="tests" && requested && !$("waypoint-detail").dataset.linkOpened) {
         if(mode==="equipment") {$("detail-waypoint").value=requested;render();} else viewWaypoint(Number(requested));$("waypoint-detail").dataset.linkOpened="1";
       }
       $("status").textContent =
@@ -403,6 +403,8 @@
       );
   }
   function render() {
+    // Cable history is read-only and needs none of the hidden power editors.
+    if(mode==="tests"){renderCableHistory();return;}
     renderPanels();
     const waypointSelect = $("detail-waypoint"), priorWaypoint = waypointSelect.value;
     waypointSelect.replaceChildren();
