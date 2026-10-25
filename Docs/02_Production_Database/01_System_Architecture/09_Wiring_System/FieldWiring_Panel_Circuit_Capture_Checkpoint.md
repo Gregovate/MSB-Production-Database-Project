@@ -2,9 +2,28 @@
 
 | Document control | Value |
 |---|---|
-| Status | SOURCE CANDIDATE — live catalog received; integrated release acceptance pending |
+| Status | PR457 SERVER DEPLOYMENT PASS — protected Production browser check pending |
 | Owner | #171 / #230 under #122 |
-| Reviewed | 2026-10-22 |
+| Reviewed | 2026-10-25 |
+
+## October 25 — PR457 Production receipt / current Part 2 starting point
+
+**Server deployment PASS; protected Production browser spot check pending.** Greg returned the reviewed maintenance runner's successful receipt. This is operator-returned execution evidence, not an independent host probe. Earlier candidate/pending-release sections below are historical and superseded by this receipt.
+
+- Both `/opt/fieldwiring` and `/opt/msb-setup`: `72a94be772f2e4ae8bfaed74051f667fc87201a6`.
+- FieldWiring `V0.4.26-breaker-reports`; Setup `V0.3.91-integrated-power` (source advanced for the panel map deep link).
+- Application PR457 merge: `c56e3a63c6ad3c0c0d21618a0ef65ec865b25c2c`. Release tooling `7175d3c01f6e3eae218c47d198db7cec5a8cf484`, PR458 merge `c6e88f8a6b81836ec6e38467bc3e4b153ecc4161`. Documentation commits are not deployed source identities.
+- Report: `/home/msbadmin/setup-deployment-reports/PR457-Breakers-20261025T134723Z`.
+- Validated rollback snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr457-breakers-PR457-Breakers-20261025T134723Z.dump`.
+- Snapshot SHA256: `497c958d8bcf9737bcc91af9190461ff6a3da154834f55c24650df8dba7e1002`.
+- Receipt: preflight, maintenance/freeze, snapshot, migration commit, database validation, both source promotions while fenced, and return to service PASS. The reviewed runner's success contract includes controller ONLINE, health, preservation and negative authorization checks; detailed evidence remains in the report.
+- Applied only `Database/EngineeringTools/sql/171_breaker_state.sql`; validated with `Database/Acceptance/171_breaker_state_validation.sql`. No GPX/FLW import, slot-count migration replay or initial-state seeding. **Do not rerun the completed release.**
+
+Greg accepted the disposable candidate and authorized release. Initial breaker states remain unknown until observed; Greg will start recording them. Many panels have been entered, but outlet/waypoint assignments are not field-verified. Technicians must verify the supplying panel/breaker and match physical outlet labels to the current Park Map, recording discrepancies instead of guessing. Local receptacles and fixed loads without waypoints are valid. Desired seasonal state, photographs and reusable task57's October9 80% report do not establish current observed state or verified outlet assignments.
+
+Next: protected Production spot check of retained notes, eight-slot FE-00, observed-state recording/name/time, reports and panel map links; record actual results without converting server PASS into assumed feature acceptance. Keep #171/#230 and commanding #122 open for the remaining scope below. The technician email was drafted for Greg; no email was sent.
+
+Read [Part 2 new-thread starter](FieldWiring_Panelboard_Controller_Install_Part_2_Starter.md) and the integrated design before further engineering. Last disposable review ended CLEAN EXIT with port8898/source lock available; recheck current ownership before any new review. Preserve the existing laptop worktree and Production data/source files.
 
 ## October 23 panel-diagram candidate — supersedes V0.4.8
 
@@ -703,7 +722,7 @@ Validation and exact replacement SHA are recorded in PR457. Browser regression c
 
 Greg accepted V0.4.26-breaker-reports at exact application SHA `72a94be772f2e4ae8bfaed74051f667fc87201a6`, confirmed reusable preview CLEAN EXIT (8898/source lock available), and authorized Production release. PR457 merged as `c56e3a63c6ad3c0c0d21618a0ef65ec865b25c2c`. Greg will enter initial breaker states: do not backfill them from desired settings, photos, task57 or the discarded preview database.
 
-**Release execution pending, not yet claimed installed.** Governing authority: Server Management Production_Database_Change_Deployment_Runbook.md and Production_Database_Maintenance_Mode.md. Use a pinned breaker profile of the existing Setup maintenance orchestrator and committed-byte transport. Expected last proven baselines: FieldWiring `/opt/fieldwiring` = `0fd7fabd48dce287722112405bafb8e3aa65f637` / V0.4.22-panel-navigation; Setup `/opt/msb-setup` = `439ab237beaae4ac648e7590f824a774969cd84f` / V0.3.91-integrated-power. Preflight must verify these live, not assume them. Promote both trees to the accepted application SHA (Setup map deep link is included). The application SHA is distinct from release-tooling and merged-main identities.
+**Historical release preparation — completed by the Production receipt at the top of this checkpoint.** Governing authority: Server Management Production_Database_Change_Deployment_Runbook.md and Production_Database_Maintenance_Mode.md. Use a pinned breaker profile of the existing Setup maintenance orchestrator and committed-byte transport. Expected last proven baselines: FieldWiring `/opt/fieldwiring` = `0fd7fabd48dce287722112405bafb8e3aa65f637` / V0.4.22-panel-navigation; Setup `/opt/msb-setup` = `439ab237beaae4ac648e7590f824a774969cd84f` / V0.3.91-integrated-power. Preflight must verify these live, not assume them. Promote both trees to the accepted application SHA (Setup map deep link is included). The application SHA is distinct from release-tooling and merged-main identities.
 
 Apply only `Database/EngineeringTools/sql/171_breaker_state.sql`, validate with `Database/Acceptance/171_breaker_state_validation.sql`; slot-count and initial GIS migrations are already installed. Existing post-slot command MD5 must be `9f54909d2ce75cd0425cdf6338268f88`; reject replay/drift. Hold existing deployment/source locks; require ONLINE/services/backups, detached candidate regressions, then controller ON/freeze/validated snapshot, migration, exact function/privilege validation and all-business-row preservation, both source promotions, controller OFF and ONLINE/health/negative-auth proof. No automatic OFF or database restore after failure. Retain report, state.json, snapshot.json and hashes. A later thread must inspect actual receipt/controller/catalog before any retry.
 
@@ -721,4 +740,4 @@ Remaining work to assess and finish in Part 2:
 - Future governed GPX comparison/snapshot/ingest workflow and known map inaccuracies: preserve current PostgreSQL references and original GPX/FLW evidence, never silently replace the reviewed master. Keep QGIS/basemap calibration work under its existing GIS owner.
 - Reconcile panel-versus-breaker seasonal behavior and waypoint electrical-safety presentation with actual field inventory; task57's October9 80% crew report is historical and must not be overwritten by inferred checklist progress.
 
-Required closeout before declaring this release deployed: actual server PASS, both deployed source SHAs, controller ONLINE/health evidence, report directory and snapshot path/SHA256, protected browser check, newest-first Production deployment log and owning server runtime documentation. A GitHub merge or this authorization alone is not a deployment receipt. Preserve the existing laptop review worktree for sequential Part 2 tests and return the shell to `C:\lor\ImportExport\VSCode`.
+Server deployment receipt and source/snapshot identities are now recorded above. Protected Production browser acceptance remains pending; documentation closeout does not imply it passed. Preserve the existing laptop review worktree for sequential Part 2 tests and return the shell to `C:\lor\ImportExport\VSCode`.

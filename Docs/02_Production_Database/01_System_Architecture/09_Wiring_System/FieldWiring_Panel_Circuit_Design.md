@@ -1,5 +1,10 @@
 # Panel circuit definition and field capture
 
+## Current release disposition — October 25
+
+PR457 is deployed at `72a94be772f2e4ae8bfaed74051f667fc87201a6` (FieldWiring V0.4.26-breaker-reports; Setup V0.3.91-integrated-power). Server PASS is recorded in the [implementation checkpoint](FieldWiring_Panel_Circuit_Capture_Checkpoint.md); protected Production browser acceptance remains pending. Earlier candidate statements are historical. The integrated design remains the target, not a claim that every relationship is field-verified. Continue remaining work using the [Part 2 starter](FieldWiring_Panelboard_Controller_Install_Part_2_Starter.md).
+
+
 
 ## Network identity versus path versus consumer — clarified October 24
 

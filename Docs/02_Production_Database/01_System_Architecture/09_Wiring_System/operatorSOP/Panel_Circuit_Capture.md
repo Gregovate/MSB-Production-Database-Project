@@ -221,7 +221,7 @@ duplicates. Back to panel and browser Back restore the selected panel, filter,
 expanded details and scroll position within the same browser tab.
 
 
-### Seasonal breaker work — PR457 candidate, revised after field review
+### Seasonal breaker work — PR457 deployed V0.4.26, Production browser spot check pending
 
 1. On Panel Circuits, choose Season **2026** and Season mode **ON** (show targets) or **OFF** (off-season targets). Panelboard green **Recorded ON** and red **Recorded OFF** show the last observation, with the person's name and time. Gray means no known recorded position.
 2. After physical work, press **Record ON** or **Record OFF** once. There is no confirmation dialog. The whole grouped breaker is recorded, including a two-pole breaker, and no waypoint is required. These buttons record observations; they do not remotely switch equipment or establish isolation. If confirmation is lost, **Retry recording** safely resends the same observation.
