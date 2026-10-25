@@ -1,5 +1,53 @@
 # #171 Network source reconciliation — October 9, 2026
 
+## Governing engineering design priority — ONE maintained site infrastructure system (October 12, 2026)
+
+**Operator-confirmed, mandatory #171/#230 design and acceptance authority under #122.** This section supersedes any earlier wording or example that would treat the GPS data, LinkIQ tests, draw.io schematic, Setup Park Map, and Field Wiring Map as independently editable inventories. Historical notes below remain provenance, not authorization to create competing records.
+
+**Problem being solved.** Greg originally walked real installed power/network routes and recorded them with GPS. Subsequent crews did not consistently walk, consult, or maintain those routes; draw.io was constructed as a practical substitute, but the hand-maintained schematic developed inconsistencies. Failed links after 2026 roadwork and between seasons demonstrate the operational cost. The purpose of this subsystem is to eliminate reliance on one person's recollection and on three separately flawed or conflicting systems. **PostgreSQL/PostGIS is the one governed, maintained engineering system of record** for reviewed site waypoints, surveyed routes, physical cables, termination/topology, circuit/panel/outlet relationships, lifecycle and attributed revisions. It retains source provenance and uncertainty; it must never manufacture a geographic route from a schematic connection.
+
+### Source interfaces, not separate masters
+
+- **ExpertGPS/GPX ↔ PostgreSQL (two-way, review-controlled):** GPX supplies authoritative surveyed waypoint locations and original recorded route geometry. Preserve the ExpertGPS `Label on Map` field, original Garmin names, coordinates, track geometry, type, extensions, dates, source SHA and historical versions. Following reviewed promotion, database maintenance changes must be eligible for a conflict-aware GPX export/reimport and real ExpertGPS save/reopen round-trip. If both sides changed independently, present a conflict rather than overwriting either side. Do not silently overwrite a shared GPX or replace a surveyed trace with phone GPS.
+- **LinkIQ/FLW → PostgreSQL (one-way):** Import all original tester labels, UUIDs, project appearances, measured results, status and retest history as immutable evidence. FLW is read-only; never write it back. Tester naming convention is `Waypoint1 TO Waypoint2 NETWORK` or `Waypoint1 TO Waypoint2 SPARE X`, but tester fields are free-form and contain capitalization/spelling/spacing errors. Resolve using reviewed waypoint identities and aliases; ambiguous strings generate review proposals, not automatic identities. Maintain reviewed physical-cable links across repeated source imports and renamed tester labels. A test or endpoint pair is not automatically a physical cable.
+- **PostgreSQL → draw.io:** Keep the manually useful schematic presentation, page layout and stable object IDs, but project reviewed connection/cable attributes from database relationships. Drawing paths and layout are not survey coordinates. Discrepancies return to one review workflow rather than encouraging another independent edit inventory.
+
+### What the system must represent
+
+Maintain distinct historical identities and relationships for **(1)** site waypoint and reviewed location, **(2)** individual physical cable, **(3)** present and past termination endpoints, **(4)** surveyed GPX geographic trace and ordered segment association or explicit unknown route, **(5)** network/spare designation, **(6)** installation type (buried, temporary above ground, or unknown), **(7)** damage, reroute, retermination, repair, planned replacement, actual replacement and retirement events, and **(8)** original LinkIQ results/retests. Multiple parallel cables can share endpoints and surveyed routes without merging. A repaired/rerouted existing physical conductor may keep its identity; a replacement gets a new identity with predecessor/successor linkage. A failed test does not by itself prove the cause, destruction, or replacement.
+
+**Connectivity is not geography.** A tested direct home run FE-01→FE-07 is NOT inferred to physically travel via FE-03 or FE-05 simply because those are connected to FE-01. A route's bend/intermediate survey points do not automatically become cable termination nodes. Never convert topology graph paths, drawing edges or tester cable lengths into authoritative surveyed GPX geometry. Locating decisions must expose missing geography and uncertainty, not false safety.
+
+**Operator-provided regression scenarios:** LP-08→CL-00 historically working cables damaged by 2026 roadwork; new CL-00→CL-10 cables and rerouted original LP-08→CL-10 cables subsequently did not test successfully and are anticipated for replacement. LPFC-03→FE-01 worked last year and failed this year. A temporary above-ground FE-01→FE-07 cable was recorded in prior LinkIQ evidence and scheduled for replacement; FE-01→FE-03, FE-01→FE-05 and FE-01→FE-07 are distinct reported connections, not proof of an inferred FE-01→FE-03→FE-07 geographic path. These are operator observations requiring reconciliation to source rows and surveyed traces, not permission to invent confirmed cable IDs, dates, test outcomes or route geometry.
+
+### Application and edit boundaries — dedicated #230 Site Reference Map owns ALL reference edits
+
+**Three interfaces, one PostgreSQL/PostGIS reference authority.** The prior disposable browser, which placed an engineering editor in the Setup reference map and mixed in seasonal assets, was rejected. Do NOT recreate it, and do NOT make Field Wiring a reference-data editor.
+
+- **Dedicated #230 Site Reference Map / Reference Data Editor:** This is the sole UI entrypoint for adding or editing engineering reference waypoints (including `OUT POWER`, `OUT COMBO`, `OUT NET`), panels, source locations, surveyed track/endpoint/network/spare associations, and panel/circuit/waypoint relationships. Online authorized **Production crew** can create/edit circuits within Manager-controlled panels, select existing maintained waypoints to assign to circuits, and update authorized cable-track endpoints/designations; **Manager** controls protected waypoint identity, type and coordinates. Structured circuit/route metadata must not permit arbitrary renaming or relocation of protected waypoint records. Use revision conflict checks, source provenance, attributed audit and required authorization.
+- **Existing Setup Park Map:** Preserve its entrypoint and function. It **consumes** the governed waypoints and tracks read-only and shows Setup-owned scan-derived Container/Display positions, find/search, and seasonal status. No engineering reference edits or #230 maintenance controls; do not move the seasonal asset editor or unlocated list into the #230 reference app. Do not modify Setup Park Map for this editor.
+- **Existing Field Wiring Map:** Preserve its *separate existing entrypoint* and Display↔Controller field-wiring workflow. It **consumes** governed `OUT POWER`/`OUT COMBO`/`OUT NET`, panels/outlets, and geographic network/power tracks read-only, with optional Controller locations and panel/breaker/shutoff lookup from a power waypoint. No reference editing from Field Wiring, even for Production crew. Any edit is performed by navigating to the dedicated #230 Site Reference editor under its own authorization; never replace Field Wiring with Setup's map.
+- **Offline reference operation:** Each applicable viewer and the #230 reference map may inspect versioned locally cached reference data and **locally packaged Plain SVG markers** (including `stage.svg`). ALL #230 reference/circuit/cable writes and GPX/FLW import/reconciliation are DISABLED offline with no edit queue. Reconnection requires fresh authentication, current lookups and revision verification. A cache miss is unknown/unavailable, not authoritative absence. SVG publication does not establish offline visual acceptance.
+
+**Regression/acceptance:** assert distinct Setup, Field Wiring and #230 entrypoints; no reference edit controls/endpoints in Setup or Field Wiring; positive role-scoped online crew circuit/track edits ONLY through #230 and denial of protected Manager fields; OUT waypoint→source panel/shutoff read-only tracing in Field Wiring; offline cached viewing without writes; no changes to Setup movement projection.
+
+### Field Wiring Production-crew workflow versus durable reference (operator decision, October 12)
+
+**Do not disrupt the established Field Wiring panel-to-Controller wiring workflow.** Crews must continue scanning a Controller, opening its existing wiring workflow and wiring Displays/panels to Controllers as they do today. A Controller scan may capture its **season-specific observed location** with time, operator and GPS accuracy/evidence in the existing seasonal observation model. This is NOT a new permanent surveyed waypoint, and must not overwrite protected GIS positions. Preserve existing controller identity, scan and wiring behaviors.
+
+Field Wiring also needs a **separate, focused Production-crew action area**, accessible within the existing Field Wiring screen but not replacing the wiring interface or turning its map into a general GIS reference editor. While online, authorized Production crew can add/edit panel breaker/circuit records, assign existing governed OUT POWER / OUT COMBO / OUT NET or other applicable waypoint identities, and maintain planned seasonal ON/OFF state. Only a Manager/reference custodian may create, rename, reclassify or move protected waypoint identities and surveyed geographic authority. Crew editing must be audited, revision-guarded and limited to the relationship fields. A powered outlet/waypoint displays its source Panel and applicable breaker/shutoff information.
+
+**Different lifetimes must remain separate:** panel/breaker/circuit-to-waypoint assignment is **durable engineering reference data that rarely changes**; it must persist across annual Setup seasons unless deliberately revised. Seasonal planned ON/OFF is a **season-scoped operational plan**, not an overwrite of durable wiring. A Controller's scanned placement is a **seasonal field observation**, not reference waypoint geometry. Planned power/network/primary routing is not proof of surveyed GPX route; preserve reviewed physical geometry separately. No repeated re-entry of stable circuit assignments every year.
+
+Application ownership: the dedicated #230 Site Reference Map is for governed master waypoint/track/reference administration; the existing Field Wiring work surface can invoke **scoped circuit/assignment/seasonal-control commands** without permitting reference waypoint master edits. Setup Park Map remains its existing read-only engineering-reference consumer with Setup movement views; no seasonal Controller location list belongs in the #230 editor.
+
+**Acceptance/regression gates:** (1) existing Controller scan → Display/Controller wiring unchanged; (2) Controller seasonal location scan captures provenance without changing reference GPS; (3) crew online circuit creation, breaker assignment, existing waypoint selection and season planned ON/OFF; (4) durability of circuit-waypoint relationships across seasons; (5) crew denial on waypoint identity/coordinate mutation; (6) Panel source lookup at power waypoints; (7) offline cached inspection works but all reference/circuit edits are disabled, no offline edit replay. Keep those interactions visually and functionally separate from the existing wiring controls.
+
+### Mandatory system-level acceptance
+
+Demonstrate a complete operator trace: select a physical cable → see verified versus unknown surveyed geography, endpoints/network designation, GPX source history, LinkIQ test/retest evidence, condition and maintenance work → make scoped attributed online engineering updates → reimport FLW without losing reviewed identity/history → conflict-aware GPX round-trip in ExpertGPS → generate draw.io schematic without a second manually maintained master. Test historical failures/replacements, direct home-run versus segment distinctions, Manager protected-waypoint denial versus Production crew positive circuit/track editing, power-waypoint-to-Panel shutoff lookup, and disconnected cached view with **no edits**. Preserve the existing Setup and Field Wiring map boundaries and do not claim browser/Production acceptance from source-only tests.
+
+
 | Document control | Value |
 |---|---|
 | Status | ENGINEERING CANDIDATE; operator review required |
@@ -380,6 +428,14 @@ on/transferred to the LinkIQ device and survives a new test/import. A LinkWare P
 note is not proof of bidirectional device support. Do not require device writeback
 for read-only FLW ingestion; it is a separate integration improvement. No FLW
 writes, device changes or database import performed during this investigation.
+
+> **Historical scope / superseded writeback exploration:** this section proves
+> supported LinkWare edits can be read back. It does not permit direct SQLite
+> FLW writes. A subsequent external-edit candidate triggered a LinkWare rebuild;
+> Greg reports changed cable lengths. External FLW editing and tester writeback
+> are prohibited. Preserve both additive imports and maintain corrections only
+> in PostgreSQL. See the current
+> [FLW failure history and read-only boundary](../../../../../Database/EngineeringTools/Site_Source_Synchronization_Contract.md#flw-additive-imports-and-unsafe-writeback-history--october-11-recovery).
 
 ## LinkWare property save/readback result — October 10, 07:25 CDT
 

@@ -3,6 +3,7 @@ const stageFilter = document.getElementById('stage-filter');
 const statusFilter = document.getElementById('status-filter');
 const modelFilter = document.getElementById('model-filter');
 const assignmentFilter = document.getElementById('assignment-filter');
+const controllerSort = document.getElementById('controller-sort');
 const controllerList = document.getElementById('controller-list');
 const controllerCount = document.getElementById('controller-count');
 const detail = document.getElementById('detail');
@@ -10,6 +11,7 @@ const detailEmpty = document.getElementById('detail-empty');
 const themeToggle = document.getElementById('theme-toggle');
 
 let selectedControllerId = null;
+let currentControllers = [];
 let filtersLoaded = false;
 let debounceTimer = null;
 
@@ -128,7 +130,12 @@ function renderControllerList(controllers) {
     return;
   }
 
-  controllerList.innerHTML = controllers.map(item => {
+  // Sort a copy of the filtered response. Never reload the selected editor or
+  // change network chain order when the operator changes list presentation.
+  const assignedName = item => Number(item.assignment_count) > 0 ? item.display_names : '';
+  const ordered = [...controllers].sort((a,b) => window.MSBControllerDeployment.compareControllers(
+    a.controller_id, assignedName(a), b.controller_id, assignedName(b), controllerSort.value));
+  controllerList.innerHTML = ordered.map(item => {
     const active = item.controller_id === selectedControllerId ? ' active' : '';
     const assignmentText = Number(item.assignment_count) === 0
       ? 'Unassigned'
@@ -157,6 +164,7 @@ function renderControllerList(controllers) {
 }
 
 async function loadControllers() {
+  controllerSort.disabled = true;
   controllerList.innerHTML = '<div class="empty-state">Loading controllers…</div>';
   try {
     const response = await fetch(`api/controllers?${queryString()}`);
@@ -164,7 +172,9 @@ async function loadControllers() {
     if (!response.ok) throw new Error(payload.error || 'Controller Inventory could not be loaded.');
     populateFilters(payload);
     renderSummary(payload.summary || {});
-    renderControllerList(payload.controllers || []);
+    currentControllers = payload.controllers || [];
+    renderControllerList(currentControllers);
+    controllerSort.disabled = false;
   } catch (error) {
     controllerList.innerHTML = `<div class="error">${esc(error.message)}</div>`;
   }
@@ -224,7 +234,9 @@ function renderFirmwareHistory(rows) {
 }
 
 async function loadControllerDetail(controllerId) {
+  if (window.MSBControllerDeployment && !window.MSBControllerDeployment.mayLeave()) return;
   selectedControllerId = controllerId;
+  window.MSBControllerDeployment?.render(controllerId);
   for (const row of controllerList.querySelectorAll('.controller-row')) {
     row.classList.toggle('active', Number(row.dataset.controllerId) === controllerId);
   }
@@ -240,6 +252,7 @@ async function loadControllerDetail(controllerId) {
     const response = await fetch(`api/controllers/${controllerId}`);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || 'Controller could not be loaded.');
+    if (selectedControllerId !== controllerId) return;
     const c = payload.controller;
     document.getElementById('detail-id').textContent = `CTRL ${c.controller_id}`;
     document.getElementById('detail-model').textContent = `${c.manufacturer} · ${c.model_code} · ${c.model_name}`;
@@ -294,6 +307,10 @@ function scheduleRefresh() {
   debounceTimer = setTimeout(loadControllers, 220);
 }
 
+controllerSort.addEventListener('change', () => {
+  renderControllerList(currentControllers);
+  window.MSBControllerDeployment.sortPickers();
+});
 searchInput.addEventListener('input', scheduleRefresh);
 stageFilter.addEventListener('change', loadControllers);
 statusFilter.addEventListener('change', loadControllers);

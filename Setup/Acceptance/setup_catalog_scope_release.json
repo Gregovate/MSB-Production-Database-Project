@@ -12,7 +12,7 @@
   "validation_blob": "d6a0294fad16015ba1749e5d51acadeeb64923d9",
   "helper_sha256": "3dcc687bb18b0d050b49dd24a697eaf0f8958832e4e6dcec0f1b685812aa5545",
   "helpers": {
-    "setup_maintenance_deploy.py": "3dcc687bb18b0d050b49dd24a697eaf0f8958832e4e6dcec0f1b685812aa5545",
+    "setup_maintenance_deploy.py": "4a2e34064ce1eced57e277b368048810fd8c122034749792ac121e1367c970ab",
     "setup_required_container_deploy.py": "9eca5d40e9b86db2798f461b5f0424d37eb6528d850aa5a790aec7298007b9ba"
   }
 }

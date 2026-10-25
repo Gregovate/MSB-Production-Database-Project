@@ -249,7 +249,7 @@ def test_reusable_browser_preview_concurrent_production_mode_is_explicit_and_def
     assert "The preview clone is a point-in-time snapshot" in server
 
 
-def test_browser_preview_allows_only_the_approved_shared_audit_repair() -> None:
+def test_browser_preview_allows_shared_audit_and_exact_reference_allowlist() -> None:
     launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
 
     assert "$isSetupMigration = $Path.StartsWith('Setup/Database/')" in launcher
@@ -262,10 +262,12 @@ def test_browser_preview_allows_only_the_approved_shared_audit_repair() -> None:
         "Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql",
         "",
     )
-    assert "Database/Acceptance/" not in launcher.replace(
-        "Database/Acceptance/database_shared_audit_actor_disposable_validation.sql",
-        "",
-    )
+    # Reference-data paths must be admitted by exact candidate allowlist,
+    # never by granting access to the whole Database/Acceptance directory.
+    assert "$referenceValidationPaths -ccontains $Path" in launcher
+    assert "$Path.StartsWith('Database/Acceptance/')" not in launcher
+    assert '${CandidateSha}:$referenceAllowlistPath' in launcher
+    assert "$entry.Contains('*')" in launcher
 
 
 def test_reusable_disposable_grant_replay_is_batched_and_fail_fast() -> None:
@@ -363,3 +365,17 @@ def test_reusable_browser_preview_only_resumes_transport_loss_not_start_prefligh
     assert "if ($remoteExit -notin @(75, 255))" in launcher
     assert "The start failure is not resumable" in launcher
     assert "Browser-review SSH transport ended with exit code" in launcher
+
+
+def test_gis_database_acceptance_and_browser_share_one_clone_lifecycle() -> None:
+    server = read_acceptance("setup_disposable_browser_preview_server.sh")
+    assert server.count('pg_dump -U "$DB_ACTOR"') == 1
+    assert server.index('GIS_FLW_SOURCE="$(resolve_gis_source') < server.index('"--- Exact candidate regression ---"')
+    assert server.index('"--- Exact candidate regression ---"') < server.index('pg_dump -U "$DB_ACTOR"')
+    assert server.index('"--- Run candidate validation SQL') < server.index('accept_site_sources.py')
+    assert server.index('accept_site_sources.py') < server.index('"--- Start exact candidate')
+    assert 'PGDATABASE="$TEST_DB"' in server
+    assert 'dbname=$TEST_DB user=fieldwiring_app' in server
+    assert 'if ! read -r _done; then' in server
+    assert 'Browser review session ended by operator. Cleanup will now run.' in server
+    assert 'PRESERVE_FOR_RECONNECT=1' in server

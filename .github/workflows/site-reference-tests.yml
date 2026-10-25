@@ -1,0 +1,105 @@
+# #171/#230 draft PR acceptance. Isolated ephemeral PostGIS; NEVER connects to Production.
+name: Site reference map and editor candidate
+on:
+  push:
+    branches: [feature/171-cableiq-import-validation, feature/171-reviewed-track-names-20261011, feature/171-disposable-gis-editor-review-grant, feature/171-gis-source-cache-retention, feature/171-319-full-regression-contracts]
+  pull_request:
+    paths:
+      - 'Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql'
+      - 'Database/Acceptance/171_site_reference_operations_disposable_validation.sql'
+      - 'Database/Acceptance/reference_data_disposable_allowlist.json'
+      - 'Setup/Application/setup_site_reference*'
+      - 'Setup/Application/setup_locate*'
+      - 'Setup/Application/locate_preview.html'
+      - 'Setup/Application/production_backend.py'
+      - '.github/workflows/site-reference-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  candidate-checks:
+    runs-on: ubuntu-latest
+    services:
+      postgis:
+        image: postgis/postgis:16-3.5
+        env:
+          POSTGRES_PASSWORD: ephemeral-only
+          POSTGRES_USER: postgres
+          POSTGRES_DB: site_acceptance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d site_acceptance"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Parse Python and JavaScript sources
+        run: |
+          python -m py_compile Setup/Application/setup_site_reference_api.py Setup/Application/test_setup_site_reference_api.py
+          node --check Setup/Application/setup_site_reference.js
+          node --check Setup/Application/setup_locate_search.js
+          node --check Setup/Application/setup_locate_networks.js
+          node --check Setup/Application/setup_locate_symbols.js
+          node --check Setup/Application/setup_locate_offline.js
+          node --check Setup/Application/setup_locate_sw.js
+          node --check Setup/Application/locate_leaflet_1_9_4.min.js
+      - name: Parse existing Windows preview launcher
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $PWD 'Setup/Acceptance/run_setup_disposable_browser_preview.ps1'),
+            [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -gt 0) { throw ($parseErrors | Out-String) }
+      - name: Test actual Park Map SVG and offline package contracts
+        run: |
+          node Setup/Application/test_setup_locate_offline.cjs
+      - name: Test protected Setup reader and editor HTTP API
+        run: |
+          python -m pip install 'Flask>=3,<4' 'psycopg2-binary>=2.9,<3' 'pytest>=8,<10'
+          python -m pytest -q Setup/Application/test_setup_site_reference_api.py
+          python -m pytest -q Database/EngineeringTools/test_accept_site_sources.py Database/EngineeringTools/test_site_source_sync.py Database/EngineeringTools/test_site_source_db.py Database/EngineeringTools/test_reference_data_allowlist.py
+          bash -n Setup/Acceptance/setup_disposable_browser_preview_server.sh
+          python -m pytest -q Setup/Acceptance/test_gis_browser_editor_grant.py Setup/Acceptance/test_gis_source_cache.py Setup/Application/test_setup_reusable_acceptance_tooling_contract.py
+      # Match the production-host pre-dump regression gate so stale release
+      # identity and #88 icon assertions stop in CI, not after a big FLW upload.
+      - name: Full Setup and Field Wiring application regression
+        run: |
+          node Setup/Application/test_setup_locate_networks_browser.cjs
+          python -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance/test_setup_gis_preview.py
+          python -m pytest -q -p no:cacheprovider FieldWiring/Application
+      - name: Run PostGIS migrations and rollback-only operational assertions
+        run: |
+          set -euo pipefail
+          container="${{ job.services.postgis.id }}"
+          docker exec "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE SCHEMA IF NOT EXISTS ref; CREATE SCHEMA IF NOT EXISTS ops; CREATE ROLE fieldwiring_app LOGIN;"
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql
+          # Synthetic installed dependencies only in this ephemeral CI database.
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE ref.person(person_id integer PRIMARY KEY);
+          CREATE TABLE ref.controller_model(controller_model_id bigint PRIMARY KEY,model_code text);
+          CREATE TABLE ref.controller(controller_id bigint PRIMARY KEY,controller_model_id bigint REFERENCES ref.controller_model,serial_number text);
+          CREATE TABLE ref.season(season_year integer PRIMARY KEY);
+          INSERT INTO ref.person VALUES(1);
+          CREATE FUNCTION ref.setup_browser_capabilities(text)
+          RETURNS TABLE(can_read_setup boolean,can_manage_setup boolean,role_name text,policy_names text[],display_name text)
+          LANGUAGE sql AS $$ SELECT $1='gis-ci@example.invalid',$1='gis-ci@example.invalid','Manager'::text,ARRAY[]::text[],'CI'::text $$;
+          CREATE FUNCTION ref.setup_inventory_actor(text,boolean)
+          RETURNS TABLE(directus_user_id uuid,person_id integer)
+          LANGUAGE sql AS $$ SELECT '00000000-0000-0000-0000-000000000001'::uuid,1 WHERE $1='gis-ci@example.invalid' $$;
+          SQL
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < FieldWiring/Engineering/power_lor_fixture.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_panel_circuit_capture_candidate.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_site_reference_operations_disposable_validation.sql
+      - name: Initial release adapter through real container-local socket
+        env:
+          MSB_GIS_CI_CONTAINER: ${{ job.services.postgis.id }}
+        run: python Setup/Acceptance/test_site_171_socket_ci.py
+      - name: Verify GPX source archive and identity replay in existing ephemeral PostGIS
+        env:
+          MSB_GIS_EPHEMERAL_TEST_DSN: 'host=127.0.0.1 port=5432 dbname=site_acceptance user=postgres password=ephemeral-only'
+        run: python -m pytest -q Database/EngineeringTools/test_site_source_db.py -k ephemeral_postgis

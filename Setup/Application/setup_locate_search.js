@@ -18,7 +18,7 @@ const mapSearch = (() => {
       if (!feature) return;
       const key = feature.properties.id;
       if (!features.has(key)) {
-        const entry = {name: feature.properties.name, kind: layer === 'NET' ? 'GPX route (source name)' : feature.properties.type,
+        const entry = {sourceKind: 'map', name: feature.properties.name, kind: layer === 'NET' ? 'GPX route (source name)' : feature.properties.type,
           layer, markers: [], terms: feature.properties.name};
         features.set(key, entry); references.push(entry);
       }
@@ -109,6 +109,36 @@ const mapSearch = (() => {
     },
     onSelection(listener) { selectionListeners.push(listener); },
     addReference(entry) { references.push(entry); update(); },
+    // #171: the existing map index must follow the latest *maintained* geometry.
+    // Rebuild only permanent GPX refs; do not discard #88 asset observations.
+    reindexMapReferences() {
+      const preserved = references.filter(entry => entry.sourceKind !== 'map');
+      references.splice(0, references.length, ...preserved);
+      for (const [layer, group] of Object.entries(layers)) {
+        const features = new Map();
+        group.eachLayer(marker => {
+          const feature = marker._searchFeature;
+          if (!feature) return;
+          const key = feature.properties.id;
+          if (!features.has(key)) {
+            const entry = {sourceKind: 'map', name: feature.properties.name,
+              kind: layer === 'NET' ? 'GPX route (source name)' : feature.properties.type,
+              layer, markers: [], terms: feature.properties.name};
+            features.set(key, entry);
+            references.push(entry);
+          }
+          features.get(key).markers.push(marker);
+        });
+      }
+      update();
+    },
+    // Maintained PostgreSQL network choices replace only earlier site references.
+    replaceSiteReferences(entries) {
+      const keep = references.filter(entry => entry.sourceKind !== 'site');
+      references.splice(0, references.length, ...keep,
+        ...entries.map(entry => ({...entry, sourceKind: 'site'})));
+      update();
+    },
     clearAssets() { clearHighlight(); for (const listener of selectionListeners) listener({}); assets = []; update(); },
     addAsset(asset, container, marker) {
       const code = container ? 'C' + String(asset.container_id).padStart(3, '0') : '';

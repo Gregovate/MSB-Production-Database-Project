@@ -106,15 +106,84 @@ For database-affecting Setup work, use the same sequence every time:
 ```text
 exact candidate + clean local checkout
     -> full Setup/Application regression
-    -> disposable current-Production clone acceptance
-    -> exact-candidate browser review against a fresh disposable clone
-    -> operator acceptance
+    -> ONE current-Production dump and disposable clone
+    -> migrations + database assertions + feature import checks on that clone
+    -> exact-candidate browser review against THAT SAME clone
+    -> operator finishes browser review and exits cleanly
+    -> preview/clone cleanup, retained evidence
     -> separate Production deployment runbook
 ```
 
 Production mutation is not part of either reusable acceptance launcher. Production is limited to `pg_dump` and read-only evidence/fingerprint queries until the candidate has been explicitly accepted.
 
-If the candidate changes after either gate, start again from the new exact SHA. Do not carry forward a prior disposable clone or browser preview.
+For database-changing work requiring browser review, use
+`run_setup_disposable_browser_preview.ps1` for the combined regression, database
+and browser lifecycle. Do not run the standalone database acceptance first and
+then take a second dump for browser review of the same candidate. Normal cleanup
+runs after the operator completes browser review and presses ENTER in the review
+terminal. Closing a browser tab alone is not the runner's completion signal.
+Transport loss uses the existing reconnect path; do not launch another clone
+merely because the browser tunnel disconnected. Failure cleanup and retained
+reports remain governed by the existing runbook.
+
+If the candidate changes, prior acceptance is invalidated; rerun affected gates
+against the exact new SHA. This does not authorize duplicate dumps merely to
+move from regression/database checks into browser review.
+
+For #171/#230 real-source acceptance, pass `-GisGpxPath`, `-GisFlwPath`, and
+`-GisActor` to that same browser launcher, with the centrally allowlisted #171
+migration and validation SQL. The importer runs before browser launch on that
+same clone. Its exported artifacts and receipts are evidence; importing them
+does not by itself establish that every application screen consumes the new data.
+
+**Source transfer / bounded cache (October 11):** The browser wrapper
+computes the exact SHA-256 of the selected GPX and FLW, probes
+\`$HOME/setup-source-cache/<sha>.gpx/.flw\` on the server, and transfers a
+file only when that exact source hash is absent. The October 11 first
+cache-populating run may upload the ~253 MB FLW once because earlier accepted
+disposable runs predated this cache. A subsequent run with unchanged FLW SHA
+must print \`Reusing server FLW source <sha>\` and omit \`source.flw\` from
+SCP. A genuinely new FLW version still requires one transfer: it must
+**never overwrite bytes under an old hash**.
+
+The server's incoming \`/tmp/msb-setup-disposable-browser-preview-*\` upload
+bundle and temporary PostgreSQL dump are removed by normal governed browser
+cleanup. The newer bounded-retention cleanup also holds an exclusive
+per-operator cache lock, verifies both active source hashes, and removes
+superseded hash-named GPX/FLW cache versions **only after a clean completed
+browser review**. It does not remove a source on transport loss, on failed
+acceptance, when another preview may be active, or if current hashes are
+unverified. Original Shared Drive files, immutable PostgreSQL source
+observations, LinkIQ test evidence, and acceptance reports are never cleaned
+by this operation. Cache deletion is recorded as a count and bytes in the
+existing preview report; skipped cleanup is visible. The current in-flight
+preview is pinned to its own exact candidate SHA and will not adopt newer
+runner changes retroactively.
+
+
+For the combined #171/#230 GIS/circuit candidate, use the ONE reusable browser
+runner with all three allowlisted migrations in order: infrastructure foundation,
+panel circuit capture, GIS operations; include both rollback-only validations.
+Supply the selected Master GPX and optionally LinkIQ FLW. Both applications use
+one disposable clone and one listener. The selected operator must already have
+Directus Manager authority. No synthetic user or separate GIS grant is created.
+The candidate rejects an incomplete migration set before server contact.
+FieldWiring's /fieldwiring/circuits consumes the same imported waypoint IDs and
+current names as /setup/locate/. Its tests and cable evidence remain consumers of
+that source; there is no competing waypoint store or LinkIQ upload facility.
+Production installation and recurring GPX revision promotion remain separate
+acceptance gates, not implied by successful initial-load browser review.
+
+During browser review test the existing /setup/locate/ track-name correction
+from historical NET FT-SS Reg/Spare/Aux to reviewed NET LP-08 to CL-00, reload
+and search; original GPX name, geometry and source description remain retained.
+Test circuit/network relationships and audit/optimistic conflict behavior only
+in the disposable clone. The second, reviewed LinkIQ physical-cable-to-GPX
+route-consistency exception workflow is NOT implemented or accepted yet.
+Do not infer a number of cables from track description. ExpertGPS export
+after editing, Android airplane-mode map, and public SVG visual acceptance
+are separate required gates, not implied by preview readiness.
+
 
 ## Mandatory exact client/server build identity gate
 
