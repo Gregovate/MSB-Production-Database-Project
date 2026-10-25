@@ -1,5 +1,11 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## Additional equipment simplification — October 25 review
+
+Greg's equipment screenshot is further changes-required evidence. Additional Equipment now focuses on location/spares, existing device records and lifecycle actions. Controller guidance, the global safety banner and global correction history are removed from this route's visible content. Selected-waypoint Connection details retain network/feed/safety context collapsed by default; spares have no network warning. A focused equipment renderer skips unrelated panels/reports/controllers and builds secondary engineering only when expanded. No inventory, command, schema or Production changes. Browser regression now checks focused visibility, spares and retained expandable engineering alongside existing add/failure/retry/move/replace coverage. Renewed disposable acceptance remains pending.
+
+The preceding cable correction f25b70ae passed exact-head Setup/Chromium (40222247790), native site acceptance (40222247848) and Engineering Compliance (40222247768). That evidence does not certify this additional presentation change.
+
 ## PR463 disposable review — changes required
 
 Greg rejected the ea080130 cable-history experience: poor browser response, nonexistent AUX-1/AUX-2 network choices, and unrelated site entries in the waypoint filter. This is not browser acceptance. The correction uses unambiguous existing network catalog matches, cable-test endpoint choices including unresolved source labels, cached/indexed evidence projection, lazy history details, and a Cable History-only render path. It changes no SQL or Production data. Invalid source designations remain evidence under Unresolved; no alias conversion or import is performed.

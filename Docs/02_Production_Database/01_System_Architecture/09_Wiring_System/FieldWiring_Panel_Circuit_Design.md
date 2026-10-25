@@ -1,5 +1,9 @@
 # Panel circuit definition and field capture
 
+## Disposable review correction — additional equipment screen
+
+Greg's October 25 screenshot rejects the equipment screen's excess content. Rename Combo Equipment to Additional Equipment. Primary view: waypoint/spares selector, Add equipment, installed/spare items and their existing lifecycle actions/history. Hide controller instructions and inventory link (Controllers remains in navigation), global power disclaimer and global correction history on this route. Show an explicit empty list message instead of an unrelated missing-network warning for spares. Keep network/feed engineering accessible in collapsed Connection details only when a waypoint is selected; retain electrical safety information there. Preserve item audit/verification details, authenticated commands and history. Render equipment independently, without building hidden panels/reports/controller sections. This is presentation only; no schema or Production mutation.
+
 ## Disposable review correction — October 25, cable history
 
 The ea080130 candidate is not accepted: Greg reports poor browser response, nonexistent AUX-1/AUX-2 network choices, and a site-wide waypoint picker instead of cable-test points. Network choices must come from the existing network catalog and require an unambiguous normalized match; raw FLW designations remain source evidence and must never create network identities or be silently translated to another network. Unmatched designations remain browsable under Unresolved.

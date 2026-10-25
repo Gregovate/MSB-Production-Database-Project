@@ -467,6 +467,18 @@ try {
   // the LOR Controller model inventory.
   await page.goto(base.replace("circuits","equipment?waypoint=12"));
   await page.getByText(/Revision \d+/).waitFor();
+  assert.equal(await page.locator('h1').innerText(),'Additional Equipment');
+  for(const id of ['controller-placement-help','equipment-controller-link','power-state-help','correction-history'])assert.equal(await page.locator('#'+id).isVisible(),false);
+  assert.equal(await page.locator('#equipment-connections').getAttribute('open'),null);
+  assert.equal(await page.locator('#panels button').count(),0);
+  await page.locator('#equipment-connections > summary').click();
+  await page.locator('#waypoint-safety h3').waitFor();
+  assert.ok(await page.locator('#conductor-detail button').count()>0);
+  await page.locator('#equipment-connections > summary').click();
+  await page.locator('#detail-waypoint').selectOption('');
+  assert.equal(await page.locator('#equipment-connections').isVisible(),false);
+  assert.equal(await page.locator('#equipment-heading').innerText(),'Spare equipment');
+  await page.locator('#detail-waypoint').selectOption('12');
   await page.getByRole("button",{name:"Add new equipment",exact:true}).click();
   await dialog.locator("[name=device_name]").fill("TRENDnet TI-PGLC50 · 5-port PoE+");
   await dialog.locator("[name=device_kind]").selectOption("POE_SWITCH");

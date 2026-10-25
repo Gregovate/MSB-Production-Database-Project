@@ -6,11 +6,16 @@
   // Focused routes share one snapshot and command implementation, not stores.
   const mode = ({waypoints:"waypoints",equipment:"equipment","cable-tests":"tests"})[location.pathname.split("/").pop()] || "panels";
   document.body.dataset.powerScreen=mode;
-  const title={panels:"Panel Circuits",waypoints:"Waypoint Connections",equipment:"Combo Equipment",tests:"Cable Test History"}[mode];
+  const title={panels:"Panel Circuits",waypoints:"Waypoint Connections",equipment:"Additional Equipment",tests:"Cable Test History"}[mode];
   document.querySelector("h1").textContent=title; document.title=`${title} — MSB Field Wiring`;
   $("waypoint-detail").open=true;
   $("cable-history").hidden=mode!=="tests";
-  if(mode==="equipment") $("equipment-heading").textContent="Installed equipment and spares";
+  if(mode==="equipment") {
+    $("waypoint-detail").querySelector("summary").textContent="Equipment location";
+    $("equipment-connections").open=false;
+    // Keep electrical context available without filling the inventory view.
+    $("equipment-connections").append($("waypoint-safety"));
+  }
   // Reuse the FieldWiring preference; no separate theme authority for this page.
   function setTheme(theme) {
     document.documentElement.dataset.theme = theme;
@@ -402,7 +407,47 @@
         detail,
       );
   }
+  function renderEquipment() {
+    const selector=$("detail-waypoint"),prior=selector.value;
+    selector.replaceChildren();
+    el("option","Uninstalled / spares",selector).value="";
+    data.waypoints.forEach(w=>{el("option",w.name,selector).value=w.id;});
+    selector.value=prior;
+    const waypointId=Number(selector.value);
+    $("combo-network-box").hidden=false;
+    $("equipment-heading").textContent=waypointId?"Installed equipment":"Spare equipment";
+    const host=$("equipment");host.replaceChildren();
+    const devices=data.devices.filter(d=>waypointId?d.site_waypoint_id===waypointId:!d.site_waypoint_id);
+    if(!devices.length)el("p",waypointId?"No equipment recorded at this waypoint.":"No spare equipment recorded.",host);
+    devices.forEach(d=>{const item=el("section",undefined,host);
+      record(item,`${d.device_name} · ${d.device_kind}`,d,"device");
+      window.MSBEquipmentCapture.render(data,d,item,load);
+    });
+    $("add-device").disabled=!data.access.can_edit;
+    const details=$("equipment-connections");details.hidden=!waypointId;
+    // Build secondary engineering context only when the operator opens it.
+    let built=false;
+    const build=()=>{
+      if(!waypointId||!details.open||built)return;built=true;
+      $("networks").replaceChildren();
+      const codes=[...new Set((data.networks||[]).filter(n=>n.site_waypoint_id===waypointId).map(n=>n.network_code))];
+      codes.forEach(code=>el("p",code,$("networks")));
+      if(!codes.length)el("p","No resolved FLW network endpoints recorded.",$("networks"));
+      const link=el("a","Cable tests for this waypoint",$("networks"));link.href=`cable-tests?waypoint=${waypointId}`;
+      $("feeds").replaceChildren();
+      data.feeds.filter(f=>f.destination_waypoint_id===waypointId||device(f.destination_device_id)?.site_waypoint_id===waypointId||device(f.source_device_id)?.site_waypoint_id===waypointId).forEach(f=>record($("feeds"),feedName(f),f,"feed"));
+      $("conductor-detail").replaceChildren();
+      ["cable_spec","conductor","conductor_circuit"].forEach(kind=>{
+        button(`Add ${kind.replaceAll("_"," ")}`,()=>open(kind,{}),$("conductor-detail"),true);
+        (data[kind+"s"]||[]).forEach(r=>record($("conductor-detail"),r.cable_specification||r.conductor_label||`Conductor ${r.site_power_conductor_id} / ${circuitName(r.site_power_circuit_id)}`,r,kind));
+      });
+      $("add-feed").disabled=!data.access.can_edit;
+      renderSafety(waypointId);
+    };
+    details.ontoggle=build;build();
+  }
   function render() {
+    if(mode==="equipment"){renderEquipment();return;}
     // Cable history is read-only and needs none of the hidden power editors.
     if(mode==="tests"){renderCableHistory();return;}
     renderPanels();
