@@ -481,9 +481,31 @@ try {
   await eventDialog.locator('[name=condition]').selectOption('FAILED');
   await eventDialog.locator('[name=observed_at]').fill('');
   await eventDialog.locator('[name=notes]').fill('Fixture failure');
+  failNext=true;
+  await eventDialog.getByRole('button',{name:'Save',exact:true}).click();
+  await eventDialog.getByText(/Retry Save resends/).waitFor();
   await eventDialog.getByRole('button',{name:'Save',exact:true}).click();
   await page.getByText('Condition: FAILED',{exact:false}).waitFor();
   assert.equal((await db.query("SELECT count(*)::int n FROM ops.site_equipment_event WHERE condition='FAILED'")).rows[0].n,1);
+  // Replace through the real form with a previously recorded uninstalled spare.
+  await page.getByRole('button',{name:'Add new equipment',exact:true}).click();
+  await dialog.locator('[name=device_name]').fill('Spare supply');
+  await dialog.locator('[name=device_kind]').selectOption('POWER_SUPPLY');
+  await dialog.locator('[name=site_waypoint_id]').selectOption('');
+  await save();
+  const spareId=(await db.query("SELECT site_power_device_id id FROM ref.site_power_device WHERE device_name='Spare supply'")).rows[0].id;
+  await page.getByRole('button',{name:'Replace',exact:true}).last().click();
+  await page.locator('dialog[open] [name=replacement]').selectOption(String(spareId));
+  await page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true}).click();
+  await page.getByText('Spare supply · POWER_SUPPLY',{exact:true}).waitFor();
+  assert.match(await page.locator('#equipment').textContent(),/Installed as replacement/);
+  assert.match(await page.locator('#equipment').textContent(),/Condition: UNTESTED/);
+  await page.getByRole('button',{name:'Move / remove',exact:true}).last().click();
+  await page.locator('dialog[open] [name=destination]').selectOption('');
+  await page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true}).click();
+  await page.locator('#detail-waypoint').selectOption('');
+  await page.getByText('Spare supply · POWER_SUPPLY',{exact:true}).waitFor();
+  assert.equal((await db.query('SELECT site_waypoint_id FROM ref.site_power_device WHERE site_power_device_id=$1',[spareId])).rows[0].site_waypoint_id,null);
   // Empty selectors must distinguish unresolved LOR from missing FLW endpoints,
   // and a known outlet with no circuit must point back to the existing editor.
   const previousNetwork=(await db.query("SELECT lor_network FROM ref.controller WHERE controller_id=104")).rows[0].lor_network;
