@@ -1,5 +1,7 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+Current equipment priority: [setup equipment recording design](FieldWiring_Panel_Circuit_Design.md#setup-equipment-recording--engineering-decision-october-25). Reuse existing controller and shared site-device inventories; preserve `CTRL:` as a special case. Capture installation, dated tests, failures and replacements now. Do not create separate inventories by device type. Labels are low priority (maximum24mm, likely12mm) and do not block entry. Exact schema changes remain a pre-implementation design step.
+
 ## Current Production receipt — PR460, October 25
 
 Greg supplied `STAGE server deployment PASS; protected browser and documentation closeout pending` and the wrapper's `#171 PERFORMANCE SERVER DEPLOYMENT PASS` after SSH cleanly returned. Report: `/home/msbadmin/setup-deployment-reports/PR460-Performance-20261025T152418Z`.

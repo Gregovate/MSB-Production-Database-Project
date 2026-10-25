@@ -10,6 +10,43 @@ Only `171_power_snapshot_performance.sql` belongs to this release. Do not rerun 
 
 Server deployment is PASS. Screenshots provide post-deployment UI evidence but do not close the full protected browser acceptance checklist. Protected browser acceptance and remaining release documentation closeout stay pending. #171/#230 under #122 remain open for the remaining scope. Earlier release-preparation and PR457-only baseline statements below are historical and superseded by this disposition.
 
+## Setup equipment recording — engineering decision, October 25
+
+Greg's immediate objective is a practical place to record equipment during setup and testing. Inventory reuse, installation, test/failure recording and replacement history take priority. New labels and a finalized human-readable ID scheme must not block data capture. This section supersedes earlier suggestions that all devices require one identifier format or that labels are part of the immediate delivery.
+
+### Reuse the existing identities and inventory
+
+Repository reconnaissance identifies `ref.controller` (with its controller model/status relationships), `ref.site_controller_installation`, `ref.site_controller_power_connection`, and the existing shared `ref.site_power_device`. The latter already includes POWER_SUPPLY, ETHERNET_SWITCH, POE_SWITCH, ETHERNET_EXTENDER, ETHERNET_SPLITTER, RS485_REPEATER and other site device categories, with a generated ID, waypoint, rating, description, active flag and verification metadata. Existing FieldWiring device editing and `site_power_command` already read/write this record type and maintain `ops.site_power_edit_log`.
+
+- Keep controllers as the special existing inventory case. Preserve controller IDs, `CTRL:` identification, existing labels/scan routes and LOR model/firmware/network behavior. Never copy controllers into the site-device inventory to make a combined screen.
+- Reuse the existing common site-device records for additional equipment; do not create independent supply, switch, repeater or lighting-equipment inventory tables. A shared equipment screen may present existing controller and site-device identities together using their real source keys, without a new master inventory copy.
+- Record one physical replaceable device per item, including two identical supplies at the same waypoint. Model/type describes a device; it is not its identity. Generated database identity is sufficient before physical labeling. Existing serial/asset references are optional, and utility references must not be repurposed as MSB IDs.
+- Do not force a destructive consolidation of existing controller and site-device schemas during setup. Verify current schema/catalog and existing records before any incremental migration; the repository reconnaissance is not a new Production catalog inspection. Reconcile duplicates before proposing another inventory authority.
+
+### Immediate operator workflow
+
+Select a waypoint → view installed controllers and other equipment → select an existing item or add an unrecorded device → record installation or test outcome. Also permit an uninstalled/spare item with no waypoint; moving an item reuses its identity. Equipment access must cover applicable network-only and power waypoints as well as Combo boxes. Do not force a waypoint to be classified Combo to record its equipment.
+
+The capture form needs equipment type/model (unknown model allowed), optional serial/existing reference, waypoint when installed, event date/time, outcome and optional notes. Use governed choices for device type and outcome. Reuse existing model choices where available; allow recording genuinely unknown equipment without inventing catalog facts. Current actor comes from authenticated identity, not free text. Default event time to now but allow an explicitly recorded earlier event time; retain both event and entry timestamps. Do not require a historical date the operator does not know.
+
+Keep condition, installation and verification separate. Condition choices initially: UNTESTED, WORKING, FAILED; a subsequent repair/retest can change current condition through another event. Removal or retirement is not a test outcome. `active` must not mean working, and `verification_status` must not become a health flag. A working device does not prove verified cabling or electrical safety. An imported/previous item without a recorded test remains condition unknown/untested, not automatically working.
+
+Provide Record test, Record failure, Move/remove and Replace actions alongside existing edit/add controls. For Replace: select the failed/removed item, select an existing spare or create the newly recorded physical item, and record the old→new link, waypoint, date and reason atomically. Retain the old identity, tests and installation history. Do not automatically reconnect power/network feeds or claim the replacement passed testing; explicitly record any required connection change through existing commands and keep unverified state until checked. Corrections preserve original entries and attribution.
+
+### History and implementation boundary
+
+Existing edit-log before/after records are retained. They are audit evidence, not a substitute for an explicit technician test date or replacement relationship. Extend the existing authenticated, revision-checked `site_power_command` mechanism for site equipment and reuse controller-owned operations for controller identity. Maintain transactional writes, request replay protection and current role permissions.
+
+Before implementation, reconcile existing event/history capabilities. If no suitable event record exists, a minimal append-only equipment lifecycle event relation is permitted as history, not another inventory: reference exactly one existing controller or site-device identity with enforced foreign keys, event kind, outcome, event/entry time, actor, optional waypoint, notes and correction/replacement linkage. Do not store a duplicate inventory master in events. Publish the exact incremental schema and command changes in this design before coding; no runtime migration is authorized by this conceptual section alone. Read current condition from the latest applicable uncorrected event; do not let missing/ambiguous historical timestamps silently imply a known chronology.
+
+Immediate screens show current equipment/condition and expandable dated history. Preserve enough structured model/type and failure/replacement data for later seasonal failure counts and spare-stock planning. Such reports must identify incomplete history; do not invent prior-year failure dates or device identities for the reported three repeaters and one supply. A dedicated planning dashboard is not a prerequisite for setup recording.
+
+### Low-priority labels and validation
+
+Equipment labels remain a later task: maximum 24 mm, likely 12 mm; final layout/prefix and print/scan feasibility undecided. Existing `CTRL:` labels remain unchanged. Reuse the label service when that work is scheduled; no label-service changes or new scan prefix in the immediate candidate.
+
+Acceptance must demonstrate two identical devices at one waypoint with distinct identities; adding an unlabeled/unknown-model item; recording a failed test without falsely verifying wiring; moving the same item with history retained; replacing from existing spare inventory without duplicate creation; correction/retry/concurrent-save behavior; retained controller IDs/chains and no LOR identity edits. Test ordinary authorized Crew and denied writes, with actor attribution. Combine with the already specified controller presentation and cable-test browsing work in the next governed disposable review. Production release requires that candidate's acceptance; no completed migration or source import is replayed.
+
 ## October 25 Part 2 field review — current engineering scope
 
 This section records Greg's post-deployment screen review and controls the remaining presentation/workflow scope. These are requirements for the next governed disposable candidate, not implemented or accepted features. Extend existing screens, inventory, commands and stored FLW/LinkIQ evidence; do not build parallel systems.
