@@ -233,6 +233,17 @@ function renderFirmwareHistory(rows) {
     </div>`).join('');
 }
 
+// Share concurrent main-detail/label reads; do not retain details after completion.
+const controllerDetailRequests = new Map();
+function getControllerDetail(controllerId) {
+  if(controllerDetailRequests.has(controllerId))return controllerDetailRequests.get(controllerId);
+  const request=fetch(`api/controllers/${controllerId}`).then(async response=>{
+    const payload=await response.json();
+    if(!response.ok)throw new Error(payload.error || 'Controller could not be loaded.');
+    return payload;
+  }).finally(()=>{if(controllerDetailRequests.get(controllerId)===request)controllerDetailRequests.delete(controllerId);});
+  controllerDetailRequests.set(controllerId,request);return request;
+}
 async function loadControllerDetail(controllerId) {
   if (window.MSBControllerDeployment && !window.MSBControllerDeployment.mayLeave()) return;
   selectedControllerId = controllerId;
@@ -249,9 +260,7 @@ async function loadControllerDetail(controllerId) {
   document.getElementById('firmware-history').innerHTML = '';
 
   try {
-    const response = await fetch(`api/controllers/${controllerId}`);
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || 'Controller could not be loaded.');
+    const payload = await getControllerDetail(controllerId);
     if (selectedControllerId !== controllerId) return;
     const c = payload.controller;
     document.getElementById('detail-id').textContent = `CTRL ${c.controller_id}`;

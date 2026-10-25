@@ -445,7 +445,7 @@ try {
     await dialog.locator("#port-controller").selectOption(id);
     await dialog.locator("#deployment-network").waitFor();
     await dialog.locator("#deployment-save").click();
-    await dialog.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+    await dialog.getByText(/^Loaded connection revision /).waitFor();
     await dialog.getByRole("button",{name:"Done",exact:true}).click();
     await dialog.waitFor({state:"hidden"});await page.getByText(/Revision \d+/).waitFor();
   }
@@ -617,7 +617,7 @@ try {
   await page.locator("#deployment-save").click();
   await page.getByText(/Save outcome unknown/).waitFor();
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_controller_installation WHERE controller_id=101 AND active")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_controller_installation WHERE controller_id=101 AND NOT active")).rows[0].n,1);
   assert.equal((await db.query("SELECT site_waypoint_id FROM ref.site_controller_power_connection WHERE controller_id=101 AND active")).rows[0].site_waypoint_id,12);
@@ -632,7 +632,7 @@ try {
   await page.locator("#deployment-network").waitFor();
   await page.locator("#deployment-network").selectOption("11");
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   assert.equal((await db.query("SELECT site_waypoint_id FROM ref.site_controller_installation WHERE controller_id=102 AND active")).rows[0].site_waypoint_id,11);
   // Stale revision cannot silently overwrite another screen's update.
   await page.locator("#deployment-network").selectOption("12");
@@ -642,13 +642,13 @@ try {
   assert.equal(await page.locator("#deployment-save").isDisabled(),true);
   page.once("dialog",d=>d.accept());
   await page.getByRole("button",{name:"Reload connections",exact:true}).click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   // Record physical order on Controller Inventory, then correct the same record
   // from Waypoint Connections. These saves do not require a power circuit.
   await page.locator("#deployment-upstream").selectOption("101");
   await page.locator("#deployment-out").selectOption("TERMINATOR");
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   await page.reload();await page.locator("#deployment-upstream").waitFor();
   assert.equal(await page.locator("#deployment-upstream").inputValue(),"101");
   assert.equal(await page.locator("#deployment-out").inputValue(),"TERMINATOR");
@@ -660,7 +660,7 @@ try {
   assert.equal(await dialog.locator("#deployment-upstream").inputValue(),"101");
   await dialog.locator("#deployment-out").selectOption("RETURN_TO_ORIGIN");
   await dialog.locator("#deployment-save").click();
-  await dialog.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await dialog.getByText(/^Loaded connection revision /).waitFor();
   await dialog.getByRole("button",{name:"Done",exact:true}).click();
   await dialog.waitFor({state:"hidden"});
   await page.goto(base.replace("circuits","controllers?controller_id=102"));
@@ -670,21 +670,53 @@ try {
   // created in the same save, without manually installing the next controller.
   await page.locator("#deployment-out").selectOption("103");
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   await page.goto(base.replace("circuits","controllers?controller_id=103"));
   await page.locator("#deployment-upstream").waitFor();
   assert.equal(await page.locator("#deployment-upstream").inputValue(),"102");
   assert.equal(await page.locator("#deployment-network").inputValue(),"11");
   await page.locator("#deployment-out").selectOption("104");
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   await page.goto(base.replace("circuits","controllers?controller_id=104"));
   await page.locator("#deployment-upstream").waitFor();
   assert.equal(await page.locator("#deployment-upstream").inputValue(),"103");
   await page.locator("#deployment-out").selectOption("RETURN_TO_ORIGIN");
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   assert.match(await page.locator(".controller-port-summary").innerText(),/CTRL 103[\s\S]*CTRL 104[\s\S]*return/);
+  // Switching within the recorded chain must not wait for another full snapshot.
+  let selectionPowerReads=0,selectionDetailReads=0;
+  const countSelection=request=>{
+    const path=new URL(request.url()).pathname;
+    if(path.endsWith('/api/power'))selectionPowerReads++;
+    if(/\/api\/controllers\/10[1-4]$/.test(path))selectionDetailReads++;
+  };
+  page.on('request',countSelection);
+  const selectionTimes=[];
+  for(const id of [101,102,103,104]) {
+    const started=Date.now();
+    await page.evaluate(id=>loadControllerDetail(id),id);
+    await page.locator('#controller-deployment h3').filter({hasText:`CTRL ${id} ·`}).waitFor();
+    await page.locator('#deployment-network').waitFor();
+    selectionTimes.push(Date.now()-started);
+  }
+  assert.equal(selectionPowerReads,0,'same-chain selection must reuse the loaded snapshot');
+  assert.equal(selectionDetailReads,4,'main and label views share each controller detail request');
+  await page.getByRole('button',{name:'Reload connections',exact:true}).click();
+  await page.getByText(/^Loaded connection revision /).waitFor();
+  assert.equal(selectionPowerReads,1,'explicit reload obtains a fresh snapshot');
+  // Overlapping selections share a refresh; a late response cannot select the old ID.
+  await page.evaluate(()=>{
+    MSBControllerDeployment.invalidate();
+    return Promise.all([MSBControllerDeployment.render(101),MSBControllerDeployment.render(104)]);
+  });
+  assert.equal(selectionPowerReads,2);
+  assert.match(await page.locator('#controller-deployment h3').innerText(),/CTRL 104/);
+  assert.equal(await page.locator('#deployment-upstream').inputValue(),'103');
+  page.off('request',countSelection);
+  console.log('Warm same-chain selection ms (browser fixture, not Production):',selectionTimes);
+
   assert.equal(await page.locator(".controller-port-summary td").first().evaluate(n=>getComputedStyle(n).borderTopStyle),"solid");
   assert.deepEqual((await db.query("SELECT controller_id,upstream_controller_id FROM ref.site_controller_installation WHERE active ORDER BY controller_id")).rows.map(r=>[r.controller_id,r.upstream_controller_id]),[[101,null],[102,101],[103,102],[104,103]]);
   // Asset IDs and physical display names are independent. A wiring-source

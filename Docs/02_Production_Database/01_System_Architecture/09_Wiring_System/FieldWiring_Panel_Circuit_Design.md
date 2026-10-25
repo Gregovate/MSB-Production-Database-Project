@@ -1,5 +1,12 @@
 # Panel circuit definition and field capture
 
+## Controller selection latency — October 25 review correction
+
+Greg measured 6–9 seconds switching controllers within the same Who chain in candidate 6963b639. Repeated selection must not refetch the all-purpose power snapshot. Reuse one page-local connection snapshot and one in-flight request across controller selections. Explicit Reload, connection save attempts (including uncertain outcomes), inventory/assignment edits, and returning from a hidden page invalidate it. Existing revision-checked commands remain authoritative; stale saves fail closed and require reload. Display the loaded revision rather than claim live data. Dialogs outside Controller Inventory continue to obtain fresh snapshots. Never persist this cache across page loads/users. Initial snapshot loading remains a separate unresolved latency boundary; do not claim it fixed by selection reuse.
+
+The main controller detail and label section must share an in-flight GET for the same controller, without a persistent detail cache. Preserve late-response selection guards, read-only controls, unsaved-edit prompts, reciprocal chain links and sorting. Regression must count network requests for repeated same-chain selection, reload and writes, and exercise failure recovery and out-of-order results. Record browser selection timings separately from cold opening time. No SQL migration or Production change is needed for this correction.
+
+
 ## PR463 reconciliation with deployed PR464 — current candidate
 
 Main advanced through PR466 to d2bc9d02. Retain deployed PR464's unassigned breaker correction/removal, dependency checks, retained observations and active-only circuit-name uniqueness. The next candidate is V0.4.30-setup-equipment; earlier V0.4.28 review builds are superseded. Equipment migration must require deployed command MD5 `906289a801cae2e2d85957898984f031` and optimized snapshot MD5 `1409b5a8bada107ecfd5954c8f49a18d`, then add only equipment history. Combined command MD5 is `7c6df16cea62a5635db1579d8dfeacb8`; equipment snapshot MD5 remains `7458c9499a05bf53ad6dc585b369c1f9`. Do not replay the deployed breaker correction or any earlier migration in preview or release. Synthetic clean-database CI builds the prior releases in order, then applies equipment history and exercises both breaker corrections and equipment lifecycle against the combined command. Current-Production clone acceptance remains required.

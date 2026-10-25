@@ -1,5 +1,10 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## Controller selection performance — further review HOLD
+
+Greg reports 6–9 seconds switching controllers within the same Who chain on 6963b639; candidate remains unaccepted. Controller deployment now reuses one page-local connection snapshot and shares overlapping reads. Reload, save attempts (including uncertain outcomes), inventory/assignment writes and page hiding invalidate it. Server revision/authorization and exact retry handling are retained. Main controller detail and label rendering share an in-flight detail GET. Cold opening still needs the initial snapshot; no cold-load improvement is claimed. Browser regression records warm selection times, requires zero additional power reads for four same-chain selections, one detail request per selection, a fresh Reload, and correct selection after overlapping responses. Existing stale-save/uncertain-retry/chain tests remain required. No SQL or Production changes.
+
+
 ## PR463 reconciled candidate — V0.4.30-setup-equipment
 
 Reconciled with current main d2bc9d02 (PR464 deployed; PR465 tooling; PR466 receipt). Existing breaker correction/removal, dependency protection, observation history and active-only circuit-name uniqueness are retained. Only pending `171_equipment_lifecycle.sql` is applied to a new current-Production clone; its baseline guard now requires deployed command MD5 `906289a801cae2e2d85957898984f031`. Combined command MD5 `7c6df16cea62a5635db1579d8dfeacb8`; snapshot MD5 `7458c9499a05bf53ad6dc585b369c1f9`. Earlier PR463 hashes/builds and PR460-baseline handoffs are superseded. Setup expected version remains V0.3.91-integrated-power. Never replay installed migrations or reuse a stale point-in-time clone to verify the new Production panel edits.
