@@ -2,9 +2,27 @@
 
 | Document control | Value |
 |---|---|
-| Status | PR457 SERVER DEPLOYMENT PASS — protected Production browser check pending |
+| Status | PR464 SERVER DEPLOYMENT PASS — protected Production browser check pending |
 | Owner | #171 / #230 under #122 |
 | Reviewed | 2026-10-25 |
+
+## October 25 — PR464 Production server deployment PASS
+
+Greg returned the reviewed release runner's server PASS receipt. This is operator-returned evidence; no independent live host probe or protected Production browser acceptance is claimed.
+
+- FieldWiring installed: `2548edd130b5cebad33a44786bc1811c2b089bf8` / `V0.4.29-breaker-correction`.
+- Setup verified unchanged: `72a94be772f2e4ae8bfaed74051f667fc87201a6` / `V0.3.91-integrated-power`.
+- Application PR464 merge: `af8b6efc0c7a57975071b32fd46bd784e077f2b2`. Release tooling `d339f3cf0956b54f51a464e5c372a5163bc35cb3`; PR465 merge `b8763948b422b9f6fd2f0e39444a8c703b24d2ce`.
+- Report: `/home/msbadmin/setup-deployment-reports/PR464-Breaker-Correction-20261025T225218Z`.
+- Validated rollback snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr464-breaker-correction-PR464-Breaker-Correction-20261025T225218Z.dump`.
+- Snapshot SHA256: `c3a63d77cfb0a49bfec2dc85a634c4707a5c9e954149622bc9383a0d28b217ce`.
+- Only `Database/EngineeringTools/sql/171_unassigned_breaker_correction.sql` applied, with `Database/Acceptance/171_unassigned_breaker_correction_validation.sql`. Command body MD5 is `906289a801cae2e2d85957898984f031`; optimized snapshot remains `1409b5a8bada107ecfd5954c8f49a18d`. Circuit designation uniqueness now applies only to active rows.
+- The reviewed runner's PASS contract proves maintenance/freeze, validated snapshot, migration/validation, existing-row preservation, FieldWiring promotion while fenced and return ONLINE with health/source/negative-auth checks. Detailed evidence remains in the retained report.
+
+Disposable operator acceptance: ST-00 correction/deletion and four recreated single-pole Milbank entries PASS; CLEAN EXIT released8898/source lock and restored the other review branch. No panel records were automatically repaired during deployment. Greg must repeat desired corrections in Production. **Protected Production browser spot check remains pending.** Do not replay this successful migration or restore the snapshot as routine cleanup.
+
+PR463 equipment/cable work is not installed by this release. Its later command migration must reconcile the new installed command body and preserve this correction before review/release; do not weaken the baseline guard. #171/#230 under #122 remain open for Part2 work. Earlier pending-release entries below are historical and superseded by this receipt.
+
 
 ## October 25 — PR457 Production receipt / current Part 2 starting point
 

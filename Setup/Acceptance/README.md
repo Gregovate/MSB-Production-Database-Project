@@ -439,4 +439,4 @@ report directory. Do not rerun the completed release for documentation.
 
 ### PR464 accepted breaker correction release
 
-[Authorized release and pinned identities](Setup_171_Breaker_Correction_Release.md): existing maintenance runner, incremental unassigned-breaker command/index migration, FieldWiring-only promotion. PR463 equipment work excluded; server receipt pending.
+[Authorized release and pinned identities](Setup_171_Breaker_Correction_Release.md): existing maintenance runner, incremental unassigned-breaker command/index migration, FieldWiring-only promotion. PR463 equipment work excluded; PR464 server deployment PASS, protected Production browser check pending.

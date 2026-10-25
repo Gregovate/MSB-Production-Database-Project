@@ -1,5 +1,8 @@
 # Panelboard and Controller Install Part 2 — new-thread starter
 
+**Baseline update — PR464 deployed October25:** FieldWiring `2548edd130b5cebad33a44786bc1811c2b089bf8` / V0.4.29-breaker-correction; Setup remains `72a94be772f2e4ae8bfaed74051f667fc87201a6` / V0.3.91. Read the newest checkpoint receipt first. Unassigned breaker correction/removal and active-only circuit-name uniqueness are installed. Command MD5 `906289a801cae2e2d85957898984f031`; optimized snapshot MD5 `1409b5a8bada107ecfd5954c8f49a18d`. Do not replay completed migrations. PR463 must reconcile its command baseline and preserve this fix before further integration/release. Protected Production browser check remains pending. Earlier baseline text below is historical.
+
+
 Continue #171/#230 under commanding #122 in `Gregovate/MSB-Production-Database-Project`. Engineering is authorized; preserve Production and original GIS/FLW source files. Reuse existing schemas, application commands, inventory, release mechanisms and review worktree. Do not repeat settled design decisions or ask Greg to program.
 
 Read repository instructions, `FieldWiring_Panel_Circuit_Design.md`, and `FieldWiring_Panel_Circuit_Capture_Checkpoint.md` in this directory, especially the October24 integrated design, subsequent field corrections, and October25 Production receipt. Read `operatorSOP/Panel_Circuit_Capture.md` and the Production deployment log. Consult current server-owned runtime/review/maintenance runbooks before any corresponding operation.
