@@ -9,11 +9,20 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
-## 2026-10-25 — PR457 breaker state/report release authorized; server receipt pending
+## 2026-10-25 — PR457 breaker state/reports — server deployment PASS
 
-- Greg accepted exact V0.4.26-breaker-reports candidate `72a94be772f2e4ae8bfaed74051f667fc87201a6` and authorized Production release after CLEAN EXIT. PR457 merged at `c56e3a63c6ad3c0c0d21618a0ef65ec865b25c2c`.
-- Governed DATABASE-CHANGING release profile prepares only `171_breaker_state.sql`, then both FieldWiring and Setup source promotion to the accepted application SHA. No state backfill; Greg enters initial observations.
-- **Not yet a server deployment PASS.** Actual report/snapshot path/hash, ONLINE proof and protected Production browser check must replace this pending disposition after execution. The controlling checkpoint includes the Panelboard and Controller Install Part 2 handoff; do not re-run an interrupted release blindly.
+**Server deployment PASS; protected Production browser spot check pending.** Greg returned the reviewed maintenance runner's successful receipt. This is operator-returned execution evidence, not an independent host probe. Earlier candidate/pending-release sections below are historical and superseded by this receipt.
+
+- Both `/opt/fieldwiring` and `/opt/msb-setup`: `72a94be772f2e4ae8bfaed74051f667fc87201a6`.
+- FieldWiring `V0.4.26-breaker-reports`; Setup `V0.3.91-integrated-power` (source advanced for the panel map deep link).
+- Application PR457 merge: `c56e3a63c6ad3c0c0d21618a0ef65ec865b25c2c`. Release tooling `7175d3c01f6e3eae218c47d198db7cec5a8cf484`, PR458 merge `c6e88f8a6b81836ec6e38467bc3e4b153ecc4161`. Documentation commits are not deployed source identities.
+- Report: `/home/msbadmin/setup-deployment-reports/PR457-Breakers-20261025T134723Z`.
+- Validated rollback snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr457-breakers-PR457-Breakers-20261025T134723Z.dump`.
+- Snapshot SHA256: `497c958d8bcf9737bcc91af9190461ff6a3da154834f55c24650df8dba7e1002`.
+- Receipt: preflight, maintenance/freeze, snapshot, migration commit, database validation, both source promotions while fenced, and return to service PASS. The reviewed runner's success contract includes controller ONLINE, health, preservation and negative authorization checks; detailed evidence remains in the report.
+- Applied only `Database/EngineeringTools/sql/171_breaker_state.sql`; validated with `Database/Acceptance/171_breaker_state_validation.sql`. No GPX/FLW import, slot-count migration replay or initial-state seeding. **Do not rerun the completed release.**
+
+Protected Production browser acceptance remains pending. Greg will enter observed initial states; technicians must verify outlet assignments and map labels. #171/#230 remain open for Part 2.
 
 ## 2026-10-25 — #171/#230 FieldWiring/GIS — server deployment PASS
 
