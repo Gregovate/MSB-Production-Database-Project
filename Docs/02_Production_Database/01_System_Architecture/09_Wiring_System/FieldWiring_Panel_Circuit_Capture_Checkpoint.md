@@ -782,3 +782,31 @@ then CLEAN EXIT and return to C:\lor\ImportExport\VSCode. Read-only validation p
 current clone timing and actual counts; field edits may legitimately change counts.
 Production remains unchanged; protected PR457 Production spot check still pending.
 Broader Part 2 features and screen-specific API partitioning remain later work.
+
+## October 25 — PR460 accepted / Production release authorized
+
+Greg reports noticeable Controller assignment improvement and breaker-status saves
+~2 seconds versus ~6 seconds, with both PASS. Preview ended CLEAN EXIT, exit0;
+report `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20261025T150003.txt`;
+Flask log `/tmp/Setup_Disposable_Browser_Preview_Flask_20261025T150003.log`.
+Live Setup after preview remained `72a94be772f2e4ae8bfaed74051f667fc87201a6`.
+No isolated SQL timing line was supplied. No repeat browser acceptance is required
+merely for that omission. Greg then explicitly authorized Production release.
+
+PR460 merged as `6cc1f9377c7faa7c7547793a55966b59f2b742cf`; accepted application
+SHA stays `875003c504e8a60c5851c530ec6496e4430945d9`. Exact application CI passed
+Setup/FieldWiring/Chromium, PostgreSQL16/PostGIS and Engineering Compliance.
+Synthetic CI SQL medians 571→207ms; panel-click JS medians 8.95→3.3ms. These are
+engineering fixture timings, separate from the operator's observed ~2-second save.
+
+Release tooling is a pinned profile of the existing maintenance orchestrator and
+committed-byte transport: `setup_171_performance_release.py/.json`,
+`setup_171_performance_transport.py`, `run_setup_171_performance_release.ps1`.
+Preflight verifies both roots at PR457 and baseline function/security; source
+promotion advances only FieldWiring. Setup remains at PR457. Single new snapshot
+migration only; no old migrations, source intake or backfilled observations.
+Tests cover failure containment, drift/replay refusal, exact pins, security gates,
+fingerprints and unchanged Setup; existing CI covers PostgreSQL16 preservation
+and Windows committed-byte transport. Release-tooling exact head/results belong
+in its PR. Production receipt, snapshot and protected browser check remain pending;
+this authorization/preparation is not a deployment claim.

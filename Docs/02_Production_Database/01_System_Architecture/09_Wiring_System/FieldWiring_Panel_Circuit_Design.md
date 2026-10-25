@@ -979,3 +979,24 @@ screen is future work; this correction preserves its existing consumer contract.
 Protected Production browser acceptance remains pending. Performance improvement
 must be measured again in the governed current-Production disposable clone before
 claiming Production latency; synthetic tests do not substitute for that evidence.
+
+### PR460 approved Production release profile
+
+Greg accepted both disposable performance workflows, reported breaker changes
+~2 seconds versus ~6 seconds, supplied CLEAN EXIT/report, and explicitly authorized
+Production release. Accepted application remains
+`875003c504e8a60c5851c530ec6496e4430945d9` / V0.4.27-panel-performance.
+Use a pinned performance profile of the existing setup_maintenance_deploy.py and
+existing committed-byte Windows transport, following the deployed PR457 profile.
+No new maintenance controller, deployment engine or source importer.
+
+Both current live roots must equal PR457 `72a94be772f2e4ae8bfaed74051f667fc87201a6`
+and be clean. Promote only /opt/fieldwiring; /opt/msb-setup stays at PR457 because
+its application bytes are unchanged. Prove unchanged Setup/Procedures application
+paths against accepted source, existing service health/backup/source-lock ownership,
+accepted-main ancestry, SQL blobs/tree and detached runtime regressions while ONLINE.
+Apply only 171_power_snapshot_performance.sql under the existing controller freeze
+and validated rollback snapshot. Validate exact optimized function, preserved
+command and authorization metadata, row fingerprints and source; reopen only on
+PASS. All old migrations and GPX/FLW intake remain excluded. Failure retains the
+existing journal/maintenance containment; no blind rerun or automatic data restore.
