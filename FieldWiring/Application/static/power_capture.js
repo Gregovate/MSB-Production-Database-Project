@@ -371,7 +371,7 @@
           );
           el(
             "p",
-            `Rating: ${data.breakers?.find(b => b.site_power_breaker_id === c.site_power_breaker_id)?.rated_amps ?? "Unknown"} A · Show desired: ${c.show_desired_state} · Restoration desired: ${c.restoration_desired_state}`,
+            `Rating: ${data.breakers?.find(b => b.site_power_breaker_id === c.site_power_breaker_id)?.rated_amps ?? "Unknown"} A · Show desired: ${c.show_desired_state} · Season OFF required: ${c.restoration_desired_state}`,
             row,
           );
           const assigned = paths(c.site_power_circuit_id);
@@ -477,13 +477,14 @@
     });
     if (data.seasons.includes(Number(year))) $("season").value = year;
     renderChecklist();
+    renderReports();
     renderActions();
     $("history").replaceChildren();
     data.history.slice(0, 100).forEach((h) => {
       const d = el("details", undefined, $("history"));
       el(
         "summary",
-        `${h.recorded_at} · ${h.operator_email} · ${h.command} #${h.target_id}`,
+        `${h.recorded_at} · ${h.operator_name || "Name unavailable"} · ${h.command} #${h.target_id}`,
         d,
       );
       el(
@@ -553,11 +554,11 @@
     const box=el("div",undefined,root); box.className="power-switch-state";
     const badge=el("strong",state==="UNKNOWN"?"Not recorded / unknown":`Recorded ${state}`,box);
     badge.className="power-state power-state-"+state.toLowerCase();
-    if(e) el("small",`${new Date(e.observed_at).toLocaleString()} · ${e.operator_email} · Season ${e.season_year} · ${e.definition_snapshot.phase}`,box);
+    if(e) el("small",`${new Date(e.observed_at).toLocaleString()} · ${e.operator_name || "Name unavailable"} · Season ${e.season_year}`,box);
     const controls=el("div",undefined,box); controls.className="power-toolbar power-state-controls";
     for(const value of ["ON","OFF"]) {
-      const bttn=button(`Record ${value}`,()=>openState(b,value),controls,true);
-      bttn.className="power-record-state"; bttn.dataset.recordState=value;
+      const bttn=button(`Record ${value}`,()=>recordState(b,value),controls,true);
+      bttn.className="power-record-state power-secondary"; bttn.disabled=stateSaving || !!statePending || !data.access.can_edit; bttn.dataset.recordState=value;
     }
     return e;
   }
@@ -589,27 +590,48 @@
       } else el("p","Panel map location not recorded",row);
       if(state==="configuration") button("Breaker settings",()=>openSchedule(b),row,true);
     }
-    $("breaker-progress").textContent=`${counts.completed} of ${counts.open+counts.completed} seasonal changes confirmed · ${counts.open} pending · ${counts.configuration} need configuration · ${counts.unchanged} unchanged targets omitted. Season ${year}, ${phase==="SETUP"?"setup":"restoration"}.`;
+    $("breaker-progress").textContent=`${counts.completed} of ${counts.open+counts.completed} seasonal changes confirmed · ${counts.open} pending · ${counts.configuration} need configuration · ${counts.unchanged} unchanged targets omitted. Season ${year}, ${phase==="SETUP"?"ON":"OFF"}.`;
     if(!root.children.length) el("p","No breakers in this view.",root);
   }
-  function openState(b, condition) {
-    if(!data.access.can_edit) return;
-    pending=null; edit={kind:"breaker_state",row:b};
-    const phase=$("breaker-phase").value, year=Number($("season").value);
-    $("edit-title").textContent=`${panel(b.site_panel_id)?.panel_name} — Breaker ${b.breaker_name}: record ${condition}`;
-    $("edit-fields").replaceChildren(); $("save-status").textContent=""; $("save").disabled=false;
-    el("p",`Season ${year} · ${phase==="SETUP"?"Setup":"Restoration"}. This records physical work; it does not operate the breaker.`,$("edit-fields"));
-    const impact=data.breaker_impacts.find(x=>x.breaker.site_power_breaker_id===b.site_power_breaker_id);
-    const circuits=data.circuits.filter(c=>c.active && c.site_power_breaker_id===b.site_power_breaker_id);
-    el("p",`Grouped circuits: ${circuits.map(c=>c.circuit_code+(c.description?" — "+c.description:"")).join("; ") || "None recorded"}`, $("edit-fields"));
-    if(b.source_evidence) el("p",b.source_evidence,$("edit-fields"));
-    el("p",`Recorded endpoints: ${(impact?.paths||[]).map(x=>x.waypoint_name||"Unmapped endpoint").join(", ") || "No waypoint required"}. Recorded connections are not proof of isolation.`,$("edit-fields"));
-    if(impact?.missing_pole_membership) el("p","Circuit membership is incomplete.",$("edit-fields"));
-    const label=el("label",undefined,$("edit-fields"));
-    const check=el("input",undefined,label); check.type="checkbox"; check.name="impact_reviewed"; check.required=true;
-    label.append(document.createTextNode(` I reviewed the grouped breaker and recorded connections and observed this breaker ${condition}.`));
-    edit.read=()=>({season_year:year,phase,condition,observed_at:new Date().toISOString(),impact_reviewed:check.checked});
-    $("editor").showModal();
+  let statePending=null, stateSaving=false;
+  function stateControls() {
+    document.querySelectorAll('[data-record-state]').forEach(n=>n.disabled=stateSaving || !!statePending || !data.access.can_edit);
+    $("season").disabled=stateSaving || !!statePending; $("breaker-phase").disabled=stateSaving || !!statePending;
+    $("retry-state").hidden=!statePending || stateSaving;
+  }
+  async function recordState(b, condition) {
+    if(!data.access.can_edit || stateSaving || (b && statePending)) return;
+    if(!statePending) statePending={revision:data.revision,commands:[command("breaker_state",b.site_power_breaker_id,
+      {season_year:Number($("season").value),phase:$("breaker-phase").value,condition,observed_at:new Date().toISOString()})]};
+    stateSaving=true; stateControls(); $("state-save-status").textContent="Recording…";
+    try {
+      await api("api/power/commands",{method:"POST",headers:{"Content-Type":"application/json","X-MSB-Power-Command":"1"},body:JSON.stringify(statePending)});
+      statePending=null; await load(); $("state-save-status").textContent="Breaker position recorded.";
+    } catch(e) {
+      if(e.status && e.status<500) {statePending=null; await load();}
+      $("state-save-status").textContent=e.message+(statePending?" Use Retry recording to resend the same observation safely.":" Reloaded current records; record again after checking the current state.");
+    } finally {stateSaving=false; stateControls();}
+  }
+  function renderReports() {
+    $("breaker-reports").hidden=mode!=="panels";
+    const year=Number($("season").value), phase=$("breaker-phase").value, filter=$("breaker-report-filter").value;
+    $("download-breaker-report").href=`api/power/report.pdf?season=${year}&phase=${phase}&view=${filter}`;
+    const root=$("breaker-report-rows"); root.replaceChildren();
+    const table=el("table",undefined,root); table.className="power-report-table";
+    const head=el("tr",undefined,el("thead",undefined,table));
+    for(const text of ["Panel / breaker","Description","Required","Recorded","Status","Person / time"]) el("th",text,head);
+    const body=el("tbody",undefined,table);let total=0,completed=0,missing=0;
+    for(const b of data.breakers.filter(b=>b.active && panel(b.site_panel_id)?.active).sort((a,b)=>panel(a.site_panel_id).panel_name.localeCompare(panel(b.site_panel_id).panel_name,undefined,{numeric:true}) || a.breaker_name.localeCompare(b.breaker_name,undefined,{numeric:true}))) {
+      const e=states.latest(data.events,b.site_power_breaker_id), status=states.status(b,e,year,phase);
+      total++; if(status==="Completed") completed++; if(status==="No recorded state") missing++;
+      if(filter==="exceptions" && status==="Completed" || filter==="completed" && status!=="Completed") continue;
+      const row=el("tr",undefined,body); row.dataset.reportBreaker=b.site_power_breaker_id;
+      const notes=[b.source_evidence,...data.circuits.filter(c=>c.active && c.site_power_breaker_id===b.site_power_breaker_id).map(c=>c.description)].filter(Boolean);
+      button(`${panel(b.site_panel_id).panel_name} / ${b.breaker_name}`,()=>{panelId=b.site_panel_id;render();$("panel-detail").scrollIntoView({block:"start"});},el("td",undefined,row)).className="power-navigation";
+      for(const text of [[...new Set(notes)].join("; "),phase==="RESTORATION"?b.restoration_desired_state:b.show_desired_state,e?.condition||"Not recorded",status,e?`${e.operator_name || "Name unavailable"} · ${new Date(e.observed_at).toLocaleString()}`:"—"]) el("td",text,row);
+    }
+    $("report-counts").textContent=`Season ${year} ${phase==="SETUP"?"ON":"OFF"}: ${completed} completed / ${total} breakers; ${total-completed} exceptions, including ${missing} with no recorded state.`;
+    if(!body.children.length) el("p","No breakers in this report.",root);
   }
   function renderActions() {
     const root = $("actions");
@@ -634,7 +656,7 @@
       const r = record(root, `${a.action_name} · ${target}`, a, "action");
       el(
         "p",
-        `${a.phase} · Desired: ${a.desired_state} · Responsible: ${a.responsible_party || "Unknown"}`,
+        `${a.phase==="RESTORATION"?"Season OFF":a.phase==="SETUP"?"Season ON":a.phase} · Desired: ${a.desired_state} · Responsible: ${a.responsible_party || "Unknown"}`,
         r,
       );
       el("p", a.instructions || "Instructions not recorded", r);
@@ -662,7 +684,7 @@
         .forEach((e) => {
           el(
             "p",
-            `${e.observed_at} · ${e.event_kind} · ${e.condition} · ${e.operator_email} · ${e.evidence}${e.corrects_event_id ? ` · corrects event ${e.corrects_event_id}` : ""}${data.events.some((c) => c.corrects_event_id === e.event_id) ? " · CORRECTED" : ""}`,
+            `${e.observed_at} · ${e.event_kind} · ${e.condition} · ${e.operator_name || "Name unavailable"} · ${e.evidence}${e.corrects_event_id ? ` · corrects event ${e.corrects_event_id}` : ""}${data.events.some((c) => c.corrects_event_id === e.event_id) ? " · CORRECTED" : ""}`,
             r,
           );
           button(
@@ -801,7 +823,7 @@
         choose("restoration_desired_state", "Panel planned off-season supply", ["UNKNOWN","ON","OFF"]),
         text("panel_name", "Readable panel name", true),
         text("panel_identification", "Panel identification / label"),
-        {...text("branch_position_count", "Number of slots"), type:"number", min:1, max:200, hint:"Numbered branch slots, excluding the main. A two-pole breaker uses two slots. Leave blank if unknown."},
+        {...text("branch_position_count", "Number of slots"), type:"number", min:1, max:200, hint:"Enter any whole number from 1 to 200, including 8 for FE-00. Numbered branch slots exclude the main. A two-pole breaker uses two slots. Leave blank if unknown."},
         select("site_waypoint_id", "Associated waypoint (optional)", waypoints),
         select("owner_name", "Panel owner (optional)", ownerOptions()),
         {...text("year_installed", "Year installed (optional)"), type: "number"},
@@ -852,7 +874,7 @@
         ]),
         choose(
           "restoration_desired_state",
-          "Off-season / restoration desired state",
+          "Season OFF required state",
           ["UNKNOWN", "ON", "OFF"],
         ),
       ],
@@ -906,11 +928,7 @@
         ),
         select("site_power_device_id", "Affected equipment", devices),
         select("site_power_breaker_id", "Affected breaker (choose exactly one target)", options((data.breakers || []).map(b => [b.site_power_breaker_id,b.breaker_name]))),
-        choose("phase", "Seasonal phase", [
-          "SETUP",
-          "OPERATION",
-          "RESTORATION",
-        ]),
+        select("phase", "Season mode", options([["SETUP","Season ON"],["OPERATION","Operation"],["RESTORATION","Season OFF"]])),
         choose("action_kind", "Activity", [
           "TURN_OFF_LIGHT",
           "REMOVE_FUSE",
@@ -1339,9 +1357,7 @@
     try {
     if (!pending) {
       let commands;
-      if (edit.kind === "breaker_state") {
-        commands=[command("breaker_state",edit.row.site_power_breaker_id,edit.read())];
-      } else if (edit.kind === "breaker_schedule") {
+      if (edit.kind === "breaker_schedule") {
         commands=[command("breaker_schedule",edit.row.site_power_breaker_id,edit.read())];
       } else if (edit.kind === "assignments") {
         const form = $("edit-form"),
@@ -1446,10 +1462,13 @@
   $("connect-controller").onclick=()=>open("controller_power_connection",{site_waypoint_id:Number($("detail-waypoint").value)});
   $("install-controller").onclick=()=>openPorts();
   $("detail-waypoint").onchange=()=>render();
-  $("reload").onclick = load;
+  $("reload").onclick = () => {if(stateSaving)return;statePending=null;stateControls();load();};
+  $("retry-state").onclick=()=>recordState();
+  $("breaker-report-filter").onchange=renderReports;
+  $("show-breaker-report").onclick=()=>{$("breaker-report-rows").hidden=!$("breaker-report-rows").hidden;};
   $("find").oninput = () => data && render();
-  $("season").onchange = () => {renderChecklist(); renderActions();};
-  $("breaker-phase").onchange = renderChecklist;
+  $("season").onchange = () => {renderChecklist(); renderReports(); renderActions();};
+  $("breaker-phase").onchange = () => {renderChecklist();renderReports();};
   $("breaker-filter").onchange = renderChecklist;
   $("print-breakers").onclick = () => window.print();
   let checklistWasOpen=false;

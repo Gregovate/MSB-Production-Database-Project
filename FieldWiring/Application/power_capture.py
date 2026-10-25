@@ -5,7 +5,7 @@ import json
 from contextlib import closing
 
 import psycopg2
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, Response
 
 from controller_access import cloudflare_operator_email
 from repository import ConfigError, PostgresRepository
@@ -87,3 +87,25 @@ def database_error(exc):
     message = ('Panel circuit capture is unavailable. Its database release may not be installed.' if status == 503
                else getattr(exc.diag, 'message_primary', None) or 'Circuit command was rejected')
     return jsonify(error=message), status
+
+
+@power_api.get('/api/power/report.pdf')
+def breaker_pdf():
+    """Download a read-only report through the same authenticated snapshot gate."""
+    from breaker_report import build_pdf
+    email = cloudflare_operator_email(request.headers)
+    year = request.args.get('season', type=int)
+    phase = request.args.get('phase', 'SETUP')
+    view = request.args.get('view', 'exceptions')
+    if year is None or phase not in {'SETUP', 'RESTORATION'} or view not in {'all', 'exceptions', 'completed'}:
+        return jsonify(error='Select a valid season, season mode and report.'), 400
+    with closing(psycopg2.connect(_repo().dsn)) as connection:
+        connection.set_session(readonly=True)
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT ref.site_power_snapshot(%s)', (email,))
+            data = cursor.fetchone()[0]
+    if year not in data['seasons']:
+        return jsonify(error='Season not found.'), 400
+    pdf = build_pdf(data, year, phase, view)
+    return Response(pdf, mimetype='application/pdf', headers={
+        'Content-Disposition': f'attachment; filename="breakers-{year}-{"ON" if phase == "SETUP" else "OFF"}-{view}.pdf"'})

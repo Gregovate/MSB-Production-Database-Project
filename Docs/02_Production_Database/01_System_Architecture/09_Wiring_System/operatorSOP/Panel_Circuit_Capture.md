@@ -221,10 +221,12 @@ duplicates. Back to panel and browser Back restore the selected panel, filter,
 expanded details and scroll position within the same browser tab.
 
 
-### Seasonal breaker work — PR457 candidate
+### Seasonal breaker work — PR457 candidate, revised after field review
 
-1. On Panel Circuits, choose Season and Work (Setup or Restoration). Panelboard **Recorded ON** is green, **Recorded OFF** is red; gray means no known recorded position. The label shows who recorded it and when. Required show/off-season states remain separate.
-2. Expand **Seasonal breaker checklist**. The default lists breakers needing change or confirmation. Equal known targets (ON/ON or OFF/OFF) are omitted. Use **Needs configuration** for unknown targets; use **Completed** to review this season's work. A previous season's observation remains visible but is not current-season completion.
-3. After physical work, press **Record ON** or **Record OFF**, review the whole breaker and recorded connections, check the observation acknowledgment, and Save. No waypoint is required. A two-pole breaker has one shared switch record. The control records your work; it does not remotely switch electrical equipment or certify isolation.
-4. Use **Locate … on Park Map** for a panel with a mapped waypoint. **Print checklist** prints the selected view. Keep the crew report for task 57 as history; the checklist does not rewrite its reported percentage.
-5. Use Seasonal power activities / Correct this event to correct a mistaken observation; history remains append-only. A failed confirmation permits retrying the same Save safely; a stale revision requires reload and fresh impact review.
+1. On Panel Circuits, choose Season **2026** and Season mode **ON** (show targets) or **OFF** (off-season targets). Panelboard green **Recorded ON** and red **Recorded OFF** show the last observation, with the person's name and time. Gray means no known recorded position.
+2. After physical work, press **Record ON** or **Record OFF** once. There is no confirmation dialog. The whole grouped breaker is recorded, including a two-pole breaker, and no waypoint is required. These buttons record observations; they do not remotely switch equipment or establish isolation. If confirmation is lost, **Retry recording** safely resends the same observation.
+3. **Breaker reports** covers ALL active breakers, including ON/ON and OFF/OFF targets. Select **Exceptions / missing work**, **All breakers**, or **Completed**. **Show report** displays the table; a panel/breaker button opens its board. **Download PDF report** downloads the selected report with required state, recorded state, person/time and a specific exception reason.
+4. A wrong position, missing observation, older season, different season mode, or unconfigured required state remains an exception. A recorded OFF breaker required ON is included even if its seasonal targets are ON/ON. Reports do not infer work from photos or update task57's historical percentage.
+5. The collapsible **Seasonal breaker checklist** retains the change-only workflow: equal known targets are omitted there. Use its Completed and Needs configuration views as needed. Locate links open the maintained panel waypoint on Park Map.
+6. Panel **Number of slots** accepts whole numbers 1–200; **8** is offered for small panels such as FE-00. Existing occupied positions must fit within the selected count. Do not delete real breakers to force a smaller count.
+7. Correct mistaken historical observations through Seasonal power activities / Correct this event. The audit history remains append-only.

@@ -207,3 +207,8 @@ html[data-theme="dark"] {--power-secondary:#344154;--power-secondary-border:#8b9
 
 .power-print-title {display:none}
 @media print {.power-print-title {display:block}}
+
+#breaker-report-rows {overflow-x:auto}
+.power-report-table {border-collapse:collapse;width:100%;font-size:.95rem}
+.power-report-table th,.power-report-table td {padding:.5rem;border:1px solid var(--border,#888);text-align:left;vertical-align:top}
+#download-breaker-report {display:inline-block;padding:.6rem;text-decoration:underline}

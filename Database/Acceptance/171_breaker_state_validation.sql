@@ -6,6 +6,9 @@ BEGIN
    'ref.site_power_command(text,uuid,bigint,text,bigint,jsonb)'::regprocedure))=0 THEN
   RAISE EXCEPTION 'Breaker state command missing';
  END IF;
+ IF position('operator_name' IN pg_get_functiondef('ref.site_power_snapshot(text)'::regprocedure))=0 THEN
+  RAISE EXCEPTION 'Canonical operator names missing from snapshot';
+ END IF;
  IF has_table_privilege('fieldwiring_app','ops.setup_power_activity_event','INSERT')
  OR has_table_privilege('fieldwiring_app','ops.setup_power_activity_event','UPDATE')
  OR has_table_privilege('fieldwiring_app','ops.setup_power_activity_event','DELETE') THEN

@@ -8,6 +8,15 @@ globalThis.MSBBreakerState = Object.freeze({
       ["REPORTED", "FIELD_VERIFIED", "COMPLETED", "UTILITY_CONFIRMED"].includes(e.event_kind))
       .sort((a,b) => Date.parse(b.observed_at)-Date.parse(a.observed_at) || Number(b.event_id)-Number(a.event_id))[0] || null;
   },
+  status(breaker, event, year, phase) {
+    const required=phase === "RESTORATION" ? breaker.restoration_desired_state : breaker.show_desired_state;
+    if (!["ON","OFF"].includes(required)) return "Required state not configured";
+    if (!["ON","OFF"].includes(event?.condition)) return "No recorded state";
+    if (event.condition !== required) return "Wrong state";
+    if (Number(event.season_year) !== Number(year)) return "Not recorded for this season";
+    if (event.definition_snapshot?.phase !== phase) return "Not recorded for this season mode";
+    return "Completed";
+  },
   classify(breaker, event, year, phase) {
     const known = x => ["ON", "OFF"].includes(x);
     const show=breaker.show_desired_state, restoration=breaker.restoration_desired_state;

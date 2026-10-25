@@ -1,6 +1,7 @@
 // Actual page against isolated PostgreSQL fixtures; never a Production/browser-auth test.
 import { createFixtureDatabase } from "./power_test_database.mjs";
 import { createServer } from "node:http";
+import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,6 +31,11 @@ const server = createServer(async (req, res) => {
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify(result.rows[0].data));
       return;
+    }
+    if (url.pathname === "/fieldwiring/api/power/report.pdf") {
+      const snapshot=(await db.query('SELECT ref.site_power_snapshot($1) data',[user])).rows[0].data;
+      const pdf=execFileSync('python',['-c',"import sys,json;from breaker_report import build_pdf;d=json.load(sys.stdin);sys.stdout.buffer.write(build_pdf(d,2026,'SETUP','exceptions'))"],{input:JSON.stringify(snapshot),env:{...process.env,PYTHONPATH:app}});
+      res.setHeader('Content-Type','application/pdf');res.setHeader('Content-Disposition','attachment; filename="breakers-2026-ON-exceptions.pdf"');res.end(pdf);return;
     }
     if (url.pathname === "/fieldwiring/api/power/commands") {
       let raw = "";
@@ -767,19 +773,18 @@ try {
   await page.locator('#season').selectOption('2026');
   await page.locator('#breaker-filter').selectOption('open');
   const checkRow=page.locator(`#breaker-checklist-rows [data-breaker-id="${bid}"]`);
-  await checkRow.locator('[data-record-state="ON"]').click();
-  assert.match(await page.locator('#edit-fields').innerText(),/does not operate the breaker/);
-  await page.locator('[name="impact_reviewed"]').check();
   failNext=true;
-  await page.getByRole('button',{name:'Save',exact:true}).click();
-  await page.getByText(/Retry Save resends/).waitFor();
+  await checkRow.locator('[data-record-state="ON"]').click();
+  assert.equal(await page.locator('#editor').isVisible(),false);
+  await page.getByText(/Use Retry recording/).waitFor();
   const eventCount=(await db.query('SELECT count(*)::int n FROM ops.setup_power_activity_event')).rows[0].n;
-  await page.getByRole('button',{name:'Save',exact:true}).click();
-  await page.locator('#editor').waitFor({state:'hidden'});
+  await page.locator('#retry-state').click();
+  await page.getByText('Breaker position recorded.',{exact:true}).waitFor();
   assert.equal((await db.query('SELECT count(*)::int n FROM ops.setup_power_activity_event')).rows[0].n,eventCount);
   await page.locator('#breaker-filter').selectOption('completed');
   await checkRow.locator('.power-state-on').waitFor();
-  assert.match(await checkRow.innerText(),/crew@example.test/);
+  assert.match(await checkRow.innerText(),/Fixture User/);
+  assert.doesNotMatch(await checkRow.innerText(),/crew@example.test|RESTORATION/);
   await page.locator('#season').selectOption('2025');
   assert.equal(await checkRow.count(),0);
   await page.locator('#breaker-filter').selectOption('open');
@@ -787,9 +792,7 @@ try {
   await page.locator('#season').selectOption('2026');
   await page.locator('#breaker-phase').selectOption('RESTORATION');
   await checkRow.locator('[data-record-state="OFF"]').click();
-  await page.locator('[name="impact_reviewed"]').check();
-  await page.getByRole('button',{name:'Save',exact:true}).click();
-  await page.locator('#editor').waitFor({state:'hidden'});
+  await page.getByText('Breaker position recorded.',{exact:true}).waitFor();
   await page.locator('#breaker-filter').selectOption('completed');
   await checkRow.locator('.power-state-off').waitFor();
   for(const theme of ['light','dark']) {
@@ -802,6 +805,27 @@ try {
   assert.equal(await page.locator('#breaker-checklist').isVisible(),true);
   assert.equal(await page.locator('.power-layout').isVisible(),false);
   await page.emulateMedia({media:'screen'});
+  // The report includes wrong-state unchanged-target breakers and a direct PDF link.
+  await db.exec(`UPDATE ref.site_power_breaker SET show_desired_state='ON',restoration_desired_state='ON' WHERE site_power_breaker_id=${bid}`);
+  await page.reload();await page.getByText(/Revision \d+/).waitFor();
+  await page.locator('#show-breaker-report').click();
+  assert.match(await page.locator(`[data-report-breaker="${bid}"]`).innerText(),/Wrong state/);
+  assert.match(await page.locator('#download-breaker-report').getAttribute('href'),/report.pdf\?season=2026&phase=SETUP&view=exceptions/);
+  assert.equal(await page.locator('#breaker-phase option:checked').innerText(),'ON');
+  const downloadReady=page.waitForEvent('download');
+  await page.locator('#download-breaker-report').click();
+  const download=await downloadReady;
+  assert.equal(download.suggestedFilename(),'breakers-2026-ON-exceptions.pdf');
+  assert.equal((await readFile(await download.path())).subarray(0,5).toString(),'%PDF-');
+  // Small distribution panels accept eight slots, persist, reopen, and render eight.
+  await page.getByRole('button',{name:'Add panel',exact:true}).click();
+  await dialog.locator('[name=panel_name]').fill('FE-00 eight-slot fixture');
+  await dialog.locator('[name=branch_position_count]').fill('8');
+  assert.equal(await dialog.locator('[name=branch_position_count]').evaluate(e=>e.checkValidity()),true);
+  await save();
+  await page.locator('#panels').getByRole('button',{name:'FE-00 eight-slot fixture',exact:true}).click();
+  assert.match(await page.locator('#panel-detail').innerText(),/8 slots/);
+  assert.equal((await db.query("SELECT branch_position_count FROM ref.site_panel WHERE panel_name='FE-00 eight-slot fixture'")).rows[0].branch_position_count,8);
   user = "volunteer@example.test";
   await page.reload();
   await page.getByText("Read only", { exact: false }).waitFor();
