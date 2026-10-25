@@ -1,5 +1,12 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## PR463 reconciled candidate — V0.4.30-setup-equipment
+
+Reconciled with current main d2bc9d02 (PR464 deployed; PR465 tooling; PR466 receipt). Existing breaker correction/removal, dependency protection, observation history and active-only circuit-name uniqueness are retained. Only pending `171_equipment_lifecycle.sql` is applied to a new current-Production clone; its baseline guard now requires deployed command MD5 `906289a801cae2e2d85957898984f031`. Combined command MD5 `7c6df16cea62a5635db1579d8dfeacb8`; snapshot MD5 `7458c9499a05bf53ad6dc585b369c1f9`. Earlier PR463 hashes/builds and PR460-baseline handoffs are superseded. Setup expected version remains V0.3.91-integrated-power. Never replay installed migrations or reuse a stale point-in-time clone to verify the new Production panel edits.
+
+The pre-reconciliation equipment-screen candidate 7cba2388 passed Setup/Chromium 40224595870, native site checks 40224595883 and compliance 40224595910. Reconciliation requires its own exact-head CI and renewed disposable acceptance. No Production mutation performed.
+
+
 ## Additional equipment simplification — October 25 review
 
 Greg's equipment screenshot is further changes-required evidence. Additional Equipment now focuses on location/spares, existing device records and lifecycle actions. Controller guidance, the global safety banner and global correction history are removed from this route's visible content. Selected-waypoint Connection details retain network/feed/safety context collapsed by default; spares have no network warning. A focused equipment renderer skips unrelated panels/reports/controllers and builds secondary engineering only when expanded. No inventory, command, schema or Production changes. Browser regression now checks focused visibility, spares and retained expandable engineering alongside existing add/failure/retry/move/replace coverage. Renewed disposable acceptance remains pending.
@@ -37,9 +44,27 @@ Current remaining requirements are controlled by [Part 2 field review in the des
 
 | Document control | Value |
 |---|---|
-| Status | PR457 SERVER DEPLOYMENT PASS — protected Production browser check pending |
+| Status | PR464 SERVER DEPLOYMENT PASS — protected Production browser check pending |
 | Owner | #171 / #230 under #122 |
 | Reviewed | 2026-10-25 |
+
+## October 25 — PR464 Production server deployment PASS
+
+Greg returned the reviewed release runner's server PASS receipt. This is operator-returned evidence; no independent live host probe or protected Production browser acceptance is claimed.
+
+- FieldWiring installed: `2548edd130b5cebad33a44786bc1811c2b089bf8` / `V0.4.29-breaker-correction`.
+- Setup verified unchanged: `72a94be772f2e4ae8bfaed74051f667fc87201a6` / `V0.3.91-integrated-power`.
+- Application PR464 merge: `af8b6efc0c7a57975071b32fd46bd784e077f2b2`. Release tooling `d339f3cf0956b54f51a464e5c372a5163bc35cb3`; PR465 merge `b8763948b422b9f6fd2f0e39444a8c703b24d2ce`.
+- Report: `/home/msbadmin/setup-deployment-reports/PR464-Breaker-Correction-20261025T225218Z`.
+- Validated rollback snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr464-breaker-correction-PR464-Breaker-Correction-20261025T225218Z.dump`.
+- Snapshot SHA256: `c3a63d77cfb0a49bfec2dc85a634c4707a5c9e954149622bc9383a0d28b217ce`.
+- Only `Database/EngineeringTools/sql/171_unassigned_breaker_correction.sql` applied, with `Database/Acceptance/171_unassigned_breaker_correction_validation.sql`. Command body MD5 is `906289a801cae2e2d85957898984f031`; optimized snapshot remains `1409b5a8bada107ecfd5954c8f49a18d`. Circuit designation uniqueness now applies only to active rows.
+- The reviewed runner's PASS contract proves maintenance/freeze, validated snapshot, migration/validation, existing-row preservation, FieldWiring promotion while fenced and return ONLINE with health/source/negative-auth checks. Detailed evidence remains in the retained report.
+
+Disposable operator acceptance: ST-00 correction/deletion and four recreated single-pole Milbank entries PASS; CLEAN EXIT released8898/source lock and restored the other review branch. No panel records were automatically repaired during deployment. Greg must repeat desired corrections in Production. **Protected Production browser spot check remains pending.** Do not replay this successful migration or restore the snapshot as routine cleanup.
+
+PR463 equipment/cable work is not installed by this release. Its later command migration must reconcile the new installed command body and preserve this correction before review/release; do not weaken the baseline guard. #171/#230 under #122 remain open for Part2 work. Earlier pending-release entries below are historical and superseded by this receipt.
+
 
 ## October 25 — PR457 Production receipt / current Part 2 starting point
 
@@ -845,3 +870,18 @@ fingerprints and unchanged Setup; existing CI covers PostgreSQL16 preservation
 and Windows committed-byte transport. Release-tooling exact head/results belong
 in its PR. Production receipt, snapshot and protected browser check remain pending;
 this authorization/preparation is not a deployment claim.
+
+
+## October 25 — isolated unassigned-breaker correction candidate
+
+Greg found mistaken two-pole entries (FC-00 position2 example) impossible to correct despite no assignments. Separate branch `fix/171-unassigned-breaker-correction` from main8836efaa; V0.4.29-breaker-correction. PR463 equipment/cable work remains separate and untouched. Incremental `171_unassigned_breaker_correction.sql` extends the existing command and changes circuit-name uniqueness to active rows; it never deletes historical rows, imports sources, seeds state or changes the optimized snapshot. Pole reduction retires unused extra legs; removal retires the breaker/legs and automatic observation actions, keeping events and audit. Active dependencies block before mutation.
+
+Only this new migration and `171_unassigned_breaker_correction_validation.sql` belong in its disposable current-Production review; PR457/PR460 are prerequisites, not migrations to replay. The command baseline guard intentionally rejects concurrent equipment-migration drift: reconcile migration composition explicitly if PR463 deploys first. Do not overwrite that branch or bypass the guard. Use the existing reusable preview mechanism after the other review has CLEAN EXIT and port8898/source lock are proven free; no concurrent preview launch is authorized here. Production and original GIS files remain unchanged.
+
+Operator acceptance: correct unassigned two-pole to one; verify retained notes, free slot and reload; remove another mistaken breaker and reuse its positions; confirm a connected breaker is blocked with dependency details; confirm state-event history remains. Native/browser CI and exact candidate identity are recorded in the correction PR. Operator acceptance and release remain pending. Milbank/tandem presentation is excluded.
+
+## October 25 — PR464 accepted / Production release authorized
+
+Greg corrected/deleted ST-00's mistaken breaker and recreated four independent Milbank entries, accepting that scope. Exact accepted application: `2548edd130b5cebad33a44786bc1811c2b089bf8` / V0.4.29-breaker-correction. Preview CLEAN EXIT released8898/source lock and restored review/171-equipment-ea080130; shell C:\lor\ImportExport\MSB-Main. Greg then authorized Production release before further Part2 engineering. PR464 merged as `af8b6efc0c7a57975071b32fd46bd784e077f2b2`.
+
+This thread owns the release window. Prepare a pinned correction profile of the existing Setup maintenance orchestrator and committed-byte transport. Expected prior FieldWiring875003c504e8a60c5851c530ec6496e4430945d9 / V0.4.27; Setup72a94be772f2e4ae8bfaed74051f667fc87201a6 / V0.3.91. Verify live identities, services, snapshot/command bodies and clean source before any mutation; reject drift rather than overwrite concurrent work. Apply only171_unassigned_breaker_correction.sql and its validation. Promote only FieldWiring; preserve Setup, optimized snapshot, every existing business row and original GIS source files. Existing controller freeze/validated rollback snapshot/preservation/ONLINE gates and failure containment govern. No auto repair of Greg's panel data; preview edits are discarded and Greg will repeat corrections after release. PR463 is excluded and must reconcile the changed command baseline before its own release. Production execution/receipt remains pending.

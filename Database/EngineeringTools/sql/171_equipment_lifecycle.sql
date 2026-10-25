@@ -1,7 +1,7 @@
 -- Part 2 incremental history; existing device inventory and power command retained.
 BEGIN;
 DO $$ BEGIN
- IF (SELECT md5(prosrc) FROM pg_proc WHERE oid='ref.site_power_command(text,uuid,bigint,text,bigint,jsonb)'::regprocedure)<>'7c1ff2630aefda0a7e46c0ef4672714e'
+ IF (SELECT md5(prosrc) FROM pg_proc WHERE oid='ref.site_power_command(text,uuid,bigint,text,bigint,jsonb)'::regprocedure)<>'906289a801cae2e2d85957898984f031'
  OR (SELECT md5(prosrc) FROM pg_proc WHERE oid='ref.site_power_snapshot(text)'::regprocedure)<>'1409b5a8bada107ecfd5954c8f49a18d' THEN
  RAISE EXCEPTION 'Unexpected equipment baseline or replay; reconcile before applying'; END IF;
 END $$;

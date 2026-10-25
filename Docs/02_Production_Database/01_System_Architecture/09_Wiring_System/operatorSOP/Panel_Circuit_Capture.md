@@ -231,9 +231,16 @@ expanded details and scroll position within the same browser tab.
 6. Panel **Number of slots** accepts whole numbers 1–200; **8** is offered for small panels such as FE-00. Existing occupied positions must fit within the selected count. Do not delete real breakers to force a smaller count.
 7. Correct mistaken historical observations through Seasonal power activities / Correct this event. The audit history remains append-only.
 
-### V0.4.28 disposable review — setup equipment and cable tests (not Production)
 
-1. In Combo Equipment, choose any applicable waypoint, or Uninstalled / spares. Add equipment records one physical item; the model field offers existing suggestions and accepts an unknown model. Select its type and record ratings/notes when known. Controllers remain in the existing Controller inventory with unchanged CTRL identity.
+### Unassigned breaker correction — deployed V0.4.29; protected browser check pending
+
+Open **Breaker settings**, correct **Positions / circuits** and **Poles**, then Save. A mistaken 2/4 two-pole entry can become position2 with one pole when no active connections exist. Its retained circuit ID and notes remain; the unused leg is retired and position4 becomes available.
+
+To remove an entire mistaken entry, choose **Remove mistaken breaker**, review the removal summary, and Save. This frees its positions and retires unused circuit records; history is retained. If blocked, the message identifies feeds, controllers, conductor memberships, remote panels or activities requiring reassignment. Automatic position-observation history is preserved. Do not delete a panel or recreate valid inventory to correct a breaker.
+
+### V0.4.30 disposable review — setup equipment and cable tests (not Production)
+
+1. In Additional Equipment, choose any applicable waypoint, or Uninstalled / spares. Add equipment records one physical item; the model field offers existing suggestions and accepts an unknown model. Select its type and record ratings/notes when known. Controllers remain in the existing Controller inventory with unchanged CTRL identity.
 2. Record test / failure opens UNTESTED, WORKING or FAILED, test date/time and notes. Leave the date blank when unknown. History retains actor and entry time. Correct test appends a correction; it does not erase the original.
 3. Move / remove changes an existing item's current waypoint or returns it to spares. Replace selects a different existing spare and records the old/new relationship. Add an unrecorded spare first. Both items and their history remain. Active electrical feed references must be reconciled before movement/replacement; the application does not silently transfer connections.
 4. Cable Test History initially shows all retained tests, grouped by cable/network with latest reliable dates first. Filter by Network and/or Waypoint. Expand All tests for provenance and older/undated observations. Unknown network matches remain visible under All; an undated test prevents a claim that chronological order is certain. Speed is unknown where no measured speed is stored; the source test standard is shown separately, not converted to measured throughput. Recorded result codes remain source evidence, not an invented pass/fail interpretation.

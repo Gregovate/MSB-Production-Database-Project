@@ -21,9 +21,11 @@ BEGIN
  WHERE u.status='active' AND coalesce((ref.site_power_access(u.email)->>'can_read')::boolean,false)
  ORDER BY u.email LIMIT 1;
  IF email IS NULL THEN RAISE EXCEPTION 'No authorized existing identity available for snapshot validation'; END IF;
- IF (SELECT md5(prosrc) FROM pg_proc WHERE oid='ref.site_power_command(text,uuid,bigint,text,bigint,jsonb)'::regprocedure)<>'a6ae1d49aef0203054f3dd7087be8a7e'
+ IF (SELECT md5(prosrc) FROM pg_proc WHERE oid='ref.site_power_command(text,uuid,bigint,text,bigint,jsonb)'::regprocedure)<>'7c6df16cea62a5635db1579d8dfeacb8'
  OR has_table_privilege('fieldwiring_app','ops.site_equipment_event','INSERT,UPDATE,DELETE') THEN
   RAISE EXCEPTION 'Equipment command or direct-write boundary changed'; END IF;
+ IF (SELECT pg_get_expr(indpred,indrelid) FROM pg_index WHERE indexrelid='ref.site_power_circuit_panel_code_uq'::regclass) IS DISTINCT FROM 'active' THEN
+  RAISE EXCEPTION 'Deployed active circuit designation index missing'; END IF;
  started:=clock_timestamp(); snapshot:=ref.site_power_snapshot(email);
  IF jsonb_array_length(snapshot->'equipment_events')<>(SELECT count(*) FROM ops.site_equipment_event) THEN RAISE EXCEPTION 'Equipment history omitted'; END IF;
  RAISE NOTICE 'Optimized snapshot: % ms, % bytes, waypoints %, requirements %, eligibility %',

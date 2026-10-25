@@ -1,5 +1,7 @@
 # Panelboard and Controller Install Part 2 — new-thread starter
 
+**Baseline update — PR464 deployed October25:** FieldWiring `2548edd130b5cebad33a44786bc1811c2b089bf8` / V0.4.29-breaker-correction; Setup remains `72a94be772f2e4ae8bfaed74051f667fc87201a6` / V0.3.91. Read the newest checkpoint receipt first. Unassigned breaker correction/removal and active-only circuit-name uniqueness are installed. Command MD5 `906289a801cae2e2d85957898984f031`; optimized snapshot MD5 `1409b5a8bada107ecfd5954c8f49a18d`. Do not replay completed migrations. PR463 is reconciled as V0.4.30-setup-equipment with this deployed command baseline; exact-head CI and renewed disposable acceptance are required. Apply only its equipment migration to a fresh current-Production clone. Earlier PR463 review SHAs are superseded. Protected Production browser check remains pending. Earlier baseline text below is historical.
+
 Current equipment priority: [setup equipment recording design](FieldWiring_Panel_Circuit_Design.md#setup-equipment-recording--engineering-decision-october-25). Reuse existing controller and shared site-device inventories; preserve `CTRL:` as a special case. Capture installation, dated tests, failures and replacements now. Do not create separate inventories by device type. Labels are low priority (maximum24mm, likely12mm) and do not block entry. Exact schema changes remain a pre-implementation design step.
 
 ## Current Production receipt — PR460, October 25

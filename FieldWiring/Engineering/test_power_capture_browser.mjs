@@ -879,6 +879,27 @@ try {
   await page.locator('#panels').getByRole('button',{name:'FE-00 eight-slot fixture',exact:true}).click();
   assert.match(await page.locator('#panel-detail').innerText(),/8 slots/);
   assert.equal((await db.query("SELECT branch_position_count FROM ref.site_panel WHERE panel_name='FE-00 eight-slot fixture'")).rows[0].branch_position_count,8);
+  // Correct the operator's accidental two-pole entry using the actual dialog.
+  await page.getByRole('button',{name:'Position 2 · Add breaker',exact:true}).click();
+  await dialog.locator('[name=pole_count]').selectOption('2');
+  await save();
+  let correctionRow=page.locator('.power-breaker').filter({has:page.getByRole('button',{name:'Breaker settings',exact:true})}).first();
+  await correctionRow.getByRole('button',{name:'Breaker settings',exact:true}).click();
+  await dialog.locator('[name=panel_positions]').fill('2');
+  await dialog.locator('[name=panel_positions]').blur();
+  await save();
+  await page.getByRole('button',{name:'Position 4 · Add breaker',exact:true}).waitFor();
+  await correctionRow.getByRole('button',{name:'Breaker settings',exact:true}).click();
+  await dialog.getByRole('button',{name:'Remove mistaken breaker',exact:true}).click();
+  failNext=true;
+  await dialog.locator('#save').click();
+  await dialog.locator('#save-status').getByText(/lost|retry|confirmation|fixture/i).waitFor();
+  await save();
+  await page.getByRole('button',{name:'Position 2 · Add breaker',exact:true}).waitFor();
+  await page.reload();
+  await page.locator('#panels').getByRole('button',{name:'FE-00 eight-slot fixture',exact:true}).click();
+  await page.getByRole('button',{name:'Position 2 · Add breaker',exact:true}).click();
+  await save();
   user = "volunteer@example.test";
   await page.reload();
   await page.getByText("Read only", { exact: false }).waitFor();

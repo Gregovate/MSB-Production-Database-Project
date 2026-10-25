@@ -1,5 +1,12 @@
 # Panel circuit definition and field capture
 
+## PR463 reconciliation with deployed PR464 — current candidate
+
+Main advanced through PR466 to d2bc9d02. Retain deployed PR464's unassigned breaker correction/removal, dependency checks, retained observations and active-only circuit-name uniqueness. The next candidate is V0.4.30-setup-equipment; earlier V0.4.28 review builds are superseded. Equipment migration must require deployed command MD5 `906289a801cae2e2d85957898984f031` and optimized snapshot MD5 `1409b5a8bada107ecfd5954c8f49a18d`, then add only equipment history. Combined command MD5 is `7c6df16cea62a5635db1579d8dfeacb8`; equipment snapshot MD5 remains `7458c9499a05bf53ad6dc585b369c1f9`. Do not replay the deployed breaker correction or any earlier migration in preview or release. Synthetic clean-database CI builds the prior releases in order, then applies equipment history and exercises both breaker corrections and equipment lifecycle against the combined command. Current-Production clone acceptance remains required.
+
+
+Current October25 release: PR464 installed V0.4.29-breaker-correction at `2548edd130b5cebad33a44786bc1811c2b089bf8`; Setup remains72a94be7 / V0.3.91. See the latest checkpoint receipt for rollback evidence and the pending protected Production browser check. This supersedes earlier current-release statements below; PR463 remains separate.
+
 ## Disposable review correction — additional equipment screen
 
 Greg's October 25 screenshot rejects the equipment screen's excess content. Rename Combo Equipment to Additional Equipment. Primary view: waypoint/spares selector, Add equipment, installed/spare items and their existing lifecycle actions/history. Hide controller instructions and inventory link (Controllers remains in navigation), global power disclaimer and global correction history on this route. Show an explicit empty list message instead of an unrelated missing-network warning for spares. Keep network/feed engineering accessible in collapsed Connection details only when a waypoint is selected; retain electrical safety information there. Preserve item audit/verification details, authenticated commands and history. Render equipment independently, without building hidden panels/reports/controller sections. This is presentation only; no schema or Production mutation.
@@ -1091,6 +1098,14 @@ and validated rollback snapshot. Validate exact optimized function, preserved
 command and authorization metadata, row fingerprints and source; reopen only on
 PASS. All old migrations and GPX/FLW intake remain excluded. Failure retains the
 existing journal/maintenance containment; no blind rerun or automatic data restore.
+
+## October 25 — unassigned breaker correction (separate from Part 2 equipment)
+
+An operator must be able to correct an accidentally entered two-pole branch breaker to one pole, or remove an unassigned breaker from the board. Reuse the existing authorized, revision-locked, idempotent site_power_command and audit ledger. Retire omitted unused circuit rows and removed breakers; never physically delete history. Retained legs keep their IDs and notes. Circuit designation uniqueness applies to active circuits so retired numbers can be reused with new identities. A failed correction must roll back all changes.
+
+Before reducing poles or removing a breaker, reject active circuit feeds (including equipment feeds), controller power connections, conductor memberships, remote-panel supply, or non-observation activities with actionable dependency details. Removal may retire only the existing automatic breaker-position observation actions, retaining their event history; prerequisite references still block retirement. Existing read/write authorization is unchanged. Removal is explicit in breaker settings; normal saving performs pole reduction without a second workflow. Milbank/tandem layout is separate and excluded. No Production repair or migration is authorized by this design entry.
+
+This isolated correction branches from main 8836efaa; PR463 owns concurrent equipment/cable UI work. Preserve its work and reconcile shared command migration baselines before combining candidates. The new migration does not change the snapshot function or undo PR460 performance work.
 
 ### Next candidate exact equipment data contract
 

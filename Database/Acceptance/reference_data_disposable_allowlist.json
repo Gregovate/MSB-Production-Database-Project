@@ -8,6 +8,7 @@
     "Database/EngineeringTools/sql/171_panel_slot_count.sql",
     "Database/EngineeringTools/sql/171_breaker_state.sql",
     "Database/EngineeringTools/sql/171_power_snapshot_performance.sql",
+    "Database/EngineeringTools/sql/171_unassigned_breaker_correction.sql",
     "Database/EngineeringTools/sql/171_equipment_lifecycle.sql"
   ],
   "approved_validation_paths": [
@@ -16,6 +17,7 @@
     "Database/Acceptance/171_panel_slot_count_validation.sql",
     "Database/Acceptance/171_breaker_state_validation.sql",
     "Database/Acceptance/171_power_snapshot_performance_validation.sql",
+    "Database/Acceptance/171_unassigned_breaker_correction_validation.sql",
     "Database/Acceptance/171_equipment_lifecycle_validation.sql"
   ]
 }

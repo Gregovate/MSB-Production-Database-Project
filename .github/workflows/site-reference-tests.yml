@@ -106,6 +106,9 @@ jobs:
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_breaker_state_validation.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_power_snapshot_performance.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_power_snapshot_performance_validation.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_unassigned_breaker_correction.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_unassigned_breaker_correction_validation.sql
+
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_equipment_lifecycle.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_equipment_lifecycle_validation.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_site_reference_operations_disposable_validation.sql
