@@ -192,3 +192,8 @@ and **Display name**. Display names use natural order (Tree 2 before Tree 10);
 unassigned controllers appear last. Stage/search filters still apply. Changing
 the sort keeps the selected controller and unsaved connections open and does not
 change the network chain. The choice remains active until the page is reopened.
+
+The IN/OUT controller pickers follow this same sort choice immediately. Special
+choices (waypoint, terminating resistor, not recorded) remain first. Pickers retain
+eligible controllers from other stages so the network can continue across stages;
+sorting never changes the recorded chain or a pending selection.

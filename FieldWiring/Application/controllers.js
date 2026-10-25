@@ -12,7 +12,6 @@ const themeToggle = document.getElementById('theme-toggle');
 
 let selectedControllerId = null;
 let currentControllers = [];
-const controllerNameOrder = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 let filtersLoaded = false;
 let debounceTimer = null;
 
@@ -133,16 +132,9 @@ function renderControllerList(controllers) {
 
   // Sort a copy of the filtered response. Never reload the selected editor or
   // change network chain order when the operator changes list presentation.
-  const ordered = [...controllers].sort((a, b) => {
-    if (controllerSort.value === 'display') {
-      const aName = Number(a.assignment_count) > 0 ? String(a.display_names || '').trim() : '';
-      const bName = Number(b.assignment_count) > 0 ? String(b.display_names || '').trim() : '';
-      if (Boolean(aName) !== Boolean(bName)) return aName ? -1 : 1;
-      const byName = controllerNameOrder.compare(aName, bName);
-      if (byName) return byName;
-    }
-    return Number(a.controller_id) - Number(b.controller_id);
-  });
+  const assignedName = item => Number(item.assignment_count) > 0 ? item.display_names : '';
+  const ordered = [...controllers].sort((a,b) => window.MSBControllerDeployment.compareControllers(
+    a.controller_id, assignedName(a), b.controller_id, assignedName(b), controllerSort.value));
   controllerList.innerHTML = ordered.map(item => {
     const active = item.controller_id === selectedControllerId ? ' active' : '';
     const assignmentText = Number(item.assignment_count) === 0
@@ -315,7 +307,10 @@ function scheduleRefresh() {
   debounceTimer = setTimeout(loadControllers, 220);
 }
 
-controllerSort.addEventListener('change', () => renderControllerList(currentControllers));
+controllerSort.addEventListener('change', () => {
+  renderControllerList(currentControllers);
+  window.MSBControllerDeployment.sortPickers();
+});
 searchInput.addEventListener('input', scheduleRefresh);
 stageFilter.addEventListener('change', loadControllers);
 statusFilter.addEventListener('change', loadControllers);

@@ -438,14 +438,38 @@ try {
   });
   const listIds = () => page.locator('#controller-list .controller-row').evaluateAll(rows => rows.map(r => Number(r.dataset.controllerId)));
   assert.deepEqual(await listIds(), [101,1000,1090,1094,1138]);
+  const portState = async () => page.evaluate(() => Object.fromEntries(
+    ['deployment-upstream','deployment-out'].map(id => {
+      const select=document.getElementById(id);
+      return [id,{value:select.value, options:Array.from(select.options).map(o=>({value:o.value,name:o.dataset.displayName||''}))}];
+    })));
+  const portsBeforeSort=await portState();
+  const checkPortOrder = async mode => {
+    const after=await portState();
+    const names=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
+    for(const [id,before] of Object.entries(portsBeforeSort)) {
+      const special=before.options.filter(o=>!/^\d+$/.test(o.value));
+      const controllers=before.options.filter(o=>/^\d+$/.test(o.value)).sort((a,b)=>{
+        if(mode==='display'){
+          if(Boolean(a.name)!==Boolean(b.name))return a.name ? -1 : 1;
+          const byName=names.compare(a.name,b.name);if(byName)return byName;
+        }
+        return Number(a.value)-Number(b.value);
+      });
+      assert.deepEqual(after[id].options,[...special,...controllers]);
+      assert.equal(after[id].value,before.value);
+    }
+  };
   await page.locator('#controller-sort').selectOption('display');
   assert.deepEqual(await listIds(), [101,1090,1138,1094,1000]);
+  await checkPortOrder('display');
   assert.equal(await page.locator('#stage-filter').inputValue(), '77');
   assert.equal(await page.locator('#controller-list .active').getAttribute('data-controller-id'), '101');
   assert.equal(await page.locator('#deployment-network').inputValue(), '11');
   assert.equal(await page.locator('#deployment-outlet').inputValue(), '12');
   assert.equal(await page.locator('#deployment-circuit').inputValue(), String(movedCircuit));
   await page.locator('#controller-sort').selectOption('id');
+  await checkPortOrder('id');
   assert.deepEqual(await listIds(), [101,1000,1090,1094,1138]);
   await page.locator('#controller-sort').selectOption('display');
   // Refresh keeps the chosen order and active detail; the server owns filtering.

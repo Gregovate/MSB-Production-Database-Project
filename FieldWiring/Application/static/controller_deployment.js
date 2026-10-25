@@ -13,6 +13,27 @@
   const displayNames=(data,id)=>[...new Set((data.load_lineage || []).filter(x=>x.controller_id===Number(id)).map(x=>x.display_name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
   const displayText=(data,id)=>displayNames(data,id).join(" / ") || "No display assigned";
   const controllerLabel=(data,id)=>`CTRL ${id} — ${displayText(data,id)}`;
+  const nameOrder=new Intl.Collator(undefined,{numeric:true,sensitivity:"base"});
+  function compareControllers(aId,aName,bId,bName,mode) {
+    if(mode==="display") {
+      aName=String(aName||"").trim();bName=String(bName||"").trim();
+      if(Boolean(aName)!==Boolean(bName))return aName ? -1 : 1;
+      const byName=nameOrder.compare(aName,bName);if(byName)return byName;
+    }
+    return Number(aId)-Number(bId);
+  }
+  function sortPortOptions(select) {
+    if(!select)return;
+    const selected=select.value, mode=document.getElementById("controller-sort")?.value || "id";
+    // Move existing options only: preserve eligibility, reconciliation labels,
+    // special choices and dirty selections without dispatching a change event.
+    const controllers=Array.from(select.options).filter(o=>/^\d+$/.test(o.value));
+    controllers.sort((a,b)=>compareControllers(a.value,a.dataset.displayName,b.value,b.dataset.displayName,mode));
+    select.append(...controllers);select.value=selected;
+  }
+  function sortPickers() {
+    for(const id of ["deployment-upstream","deployment-out"])sortPortOptions(document.getElementById(id));
+  }
   function controllerCell(data,id,row) {
     const cell=node("td",undefined,row);
     node("strong",`CTRL ${id}`,cell);
@@ -74,6 +95,12 @@
         node("option",`${name(installation.site_waypoint_id)} — recorded; eligibility unresolved`,location).value=installation.site_waypoint_id;
       }
       location.value=installation?.site_waypoint_id || initialWaypoint || "";
+      function orderChoices(select) {
+        for(const option of select.options) {
+          if(/^\d+$/.test(option.value))option.dataset.displayName=displayNames(data,option.value).join(" / ");
+        }
+        sortPortOptions(select);
+      }
       function upstreamChoices(selected) {
         upstream.replaceChildren();
         node("option","Not recorded",upstream).value="UNKNOWN";
@@ -89,6 +116,7 @@
         }
         if(selected&&!Array.from(upstream.options).some(o=>o.value===String(selected))) node("option",`${controllerLabel(data,selected)} — recorded; reconcile connection`,upstream).value=selected;
         upstream.value=selected || "WAYPOINT";
+        orderChoices(upstream);
       }
       upstreamChoices(installation ? (installation.upstream_controller_id || installation.upstream_kind || "UNKNOWN") : null);
 
@@ -112,6 +140,7 @@
         }
         if(selected&&!Array.from(ending.options).some(o=>o.value===String(selected)))node("option",`${controllerLabel(data,selected)} — recorded; reconcile connection`,ending).value=selected;
         ending.value=selected || "UNKNOWN";
+        orderChoices(ending);
       }
       outChoices(successor?.controller_id || installation?.chain_end);
       location.onchange=()=>{upstreamChoices(null);outChoices(null);};
@@ -210,5 +239,5 @@
     } catch(e){if(ticket===generation)status.textContent=e.message;}
   }
   window.addEventListener("beforeunload",e=>{if(dirty||pending||saving){e.preventDefault();e.returnValue="";}});
-  window.MSBControllerDeployment={render,mayLeave,controllerLabel,controllerCell};
+  window.MSBControllerDeployment={render,mayLeave,controllerLabel,controllerCell,compareControllers,sortPickers};
 })();

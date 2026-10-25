@@ -482,3 +482,16 @@ Keep non-controller choices first, preserve selected values and unsaved edits, a
 retain all eligible controllers across stages. Reorder existing options without
 triggering connection-change handlers, reloads or saves. Do not sort the recorded
 chain or change eligibility, topology, power, database or source files.
+
+
+### V0.4.20-picker-sort implementation
+
+A shared comparator now orders the left inventory and IN/OUT controller choices.
+Options are reordered in place, preserving selected values, special choices and
+dirty edits; choice builders also apply current order after origin/input changes
+and editor loading. Stage scope is not applied to eligible connection options.
+Local FieldWiring 220 passed; browser regression extends the existing dirty-edit
+sort test to both pickers, preserving eligibility sets and selected values in both
+sort modes. Exact-head CI pending at preparation; final results and candidate pin
+belong to the existing PR #319 handoff. V0.4.19 left-list accepted and CLEAN EXIT
+received. V0.4.20 picker review pending. Production and source files unchanged.
