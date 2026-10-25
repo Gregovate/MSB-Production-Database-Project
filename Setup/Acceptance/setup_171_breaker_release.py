@@ -154,6 +154,14 @@ class BreakerDeploy(Deploy):
         require(code in ('401', '403'), 'Unidentified report request was not denied')
         self.regression(REPO)
 
+    def after_reopen(self):
+        # Surface the already validated receipt so operator closeout needs no
+        # separate forensic command to find the rollback archive and hash.
+        snapshot = json.loads((self.root / 'snapshot.json').read_text())
+        print('Rollback snapshot: '+snapshot['path'], flush=True)
+        print('Snapshot SHA256: '+snapshot['sha256'], flush=True)
+        print('Verified FieldWiring and Setup source: '+APP, flush=True)
+
     def cleanup(self):
         try:
             super().cleanup()

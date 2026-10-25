@@ -182,3 +182,12 @@ def test_real_postgres_preservation_projection(tmp_path):
                 assert capture()!=before
         finally:
             db.rollback()
+
+
+def test_closeout_surfaces_validated_snapshot_receipt(tmp_path,capsys):
+    d=site.BreakerDeploy(MANIFEST,tmp_path/'report')
+    (d.root/'snapshot.json').write_text(json.dumps(dict(path='/retained/snapshot.dump',sha256='verified-hash')))
+    d.after_reopen()
+    output=capsys.readouterr().out
+    assert '/retained/snapshot.dump' in output and 'verified-hash' in output
+    assert site.APP in output

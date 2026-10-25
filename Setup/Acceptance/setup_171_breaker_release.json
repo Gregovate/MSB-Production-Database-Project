@@ -11,7 +11,7 @@
     "Database/Acceptance/171_breaker_state_validation.sql": "a9f7a6c9d6508935296225c8b6565da6de23ca36"
   },
   "helpers": {
-    "setup_171_breaker_release.py": "dbbaa9267ed5a0ecd03ffea6140f1247b111962c60e6ffb9b1c90f883f5e7804",
+    "setup_171_breaker_release.py": "0f47bc465987f2928c245e5a99faaeef8114ba8a28a50588e06b3bce951b2214",
     "setup_maintenance_deploy.py": "4a2e34064ce1eced57e277b368048810fd8c122034749792ac121e1367c970ab"
   }
 }
