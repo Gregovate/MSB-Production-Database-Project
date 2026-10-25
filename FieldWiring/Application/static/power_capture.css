@@ -180,3 +180,5 @@ html[data-theme="dark"] {--power-secondary:#344154;--power-secondary-border:#8b9
 .power-nav a,.power-nav a:visited {background:var(--power-secondary);color:var(--ink);border:1px solid var(--power-secondary-border);border-radius:7px;padding:.45rem .65rem;text-decoration:none;}
 .power-nav a[aria-current="page"] {background:var(--soft);border-color:var(--blue);font-weight:700;}
 .power-nav a:focus-visible,.power-navigation:focus-visible {outline:3px solid var(--blue);outline-offset:2px;}
+
+.power-breaker-notes {font-weight:600;white-space:pre-wrap;overflow-wrap:anywhere;}

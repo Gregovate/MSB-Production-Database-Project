@@ -651,3 +651,16 @@ attribution. Keep all evidence. Pending release uses the existing maintenance
 orchestrator with the panel-only profile; no initial importer or Setup promotion.
 Preparation does not claim deployment. Retain final report/snapshot and ONLINE
 proof, then verify the protected Production screen before closeout.
+
+## October25 PR455 server PASS; breaker notes follow-up
+
+Greg returned complete maintenance/freeze/snapshot/migration/validation/source
+promotion/ONLINE server PASS. Report:
+/home/msbadmin/setup-deployment-reports/PR455-Panels-20261025T084618Z.
+The release installs accepted0fd7fabd / V0.4.22; Setup unchanged. Snapshot
+metadata remains in that report directory; exact path/hash transcription pending.
+Protected Production use exposed notes initialization/display defect. V0.4.23
+source-only correction restores existing source_evidence when opening settings
+and displays it on the board. No waypoint required for local receptacles or gate
+loads. No Production data repair is inferred; already overwritten notes, if any,
+require audit evidence before recovery. Candidate review pending.

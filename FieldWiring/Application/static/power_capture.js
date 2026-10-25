@@ -288,12 +288,14 @@
         row.dataset.breakerId=b.site_power_breaker_id;
         el("h3", `Breaker ${b.breaker_name}`, row);
         el("p", `${b.rated_amps ?? "Unknown"} A · ${b.pole_count ?? "Unknown"} poles · ${b.breaker_role || "UNKNOWN"}`, row);
+        // Render existing notes as text, including breakers with no mapped endpoints.
+        if (b.source_evidence) el("p", b.source_evidence, row).className="power-breaker-notes";
         button("Breaker settings",()=>openSchedule(b),row,true);
         const circuits = data.circuits.filter(c => c.active && c.site_power_breaker_id === b.site_power_breaker_id)
           .sort((a,b)=>a.breaker_pole-b.breaker_pole);
         circuits.forEach(c => {
           const names=[...new Set(paths(c.site_power_circuit_id).map(x=>x.waypoint?.name || "Unknown waypoint"))];
-          const leg=button(`Circuit ${c.circuit_code} — ${names.join(", ") || "Assign waypoints"}`,()=>openAssignments(c),row,true);
+          const leg=button(`Circuit ${c.circuit_code} — ${names.join(", ") || "Waypoints (optional)"}`,()=>openAssignments(c),row,true);
           const load=(data.circuit_loads || []).find(x=>x.site_power_circuit_id===c.site_power_circuit_id);
           if (load) {
             const loads=el("details",undefined,row); loads.className="power-load"; loads.dataset.viewKey="load:"+c.site_power_circuit_id;
@@ -1121,7 +1123,7 @@
     positions.closest("label").hidden=role==="MAIN";
     field(select("rated_amps","Breaker rating (A)",ratingOptions()),row.rated_amps);
     const poles=field(select("pole_count","Poles",options([1,2,3].map(x=>[x,String(x)])),true),row.pole_count || (role==="MAIN"?2:1));
-    field(text("source_evidence","Breaker notes / correction reason (optional)"),"");
+    field(text("source_evidence","Breaker notes / correction reason (optional)"),row.source_evidence);
     const states=options(["UNKNOWN","ON","OFF"].map(v=>[v,v]));
     field(select("show_desired_state","Season ON / OFF",states,true),row.show_desired_state || "UNKNOWN");
     field(select("restoration_desired_state","Non-season ON / OFF",states,true),row.restoration_desired_state || "UNKNOWN");
@@ -1133,7 +1135,7 @@
       if (!row.site_power_breaker_id && first>0 && count>0 && count<=3)
         positions.value=Array.from({length:count},(_,i)=>first+2*i).join("/");
     };
-    el("p","Save breaker settings, then select each circuit on the panel to assign its waypoints. Existing assignments and circuit IDs are retained.",$("edit-fields"));
+    el("p","Save breaker settings. Waypoint assignment is optional: gate loads and receptacles at the panel can be recorded without a waypoint. Existing assignments and circuit IDs are retained.",$("edit-fields"));
     edit.read=()=>{
       const form=$("edit-form");
       const raw=positions.value.trim();

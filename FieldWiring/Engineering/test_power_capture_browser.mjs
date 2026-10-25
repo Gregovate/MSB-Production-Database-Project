@@ -266,6 +266,12 @@ try {
   assert.equal(breakerNotes.rows[0].source_evidence,null);
   assert.equal(breakerNotes.rows[0].verification_status,"UNVERIFIED");
   const groupedRow=page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:"Breaker 18/20 grouped",exact:true})});
+  // Local receptacles can retain a breaker note without any waypoint feed.
+  await groupedRow.getByRole("button",{name:"Breaker settings",exact:true}).click();
+  await dialog.locator('[name=source_evidence]').fill('Receptacles at panel');
+  await save();
+  assert.equal(await groupedRow.locator('.power-breaker-notes').innerText(),'Receptacles at panel');
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id WHERE c.site_power_breaker_id=$1 AND f.active",[breakerId])).rows[0].n,0);
   for (const leg of ["18","20"]) {
     await groupedRow.getByRole("button",{name:new RegExp(`^Circuit ${leg} —`)}).click();
     await dialog.locator('input[name=waypoint][value="12"]').check();
@@ -300,6 +306,7 @@ try {
   }
   assert.deepEqual(breakerRatings, [...new Set(breakerRatings)].sort((a,b)=>a-b));
   assert.equal(await dialog.getByRole("button",{name:"Use rating",exact:true}).count(),0);
+  await dialog.locator('[name=source_evidence]').fill('Gate Power — panel receptacles <not markup>');
   await dialog.locator("[name=show_desired_state]").selectOption("OFF");
   failNext=true;
   await dialog.locator("#save").click();
@@ -307,6 +314,15 @@ try {
   await save();
   assert.deepEqual((await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 ORDER BY breaker_pole",[breakerId])).rows,savedIds);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 AND show_desired_state='OFF'",[breakerId])).rows[0].n,2);
+  assert.equal((await db.query("SELECT source_evidence FROM ref.site_power_breaker WHERE site_power_breaker_id=$1",[breakerId])).rows[0].source_evidence,'Gate Power — panel receptacles <not markup>');
+  assert.equal(await groupedRow.locator('.power-breaker-notes').innerText(),'Gate Power — panel receptacles <not markup>');
+  await groupedRow.getByRole("button",{name:"Breaker settings",exact:true}).click();
+  assert.equal(await dialog.locator('[name=source_evidence]').inputValue(),'Gate Power — panel receptacles <not markup>');
+  await dialog.locator('[name=rated_amps]').selectOption('60');
+  await save();
+  await page.reload();
+  await page.getByText(/Revision \d+/).waitFor();
+  assert.equal(await groupedRow.locator('.power-breaker-notes').innerText(),'Gate Power — panel receptacles <not markup>');
   await page.getByRole("button",{name:"Meter / upstream supply",exact:true}).click();
   await dialog.locator("[name=meter_information]").fill("TEST-METER-100");
   await evidence();await save();
