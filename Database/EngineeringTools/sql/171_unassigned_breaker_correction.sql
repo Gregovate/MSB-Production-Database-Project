@@ -42,8 +42,8 @@ $replacement$;
     UNION ALL SELECT 'remote panel '||p.panel_name FROM ref.site_panel p WHERE p.active AND p.supply_breaker_id=p_id
     UNION ALL SELECT 'activity '||a.action_name FROM ref.site_power_action a LEFT JOIN ref.site_power_circuit c USING(site_power_circuit_id)
      WHERE a.active AND (a.site_power_breaker_id=p_id OR c.site_power_breaker_id=p_id)
-      AND NOT (a.site_power_breaker_id=p_id AND a.action_name='Breaker switch observation' AND a.action_kind='OTHER'
-       AND a.instructions='Record physical switch position; not a remote command or isolation verification.')
+      AND NOT coalesce((a.site_power_breaker_id=p_id AND a.action_name='Breaker switch observation' AND a.action_kind='OTHER'
+       AND a.instructions='Record physical switch position; not a remote command or isolation verification.'),false)
     UNION ALL SELECT 'dependent activity '||dependent.action_name FROM ref.site_power_action a JOIN ref.site_power_action dependent ON a.site_power_action_id=ANY(dependent.prerequisite_action_ids)
      WHERE p_kind='breaker_remove' AND a.site_power_breaker_id=p_id AND dependent.active
    ) dependencies;

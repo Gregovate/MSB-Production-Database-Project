@@ -47,6 +47,9 @@ try {
  const action=(await cmd('action',null,{site_power_breaker_id:two,action_name:'Verify outlet',phase:'SETUP',action_kind:'OTHER'})).target_id;
  await assert.rejects(()=>cmd('breaker_remove',two,{}),/activity Verify outlet/);
  await cmd('action',action,{active:false});
+ const namedLikeAuto=(await cmd('action',null,{site_power_breaker_id:two,action_name:'Breaker switch observation',phase:'SETUP',action_kind:'OTHER'})).target_id;
+ await assert.rejects(()=>cmd('breaker_remove',two,{}),/activity Breaker switch observation/);
+ await cmd('action',namedLikeAuto,{active:false});
  // State events survive removal; automatic action is retired, not deleted.
  await cmd('breaker_state',two,{season_year:2026,phase:'SETUP',condition:'OFF',observed_at:'2026-10-25T12:00:00Z'});
  const history=JSON.stringify(await rows('select * from ops.setup_power_activity_event order by event_id'));
@@ -66,6 +69,7 @@ try {
  await assert.rejects(()=>cmd('breaker_remove',b,{},removeReq),/different content/);
  // Migration replay fails closed and changes no business rows.
  prior=await fingerprint();await assert.rejects(()=>db.exec(readFileSync('Database/EngineeringTools/sql/171_unassigned_breaker_correction.sql','utf8')),/baseline/);await db.exec('ROLLBACK');assert.equal(await fingerprint(),prior);
+
  await db.exec(readFileSync('Database/Acceptance/171_unassigned_breaker_correction_validation.sql','utf8'));
  console.log('PASS: correction/removal, freed positions/numbers, retained IDs/notes/events, dependency blockers, rollback, authorization, stale revision, exact retry and migration replay denial');
  console.log('Command MD5:',(await rows("select md5(prosrc) hash from pg_proc where oid='ref.site_power_command(text,uuid,bigint,text,bigint,jsonb)'::regprocedure"))[0].hash);
