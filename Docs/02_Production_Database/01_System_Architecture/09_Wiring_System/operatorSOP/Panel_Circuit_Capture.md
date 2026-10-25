@@ -232,7 +232,7 @@ expanded details and scroll position within the same browser tab.
 7. Correct mistaken historical observations through Seasonal power activities / Correct this event. The audit history remains append-only.
 
 
-### Unassigned breaker correction — candidate V0.4.29 (not deployed)
+### Unassigned breaker correction — deployed V0.4.29; protected browser check pending
 
 Open **Breaker settings**, correct **Positions / circuits** and **Poles**, then Save. A mistaken 2/4 two-pole entry can become position2 with one pole when no active connections exist. Its retained circuit ID and notes remain; the unused leg is retired and position4 becomes available.
 
