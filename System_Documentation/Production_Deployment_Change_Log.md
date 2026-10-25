@@ -9,6 +9,13 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-25 — #171/#230 FieldWiring/GIS — server deployment PASS
+
+- PR #319 merged as `6aa23c399cea5dad7ba6b9cef619d469fe024991`; accepted/deployed application `439ab237beaae4ac648e7590f824a774969cd84f`: FieldWiring **V0.4.20-picker-sort**, Setup **V0.3.91-integrated-power**. Release tooling `82bb112e19ec815d0b49c8d1dfed5c604e075490` is a separate identity.
+- Existing maintenance controller: preflight, freeze, validated snapshot, three accepted #171 schema migrations, initial accepted GPX/FLW load, preserved-data validation and return to service all PASS in Greg's receipt.
+- Report: `/home/msbadmin/setup-deployment-reports/PR319-GIS-20261025T062215Z`. Snapshot path/hash remain in that retained report; not separately supplied here.
+- Greg has begun real Production panel inventory and supplied WV-00 Panel 10 evidence. Slot-count and presentation corrections are a follow-up candidate, not an initial-install replay. Preserve live data. Full browser/documentation closeout is not claimed solely from server PASS.
+
 ## 2026-10-20 — #419 Phase 2 Work Orders and email — Production PASS
 
 - Installed application: **V1.1.2-manager-utilities**, source `24c0c8e526e032f4a7202a77ed14ab9a30b2459b`; PR #435 merged as `7f88be7d9a6b476fa60688e775b1e044140f5c28`. Infrastructure: Server Management #81, merged PRs #87 and #88.

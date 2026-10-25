@@ -197,3 +197,20 @@ The IN/OUT controller pickers follow this same sort choice immediately. Special
 choices (waypoint, terminating resistor, not recorded) remain first. Pickers retain
 eligible controllers from other stages so the network can continue across stages;
 sorting never changes the recorded chain or a pending selection.
+
+
+## Pending panel-entry correction — V0.4.21 candidate
+
+In Panel setup, **Number of slots** is the actual numbered branch-position count,
+excluding the main breaker. A two-pole breaker occupies two slots. Enter the
+panel's actual count (for example 18, 20, 40 or 42); the main amperage does not set
+it. Leave unknown counts blank. Empty slots are places to add a breaker, not
+installed breakers. The system rejects reductions below an occupied slot.
+
+The panel list labels MSB ownership in light blue and City ownership in light
+orange. The selected panel has a separate outline. Blue Save/Add buttons perform
+primary actions; outlined pale-blue circuit buttons open waypoint assignments;
+neutral buttons open settings/navigation or cancel. Breaker cards group their
+circuit legs. Load and connection details remain available in disclosures.
+Colors never establish electrical state or safe isolation. This correction is
+pending candidate review and deployment; the current live release is V0.4.20.
