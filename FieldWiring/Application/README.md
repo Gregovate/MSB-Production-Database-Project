@@ -4,6 +4,12 @@ Status: **PRODUCTION-OPERATIONAL — CONTROLLER INVENTORY INTEGRATION ACTIVE**
 
 This folder contains the browser-based FieldWiring application and the read-side Controller Inventory browser experience.
 
+## Current Part 2 candidate — V0.4.28-setup-equipment
+
+PR463 is a disposable review candidate, not a Production deployment. It adds equipment TEST/MOVE/REPLACE history to existing site devices, All/Network/Waypoint cable-test browsing and controller presentation corrections. Controller inventory/CTRL identity, LOR authority and accepted power behavior are retained. Labels remain low priority. Only `171_equipment_lifecycle.sql` applies to a PR460 current-Production clone; initial and completed migrations must not be replayed.
+
+Read the [engineering design](../../Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Panel_Circuit_Design.md) and [operator review steps](../../Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/operatorSOP/Panel_Circuit_Capture.md). Server Production remains V0.4.27 after PR460; earlier candidate/release descriptions below are historical. Exact candidate acceptance evidence belongs in PR463 and the implementation checkpoint.
+
 ## Panel circuit candidate — #171 / #230 under #122
 
 `V0.4.3-panel-circuit-capture` adds `/circuits` and guarded PostgreSQL capture

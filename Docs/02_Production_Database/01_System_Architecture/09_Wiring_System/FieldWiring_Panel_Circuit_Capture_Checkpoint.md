@@ -1,5 +1,13 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## PR463 — V0.4.28 setup/test recording candidate
+
+Implemented on feature/171-setup-equipment-review for disposable review only. Exact SHA and CI evidence are pinned in PR463. Reuses existing controller/site-device inventories and adds one append-only site-device event history (not another inventory). Controller lifecycle and label behavior remain with the existing controller subsystem. TEST/correction, MOVE/remove and replacement from an existing spare are covered; current installation changes are timestamped now, not backdated. Labels remain low priority.
+
+Incremental clone migration: `Database/EngineeringTools/sql/171_equipment_lifecycle.sql`; read-only gate: `Database/Acceptance/171_equipment_lifecycle_validation.sql`. Requires deployed PR460 function hashes. Do not replay PR460/PR457/initial migrations or ingest source files. Reuse the existing disposable wrapper and review worktree; Setup expected build is V0.3.91-integrated-power, mounted FieldWiring candidate is V0.4.28-setup-equipment. No Production mutation.
+
+Operator review: controller buttons/colors/long chain; add two same-model devices without labels; record failure and correction; move one to spares; replace another with an existing spare and inspect both histories; browse all/network/waypoint cable tests and older/undated evidence; spot-check retained panel/season/report behavior. The source schema does not currently expose measured link speed, so it stays Unknown alongside the recorded test standard; result codes remain explicit until source semantics are validated. Further panel-load reconciliation and technician field verification remain open. PR460 protected browser/documentation closeout is not inferred from this candidate's tests.
+
 Current equipment priority: [setup equipment recording design](FieldWiring_Panel_Circuit_Design.md#setup-equipment-recording--engineering-decision-october-25). Reuse existing controller and shared site-device inventories; preserve `CTRL:` as a special case. Capture installation, dated tests, failures and replacements now. Do not create separate inventories by device type. Labels are low priority (maximum24mm, likely12mm) and do not block entry. Exact schema changes remain a pre-implementation design step.
 
 ## Current Production receipt — PR460, October 25
