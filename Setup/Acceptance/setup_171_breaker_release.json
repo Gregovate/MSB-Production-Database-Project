@@ -1,0 +1,17 @@
+{
+  "profile": "site-171-breaker",
+  "release_tag": "PR457-Breakers",
+  "candidate": "72a94be772f2e4ae8bfaed74051f667fc87201a6",
+  "target": "72a94be772f2e4ae8bfaed74051f667fc87201a6",
+  "tree": "b99c237011e58b2206c7fb8dfbb922e656f72dc0",
+  "shared": "0fd7fabd48dce287722112405bafb8e3aa65f637",
+  "old_setup": "439ab237beaae4ac648e7590f824a774969cd84f",
+  "blobs": {
+    "Database/EngineeringTools/sql/171_breaker_state.sql": "2a1d8bad59352ae93cbe30b09dc4594f0661c806",
+    "Database/Acceptance/171_breaker_state_validation.sql": "a9f7a6c9d6508935296225c8b6565da6de23ca36"
+  },
+  "helpers": {
+    "setup_171_breaker_release.py": "dbbaa9267ed5a0ecd03ffea6140f1247b111962c60e6ffb9b1c90f883f5e7804",
+    "setup_maintenance_deploy.py": "4a2e34064ce1eced57e277b368048810fd8c122034749792ac121e1367c970ab"
+  }
+}

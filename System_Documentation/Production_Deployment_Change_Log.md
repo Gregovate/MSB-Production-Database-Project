@@ -9,6 +9,12 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-25 — PR457 breaker state/report release authorized; server receipt pending
+
+- Greg accepted exact V0.4.26-breaker-reports candidate `72a94be772f2e4ae8bfaed74051f667fc87201a6` and authorized Production release after CLEAN EXIT. PR457 merged at `c56e3a63c6ad3c0c0d21618a0ef65ec865b25c2c`.
+- Governed DATABASE-CHANGING release profile prepares only `171_breaker_state.sql`, then both FieldWiring and Setup source promotion to the accepted application SHA. No state backfill; Greg enters initial observations.
+- **Not yet a server deployment PASS.** Actual report/snapshot path/hash, ONLINE proof and protected Production browser check must replace this pending disposition after execution. The controlling checkpoint includes the Panelboard and Controller Install Part 2 handoff; do not re-run an interrupted release blindly.
+
 ## 2026-10-25 — #171/#230 FieldWiring/GIS — server deployment PASS
 
 - PR #319 merged as `6aa23c399cea5dad7ba6b9cef619d469fe024991`; accepted/deployed application `439ab237beaae4ac648e7590f824a774969cd84f`: FieldWiring **V0.4.20-picker-sort**, Setup **V0.3.91-integrated-power**. Release tooling `82bb112e19ec815d0b49c8d1dfed5c604e075490` is a separate identity.

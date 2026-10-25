@@ -39,6 +39,7 @@ jobs:
           Setup/Acceptance/test_setup_maintenance_deploy.py
           Setup/Acceptance/test_setup_171_release.py
           Setup/Acceptance/test_setup_171_panel_release.py
+          Setup/Acceptance/test_setup_171_breaker_release.py
           Setup/Acceptance/test_setup_required_container_deploy.py
           Setup/Acceptance/test_setup_scheduled_search_deploy.py
       - name: Full unchanged Setup regression
@@ -68,6 +69,12 @@ jobs:
           if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
           python Setup/Acceptance/setup_171_panel_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb171-panel-package')
           if ($LASTEXITCODE -ne 0) { throw 'Panel committed transport failed' }
+
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_171_breaker_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          python Setup/Acceptance/setup_171_breaker_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb171-breaker-package')
+          if ($LASTEXITCODE -ne 0) { throw 'Breaker committed transport failed' }
+
 
           $bundle = Join-Path $env:RUNNER_TEMP 'msb205-package'
           python Setup/Acceptance/setup_205_estimates_transport.py $PWD $bundle
