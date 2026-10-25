@@ -285,16 +285,17 @@ def test_dependency_digest_detects_changes_even_without_revision_increment(depen
         require_gpx_dependency_freshness(current, prior['dependency_sha256'])
 
 
-def test_dependency_order_independent_and_capture_is_one_read(dependency_snapshot):
+def test_dependency_order_independent_and_capture_is_one_data_snapshot(dependency_snapshot):
     from site_source_db import capture_gpx_dependencies
     before = deepcopy(dependency_snapshot)
-    conn = RecordingConnection([(dependency_snapshot,)])
+    conn = RecordingConnection([(False,), (dependency_snapshot,)])
     first = capture_gpx_dependencies(conn, [1, 1], [])
-    assert len(conn.statements) == 1 and conn.statements[0][0].startswith('SELECT ')
+    assert len(conn.statements) == 2 and all(q[0].startswith('SELECT ') for q in conn.statements)
+    assert 'to_regclass' in conn.statements[0][0]
     for rows in dependency_snapshot['tables'].values():
         rows.reverse()
     dependency_snapshot['foreign_keys'].reverse()
-    second = capture_gpx_dependencies(RecordingConnection([(dependency_snapshot,)]), [1], [])
+    second = capture_gpx_dependencies(RecordingConnection([(False,), (dependency_snapshot,)]), [1], [])
     assert first == second
     assert before['tables']['ops.linkiq_test'][0]['test_uuid'] == 'uuid-first'
 
@@ -327,3 +328,14 @@ def test_dependency_invalid_targets_never_query_database(ids):
     with pytest.raises(ValueError):
         capture_gpx_dependencies(conn, ids, [])
     assert conn.statements == []
+
+
+def test_equipment_history_is_a_captured_dependency(dependency_snapshot):
+    from site_source_db import capture_gpx_dependencies
+    dependency_snapshot['tables']['ops.site_equipment_event'] = [{'event_id': 1, 'from_waypoint_id': 1, 'notes': 'Failed supply'}]
+    dependency_snapshot['foreign_keys'].append(dict(name='equipment_from', child='ops.site_equipment_event', child_columns=['from_waypoint_id'], parent='ref.site_waypoint', parent_columns=['site_waypoint_id'], validated=True))
+    conn = RecordingConnection([(True,), (dependency_snapshot,)])
+    report = capture_gpx_dependencies(conn, [1])
+    assert report['status'] == 'RECORDED_DEPENDENCIES_CAPTURED'
+    assert report['counts']['ops.site_equipment_event'] == 1
+    assert 'ops.site_equipment_event' in conn.statements[1][0]

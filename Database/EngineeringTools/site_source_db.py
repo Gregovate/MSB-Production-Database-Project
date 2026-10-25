@@ -546,6 +546,9 @@ _GPX_DEPENDENCY_TABLES = (
 )
 
 
+# Incremental lifecycle history is captured when installed; older clone schemas remain readable.
+_GPX_OPTIONAL_DEPENDENCY_TABLES = ('ops.site_equipment_event',)
+
 def _dependency_json(value):
     """Canonical JSON binds row content, independent of SQL result ordering."""
     return json.dumps(value, sort_keys=True, ensure_ascii=False,
@@ -569,10 +572,16 @@ def capture_gpx_dependencies(conn, waypoint_ids=(), track_ids=()) -> dict:
     waypoint_ids, track_ids = _dependency_ids(waypoint_ids), _dependency_ids(track_ids)
     if not waypoint_ids and not track_ids:
         raise ValueError('Select at least one permanent waypoint or track ID')
+    # Optional incremental tables are discovered by exact name only. A newly
+    # appearing unknown FK consumer still produces HOLD in the catalog snapshot.
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT to_regclass(%s) IS NOT NULL", (_GPX_OPTIONAL_DEPENDENCY_TABLES[0],))
+        has_equipment_history = cursor.fetchone()[0]
+    dependency_tables = _GPX_DEPENDENCY_TABLES + (_GPX_OPTIONAL_DEPENDENCY_TABLES if has_equipment_history else ())
     # Identifiers below are internal constants, never operator-provided SQL.
     tables = ','.join("'%s',COALESCE((SELECT jsonb_agg(to_jsonb(r)) FROM %s r),'[]'::jsonb)"
-                      % (table, table) for table in _GPX_DEPENDENCY_TABLES)
-    regclasses = ','.join("'%s'::regclass" % table for table in _GPX_DEPENDENCY_TABLES)
+                      % (table, table) for table in dependency_tables)
+    regclasses = ','.join("'%s'::regclass" % table for table in dependency_tables)
     query = '''SELECT jsonb_build_object(
         'tables',jsonb_build_object(''' + tables + '''),
         'reference_revision',(SELECT revision FROM ref.site_reference_revision WHERE singleton),
@@ -606,7 +615,7 @@ def _gpx_dependency_report(snapshot, waypoint_ids, track_ids):
     from copy import deepcopy
 
     snapshot = deepcopy(snapshot)
-    if set(snapshot['tables']) != set(_GPX_DEPENDENCY_TABLES):
+    if not set(_GPX_DEPENDENCY_TABLES).issubset(snapshot['tables']) or not set(snapshot['tables']).issubset(set(_GPX_DEPENDENCY_TABLES + _GPX_OPTIONAL_DEPENDENCY_TABLES)):
         raise ValueError('Incomplete dependency table inventory')
     for name in ('reference_revision', 'power_revision'):
         if type(snapshot[name]) is not int or snapshot[name] < 0:
@@ -674,8 +683,8 @@ def _gpx_dependency_report(snapshot, waypoint_ids, track_ids):
             'reference_revision': snapshot['reference_revision'],
             'power_revision': snapshot['power_revision'], 'related_records': related,
             'counts': {table: sum(r['table'] == table for r in related)
-                       for table in _GPX_DEPENDENCY_TABLES},
-            'captured_tables': list(_GPX_DEPENDENCY_TABLES), 'holds': holds,
+                       for table in snapshot['tables']},
+            'captured_tables': list(snapshot['tables']), 'holds': holds,
             'coverage_gaps': ['NON_FK_JSON_AND_NAME_REFERENCES', 'ACTION_PREREQUISITE_ARRAYS',
                               'PICKER_CACHE_AND_EXTERNAL_CONSUMERS'],
             'promotion_ready': False, 'writes_performed': False,
