@@ -182,3 +182,5 @@ html[data-theme="dark"] {--power-secondary:#344154;--power-secondary-border:#8b9
 .power-nav a:focus-visible,.power-navigation:focus-visible {outline:3px solid var(--blue);outline-offset:2px;}
 
 .power-breaker-notes {font-weight:600;white-space:pre-wrap;overflow-wrap:anywhere;}
+
+.power-circuit-notes {margin-left:.7rem;border-left:3px solid var(--border);padding-left:.6rem;white-space:pre-wrap;overflow-wrap:anywhere;}

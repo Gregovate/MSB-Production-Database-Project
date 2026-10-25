@@ -664,3 +664,13 @@ source-only correction restores existing source_evidence when opening settings
 and displays it on the board. No waypoint required for local receptacles or gate
 loads. No Production data repair is inferred; already overwritten notes, if any,
 require audit evidence before recovery. Candidate review pending.
+
+## October25 PR457 review — circuit notes correction
+
+Breaker notes save; screenshot2 shows Upper Panel GFI's on breaker2/4 while6/8
+is cropped. Assignment notes rejected note-only saves. V0.4.24 introduces an
+independent Circuit notes field using existing description, displays each leg's
+notes on the board and labels assignment evidence separately. Note-only saves
+preserve feeds, breaker notes and the sibling circuit. Source-only; Production
+unchanged. Latest preview CLEAN EXIT has not yet been reported; do not launch
+another preview until the existing review exits and releases8898/source lock.

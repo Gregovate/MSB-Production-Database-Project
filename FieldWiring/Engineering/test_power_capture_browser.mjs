@@ -272,6 +272,16 @@ try {
   await save();
   assert.equal(await groupedRow.locator('.power-breaker-notes').innerText(),'Receptacles at panel');
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id WHERE c.site_power_breaker_id=$1 AND f.active",[breakerId])).rows[0].n,0);
+  await groupedRow.getByRole("button",{name:/^Circuit 18 —/}).click();
+  await dialog.locator('[name=description]').fill('Upper panel left receptacle');
+  await save();
+  assert.equal((await db.query("SELECT description FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 AND breaker_pole=1",[breakerId])).rows[0].description,'Upper panel left receptacle');
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id WHERE c.site_power_breaker_id=$1 AND f.active",[breakerId])).rows[0].n,0);
+  await page.reload(); await page.getByText(/Revision \d+/).waitFor();
+  assert.equal(await groupedRow.locator('.power-circuit-notes').innerText(),'Upper panel left receptacle');
+  await groupedRow.getByRole("button",{name:/^Circuit 18 —/}).click();
+  assert.equal(await dialog.locator('[name=description]').inputValue(),'Upper panel left receptacle');
+  await dialog.locator('#cancel').click();
   for (const leg of ["18","20"]) {
     await groupedRow.getByRole("button",{name:new RegExp(`^Circuit ${leg} —`)}).click();
     await dialog.locator('input[name=waypoint][value="12"]').check();
@@ -279,6 +289,13 @@ try {
     if (leg==="18") await dialog.locator("[name=also_other_leg]").check();
     await evidence(); await save();
   }
+  const feedsBeforeNote=(await db.query("SELECT * FROM ref.site_power_feed ORDER BY site_power_feed_id")).rows;
+  await groupedRow.getByRole("button",{name:/^Circuit 20 —/}).click();
+  await dialog.locator('[name=description]').fill('Upper panel right receptacle');
+  await save();
+  assert.deepEqual((await db.query("SELECT * FROM ref.site_power_feed ORDER BY site_power_feed_id")).rows,feedsBeforeNote);
+  assert.deepEqual(await groupedRow.locator('.power-circuit-notes').allTextContents(),['Upper panel left receptacle','Upper panel right receptacle']);
+  assert.equal(await groupedRow.locator('.power-breaker-notes').innerText(),'Receptacles at panel');
   await groupedRow.getByText("Connections · unverified",{exact:true}).click();
   assert.match(await groupedRow.innerText(),/20 A · 2 poles/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 18/);

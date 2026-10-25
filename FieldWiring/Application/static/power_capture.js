@@ -296,6 +296,7 @@
         circuits.forEach(c => {
           const names=[...new Set(paths(c.site_power_circuit_id).map(x=>x.waypoint?.name || "Unknown waypoint"))];
           const leg=button(`Circuit ${c.circuit_code} — ${names.join(", ") || "Waypoints (optional)"}`,()=>openAssignments(c),row,true);
+          if (c.description) el("p", c.description, row).className="power-circuit-notes";
           const load=(data.circuit_loads || []).find(x=>x.site_power_circuit_id===c.site_power_circuit_id);
           if (load) {
             const loads=el("details",undefined,row); loads.className="power-load"; loads.dataset.viewKey="load:"+c.site_power_circuit_id;
@@ -1164,7 +1165,7 @@
     pending = null;
     edit = { kind: "assignments", row: c };
     $("edit-title").textContent =
-      `Waypoints supplied directly by ${circuitName(c.site_power_circuit_id)}`;
+      `Circuit ${circuitName(c.site_power_circuit_id)} — notes and waypoints`;
     $("edit-fields").replaceChildren();
     $("save-status").textContent = "";
     $("save").disabled = false;
@@ -1173,6 +1174,7 @@
       "Intermediate feed paths remain unchanged. Clear a selection to retire that direct relationship; its history is retained.",
       $("edit-fields"),
     );
+    field(text("description", "Circuit notes (optional; no waypoint required)"), c.description);
     const search = field(
       text("waypoint_search", "Search current names and aliases"),
       "",
@@ -1228,7 +1230,7 @@
       both.type="checkbox"; both.name="also_other_leg"; both.value=String(siblings[0].site_power_circuit_id);
       both.checked=false;
     }
-    field(text("source_evidence", "Notes (optional)"), "");
+    field(text("source_evidence", "Assignment correction note (optional)"), "");
     $("editor").showModal();
   }
   function readFields() {
@@ -1298,6 +1300,8 @@
           );
         selected.forEach((id) => {
           const old = direct.find((f) => f.destination_waypoint_id === id);
+          // A circuit-description edit must leave unchanged feed evidence alone.
+          if (old && !evidence.source_evidence) return;
           commands.push(
             command("feed", old?.site_power_feed_id, {
               ...evidence,
@@ -1306,6 +1310,10 @@
             }),
           );
         });
+        const description = form.elements.description.value.trim() || null;
+        if (description !== (edit.row.description || null)) {
+          commands.push(command("circuit", edit.row.site_power_circuit_id, {description}));
+        }
         const both=form.elements.namedItem("also_other_leg");
         if (both?.checked) {
           const siblingId=Number(both.value);
