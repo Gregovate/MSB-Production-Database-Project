@@ -1,5 +1,18 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## Current Production receipt — PR460, October 25
+
+Greg supplied `STAGE server deployment PASS; protected browser and documentation closeout pending` and the wrapper's `#171 PERFORMANCE SERVER DEPLOYMENT PASS` after SSH cleanly returned. Report: `/home/msbadmin/setup-deployment-reports/PR460-Performance-20261025T152418Z`.
+
+The accepted release profile promotes FieldWiring to `875003c504e8a60c5851c530ec6496e4430945d9`, V0.4.27-panel-performance, and leaves Setup at `72a94be772f2e4ae8bfaed74051f667fc87201a6`, V0.3.91-integrated-power. Post-deployment screenshots display V0.4.27 and revision421. PR460 merge is `6cc1f9377c7faa7c7547793a55966b59f2b742cf`; tooling PR461 merge is `8836efaa213006f84fc67d9713c6cbf9d382173a`. Documentation commits are not deployed application identities.
+
+Only `171_power_snapshot_performance.sql` belongs to this release. Do not rerun it, PR457, slot-count migrations or initial imports. The pasted final receipt does not supply the rollback snapshot path/hash; retain the server report as the source for those details rather than guessing. The prior ~6→2-second breaker save and improved controller assignments were disposable acceptance observations, not new measured Production SQL timings.
+
+Server deployment is PASS. Screenshots provide post-deployment UI evidence but do not close the full protected browser acceptance checklist. Protected browser acceptance and remaining release documentation closeout stay pending. #171/#230 under #122 remain open for the remaining scope. Earlier release-preparation and PR457-only baseline statements below are historical and superseded by this disposition.
+
+Current remaining requirements are controlled by [Part 2 field review in the design](FieldWiring_Panel_Circuit_Design.md#october-25-part-2-field-review--current-engineering-scope): controller styling/readable chains; waypoint equipment and replacement; All/Network/Waypoint cable-test history with latest results, lengths, speeds and dates; power/load reporting and technician verification. These changes are not yet implemented or accepted.
+
+
 | Document control | Value |
 |---|---|
 | Status | PR457 SERVER DEPLOYMENT PASS — protected Production browser check pending |

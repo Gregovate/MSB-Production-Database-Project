@@ -1,5 +1,49 @@
 # Panel circuit definition and field capture
 
+## Current Production receipt — PR460, October 25
+
+Greg supplied `STAGE server deployment PASS; protected browser and documentation closeout pending` and the wrapper's `#171 PERFORMANCE SERVER DEPLOYMENT PASS` after SSH cleanly returned. Report: `/home/msbadmin/setup-deployment-reports/PR460-Performance-20261025T152418Z`.
+
+The accepted release profile promotes FieldWiring to `875003c504e8a60c5851c530ec6496e4430945d9`, V0.4.27-panel-performance, and leaves Setup at `72a94be772f2e4ae8bfaed74051f667fc87201a6`, V0.3.91-integrated-power. Post-deployment screenshots display V0.4.27 and revision421. PR460 merge is `6cc1f9377c7faa7c7547793a55966b59f2b742cf`; tooling PR461 merge is `8836efaa213006f84fc67d9713c6cbf9d382173a`. Documentation commits are not deployed application identities.
+
+Only `171_power_snapshot_performance.sql` belongs to this release. Do not rerun it, PR457, slot-count migrations or initial imports. The pasted final receipt does not supply the rollback snapshot path/hash; retain the server report as the source for those details rather than guessing. The prior ~6→2-second breaker save and improved controller assignments were disposable acceptance observations, not new measured Production SQL timings.
+
+Server deployment is PASS. Screenshots provide post-deployment UI evidence but do not close the full protected browser acceptance checklist. Protected browser acceptance and remaining release documentation closeout stay pending. #171/#230 under #122 remain open for the remaining scope. Earlier release-preparation and PR457-only baseline statements below are historical and superseded by this disposition.
+
+## October 25 Part 2 field review — current engineering scope
+
+This section records Greg's post-deployment screen review and controls the remaining presentation/workflow scope. These are requirements for the next governed disposable candidate, not implemented or accepted features. Extend existing screens, inventory, commands and stored FLW/LinkIQ evidence; do not build parallel systems.
+
+### Controller presentation
+
+- Use the standard blue primary Save connections button. Reload connections is a secondary light-gray action.
+- Use consistent menu-button colors, including Edit Controller and Manage Assignments, with darker hover states and visible keyboard focus. Apply the same navigation convention across the affected screens and retain light/dark-theme readability.
+- Network connection surfaces use light blue; power connection surfaces use light red. Retain explicit labels so color is not the sole distinction.
+- Replace the long wrapping chain paragraph with a readable ordered presentation. Proposed implementation: vertical controller ID/name list, selected controller highlighted, explicit origin and recorded ending. Preserve actual saved order, reciprocal IN/OUT, same-network cross-stage chains, sorting and eligibility. Do not infer a termination. The reviewed Whoville example runs from WV-03 through CTRL1060 to a recorded terminating resistor; this is operator evidence, not a seed or hard-coded chain.
+- Preserve UNVERIFIED until technician verification. Styling does not change wiring, power assignments or observation status.
+
+### Waypoint equipment and replacement
+
+The reviewed Waypoint Connections and Combo Equipment screens initially show a waypoint selector; the screenshots do not establish whether all post-selection workflows work. Inspect and extend existing controls rather than declaring the underlying inventory absent. Finish discoverable multiple-device inventory at a waypoint/combo box, including 10/100 and gigabit switches, 24V/48V PoE supplies, RS485 repeaters/splitters and Pixie Link. Support adding equipment, recording failures and replacements, and retaining the failed device and dated history. Reconcile the operator-reported three repeater failures and one bad power supply without inventing device identities or installation facts. Link waypoint equipment to its existing cable-test evidence.
+
+### Cable Test History — required browsing and results
+
+The deployed V0.4.27 screen has a Connected waypoint pair selector. It is an existing partial interface, not a completed All/Network/Waypoint browsing workflow.
+
+- Open with all connections and their latest recorded tests; provide All, selected network, and selected waypoint filtering. Waypoint selection matches either test endpoint. Keep unresolved network/waypoint records visible in All with explicit unresolved labels.
+- Show network, test point A, test point B, measured length in feet, reported passing speed/link capability, recorded result and test date. Do not substitute nominal device speed for measured/tested capability. Missing measurements remain unknown, never zero.
+- Show the latest recorded test per cable clearly, with older tests accessible and valid test dates sorted newest first. A/B and B/A on the same network represent the same cable unless replacement evidence distinguishes them. Preserve source/instrument/provenance and source distinctions where results are not comparable.
+- Do not hide a later failed test behind an older passing result. Preserve known tester-clock defects (including 2/10/1970), mark suspect/unknown dates and do not invent corrected dates or claim uncertain chronology is verified. An old test may still be the latest available evidence.
+- Reuse existing FLW/LinkIQ records and existing endpoint/network relationships. Tests remain read-only evidence; they do not create controller LOR membership, geometry, installed equipment or verified wiring.
+- Offer the overall history view and access scoped to the selected waypoint from equipment/connection screens. Keep filters and results clear when no evidence matches.
+
+### Remaining integrated scope and acceptance
+
+Complete/reconcile controller actual outlet and circuit-leg assignments, then Display → Controller → Circuit → Breaker/Panel amperage reporting. Preserve existing nominal rollups, explicit missing/estimated loads, per-pole capacity, remote-panel feeds, seasonal panel-versus-breaker behavior, notes, slots, reports and audit history. Technician verification of outlet assignments, physical labels and supplying breakers remains outstanding; breaker observations must not be inferred from targets or photos.
+
+Sequence: finish controller presentation; review/complete waypoint equipment and replacement; finish cable-test browsing; reconcile power/load reporting and field-verification gaps. Engineering is authorized. Run appropriate regressions and prepare one exact governed disposable candidate for Greg's review before a further Production release. Preserve Production, accepted chains and original GPX/FLW files. Future incremental FLW ingest and governed GPX compare/snapshot/ingest remain deferred; screen-specific API splitting is future work, not a reason to repeat broad profiling.
+
+
 ## Current release disposition — October 25
 
 PR457 is deployed at `72a94be772f2e4ae8bfaed74051f667fc87201a6` (FieldWiring V0.4.26-breaker-reports; Setup V0.3.91-integrated-power). Server PASS is recorded in the [implementation checkpoint](FieldWiring_Panel_Circuit_Capture_Checkpoint.md); protected Production browser acceptance remains pending. Earlier candidate statements are historical. The integrated design remains the target, not a claim that every relationship is field-verified. Continue remaining work using the [Part 2 starter](FieldWiring_Panelboard_Controller_Install_Part_2_Starter.md).
