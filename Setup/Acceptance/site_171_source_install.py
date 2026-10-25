@@ -14,6 +14,7 @@ def require(ok, message):
 
 
 def execute(root, socket, gpx, flw, gpx_sha, flw_sha, probe=False):
+    gpx, flw = Path(gpx), Path(flw)
     sys.path.insert(0, str(Path(root) / 'Database/EngineeringTools'))
     from site_db_connection import connect
     from site_source_sync import sha256
