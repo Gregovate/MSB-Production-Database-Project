@@ -441,3 +441,19 @@ assignment labels. Exact-head CI pending at preparation. Latest AUX-I screenshot
 show a recorded cross-stage chain ending in a resistor, with physical verification
 still UNVERIFIED. No clean exit for this repeat review received yet; do not overlap
 reviews. Production/source files unchanged.
+
+
+## October 25 controller list sort — final operator refinement
+
+Greg accepts V0.4.18's physical display names in network wiring and supplies CLEAN
+EXIT with port 8898 and GIS source lock released. Retain earlier panel/breaker/
+waypoint, Racing Arches and Elf Choir acceptance; physical wiring stays UNVERIFIED.
+
+Add a visible Sort by selector in the left Controller list: Controller ID (default)
+or Display name. Sort the existing filtered inventory response locally, using its
+physical display_names, with natural numeric/case-insensitive name ordering,
+unnamed/unassigned controllers last and numeric Controller ID as tie-breaker.
+The choice remains active during filtering/refresh in this page. Sorting must only
+rerender the list, retaining selected controller and unsaved detail/connection edits.
+Do not change stage filters, network chain order, assignments, schemas or API.
+Reuse the existing browser regression and disposable preview mechanism.

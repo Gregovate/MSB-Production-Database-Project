@@ -648,3 +648,19 @@ from IDs or stage order, rename controller assets, or copy names into installati
 records. Show all assigned display names and an explicit no-display fallback.
 Reuse the same labeling helpers on both screens. This is presentation only: network
 eligibility, topology, power, audit and stage filtering remain unchanged.
+
+
+## October 25 controller list sort — final operator refinement
+
+Greg accepts V0.4.18's physical display names in network wiring and supplies CLEAN
+EXIT with port 8898 and GIS source lock released. Retain earlier panel/breaker/
+waypoint, Racing Arches and Elf Choir acceptance; physical wiring stays UNVERIFIED.
+
+Add a visible Sort by selector in the left Controller list: Controller ID (default)
+or Display name. Sort the existing filtered inventory response locally, using its
+physical display_names, with natural numeric/case-insensitive name ordering,
+unnamed/unassigned controllers last and numeric Controller ID as tie-breaker.
+The choice remains active during filtering/refresh in this page. Sorting must only
+rerender the list, retaining selected controller and unsaved detail/connection edits.
+Do not change stage filters, network chain order, assignments, schemas or API.
+Reuse the existing browser regression and disposable preview mechanism.
