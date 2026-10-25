@@ -944,3 +944,38 @@ Greg's V0.4.25 disposable review ended CLEAN EXIT. Supersedes the confirmation-b
 Include 8 in slot suggestions and explicitly accept integer counts 1–200, preserving occupied-slot protections. Test an 8-slot FE-00-style panel through the real editor and database.
 
 Provide visible downloadable PDF status and exception reports, with panel/breaker/description, required and recorded state, last observer/time, season and completion/exception reason. Reports cover ALL active breakers, including unchanged seasonal targets. Explicit exceptions: wrong position, no known recorded position, earlier-season/other-season-mode observation, and unknown required target. Checklist retains change-only workflow; report totals distinguish confirmed, exceptions and missing work without altering task57 or claiming photos were entered as observations. PDF generation is read-only through existing authenticated snapshot access; no second state system. Production and source files remain untouched. New exact disposable candidate required before release.
+
+## October 25 — Part 2 measured performance correction
+
+The operator localized the deployed PR457 snapshot at 6.872 seconds / about
+2013 KB: its 240-waypoint network-capable projection alone takes 4.632 seconds,
+versus 38.499 ms when availability is materialized once. Controller requirements
+(182 rows / 958 ms) are recomputed by eligibility (890 rows / 1.021 seconds);
+sharing requirements yields 1.022 seconds combined. All 83 breaker impacts cost
+76.7 ms and are not this correction's target. These are supplied Production
+measurements, not new measurements from the engineering environment.
+
+The next candidate materializes network availability and controller requirements
+once within the authorized snapshot invocation, derives eligibility with exactly
+the existing view predicates, and shares availability with waypoint capability
+and network output. Keep the same JSON keys, row content, waypoint ordering,
+Directus authorization, function privileges and command semantics. No cross-request
+cache, new inventory, or relaxed eligibility. An incremental migration changes
+only the deployed snapshot function and refuses an unexpected baseline/replay;
+never rerun PR457 or initial source imports.
+
+Panel selection renders only the panel list/detail and saves navigation state.
+Full snapshot refresh still renders all surfaces. Checklist/report navigation to
+a panel uses the same focused path. Retain selected styling, notes, slots, circuit
+assignment controls, saved disclosures/scroll and seasonal observations. Prove no
+API fetch or unrelated DOM reconstruction on a panel click, plus before/after
+Production-scale synthetic timings and snapshot multiset/content equivalence.
+The supplied 240/182/890 counts are acceptance evidence for that captured data,
+not hard-coded limits or invariant counts while Production entries continue.
+
+Broader Part 2 reporting, equipment replacement and cable presentation remain
+backlog for a later governed candidate. Splitting the all-purpose snapshot by
+screen is future work; this correction preserves its existing consumer contract.
+Protected Production browser acceptance remains pending. Performance improvement
+must be measured again in the governed current-Production disposable clone before
+claiming Production latency; synthetic tests do not substitute for that evidence.

@@ -6,6 +6,8 @@ on:
   pull_request:
     paths:
       - 'Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql'
+      - 'Database/EngineeringTools/sql/171_power_snapshot_performance.sql'
+      - 'Database/Acceptance/171_power_snapshot_performance_validation.sql'
       - 'Database/Acceptance/171_site_reference_operations_disposable_validation.sql'
       - 'Database/Acceptance/reference_data_disposable_allowlist.json'
       - 'Setup/Application/setup_site_reference*'
@@ -79,7 +81,8 @@ jobs:
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql
           # Synthetic installed dependencies only in this ephemeral CI database.
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 <<'SQL'
-          CREATE TABLE public.directus_users(id uuid PRIMARY KEY,first_name text,last_name text);
+          CREATE TABLE public.directus_users(id uuid PRIMARY KEY,first_name text,last_name text,email text,status text);
+          INSERT INTO public.directus_users VALUES('00000000-0000-0000-0000-000000000001','GIS','CI','gis-ci@example.invalid','active');
           CREATE TABLE ref.person(person_id integer PRIMARY KEY);
           CREATE TABLE ref.controller_model(controller_model_id bigint PRIMARY KEY,model_code text);
           CREATE TABLE ref.controller(controller_id bigint PRIMARY KEY,controller_model_id bigint REFERENCES ref.controller_model,serial_number text);
@@ -99,6 +102,8 @@ jobs:
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_panel_slot_count_validation.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_breaker_state.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_breaker_state_validation.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_power_snapshot_performance.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_power_snapshot_performance_validation.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_site_reference_operations_disposable_validation.sql
       - name: Initial release adapter through real container-local socket
         env:

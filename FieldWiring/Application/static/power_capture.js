@@ -214,7 +214,13 @@
     button(kind==="controller_installation"&&r.active ? "Edit IN / OUT" : "Edit / correct", () => kind==="controller_installation"&&r.active ? openPorts(r.controller_id) : kind === "breaker" ? openSchedule(r) : open(kind, r), box, true);
     return box;
   }
-  function render() {
+  function selectPanel(id) {
+    panelId = id;
+    renderPanels();
+    savePanelView();
+  }
+  // Panel selection never rebuilds unrelated screens, reports or evidence.
+  function renderPanels() {
     const q = $("find").value.trim().toLowerCase();
     $("panels").replaceChildren();
     data.panels
@@ -244,9 +250,7 @@
         const b = button(
           `${p.panel_name}${p.active ? "" : " (retired)"}`,
           () => {
-            panelId = p.site_panel_id;
-            render();
-            savePanelView();
+            selectPanel(p.site_panel_id);
           },
           $("panels"),
         );
@@ -397,6 +401,9 @@
         "Select a panel to retrieve its circuits and assignments.",
         detail,
       );
+  }
+  function render() {
+    renderPanels();
     const waypointSelect = $("detail-waypoint"), priorWaypoint = waypointSelect.value;
     waypointSelect.replaceChildren();
     el("option", "Select a waypoint", waypointSelect).value="";
@@ -578,7 +585,7 @@
       const row=el("article",undefined,root); row.className="power-checklist-row"; row.dataset.breakerId=b.site_power_breaker_id;
       const p=panel(b.site_panel_id);
       el("h3",`${p.panel_name} — Breaker ${b.breaker_name}`,row).className="power-print-title";
-      button(`${p.panel_name} — Breaker ${b.breaker_name}`,()=>{panelId=b.site_panel_id;render();$("panel-detail").scrollIntoView({block:"start"});},row).className="power-navigation";
+      button(`${p.panel_name} — Breaker ${b.breaker_name}`,()=>{selectPanel(b.site_panel_id);$("panel-detail").scrollIntoView({block:"start"});},row).className="power-navigation";
       const descriptions=[b.source_evidence,...data.circuits.filter(c=>c.active && c.site_power_breaker_id===b.site_power_breaker_id).map(c=>c.description)].filter(Boolean);
       if(descriptions.length) el("p",[...new Set(descriptions)].join(" · "),row);
       el("p",`Required: ${phase==="RESTORATION"?b.restoration_desired_state:b.show_desired_state} · ${state==="configuration"?"Set both seasonal targets in Breaker settings":state==="completed"?"Completed":"Needs change / confirmation"}`,row);
@@ -627,7 +634,7 @@
       if(filter==="exceptions" && status==="Completed" || filter==="completed" && status!=="Completed") continue;
       const row=el("tr",undefined,body); row.dataset.reportBreaker=b.site_power_breaker_id;
       const notes=[b.source_evidence,...data.circuits.filter(c=>c.active && c.site_power_breaker_id===b.site_power_breaker_id).map(c=>c.description)].filter(Boolean);
-      button(`${panel(b.site_panel_id).panel_name} / ${b.breaker_name}`,()=>{panelId=b.site_panel_id;render();$("panel-detail").scrollIntoView({block:"start"});},el("td",undefined,row)).className="power-navigation";
+      button(`${panel(b.site_panel_id).panel_name} / ${b.breaker_name}`,()=>{selectPanel(b.site_panel_id);$("panel-detail").scrollIntoView({block:"start"});},el("td",undefined,row)).className="power-navigation";
       for(const text of [[...new Set(notes)].join("; "),phase==="RESTORATION"?b.restoration_desired_state:b.show_desired_state,e?.condition||"Not recorded",status,e?`${e.operator_name || "Name unavailable"} · ${new Date(e.observed_at).toLocaleString()}`:"—"]) el("td",text,row);
     }
     $("report-counts").textContent=`Season ${year} ${phase==="SETUP"?"ON":"OFF"}: ${completed} completed / ${total} breakers; ${total-completed} exceptions, including ${missing} with no recorded state.`;

@@ -741,3 +741,44 @@ Remaining work to assess and finish in Part 2:
 - Reconcile panel-versus-breaker seasonal behavior and waypoint electrical-safety presentation with actual field inventory; task57's October9 80% crew report is historical and must not be overwritten by inferred checklist progress.
 
 Server deployment receipt and source/snapshot identities are now recorded above. Protected Production browser acceptance remains pending; documentation closeout does not imply it passed. Preserve the existing laptop review worktree for sequential Part 2 tests and return the shell to `C:\lor\ImportExport\VSCode`.
+
+## October 25 — Part 2 performance candidate (not deployed)
+
+Operator supplied localized Production evidence: snapshot 6.872 s / ~2013 KB;
+waypoint projection 4.632 s vs 38.499 ms materialized; duplicated Controller
+requirement work ~1 s; all breaker impacts only 76.7 ms. Do not repeat broad
+profiling or blame hardware/network. Current main at engineering start:
+`06a881b73a4fa8ea103312df46a8a62530fba760`.
+
+V0.4.27-panel-performance changes only the snapshot query shape and panel-selection
+rendering. Request-local materialized network availability/Controller requirements
+feed existing JSON output; no command, source file, identity or eligibility policy
+change. Panel/list selection and checklist/report-to-panel links retain unrelated
+DOM. Full snapshot refresh still renders all surfaces.
+
+Incremental migration: `Database/EngineeringTools/sql/171_power_snapshot_performance.sql`.
+Read-only validation: `Database/Acceptance/171_power_snapshot_performance_validation.sql`.
+Baseline snapshot body MD5 `90d9a9a08645e6611e1216f80bdc774c` is required;
+optimized body MD5 `1409b5a8bada107ecfd5954c8f49a18d`. Unexpected baseline or replay
+stops. Existing owner, ACL, SECURITY DEFINER, STABLE and search_path retained.
+Do not apply initial GIS/FLW, slot-count or PR457 migrations again.
+
+Local evidence: 230 FieldWiring application tests, 10 allowlist tests; actual
+PostgreSQL-engine synthetic fixture matches supplied counts (17 panels, 83 breakers,
+139 circuits, 240 waypoints, 1091 load-lineage rows, 182 requirements, 890 eligibility,
+517 LinkIQ rows, 475 FLW rows, 400 audit rows). Full JSON content/multiplicity,
+waypoint ordering, changed evidence/duplicate network keys, role denial, grants and
+replay refusal tested. PGlite timing samples before 812/813/813 ms; after
+314/326/311 ms. These are synthetic engine timings, not Production latency.
+
+Existing GitHub workflows run actual Chromium and PostgreSQL16/PostGIS gates;
+results and exact candidate SHA belong in the PR before operator handoff. Local
+Chromium download was unavailable; do not claim local browser PASS. Reuse existing
+8898 current-Production-clone preview, original laptop review worktree and saved
+source paths; apply only the new migration/validation and no GIS source import.
+Check port/source-lock ownership, wait for BROWSER REVIEW READY, review rapid panel
+switching and controller selections alongside retained notes/slots/reports/states,
+then CLEAN EXIT and return to C:\lor\ImportExport\VSCode. Read-only validation prints
+current clone timing and actual counts; field edits may legitimately change counts.
+Production remains unchanged; protected PR457 Production spot check still pending.
+Broader Part 2 features and screen-specific API partitioning remain later work.
