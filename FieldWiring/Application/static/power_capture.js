@@ -40,6 +40,37 @@
     edit = null,
     pending = null,
     loading = false;
+  // Tab-local navigation context only; installed inventory remains in the shared model.
+  const panelViewKey = "msb-power-panel-view:" + new URL(".",location.href).pathname;
+  let restoredPanelView=false;
+  function savedPanelView() {
+    try {const v=JSON.parse(sessionStorage.getItem(panelViewKey));return v && Number.isSafeInteger(v.panelId) ? v : null;}
+    catch (_) {return null;}
+  }
+  function savePanelView() {
+    if(mode!=="panels" || !panelId) return;
+    const view={panelId:Number(panelId),filter:$("find").value,scrollY:window.scrollY,
+      open:Array.from(document.querySelectorAll('#panel-detail details[open][data-view-key]'),n=>n.dataset.viewKey)};
+    try {sessionStorage.setItem(panelViewKey,JSON.stringify(view));} catch (_) { /* URL still preserves panel identity. */ }
+    const url=new URL(location.href);url.searchParams.set("panel",String(panelId));url.searchParams.delete("circuit");
+    history.replaceState(history.state,"",url);
+  }
+  window.addEventListener("pagehide",savePanelView);
+  const navigation=document.querySelector('nav[aria-label="Field wiring screens"]');
+  for(const link of navigation.querySelectorAll('a')) {
+    const linkMode=({circuits:"panels",waypoints:"waypoints",equipment:"equipment","cable-tests":"tests"})[link.getAttribute('href')];
+    if(linkMode===mode) link.setAttribute('aria-current','page');
+  }
+  if(mode!=="panels") {
+    const previous=savedPanelView();
+    if(previous) {
+      const back=el("a","Back to panel",$("status").parentNode);
+      back.className="power-return power-navigation";
+      back.href="circuits?panel="+previous.panelId;
+      $("status").after(back);
+      navigation.querySelector('a[href="circuits"]').href=back.href;
+    }
+  }
   function el(tag, text, parent) {
     const n = document.createElement(tag);
     if (text !== undefined) n.textContent = text;
@@ -49,6 +80,7 @@
   function button(text, action, parent, write = false) {
     const n = el("button", text, parent);
     n.type = "button";
+    n.className = "power-secondary";
     n.disabled = write && !data?.access?.can_edit;
     n.onclick = action;
     return n;
@@ -136,11 +168,30 @@
     try {
       data = await api("api/power");
       const query=new URLSearchParams(location.search);
+      const previous=mode==="panels" && !restoredPanelView ? savedPanelView() : null;
+      const requestedPanel=Number(query.get("panel"));
+      if(mode==="panels" && !restoredPanelView && panel(requestedPanel)) {
+        panelId=requestedPanel;
+        if(previous?.panelId===panelId && typeof previous.filter==="string") $("find").value=previous.filter;
+      }
       if(mode==="panels" && query.get("circuit") && !$("panel-detail").dataset.linkOpened) {
         const target=circuit(Number(query.get("circuit")));
         if(target) {panelId=target.site_panel_id;render();if(data.access.can_edit) openAssignments(target);$("panel-detail").dataset.linkOpened="1";}
       }
       render();
+      if(mode==="panels" && !restoredPanelView) {
+        restoredPanelView=true;
+        if(previous?.panelId===panelId && !query.get("circuit")) {
+          for(const d of document.querySelectorAll('#panel-detail details[data-view-key]'))
+            d.open=Array.isArray(previous.open) && previous.open.includes(d.dataset.viewKey);
+          requestAnimationFrame(()=>window.scrollTo(0,Number.isFinite(previous.scrollY)?Math.max(0,previous.scrollY):0));
+        }
+      }
+      const back=document.querySelector('.power-return');
+      if(back) {
+        const previousPanel=panel(Number(new URL(back.href).searchParams.get('panel')));
+        if(previousPanel) back.textContent=`Back to ${previousPanel.panel_name}`; else {back.remove(); navigation.querySelector('a[href^="circuits"]').href="circuits";}
+      }
       const requested=new URLSearchParams(location.search).get("waypoint");
       if(requested && !$("waypoint-detail").dataset.linkOpened) {
         if(mode==="equipment") {$("detail-waypoint").value=requested;render();} else viewWaypoint(Number(requested));$("waypoint-detail").dataset.linkOpened="1";
@@ -195,6 +246,7 @@
           () => {
             panelId = p.site_panel_id;
             render();
+            savePanelView();
           },
           $("panels"),
         );
@@ -222,7 +274,7 @@
         box,
       );
       el("p",`Panel plan — show: ${selected.show_desired_state}; off-season: ${selected.restoration_desired_state}. Actual condition requires separate field evidence.`,box);
-      const unresolved=el("details",undefined,box);
+      const unresolved=el("details",undefined,box); unresolved.dataset.viewKey="unresolved";
       el("summary","Unresolved Display loads (all locations)",unresolved);
       (data.load_lineage || []).filter(x=>x.load_status!=="RECORDED_BASIS_UNVERIFIED").forEach(x=>el("p",`Display ${x.display_id} ${x.display_name} · Controller ${x.controller_id ?? "Unknown"} · ${x.load_status}`,unresolved));
       const board = el("section", undefined, detail); board.className = "power-panelboard";
@@ -244,7 +296,7 @@
           const leg=button(`Circuit ${c.circuit_code} — ${names.join(", ") || "Assign waypoints"}`,()=>openAssignments(c),row,true);
           const load=(data.circuit_loads || []).find(x=>x.site_power_circuit_id===c.site_power_circuit_id);
           if (load) {
-            const loads=el("details",undefined,row); loads.className="power-load";
+            const loads=el("details",undefined,row); loads.className="power-load"; loads.dataset.viewKey="load:"+c.site_power_circuit_id;
             el("summary",`Display load: ${load.recorded_display_amps == null ? "Unknown" : load.recorded_display_amps+" A"} · incomplete`,loads);
             el("p",`Breaker rating: ${load.rated_amps ?? "Unknown"} A per pole. Nominal headroom: ${load.nominal_headroom_amps ?? "Unknown"} A; nominal utilization: ${load.nominal_utilization_percent == null ? "Unknown" : Number(load.nominal_utilization_percent).toFixed(1)+"%"}. Basis/voltage unverified; excludes unresolved loads. This is not usable capacity.`,loads);
             el("p","Controller/auxiliary consumption and field demand are unknown. Conductor, receptacle, shared-neutral and continuous-load limits require verification.",loads);
@@ -252,12 +304,12 @@
           }
           leg.className="power-circuit-leg"; leg.dataset.circuitId=c.site_power_circuit_id;
           for (const id of [...new Set(paths(c.site_power_circuit_id).map(x=>x.waypoint?.id).filter(Boolean))]) {
-            button(`Open ${waypointName(id)} / equipment`,()=>viewWaypoint(id),row);
+            button(`Open ${waypointName(id)} / equipment`,()=>viewWaypoint(id),row).className="power-navigation";
           }
         });
         el("p", `Season: ${b.show_desired_state} · Non-season: ${b.restoration_desired_state}`, row);
         const impact = (data.breaker_impacts || []).find(x => x.breaker.site_power_breaker_id === b.site_power_breaker_id);
-        const details = el("details", undefined, row);
+        const details = el("details", undefined, row); details.dataset.viewKey="impact:"+b.site_power_breaker_id;
         el("summary", "Connections · unverified", details);
         el("p", "Recorded endpoints are not proof of electrical isolation.", details);
         if (impact?.missing_pole_membership) el("p", "Incomplete breaker/circuit membership", details);
@@ -298,10 +350,10 @@
           drawBreaker(breaker,cell);
         } else button(`Position ${pos} · Add breaker`,()=>openSchedule({site_panel_id:panelId,breaker_role:"BRANCH",panel_positions:[pos],pole_count:1}),cell,true);
       }
-      const unplaced=el("details",undefined,board);
+      const unplaced=el("details",undefined,board); unplaced.dataset.viewKey="unplaced";
       el("summary","Unknown or nonstandard positions — reconcile",unplaced);
       breakers.filter(b=>b.breaker_role!=="MAIN" && (!b.panel_positions?.length || !conventional(b))).forEach(b=>drawBreaker(b,unplaced));
-      const legacy=el("details",undefined,detail);
+      const legacy=el("details",undefined,detail); legacy.dataset.viewKey="legacy";
       el("summary","Reconcile circuits with unknown breaker membership",legacy);
       button("Reconcile legacy circuit",()=>open("circuit",{site_panel_id:panelId}),legacy,true);
       data.circuits
@@ -482,7 +534,7 @@
   }
   function viewWaypoint(waypointId) {
     if (!waypointId || !wp(waypointId)) return;
-    if (mode!=="waypoints") { location.href=`waypoints?waypoint=${waypointId}`; return; }
+    if (mode!=="waypoints") { savePanelView(); location.href=`waypoints?waypoint=${waypointId}`; return; }
     const section=$("waypoint-detail");
     section.open=true;
     $("detail-waypoint").value=String(waypointId);
@@ -602,7 +654,7 @@
   );
   const ratingOptions = () => options(
     [...new Set([
-      15,20,30,40,50,90,100,200,
+      10,15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200,
       ...data.breakers.map(b => Number(b.rated_amps)).filter(x => Number.isFinite(x) && x > 0),
     ])].sort((a,b) => a-b).map(x => [x, String(x)]),
   );

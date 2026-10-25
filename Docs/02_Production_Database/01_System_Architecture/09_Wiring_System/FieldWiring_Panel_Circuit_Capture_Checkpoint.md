@@ -614,3 +614,18 @@ because this local runtime denies Chromium's Unix socket; no browser PASS claime
 until that workflow completes. Exact candidate and CI results belong to the PR.
 Preview must clone current Production, apply only the incremental migration and
 its read-only validation, and use existing saved panel data. No GPX/FLW reimport.
+
+## October 25 — V0.4.22 follow-up candidate
+
+Greg reviewed 70c856ce and confirmed CLEAN EXIT, port 8898 and GIS source lock
+available. Further changes requested; this is not acceptance for deployment.
+V0.4.22-panel-navigation adds Greg's supplied 19 breaker ratings (10–200 A),
+preserves additional saved values without duplicates, restores panel context on
+waypoint return, aligns screen navigation and distinguishes gray settings from
+teal navigation actions in both themes. Custom rating entry was superseded by
+Greg's explicit supplied list. Existing count migration remains the only migration.
+Browser regression covers both return routes, filter/disclosure/scroll restoration,
+rating choices and action colors. Exact CI evidence and preview SHA belong to PR455.
+Production and original GIS sources remain untouched; preview uses a fresh current
+Production clone, not the initial source importer. The observed 142M dump has not
+yet been attributed to measured relation sizes; no source evidence is removed.

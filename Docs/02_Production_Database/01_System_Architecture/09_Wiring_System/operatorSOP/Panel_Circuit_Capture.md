@@ -199,7 +199,7 @@ eligible controllers from other stages so the network can continue across stages
 sorting never changes the recorded chain or a pending selection.
 
 
-## Pending panel-entry correction — V0.4.21 candidate
+## Pending panel-entry correction — V0.4.22 candidate
 
 In Panel setup, **Number of slots** is the actual numbered branch-position count,
 excluding the main breaker. A two-pole breaker occupies two slots. Enter the
@@ -210,7 +210,12 @@ installed breakers. The system rejects reductions below an occupied slot.
 The panel list labels MSB ownership in light blue and City ownership in light
 orange. The selected panel has a separate outline. Blue Save/Add buttons perform
 primary actions; outlined pale-blue circuit buttons open waypoint assignments;
-neutral buttons open settings/navigation or cancel. Breaker cards group their
+light-gray buttons open settings or cancel; teal buttons open waypoint/equipment details. Breaker cards group their
 circuit legs. Load and connection details remain available in disclosures.
 Colors never establish electrical state or safe isolation. This correction is
 pending candidate review and deployment; the current live release is V0.4.20.
+
+The breaker rating picker includes 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70,
+80, 90, 100, 110, 125, 150, 175 and 200 A, plus existing saved ratings without
+duplicates. Back to panel and browser Back restore the selected panel, filter,
+expanded details and scroll position within the same browser tab.

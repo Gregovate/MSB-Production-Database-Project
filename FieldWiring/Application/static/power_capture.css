@@ -169,3 +169,14 @@ html[data-theme="dark"] #panels button.power-selected {border-left-color:var(--b
 /* Disabled appearance must remain distinct even for highlighted actions. */
 .power-primary:disabled, #add-panel:disabled, #editor #save:disabled,
 .power-panelboard button:disabled {opacity:.45;cursor:not-allowed;}
+
+/* Function colors are independent of ownership and electrical condition. */
+:root {--power-secondary:#e7ebf0;--power-secondary-border:#a9b4c0;--power-nav-bg:#dff3ef;--power-nav-ink:#15463d;--power-nav-border:#61958b;}
+html[data-theme="dark"] {--power-secondary:#344154;--power-secondary-border:#8b9aaf;--power-nav-bg:#214b47;--power-nav-ink:#e2faf4;--power-nav-border:#7caf9f;}
+.power-secondary, #cancel, #reload, #theme-toggle {background:var(--power-secondary);color:var(--ink);border-color:var(--power-secondary-border);}
+.power-navigation, a.power-navigation:visited {display:inline-block;background:var(--power-nav-bg);color:var(--power-nav-ink);border:1px solid var(--power-nav-border);border-radius:7px;padding:.5rem .7rem;text-decoration:none;font-weight:600;}
+.power-return {margin:.3rem 0 .8rem;}
+.power-nav {max-width:1120px;margin:0 auto;padding:12px 16px;display:flex;flex-wrap:wrap;gap:.5rem;}
+.power-nav a,.power-nav a:visited {background:var(--power-secondary);color:var(--ink);border:1px solid var(--power-secondary-border);border-radius:7px;padding:.45rem .65rem;text-decoration:none;}
+.power-nav a[aria-current="page"] {background:var(--soft);border-color:var(--blue);font-weight:700;}
+.power-nav a:focus-visible,.power-navigation:focus-visible {outline:3px solid var(--blue);outline-offset:2px;}

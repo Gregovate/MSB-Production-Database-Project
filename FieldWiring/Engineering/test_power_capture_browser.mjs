@@ -294,6 +294,12 @@ try {
   assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridColumn),"2");
   const savedIds=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 ORDER BY breaker_pole",[breakerId])).rows;
   await groupedRow.getByRole("button",{name:"Breaker settings",exact:true}).click();
+  const breakerRatings = await dialog.locator('[name=rated_amps] option').evaluateAll(nodes => nodes.map(n=>Number(n.value)).filter(n=>n>0));
+  for (const amps of [10,15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200]) {
+    assert.ok(breakerRatings.includes(amps), `Missing supplied breaker rating ${amps}`);
+  }
+  assert.deepEqual(breakerRatings, [...new Set(breakerRatings)].sort((a,b)=>a-b));
+  assert.equal(await dialog.getByRole("button",{name:"Use rating",exact:true}).count(),0);
   await dialog.locator("[name=show_desired_state]").selectOption("OFF");
   failNext=true;
   await dialog.locator("#save").click();
@@ -659,6 +665,31 @@ try {
   await dialog.waitFor({state:"hidden"});
   await page.goto(base);
   await page.getByText(/Revision \d+/).waitFor();
+  // Leaving a populated panel must preserve its context through either return action.
+  await page.locator("#find").fill("A5");
+  await page.locator("#panels").getByRole("button",{name:"PANEL A5-00",exact:true}).click();
+  const disclosure=page.locator('[data-view-key="unresolved"]');
+  await disclosure.evaluate(e=>e.open=true);
+  const openWaypoint=page.locator("#panel-detail").getByRole("button",{name:/^Open .* \/ equipment$/}).first();
+  for (const backMethod of ["browser","link"]) {
+    await openWaypoint.scrollIntoViewIfNeeded();
+    const previousScroll=await page.evaluate(()=>window.scrollY);
+    await openWaypoint.click();
+    await page.getByText(/Revision \d+/).waitFor();
+    const back=page.getByRole("link",{name:"Back to PANEL A5-00",exact:true});
+    await back.waitFor();
+    if(backMethod==="browser") await page.goBack(); else await back.click();
+    await page.getByText(/Revision \d+/).waitFor();
+    assert.equal(await page.locator("#find").inputValue(),"A5");
+    assert.equal(await disclosure.evaluate(e=>e.open),true);
+    await page.waitForFunction(y=>Math.abs(window.scrollY-y)<5,previousScroll);
+    assert.ok(await openWaypoint.count());
+  }
+  const settings=page.locator("#panel-detail").getByRole("button",{name:"Breaker settings",exact:true}).first();
+  for(const theme of ["light","dark"]) {
+    await page.locator("html").evaluate((e,t)=>e.dataset.theme=t,theme);
+    assert.notEqual(await settings.evaluate(e=>getComputedStyle(e).backgroundColor),await openWaypoint.evaluate(e=>getComputedStyle(e).backgroundColor));
+  }
   await page.screenshot({path:"/tmp/power-panel-desktop.png",fullPage:true});
   await page.getByRole("button", {name:/Light mode|Dark mode/}).click();
   const changedTheme = await page.locator("html").getAttribute("data-theme");
