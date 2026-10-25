@@ -771,3 +771,28 @@ colors in both themes and mobile width. Extend only the existing preview SQL
 allowlist and workflow tests. Review on a fresh disposable current-Production clone
 with Greg's populated panels; use only the incremental migration, no initial
 migrations or GPX/FLW intake. Production remains unchanged by this engineering.
+
+### October 25 follow-up review: ratings, return navigation and action colors
+
+Greg reviewed 70c856ce on a current-Production clone and returned CLEAN EXIT,
+port/source lock free. Greg subsequently specified the exact default breaker sizes:
+10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110, 125, 150,
+175, 200 A. Use this supplied list instead of a custom-size entry. Existing numeric
+rated_amps remains authoritative; retain existing saved ratings as additional
+numerically sorted, deduplicated choices. Do not silently change unknown or
+existing breaker ratings. No new catalog or installed inventory is created.
+
+Return from waypoint/equipment must restore the selected panel, search filter,
+disclosure state and scroll position, including browser Back. Use tab-local view
+state/URL context, not database fields or an independent navigation system. Provide
+an explicit Back to panel action and align screen links with the main content.
+Invalid/stale stored context must degrade safely. No external redirect parameter.
+Breaker settings and secondary actions use light gray; waypoint/equipment opening
+uses a distinct teal navigation treatment; Add/Save retain blue. Dark mode uses
+readable equivalent colors. Ownership colors and slot configuration remain intact.
+
+Observed clone dump increased from about 9.8M to 142M after Production source
+installation. Retained GPX document/observations/geometry and FLW original results
+are plausible contributors, not measured attribution. Add a read-only relation/
+evidence-size query; do not delete evidence, vacuum, rewrite, or change retention
+based only on dump size. No Production mutation for this investigation.
