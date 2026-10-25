@@ -109,7 +109,7 @@ def test_controller_inventory_supports_exact_controller_deep_link_and_exposes_pr
     base_script = (BASE_DIR / "controllers.js").read_text(encoding="utf-8")
     script = (BASE_DIR / "static" / "controllers_detail_extras.js").read_text(encoding="utf-8")
 
-    assert "controllers.js?v=2026-10-25-r15" in html
+    assert "controllers.js?v=2026-10-25-r30b" in html
     assert "controllers_detail_extras.js" in html
     assert "get('controller_id')" in base_script
     assert "searchInput.value = requestedControllerId" in base_script
