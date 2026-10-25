@@ -362,6 +362,7 @@ try {
   await page.getByRole("button",{name:"Add panel",exact:true}).click();
   await dialog.locator('[name=panel_name]').fill("Small panel");
   await dialog.locator('[name=branch_position_count]').fill("18"); await save();
+  await page.locator("#panels").getByRole("button",{name:"Small panel",exact:true}).click();
   assert.equal(await page.locator('.power-slot-grid .power-slot').count(),18);
   assert.equal(await page.getByRole("button",{name:"Position 19 · Add breaker",exact:true}).count(),0);
   assert.deepEqual((await db.query("SELECT (SELECT count(*) FROM ref.site_power_breaker)::int breakers,(SELECT count(*) FROM ref.site_power_circuit)::int circuits")).rows[0],hardwareBefore);
