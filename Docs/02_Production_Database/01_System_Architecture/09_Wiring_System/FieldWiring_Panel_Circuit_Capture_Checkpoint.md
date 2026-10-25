@@ -562,3 +562,21 @@ and Windows transport/parse proof. Exact-head CI pending at preparation.
 Production remains ONLINE and unchanged. No claim of server release success until
 a retained host receipt proves snapshot, migration, source validation/promotion
 and ONLINE health. A committed/uncertain failure retains maintenance and report.
+
+
+### Release adapter integration proof and final schema gate
+
+Tooling head 22e79b7b5488ec56643627908e3ebaf307e8aea8 passed all four existing
+CI workflows: Setup, Site reference/PostGIS, release tooling, Engineering Compliance.
+The actual ephemeral PostgreSQL test proves container-local admin connection,
+initial GPX/FLW load, archive restoration and repeat-install refusal. Earlier CI
+caught socket symlink traversal, string/Path normalization and missing ExpertGPS
+labels in the synthetic fixture; all corrected before host execution.
+The final preflight additionally compares existing site_network column types,
+nullability and generated-identity mode against the operator's catalog receipt.
+Local profile/default-runner failure checks: 60 passed. Exact final-head checks
+are recorded in PR #319 before merge; no application bytes change.
+Broader Setup/Acceptance: 153 passed, 2 skipped, six historical #88 report-contract
+failures, each reproduced on the approved application baseline. No #88 report
+implementation changes are part of this release. Production deployment and
+protected live-browser closeout still require the retained host receipt.

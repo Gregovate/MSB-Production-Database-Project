@@ -92,3 +92,16 @@ def test_source_profile_does_not_relax_disposable_gate():
     source=(ROOT.parents[1]/'Database/EngineeringTools/accept_site_sources.py').read_text()
     assert "conn.info.dbname == 'msb_setup_browser_preview'" in source
     assert 'def deploy(' not in (ROOT/'setup_171_release.py').read_text()
+
+
+@pytest.mark.parametrize('identity',['','d'])
+def test_existing_network_identity_drift_stops_preflight(tmp_path,identity):
+    d=site.SiteDeploy(MANIFEST,tmp_path/'report')
+    value=dict(tables=['ref.site_network'],functions=0,networks=27,manager=True,postgis='3.5.2',
+      network_columns=[['site_network_id','bigint',True,identity],
+        ['network_code','text',True,''],['network_kind','text',True,''],['notes','text',False,'']])
+    d.sql=lambda query:json.dumps(value)
+    with pytest.raises(Stop,match='baseline differs'):d.database_preflight()
+    assert not d.maintenance_started
+    value['network_columns'][0][3]='a'
+    d.database_preflight()

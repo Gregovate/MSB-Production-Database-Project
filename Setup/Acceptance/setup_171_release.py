@@ -67,11 +67,18 @@ class SiteDeploy(Deploy):
               AND c.relname ~ '^(site_|linkiq_)'),
             'functions',(SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
               WHERE n.nspname='ref' AND p.proname ~ '^site_'),
+            'network_columns',(SELECT json_agg(json_build_array(attname,
+              format_type(atttypid,atttypmod),attnotnull,attidentity) ORDER BY attnum)
+              FROM pg_attribute WHERE attrelid='ref.site_network'::regclass
+                AND attnum>0 AND NOT attisdropped),
             'networks',(SELECT count(*) FROM ref.site_network),
             'manager',(SELECT can_manage_setup FROM ref.setup_browser_capabilities('gliebig@sheboyganlights.org')),
             'postgis',(SELECT extversion FROM pg_extension WHERE extname='postgis'));
           ROLLBACK;"""))
-        require(value==dict(tables=['ref.site_network'],functions=0,networks=27,manager=True,postgis='3.5.2'),
+        require(value==dict(tables=['ref.site_network'],functions=0,networks=27,manager=True,postgis='3.5.2',
+                network_columns=[['site_network_id','bigint',True,'a'],
+                  ['network_code','text',True,''],['network_kind','text',True,''],
+                  ['notes','text',False,'']]),
                 'Initial database baseline differs; do not overwrite or replay')
 
     def source_command(self, probe=False):
