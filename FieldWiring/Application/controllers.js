@@ -3,6 +3,7 @@ const stageFilter = document.getElementById('stage-filter');
 const statusFilter = document.getElementById('status-filter');
 const modelFilter = document.getElementById('model-filter');
 const assignmentFilter = document.getElementById('assignment-filter');
+const controllerSort = document.getElementById('controller-sort');
 const controllerList = document.getElementById('controller-list');
 const controllerCount = document.getElementById('controller-count');
 const detail = document.getElementById('detail');
@@ -10,6 +11,8 @@ const detailEmpty = document.getElementById('detail-empty');
 const themeToggle = document.getElementById('theme-toggle');
 
 let selectedControllerId = null;
+let currentControllers = [];
+const controllerNameOrder = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 let filtersLoaded = false;
 let debounceTimer = null;
 
@@ -128,7 +131,19 @@ function renderControllerList(controllers) {
     return;
   }
 
-  controllerList.innerHTML = controllers.map(item => {
+  // Sort a copy of the filtered response. Never reload the selected editor or
+  // change network chain order when the operator changes list presentation.
+  const ordered = [...controllers].sort((a, b) => {
+    if (controllerSort.value === 'display') {
+      const aName = Number(a.assignment_count) > 0 ? String(a.display_names || '').trim() : '';
+      const bName = Number(b.assignment_count) > 0 ? String(b.display_names || '').trim() : '';
+      if (Boolean(aName) !== Boolean(bName)) return aName ? -1 : 1;
+      const byName = controllerNameOrder.compare(aName, bName);
+      if (byName) return byName;
+    }
+    return Number(a.controller_id) - Number(b.controller_id);
+  });
+  controllerList.innerHTML = ordered.map(item => {
     const active = item.controller_id === selectedControllerId ? ' active' : '';
     const assignmentText = Number(item.assignment_count) === 0
       ? 'Unassigned'
@@ -157,6 +172,7 @@ function renderControllerList(controllers) {
 }
 
 async function loadControllers() {
+  controllerSort.disabled = true;
   controllerList.innerHTML = '<div class="empty-state">Loading controllers…</div>';
   try {
     const response = await fetch(`api/controllers?${queryString()}`);
@@ -164,7 +180,9 @@ async function loadControllers() {
     if (!response.ok) throw new Error(payload.error || 'Controller Inventory could not be loaded.');
     populateFilters(payload);
     renderSummary(payload.summary || {});
-    renderControllerList(payload.controllers || []);
+    currentControllers = payload.controllers || [];
+    renderControllerList(currentControllers);
+    controllerSort.disabled = false;
   } catch (error) {
     controllerList.innerHTML = `<div class="error">${esc(error.message)}</div>`;
   }
@@ -297,6 +315,7 @@ function scheduleRefresh() {
   debounceTimer = setTimeout(loadControllers, 220);
 }
 
+controllerSort.addEventListener('change', () => renderControllerList(currentControllers));
 searchInput.addEventListener('input', scheduleRefresh);
 stageFilter.addEventListener('change', loadControllers);
 statusFilter.addEventListener('change', loadControllers);

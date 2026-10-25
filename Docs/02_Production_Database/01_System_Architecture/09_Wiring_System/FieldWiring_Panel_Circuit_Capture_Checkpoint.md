@@ -457,3 +457,16 @@ The choice remains active during filtering/refresh in this page. Sorting must on
 rerender the list, retaining selected controller and unsaved detail/connection edits.
 Do not change stage filters, network chain order, assignments, schemas or API.
 Reuse the existing browser regression and disposable preview mechanism.
+
+
+### V0.4.19-controller-sort implementation
+
+The existing Controller Inventory list now offers Controller ID / Display name.
+The filtered response is sorted without fetching or rebuilding the detail editor;
+natural name comparison, unassigned-last and ID ties are explicit. List refresh
+retains the selected sort. No SQL/API/topology changes. Local FieldWiring regression:
+220 passed. Existing browser workflow extended for natural/tied/unassigned ordering,
+stage scope, selected controller, unsaved network/power edits and refresh retention.
+Exact-head browser and required CI pending at preparation; PR #319 holds final
+candidate SHA/run results and the existing disposable handoff. V0.4.18 display names
+accepted by Greg with screenshot and CLEAN EXIT; V0.4.19 sort acceptance pending.

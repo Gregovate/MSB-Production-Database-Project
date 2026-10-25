@@ -423,6 +423,45 @@ try {
   await page.locator("#deployment-outlet").selectOption("12");
   const movedCircuit=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE circuit_code='18'")).rows[0].site_power_circuit_id;
   await page.locator("#deployment-circuit").selectOption(String(movedCircuit));
+  // List presentation must retain stage scope, selection and unsaved port edits.
+  await page.evaluate(() => {
+    currentControllers = [
+      {controller_id:1094, assignment_count:1, display_names:'WF-Tree-10'},
+      {controller_id:1138, assignment_count:1, display_names:'WF-Tree-2'},
+      {controller_id:1090, assignment_count:1, display_names:'wf-tree-2'},
+      {controller_id:1000, assignment_count:0, display_names:null},
+      {controller_id:101, assignment_count:1, display_names:'WF-Tree-1'}
+    ];
+    stageFilter.add(new Option('Who Forest', '77'));
+    stageFilter.value = '77';
+    renderControllerList(currentControllers);
+  });
+  const listIds = () => page.locator('#controller-list .controller-row').evaluateAll(rows => rows.map(r => Number(r.dataset.controllerId)));
+  assert.deepEqual(await listIds(), [101,1000,1090,1094,1138]);
+  await page.locator('#controller-sort').selectOption('display');
+  assert.deepEqual(await listIds(), [101,1090,1138,1094,1000]);
+  assert.equal(await page.locator('#stage-filter').inputValue(), '77');
+  assert.equal(await page.locator('#controller-list .active').getAttribute('data-controller-id'), '101');
+  assert.equal(await page.locator('#deployment-network').inputValue(), '11');
+  assert.equal(await page.locator('#deployment-outlet').inputValue(), '12');
+  assert.equal(await page.locator('#deployment-circuit').inputValue(), String(movedCircuit));
+  await page.locator('#controller-sort').selectOption('id');
+  assert.deepEqual(await listIds(), [101,1000,1090,1094,1138]);
+  await page.locator('#controller-sort').selectOption('display');
+  // Refresh keeps the chosen order and active detail; the server owns filtering.
+  await page.route('**/api/controllers?*', route => {
+    assert.equal(new URL(route.request().url()).searchParams.get('stage_id'), '77');
+    return route.fulfill({json:{controllers:[
+      {controller_id:1094,assignment_count:1,display_names:'WF-Tree-10'},
+      {controller_id:1138,assignment_count:1,display_names:'WF-Tree-2'}
+    ]}});
+  });
+  await page.locator('#refresh-button').click();
+  await page.waitForFunction(() => document.querySelector('#controller-count').textContent === '2 shown');
+  assert.deepEqual(await listIds(), [1138,1094]);
+  assert.equal(await page.locator('#controller-sort').inputValue(), 'display');
+  assert.equal(await page.locator('#deployment-network').inputValue(), '11');
+  await page.unroute('**/api/controllers?*');
   failNext=true;
   await page.locator("#deployment-save").click();
   await page.getByText(/Save outcome unknown/).waitFor();

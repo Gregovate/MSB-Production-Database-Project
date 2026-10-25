@@ -183,3 +183,12 @@ ID, for example CTRL 1094 with WF-Tree-08. Controller choices and the chain incl
 both ID and name. Names come from current Display assignments, not controller-number
 order or the reusable wiring-source template. Multiple assignments are listed;
 **No display assigned** is explicit. These labels do not alter any wiring or assignment.
+
+
+### Controller list order
+
+Use **Sort by** above the left Controller list to switch between **Controller ID**
+and **Display name**. Display names use natural order (Tree 2 before Tree 10);
+unassigned controllers appear last. Stage/search filters still apply. Changing
+the sort keeps the selected controller and unsaved connections open and does not
+change the network chain. The choice remains active until the page is reopened.
