@@ -37,7 +37,7 @@ def main():
             c.execute('INSERT INTO RecordData VALUES (?,?)',(1,json.dumps({'metadata':{'uuid':uuid,'testId':'RA-00 TO RA-01 REG','timestamp':'2023-11-01T07:03:42'},'settings':{},'sysinfo':{}}).encode()))
         command=['sudo','env','PYTHONDONTWRITEBYTECODE=1',sys.executable,
                  str(root/'Setup/Acceptance/site_171_source_install.py'),
-                 '--root',str(root),'--socket',f'/proc/{pid}/root/var/run/postgresql',
+                 '--root',str(root),'--socket',f'/proc/{pid}/root/run/postgresql',
                  '--gpx',str(gpx),'--flw',str(flw),
                  '--gpx-sha',hashlib.sha256(gpx.read_bytes()).hexdigest(),
                  '--flw-sha',hashlib.sha256(flw.read_bytes()).hexdigest()]

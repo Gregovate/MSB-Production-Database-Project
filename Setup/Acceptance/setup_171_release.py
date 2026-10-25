@@ -79,7 +79,11 @@ class SiteDeploy(Deploy):
         pid=self.run(['sudo','docker','inspect','--format','{{.State.Pid}}','msb-postgres'])
         require(pid.isdigit() and int(pid)>1,'Invalid PostgreSQL container PID')
         directory=self.sql('SHOW unix_socket_directories;')
-        require(directory=='/var/run/postgresql','Unreviewed Unix socket directory')
+        require(directory in ('/var/run/postgresql','/run/postgresql'),'Unreviewed Unix socket directory')
+        # Resolve absolute symlinks inside the container, not through the host's
+        # /proc root traversal (/var/run commonly links to absolute /run).
+        directory=self.run(['sudo','docker','exec','msb-postgres','readlink','-f',directory])
+        require(directory in ('/var/run/postgresql','/run/postgresql'),'Socket path escaped reviewed directory')
         command=['sudo','env','PYTHONDONTWRITEBYTECODE=1',PYTHON,str(Path(__file__).with_name('site_171_source_install.py')),
                  '--root',self.worktree,'--socket',f'/proc/{pid}/root{directory}',
                  '--gpx',str(CACHE/(GPX+'.gpx')),'--flw',str(CACHE/(FLW+'.flw')),
