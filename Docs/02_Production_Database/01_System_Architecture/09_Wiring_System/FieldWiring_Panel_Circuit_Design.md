@@ -796,3 +796,45 @@ installation. Retained GPX document/observations/geometry and FLW original resul
 are plausible contributors, not measured attribution. Add a read-only relation/
 evidence-size query; do not delete evidence, vacuum, rewrite, or change retention
 based only on dump size. No Production mutation for this investigation.
+
+### October 25 — accepted PR455 incremental Production release
+
+Greg accepted exact application 0fd7fabd48dce287722112405bafb8e3aa65f637,
+V0.4.22-panel-navigation, with CLEAN EXIT and requested Production preparation.
+PR455 merged at 6a421e47c80bd4e1976a67137fe1686bfa92caac. Fresh read-only
+host evidence confirms both live checkouts at 439ab237beaae4ac648e7590f824a774969cd84f,
+clean; FieldWiring V0.4.20, Setup V0.3.91, Procedures V0.1.0 healthy; controller
+ONLINE, backups replicated, source lock and port available. Slot column absent;
+command body MD5 49ed9c2fda6accb89dd9c72966aa4b78 matches migration guard.
+Observed inventory: 17 panels, 55 breakers, 92 circuits, 240 waypoints. Counts
+are observations, not fixed deployment constraints: legitimate edits may continue.
+
+Use a narrowly scoped panel-release profile of existing setup_maintenance_deploy.py
+and committed-byte transport, with one SCP and foreground SSH. No new deployment
+or maintenance mechanism. The profile pins accepted application/tree, current live
+rollback identities, exact incremental migration and validation blobs, and helper
+hashes. Production application source is the accepted SHA, proven merged; tooling
+may be a later merged commit. Setup checkout remains unchanged. The initial
+PR319 installer and initial migrations/source loads are prohibited for this upgrade.
+
+Before maintenance, repeat live identity/health/backups/baseline gates, acquire
+existing deployment and preview-source locks, and run detached FieldWiring and
+Procedures regression. Under the existing controller: freeze, stable business-row
+fingerprints, validated rollback snapshot, only 171_panel_slot_count.sql,
+171_panel_slot_count_validation.sql, preservation equality, shared source promotion,
+final frozen proof, OFF and exact health/negative-auth proof. Fingerprints preserve
+all ref/ops/lor_snap rows and Directus authority rows; exclude only the new nullable
+branch_position_count key from existing panel row projection. Hash each row before
+aggregation so immutable source payloads do not form a huge aggregate string.
+Do not compare fingerprints across ONLINE edits. Do not infer actual panel counts
+from breaker amperage or backfill counts during release.
+
+Failure retains the existing controller fence, snapshot and report for review;
+never automatically retry, restore, call OFF, remove source evidence or replay the
+initial importer. The wrapper defaults to preflight; deployment requires explicit
+-Deploy after authorization. Production remains unchanged during preparation.
+
+Storage evidence: database 413 MB; ops.site_source_observation 111 MB and
+ops.linkiq_test 79 MB dominate newly retained source evidence. These are physical
+relation sizes, not exact attribution of the compressed 142M dump. No retention
+change is part of this release. All source evidence remains preserved.
