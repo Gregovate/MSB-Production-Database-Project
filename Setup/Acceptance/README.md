@@ -1,5 +1,12 @@
 # Setup Acceptance Tooling
 
+## #171 accepted panel correction — Production preparation
+
+[PR455 incremental panel-slot release](Setup_171_Panel_Production_Release.md)
+records accepted V0.4.22 and the existing-controller release profile. Initial GIS
+installation must not be replayed. Production execution remains pending.
+
+
 ## #205 current non-mail KPI and Report Work candidate
 
 [V0.3.79 source-tested #205 review: shared sticky current Setup Day beside Find Scheduled Task; full integrated six-defect/cross-Catalog corrections, migration 075/076 and both rollback checks, one disposable browser clone; operator acceptance pending](Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Daily email/Directus integration is parked separately and excluded. Not a Production deployment or browser acceptance.

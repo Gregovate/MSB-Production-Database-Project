@@ -629,3 +629,25 @@ rating choices and action colors. Exact CI evidence and preview SHA belong to PR
 Production and original GIS sources remain untouched; preview uses a fresh current
 Production clone, not the initial source importer. The observed 142M dump has not
 yet been attributed to measured relation sizes; no source evidence is removed.
+
+## October 25 — PR455 browser accepted; Production preparation
+
+Greg reported PR455 PASS and CLEAN EXIT for exact
+0fd7fabd48dce287722112405bafb8e3aa65f637. PR455 merged as
+6a421e47c80bd4e1976a67137fe1686bfa92caac. Fresh read-only host evidence:
+clean shared and Setup HEAD 439ab237beaae4ac648e7590f824a774969cd84f;
+FieldWiring V0.4.20-picker-sort, Setup V0.3.91-integrated-power, Procedures V0.1.0;
+controller ONLINE/unfenced, all services healthy and NAS replication current;
+preview port/source lock available. Migration baseline matches: count column
+absent, command MD5 49ed9c2fda6accb89dd9c72966aa4b78, command EXECUTE allowed,
+direct panel DML denied. Inventory observations: 17 panels/55 breakers/92 circuits/
+240 waypoints. Do not freeze those counts while normal edits continue.
+
+The initial preflight mistakenly used 127.0.0.1; health listeners bind
+192.168.5.9. Corrected complete command passed. No Production mutation occurred.
+Physical database size 413 MB; retained source observations 111 MB and FLW tests
+79 MB support the larger dump explanation without establishing exact compressed
+attribution. Keep all evidence. Pending release uses the existing maintenance
+orchestrator with the panel-only profile; no initial importer or Setup promotion.
+Preparation does not claim deployment. Retain final report/snapshot and ONLINE
+proof, then verify the protected Production screen before closeout.
