@@ -40,6 +40,37 @@
     edit = null,
     pending = null,
     loading = false;
+  // Tab-local navigation context only; installed inventory remains in the shared model.
+  const panelViewKey = "msb-power-panel-view:" + new URL(".",location.href).pathname;
+  let restoredPanelView=false;
+  function savedPanelView() {
+    try {const v=JSON.parse(sessionStorage.getItem(panelViewKey));return v && Number.isSafeInteger(v.panelId) ? v : null;}
+    catch (_) {return null;}
+  }
+  function savePanelView() {
+    if(mode!=="panels" || !panelId) return;
+    const view={panelId:Number(panelId),filter:$("find").value,scrollY:window.scrollY,
+      open:Array.from(document.querySelectorAll('#panel-detail details[open][data-view-key]'),n=>n.dataset.viewKey)};
+    try {sessionStorage.setItem(panelViewKey,JSON.stringify(view));} catch (_) { /* URL still preserves panel identity. */ }
+    const url=new URL(location.href);url.searchParams.set("panel",String(panelId));url.searchParams.delete("circuit");
+    history.replaceState(history.state,"",url);
+  }
+  window.addEventListener("pagehide",savePanelView);
+  const navigation=document.querySelector('nav[aria-label="Field wiring screens"]');
+  for(const link of navigation.querySelectorAll('a')) {
+    const linkMode=({circuits:"panels",waypoints:"waypoints",equipment:"equipment","cable-tests":"tests"})[link.getAttribute('href')];
+    if(linkMode===mode) link.setAttribute('aria-current','page');
+  }
+  if(mode!=="panels") {
+    const previous=savedPanelView();
+    if(previous) {
+      const back=el("a","Back to panel",$("status").parentNode);
+      back.className="power-return power-navigation";
+      back.href="circuits?panel="+previous.panelId;
+      $("status").after(back);
+      navigation.querySelector('a[href="circuits"]').href=back.href;
+    }
+  }
   function el(tag, text, parent) {
     const n = document.createElement(tag);
     if (text !== undefined) n.textContent = text;
@@ -49,6 +80,7 @@
   function button(text, action, parent, write = false) {
     const n = el("button", text, parent);
     n.type = "button";
+    n.className = "power-secondary";
     n.disabled = write && !data?.access?.can_edit;
     n.onclick = action;
     return n;
@@ -136,11 +168,30 @@
     try {
       data = await api("api/power");
       const query=new URLSearchParams(location.search);
+      const previous=mode==="panels" && !restoredPanelView ? savedPanelView() : null;
+      const requestedPanel=Number(query.get("panel"));
+      if(mode==="panels" && !restoredPanelView && panel(requestedPanel)) {
+        panelId=requestedPanel;
+        if(previous?.panelId===panelId && typeof previous.filter==="string") $("find").value=previous.filter;
+      }
       if(mode==="panels" && query.get("circuit") && !$("panel-detail").dataset.linkOpened) {
         const target=circuit(Number(query.get("circuit")));
         if(target) {panelId=target.site_panel_id;render();if(data.access.can_edit) openAssignments(target);$("panel-detail").dataset.linkOpened="1";}
       }
       render();
+      if(mode==="panels" && !restoredPanelView) {
+        restoredPanelView=true;
+        if(previous?.panelId===panelId && !query.get("circuit")) {
+          for(const d of document.querySelectorAll('#panel-detail details[data-view-key]'))
+            d.open=Array.isArray(previous.open) && previous.open.includes(d.dataset.viewKey);
+          requestAnimationFrame(()=>window.scrollTo(0,Number.isFinite(previous.scrollY)?Math.max(0,previous.scrollY):0));
+        }
+      }
+      const back=document.querySelector('.power-return');
+      if(back) {
+        const previousPanel=panel(Number(new URL(back.href).searchParams.get('panel')));
+        if(previousPanel) back.textContent=`Back to ${previousPanel.panel_name}`; else {back.remove(); navigation.querySelector('a[href^="circuits"]').href="circuits";}
+      }
       const requested=new URLSearchParams(location.search).get("waypoint");
       if(requested && !$("waypoint-detail").dataset.linkOpened) {
         if(mode==="equipment") {$("detail-waypoint").value=requested;render();} else viewWaypoint(Number(requested));$("waypoint-detail").dataset.linkOpened="1";
@@ -195,10 +246,17 @@
           () => {
             panelId = p.site_panel_id;
             render();
+            savePanelView();
           },
           $("panels"),
         );
         b.className = p.site_panel_id === panelId ? "power-selected" : "";
+        // Ownership is descriptive; these colors never indicate electrical state.
+        b.dataset.owner = p.owner_name === "MSB Owned" ? "msb" : p.owner_name === "City Owned" ? "city" : "other";
+        b.setAttribute("aria-label", `${p.panel_name}${p.active ? "" : " (retired)"}`);
+        b.setAttribute("aria-pressed", String(p.site_panel_id === panelId));
+        const ownerLabel = el("small", p.owner_name || "Owner unknown", b);
+        ownerLabel.className = "power-owner-label";
       });
     const selected = panel(panelId),
       detail = $("panel-detail");
@@ -216,7 +274,7 @@
         box,
       );
       el("p",`Panel plan — show: ${selected.show_desired_state}; off-season: ${selected.restoration_desired_state}. Actual condition requires separate field evidence.`,box);
-      const unresolved=el("details",undefined,box);
+      const unresolved=el("details",undefined,box); unresolved.dataset.viewKey="unresolved";
       el("summary","Unresolved Display loads (all locations)",unresolved);
       (data.load_lineage || []).filter(x=>x.load_status!=="RECORDED_BASIS_UNVERIFIED").forEach(x=>el("p",`Display ${x.display_id} ${x.display_name} · Controller ${x.controller_id ?? "Unknown"} · ${x.load_status}`,unresolved));
       const board = el("section", undefined, detail); board.className = "power-panelboard";
@@ -238,21 +296,22 @@
           const leg=button(`Circuit ${c.circuit_code} — ${names.join(", ") || "Assign waypoints"}`,()=>openAssignments(c),row,true);
           const load=(data.circuit_loads || []).find(x=>x.site_power_circuit_id===c.site_power_circuit_id);
           if (load) {
-            const loads=el("details",undefined,row); loads.className="power-load";
-            el("summary",`Recorded Display subtotal: ${load.recorded_display_amps ?? "Unknown"} A / ${load.rated_amps ?? "Unknown"} A per pole · INCOMPLETE`,loads);
-            el("p",`Nominal headroom: ${load.nominal_headroom_amps ?? "Unknown"} A; nominal utilization: ${load.nominal_utilization_percent == null ? "Unknown" : Number(load.nominal_utilization_percent).toFixed(1)+"%"}. Basis/voltage unverified; excludes unresolved loads. This is not usable capacity.`,loads);
+            const loads=el("details",undefined,row); loads.className="power-load"; loads.dataset.viewKey="load:"+c.site_power_circuit_id;
+            el("summary",`Display load: ${load.recorded_display_amps == null ? "Unknown" : load.recorded_display_amps+" A"} · incomplete`,loads);
+            el("p",`Breaker rating: ${load.rated_amps ?? "Unknown"} A per pole. Nominal headroom: ${load.nominal_headroom_amps ?? "Unknown"} A; nominal utilization: ${load.nominal_utilization_percent == null ? "Unknown" : Number(load.nominal_utilization_percent).toFixed(1)+"%"}. Basis/voltage unverified; excludes unresolved loads. This is not usable capacity.`,loads);
             el("p","Controller/auxiliary consumption and field demand are unknown. Conductor, receptacle, shared-neutral and continuous-load limits require verification.",loads);
             (data.load_lineage || []).filter(x=>x.site_power_circuit_id===c.site_power_circuit_id).forEach(x=>el("p",`Display ${x.display_id} ${x.display_name} → Controller ${x.controller_id}: ${x.amps_measured ?? "Unknown"} A · ${x.load_status}`,loads));
           }
           leg.className="power-circuit-leg"; leg.dataset.circuitId=c.site_power_circuit_id;
           for (const id of [...new Set(paths(c.site_power_circuit_id).map(x=>x.waypoint?.id).filter(Boolean))]) {
-            button(`Open ${waypointName(id)} / equipment`,()=>viewWaypoint(id),row);
+            button(`Open ${waypointName(id)} / equipment`,()=>viewWaypoint(id),row).className="power-navigation";
           }
         });
         el("p", `Season: ${b.show_desired_state} · Non-season: ${b.restoration_desired_state}`, row);
         const impact = (data.breaker_impacts || []).find(x => x.breaker.site_power_breaker_id === b.site_power_breaker_id);
-        const details = el("details", undefined, row);
-        el("summary", "Recorded affected endpoints — not verified isolation", details);
+        const details = el("details", undefined, row); details.dataset.viewKey="impact:"+b.site_power_breaker_id;
+        el("summary", "Connections · unverified", details);
+        el("p", "Recorded endpoints are not proof of electrical isolation.", details);
         if (impact?.missing_pole_membership) el("p", "Incomplete breaker/circuit membership", details);
         (impact?.paths || []).forEach(x => el("p", `${circuitName(x.site_power_circuit_id)} · ${x.waypoint_name || "Unknown waypoint"} · ${x.destination_device_id ? deviceName(x.destination_device_id) : "Receptacle unspecified"}`, details));
         (impact?.controller_connections || []).forEach(x=>el("p",`Plugged-in controller ${x.controller_id} · ${waypointName(x.site_waypoint_id)} · ${circuitName(x.site_power_circuit_id)}`,details));
@@ -267,28 +326,34 @@
       mains.forEach(b => drawBreaker(b,main));
       if (!mains.length && !selected.supply_breaker_id && !selected.supply_panel_id) {
         el("p", "Main breaker not recorded; rating unknown", main);
-        button("Record main breaker",()=>openSchedule({site_panel_id:panelId,breaker_role:"MAIN"}),main,true);
+        button("Record main breaker",()=>openSchedule({site_panel_id:panelId,breaker_role:"MAIN"}),main,true).className="power-primary";
       }
-      button("Add branch breaker",()=>openSchedule({site_panel_id:panelId,breaker_role:"BRANCH"}),board,true);
+      button("Add branch breaker",()=>openSchedule({site_panel_id:panelId,breaker_role:"BRANCH"}),board,true).className="power-primary";
       const schedule = el("div",undefined,board); schedule.className="power-slot-grid";
       const positioned = breakers.filter(b=>b.breaker_role!=="MAIN" && b.panel_positions?.length);
       const conventional=b=>b.panel_positions.every((p,i)=>p===b.panel_positions[0]+2*i);
-      const last = Math.max(36,...positioned.flatMap(b=>b.panel_positions));
-      for (let pos=1;pos<=last+(last%2);pos++) {
+      // Unknown counts show only recorded extent, never inferred spare capacity.
+      if (selected.branch_position_count == null) {
+        el("p", "Number of slots not recorded. Only recorded positions are shown.", board);
+        button("Set number of slots",()=>open("panel",selected),board,true).className="power-primary";
+      } else el("p", `${selected.branch_position_count} slots · main separate`, board);
+      const last = Math.max(selected.branch_position_count ?? 0,...positioned.flatMap(b=>b.panel_positions));
+      for (let pos=1;pos<=last;pos++) {
         const breaker=positioned.find(b=>b.panel_positions.includes(pos));
         if (breaker && (!conventional(breaker) || breaker.panel_positions[0]!==pos)) continue;
         const cell=el("div",undefined,schedule); cell.className="power-slot";
         cell.style.gridColumn=pos%2 ? "1" : "2";
         cell.style.gridRow=`${Math.ceil(pos/2)} / span ${breaker?.panel_positions.length || 1}`;
         if (breaker) {
-          el("strong",`Positions ${breaker.panel_positions.join(" / ")}`,cell);
+          if (breaker.breaker_name !== breaker.panel_positions.join("/"))
+            el("small",`Positions ${breaker.panel_positions.join(" / ")}`,cell);
           drawBreaker(breaker,cell);
         } else button(`Position ${pos} · Add breaker`,()=>openSchedule({site_panel_id:panelId,breaker_role:"BRANCH",panel_positions:[pos],pole_count:1}),cell,true);
       }
-      const unplaced=el("details",undefined,board);
+      const unplaced=el("details",undefined,board); unplaced.dataset.viewKey="unplaced";
       el("summary","Unknown or nonstandard positions — reconcile",unplaced);
       breakers.filter(b=>b.breaker_role!=="MAIN" && (!b.panel_positions?.length || !conventional(b))).forEach(b=>drawBreaker(b,unplaced));
-      const legacy=el("details",undefined,detail);
+      const legacy=el("details",undefined,detail); legacy.dataset.viewKey="legacy";
       el("summary","Reconcile circuits with unknown breaker membership",legacy);
       button("Reconcile legacy circuit",()=>open("circuit",{site_panel_id:panelId}),legacy,true);
       data.circuits
@@ -469,7 +534,7 @@
   }
   function viewWaypoint(waypointId) {
     if (!waypointId || !wp(waypointId)) return;
-    if (mode!=="waypoints") { location.href=`waypoints?waypoint=${waypointId}`; return; }
+    if (mode!=="waypoints") { savePanelView(); location.href=`waypoints?waypoint=${waypointId}`; return; }
     const section=$("waypoint-detail");
     section.open=true;
     $("detail-waypoint").value=String(waypointId);
@@ -589,7 +654,7 @@
   );
   const ratingOptions = () => options(
     [...new Set([
-      15,20,30,40,50,90,100,200,
+      10,15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200,
       ...data.breakers.map(b => Number(b.rated_amps)).filter(x => Number.isFinite(x) && x > 0),
     ])].sort((a,b) => a-b).map(x => [x, String(x)]),
   );
@@ -666,6 +731,7 @@
         choose("restoration_desired_state", "Panel planned off-season supply", ["UNKNOWN","ON","OFF"]),
         text("panel_name", "Readable panel name", true),
         text("panel_identification", "Panel identification / label"),
+        {...text("branch_position_count", "Number of slots"), type:"number", min:1, max:200, hint:"Numbered branch slots, excluding the main. A two-pole breaker uses two slots. Leave blank if unknown."},
         select("site_waypoint_id", "Associated waypoint (optional)", waypoints),
         select("owner_name", "Panel owner (optional)", ownerOptions()),
         {...text("year_installed", "Year installed (optional)"), type: "number"},
@@ -885,9 +951,14 @@
       if (spec.type === "number") {
         n.min = spec.key === "year_installed" ? "1900" : ["breaker_pole","pole_count","rated_amps"].includes(spec.key) ? "1" : "0.000001";
         n.step = ["year_installed","breaker_pole","pole_count","rated_amps"].includes(spec.key) ? "1" : "any";
+        if (spec.key === "branch_position_count") {n.min="1"; n.max="200"; n.step="1"; n.setAttribute("list","panel-slot-options");}
         if (spec.key === "year_installed") n.max="2100";
         if (spec.key === "rated_amps") n.setAttribute("list", "breaker-amp-options");
       }
+    }
+    if (spec.hint) {
+      const hint=el("small",spec.hint,label);hint.id=`${spec.key}-hint`;
+      n.setAttribute("aria-describedby",hint.id);
     }
     return n;
   }
@@ -1030,7 +1101,7 @@
   function openSupply(p) {
     open("panel", p);
     $("edit-title").textContent=`${p.panel_name} — meter / upstream supply`;
-    for (const name of ["panel_name","panel_identification","site_waypoint_id","owner_name","year_installed","active"])
+    for (const name of ["panel_name","panel_identification","site_waypoint_id","owner_name","year_installed","branch_position_count","active"])
       $("edit-form").elements[name].closest("label").hidden=true;
     const supply=$("edit-form").elements.supply_breaker_id;
     for (const option of Array.from(supply.options)) {
@@ -1177,6 +1248,8 @@
           v = Number(v);
         else if (s.type === "datetime-local") v = new Date(v).toISOString();
       }
+      if (s.key === "branch_position_count" && v !== null && (!Number.isSafeInteger(v) || v<1 || v>200))
+        throw new Error("Number of slots must be a whole number from 1 to 200.");
       if (s.key === "panel_positions" && v !== null) {
         if (!/^\d+(\s*[,/]\s*\d+)*$/.test(v)) throw new Error("Enter panel positions such as 1/3 or 18,20; use numbers only.");
         v=v.split(/[,/]/).map(Number);

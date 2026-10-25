@@ -273,7 +273,7 @@ try {
     if (leg==="18") await dialog.locator("[name=also_other_leg]").check();
     await evidence(); await save();
   }
-  await groupedRow.getByText("Recorded affected endpoints — not verified isolation",{exact:true}).click();
+  await groupedRow.getByText("Connections · unverified",{exact:true}).click();
   assert.match(await groupedRow.innerText(),/20 A · 2 poles/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 18/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 20/);
@@ -287,11 +287,19 @@ try {
   await page.goto(base);
   await page.getByText(/Revision \d+/).waitFor();
   await page.locator("#panels").getByRole("button",{name:"A5 panel",exact:true}).click();
-  assert.equal(await page.locator(".power-slot").count(),35);
+  // Unknown size shows only occupied extent through slot 20; one card spans two slots.
+  assert.equal(await page.locator(".power-slot").count(),19);
+  assert.match(await page.locator("#panel-detail").innerText(),/Number of slots not recorded/);
   assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridRow),"9 / span 2");
   assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridColumn),"2");
   const savedIds=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 ORDER BY breaker_pole",[breakerId])).rows;
   await groupedRow.getByRole("button",{name:"Breaker settings",exact:true}).click();
+  const breakerRatings = await dialog.locator('[name=rated_amps] option').evaluateAll(nodes => nodes.map(n=>Number(n.value)).filter(n=>n>0));
+  for (const amps of [10,15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200]) {
+    assert.ok(breakerRatings.includes(amps), `Missing supplied breaker rating ${amps}`);
+  }
+  assert.deepEqual(breakerRatings, [...new Set(breakerRatings)].sort((a,b)=>a-b));
+  assert.equal(await dialog.getByRole("button",{name:"Use rating",exact:true}).count(),0);
   await dialog.locator("[name=show_desired_state]").selectOption("OFF");
   failNext=true;
   await dialog.locator("#save").click();
@@ -317,6 +325,8 @@ try {
   await dialog.locator("[name=pole_count]").selectOption("2");
   await evidence(); await save();
   assert.match(await page.locator(".power-main").innerText(),/200 A · 2 poles · MAIN/);
+  await page.getByRole("button",{name:"Set number of slots",exact:true}).click();
+  await dialog.locator('[name=branch_position_count]').fill("40"); await evidence(); await save();
   // Fill remaining A5 positions through the same diagram entry used by the operator.
   for (const start of [1,2,5,6,9,10,13,14,17,21,22,25,26,29,30,33,34]) {
     await page.getByRole("button",{name:`Position ${start} · Add breaker`,exact:true}).click();
@@ -327,10 +337,43 @@ try {
     await save();
   }
   assert.equal(await page.locator(".power-slot-grid .power-breaker").count(),18);
-  const positions=await page.locator(".power-slot-grid .power-slot").evaluateAll(nodes=>nodes.map(n=>[n.style.gridColumn,n.style.gridRow]));
+  const positions=await page.locator(".power-slot-grid .power-slot").filter({has:page.locator(".power-breaker")}).evaluateAll(nodes=>nodes.map(n=>[n.style.gridColumn,n.style.gridRow]));
   assert.equal(positions.filter(x=>x[0]==="1").length,9);
   assert.equal(positions.filter(x=>x[0]==="2").length,9);
   assert.ok(positions.every(x=>x[1].endsWith("span 2")));
+  // The main disconnect does not consume branch positions. Fill the final four
+  // positions using the UI, then reload to prove stable IDs and persistence.
+  for (const start of [37,38]) {
+    await page.getByRole("button",{name:`Position ${start} · Add breaker`,exact:true}).click();
+    await dialog.locator("[name=pole_count]").selectOption("2");
+    await dialog.locator("[name=pole_count]").blur();
+    assert.equal(await dialog.locator("[name=panel_positions]").inputValue(),`${start}/${start+2}`);
+    await dialog.locator("[name=rated_amps]").selectOption("20"); await save();
+  }
+  await page.reload(); await page.getByText(/Revision \d+/).waitFor();
+  await page.locator("#panels").getByRole("button",{name:"A5 panel",exact:true}).click();
+  assert.equal(await page.locator(".power-slot-grid .power-breaker").count(),20);
+  const endSlots=await db.query("SELECT panel_positions FROM ref.site_power_breaker WHERE panel_positions && ARRAY[39,40] ORDER BY panel_positions[1]");
+  assert.deepEqual(endSlots.rows.map(r=>r.panel_positions),[[37,39],[38,40]]);
+  // Owner labels and selected outline survive both themes; colors are not status.
+  await db.exec("UPDATE ref.site_panel SET owner_name=CASE WHEN panel_name='A5 panel' THEN 'MSB Owned' ELSE 'City Owned' END");
+  await page.reload(); await page.getByText(/Revision \d+/).waitFor();
+  for (const theme of ["light","dark"]) {
+    if(await page.locator("html").getAttribute("data-theme")!==theme) await page.locator("#theme-toggle").click();
+    const msb=page.locator('#panels button[data-owner="msb"]');
+    const city=page.locator('#panels button[data-owner="city"]').first();
+    assert.match(await msb.innerText(),/MSB Owned/);assert.match(await city.innerText(),/City Owned/);
+    assert.notEqual(await msb.evaluate(n=>getComputedStyle(n).backgroundColor),await city.evaluate(n=>getComputedStyle(n).backgroundColor));
+  }
+  // A small configured panel gets only its real slots, not a global minimum.
+  const hardwareBefore=(await db.query("SELECT (SELECT count(*) FROM ref.site_power_breaker)::int breakers,(SELECT count(*) FROM ref.site_power_circuit)::int circuits")).rows[0];
+  await page.getByRole("button",{name:"Add panel",exact:true}).click();
+  await dialog.locator('[name=panel_name]').fill("Small panel");
+  await dialog.locator('[name=branch_position_count]').fill("18"); await save();
+  await page.locator("#panels").getByRole("button",{name:"Small panel",exact:true}).click();
+  assert.equal(await page.locator('.power-slot-grid .power-slot').count(),18);
+  assert.equal(await page.getByRole("button",{name:"Position 19 · Add breaker",exact:true}).count(),0);
+  assert.deepEqual((await db.query("SELECT (SELECT count(*) FROM ref.site_power_breaker)::int breakers,(SELECT count(*) FROM ref.site_power_circuit)::int circuits")).rows[0],hardwareBefore);
   // Power-only outlet has circuit and plug-in controls, no network enclosure form.
   await page.goto(base.replace("circuits","waypoints"));
   await page.getByText(/Revision \d+/).waitFor();
@@ -351,7 +394,7 @@ try {
   await page.goto(base);
   await page.getByText(/Revision \d+/).waitFor();
   await page.locator("#panels").getByRole("button",{name:"A5 panel",exact:true}).click();
-  assert.match(await page.locator("#panel-detail").innerText(),/Recorded Display subtotal: 2 A/);
+  assert.match(await page.locator("#panel-detail").innerText(),/Display load: 2 A · incomplete/);
   await page.goto(base.replace("circuits","waypoints"));
   await page.getByText(/Revision \d+/).waitFor();
   await page.locator("#detail-waypoint").selectOption("12");
@@ -622,6 +665,31 @@ try {
   await dialog.waitFor({state:"hidden"});
   await page.goto(base);
   await page.getByText(/Revision \d+/).waitFor();
+  // Leaving a populated panel must preserve its context through either return action.
+  await page.locator("#find").fill("A5");
+  await page.locator("#panels").getByRole("button",{name:"PANEL A5-00",exact:true}).click();
+  const disclosure=page.locator('[data-view-key="unresolved"]');
+  await disclosure.evaluate(e=>e.open=true);
+  const openWaypoint=page.locator("#panel-detail").getByRole("button",{name:/^Open .* \/ equipment$/}).first();
+  for (const backMethod of ["browser","link"]) {
+    await openWaypoint.scrollIntoViewIfNeeded();
+    const previousScroll=await page.evaluate(()=>window.scrollY);
+    await openWaypoint.click();
+    await page.getByText(/Revision \d+/).waitFor();
+    const back=page.getByRole("link",{name:"Back to PANEL A5-00",exact:true});
+    await back.waitFor();
+    if(backMethod==="browser") await page.goBack(); else await back.click();
+    await page.getByText(/Revision \d+/).waitFor();
+    assert.equal(await page.locator("#find").inputValue(),"A5");
+    assert.equal(await disclosure.evaluate(e=>e.open),true);
+    await page.waitForFunction(y=>Math.abs(window.scrollY-y)<5,previousScroll);
+    assert.ok(await openWaypoint.count());
+  }
+  const settings=page.locator("#panel-detail").getByRole("button",{name:"Breaker settings",exact:true}).first();
+  for(const theme of ["light","dark"]) {
+    await page.locator("html").evaluate((e,t)=>e.dataset.theme=t,theme);
+    assert.notEqual(await settings.evaluate(e=>getComputedStyle(e).backgroundColor),await openWaypoint.evaluate(e=>getComputedStyle(e).backgroundColor));
+  }
   await page.screenshot({path:"/tmp/power-panel-desktop.png",fullPage:true});
   await page.getByRole("button", {name:/Light mode|Dark mode/}).click();
   const changedTheme = await page.locator("html").getAttribute("data-theme");

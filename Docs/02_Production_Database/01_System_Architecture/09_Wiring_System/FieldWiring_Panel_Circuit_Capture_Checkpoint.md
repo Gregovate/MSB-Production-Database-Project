@@ -580,3 +580,52 @@ Broader Setup/Acceptance: 153 passed, 2 skipped, six historical #88 report-contr
 failures, each reproduced on the approved application baseline. No #88 report
 implementation changes are part of this release. Production deployment and
 protected live-browser closeout still require the retained host receipt.
+
+## October 25 Production receipt and panel-entry follow-up
+
+PR319 merged as 6aa23c399cea5dad7ba6b9cef619d469fe024991. Greg returned server
+PASS for accepted application 439ab237beaae4ac648e7590f824a774969cd84f,
+FieldWiring V0.4.20-picker-sort / Setup V0.3.91-integrated-power. Report:
+/home/msbadmin/setup-deployment-reports/PR319-GIS-20261025T062215Z.
+Preflight, freeze, snapshot, three migrations, GPX/FLW intake, database validation
+and return to service all passed. Snapshot details remain in the retained report;
+no separate archive path/hash was pasted. Do not rerun initial installation.
+
+Greg is now entering real Production panels/breakers and provided WV-00 Panel 10
+screenshots/photo. He reports the interface usable but needs the missing final
+slots and clearer colors/groupings. This is not a claim that all follow-up UI
+acceptance is complete. Preserve his Production entries.
+
+Final correction: Number of slots in Panel setup, nullable until recorded;
+1–200 actual numbered positions excluding main. No amperage inference or fixed
+40-position expansion. Store on ref.site_panel via the existing audited command;
+reject shrink and breaker placement beyond occupied extent. MSB light-blue and
+City light-orange ownership labels, distinct selection, primary Save/Add,
+outlined circuit assignment controls, neutral secondary actions, stronger breaker
+groups and concise disclosures retaining uncertainty/safety details.
+
+Candidate V0.4.21-panel-entry is engineering only. The incremental migration
+171_panel_slot_count.sql extends the existing panel and command boundary; initial
+schema/import files remain unchanged. Existing tests cover configured slot limits,
+atomic denial, role boundary, 40-slot UI entry, reload and both ownership themes.
+Local Python regression: 230 passed; isolated PostgreSQL command suite and slot
+range/occupied-bound checks passed. Browser execution is delegated to existing CI
+because this local runtime denies Chromium's Unix socket; no browser PASS claimed
+until that workflow completes. Exact candidate and CI results belong to the PR.
+Preview must clone current Production, apply only the incremental migration and
+its read-only validation, and use existing saved panel data. No GPX/FLW reimport.
+
+## October 25 — V0.4.22 follow-up candidate
+
+Greg reviewed 70c856ce and confirmed CLEAN EXIT, port 8898 and GIS source lock
+available. Further changes requested; this is not acceptance for deployment.
+V0.4.22-panel-navigation adds Greg's supplied 19 breaker ratings (10–200 A),
+preserves additional saved values without duplicates, restores panel context on
+waypoint return, aligns screen navigation and distinguishes gray settings from
+teal navigation actions in both themes. Custom rating entry was superseded by
+Greg's explicit supplied list. Existing count migration remains the only migration.
+Browser regression covers both return routes, filter/disclosure/scroll restoration,
+rating choices and action colors. Exact CI evidence and preview SHA belong to PR455.
+Production and original GIS sources remain untouched; preview uses a fresh current
+Production clone, not the initial source importer. The observed 142M dump has not
+yet been attributed to measured relation sizes; no source evidence is removed.

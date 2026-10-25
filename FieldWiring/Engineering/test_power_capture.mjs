@@ -740,4 +740,23 @@ await portsDb.close();
 console.log(
   `PASS: ${n} SQL command/denial checks plus snapshot, audit, seasonal and rollback assertions (isolated PGlite PostgreSQL; no Production connection).`,
 );
+
+// Configured slot count uses the same audited panel command and protects both
+// directions: shrinking a panel and placing/moving a breaker beyond its extent.
+const slotsPanel=await cmd('panel',{...base,panel_name:'Configured slots',branch_position_count:20});
+for(const count of [12,18,20,24,30,40,42]) await cmd('panel',{...base,branch_position_count:count},slotsPanel.target_id);
+await cmd('panel',{...base,branch_position_count:20},slotsPanel.target_id);
+for(const count of [0,201,-1]) await denied(()=>cmd('panel',{...base,branch_position_count:count},slotsPanel.target_id),'23514');
+const lastBreaker=await cmd('breaker',{...base,site_panel_id:slotsPanel.target_id,breaker_name:'18/20',breaker_role:'BRANCH',panel_positions:[18,20],pole_count:2,rated_amps:20});
+const protectedState=(await db.query("SELECT ref.site_power_snapshot('crew@example.test') s")).rows[0].s;
+await denied(()=>cmd('panel',{...base,branch_position_count:18},slotsPanel.target_id),'23514');
+await denied(()=>cmd('breaker',{...base,panel_positions:[20,22]},lastBreaker.target_id),'23514');
+assert.deepEqual((await db.query("SELECT ref.site_power_snapshot('crew@example.test') s")).rows[0].s,protectedState);
+await cmd('panel',{...base,branch_position_count:40},slotsPanel.target_id);
+await cmd('breaker',{...base,panel_positions:[38,40]},lastBreaker.target_id);
+await denied(()=>cmd('panel',{...base,branch_position_count:38},slotsPanel.target_id),'23514');
+await denied(()=>cmd('panel',{...base,branch_position_count:42},slotsPanel.target_id,'volunteer@example.test'),'42501');
+await cmd('panel',{...base,branch_position_count:null},slotsPanel.target_id);
+assert.equal((await db.query('SELECT branch_position_count FROM ref.site_panel WHERE site_panel_id=$1',[slotsPanel.target_id])).rows[0].branch_position_count,null);
+console.log('PASS: configured slot count, range, occupied shrink/overflow denial, atomic preservation and role boundary');
 await db.close();

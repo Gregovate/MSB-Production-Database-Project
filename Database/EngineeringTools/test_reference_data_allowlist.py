@@ -84,10 +84,12 @@ def test_site_reference_sql_and_editor_paths_are_exact_and_ordered():
         "Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql",
         "Database/EngineeringTools/sql/171_panel_circuit_capture_candidate.sql",
         "Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql",
+        "Database/EngineeringTools/sql/171_panel_slot_count.sql",
     ]
     assert policy["approved_validation_paths"] == [
         "Database/Acceptance/171_site_infrastructure_disposable_validation.sql",
         "Database/Acceptance/171_site_reference_operations_disposable_validation.sql",
+        "Database/Acceptance/171_panel_slot_count_validation.sql",
     ]
     editor = json.loads((ACCEPTANCE / "reference_data_manager_table_allowlist.json").read_text(
         encoding="utf-8"))

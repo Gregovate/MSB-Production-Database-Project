@@ -724,3 +724,75 @@ for reviewed recovery. No automatic OFF, inverse SQL or full-database restore.
 Promote source only after database validation/preservation passes, then recheck
 fence and hashes, controller OFF, exact health and role denial checks. Operator
 Production smoke test and actual deployment-log/server closeout follow receipt.
+
+## October 25 Production panel-entry correction — final design
+
+PR319 server deployment passed (report PR319-GIS-20261025T062215Z). Greg began
+real panel inventory and found WV-00 / Panel 10 stopped at 38 positions. The old
+screen used a 36-position minimum and expanded only to the highest recorded slot.
+The final correction is an explicit **Number of slots** field in Panel setup,
+not a larger fixed minimum and not a count inferred from amperage.
+
+Persist nullable branch_position_count (1–200) on the existing ref.site_panel.
+Suggest 12/18/20/24/30/40/42 while allowing another actual count. The main is
+excluded; two-pole breakers occupy two slots. Render 1 through the configured
+count, odd left/even right. Empty slots are placeholders, never automatic installed
+breakers or circuit rows. Unknown existing counts stay null: show only the occupied
+extent and a Set number of slots prompt. Do not claim the occupied extent is the
+panel's physical capacity. Block count reduction or breaker placement/movement
+that would put an active branch position beyond the configured count. Preserve
+all existing panel, breaker, circuit and waypoint identities and assignments.
+
+Use one bounded additive migration, 171_panel_slot_count.sql, and the existing
+audited site_power_command. Extend only its panel field allowlist after checking
+the deployed function body; retain authorization, revisions, audit and grants.
+Enforce occupied-slot bounds on panel and breaker writes, sharing the model
+revision lock. No duplicate inventory/schema, source reimport, initial-schema
+replay, panel renumbering or data rewrite. Future deployment is DATABASE-CHANGING
+and requires the existing maintenance/snapshot procedure after candidate approval.
+
+Group panel identity/ownership, main supply, and branch schedule. Each physical
+breaker is one outlined card spanning its occupied rows, containing its circuit
+assignment buttons. Avoid duplicate position headings when the breaker designation
+already supplies the numbers. Shorten load and affected-endpoint disclosure labels;
+retain full incomplete-load, usable-capacity and isolation caveats inside them.
+Keep disclosures closed initially so entry controls remain easy to scan.
+
+Owner tint: MSB Owned light blue, City Owned light orange, other/unknown neutral.
+Include explicit owner text and a separate selected/focus outline. Save/Add use
+shared primary blue; circuit assignment uses a pale blue outlined button;
+settings/navigation/Cancel remain neutral. Disabled controls retain role guards
+and a distinct disabled appearance. Provide readable dark-theme variants.
+No color asserts energized/de-energized, safe, verified, capacity or completed work.
+
+Validate small-panel extent, 40/42-slot entry, multi-pole layout, reload persistence,
+occupied-slot shrink/overflow denial, atomicity, audit/role boundaries, ownership
+colors in both themes and mobile width. Extend only the existing preview SQL
+allowlist and workflow tests. Review on a fresh disposable current-Production clone
+with Greg's populated panels; use only the incremental migration, no initial
+migrations or GPX/FLW intake. Production remains unchanged by this engineering.
+
+### October 25 follow-up review: ratings, return navigation and action colors
+
+Greg reviewed 70c856ce on a current-Production clone and returned CLEAN EXIT,
+port/source lock free. Greg subsequently specified the exact default breaker sizes:
+10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110, 125, 150,
+175, 200 A. Use this supplied list instead of a custom-size entry. Existing numeric
+rated_amps remains authoritative; retain existing saved ratings as additional
+numerically sorted, deduplicated choices. Do not silently change unknown or
+existing breaker ratings. No new catalog or installed inventory is created.
+
+Return from waypoint/equipment must restore the selected panel, search filter,
+disclosure state and scroll position, including browser Back. Use tab-local view
+state/URL context, not database fields or an independent navigation system. Provide
+an explicit Back to panel action and align screen links with the main content.
+Invalid/stale stored context must degrade safely. No external redirect parameter.
+Breaker settings and secondary actions use light gray; waypoint/equipment opening
+uses a distinct teal navigation treatment; Add/Save retain blue. Dark mode uses
+readable equivalent colors. Ownership colors and slot configuration remain intact.
+
+Observed clone dump increased from about 9.8M to 142M after Production source
+installation. Retained GPX document/observations/geometry and FLW original results
+are plausible contributors, not measured attribution. Add a read-only relation/
+evidence-size query; do not delete evidence, vacuum, rewrite, or change retention
+based only on dump size. No Production mutation for this investigation.
