@@ -818,6 +818,8 @@ try {
   assert.equal(download.suggestedFilename(),'breakers-2026-ON-exceptions.pdf');
   assert.equal((await readFile(await download.path())).subarray(0,5).toString(),'%PDF-');
   // Small distribution panels accept eight slots, persist, reopen, and render eight.
+  // Earlier navigation tests deliberately preserve an A5 search; clear it for FE.
+  await page.locator('#find').fill('');
   await page.getByRole('button',{name:'Add panel',exact:true}).click();
   await dialog.locator('[name=panel_name]').fill('FE-00 eight-slot fixture');
   await dialog.locator('[name=branch_position_count]').fill('8');
