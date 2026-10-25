@@ -1000,3 +1000,11 @@ and validated rollback snapshot. Validate exact optimized function, preserved
 command and authorization metadata, row fingerprints and source; reopen only on
 PASS. All old migrations and GPX/FLW intake remain excluded. Failure retains the
 existing journal/maintenance containment; no blind rerun or automatic data restore.
+
+## October 25 — unassigned breaker correction (separate from Part 2 equipment)
+
+An operator must be able to correct an accidentally entered two-pole branch breaker to one pole, or remove an unassigned breaker from the board. Reuse the existing authorized, revision-locked, idempotent site_power_command and audit ledger. Retire omitted unused circuit rows and removed breakers; never physically delete history. Retained legs keep their IDs and notes. Circuit designation uniqueness applies to active circuits so retired numbers can be reused with new identities. A failed correction must roll back all changes.
+
+Before reducing poles or removing a breaker, reject active circuit feeds (including equipment feeds), controller power connections, conductor memberships, remote-panel supply, or non-observation activities with actionable dependency details. Removal may retire only the existing automatic breaker-position observation actions, retaining their event history; prerequisite references still block retirement. Existing read/write authorization is unchanged. Removal is explicit in breaker settings; normal saving performs pole reduction without a second workflow. Milbank/tandem layout is separate and excluded. No Production repair or migration is authorized by this design entry.
+
+This isolated correction branches from main 8836efaa; PR463 owns concurrent equipment/cable UI work. Preserve its work and reconcile shared command migration baselines before combining candidates. The new migration does not change the snapshot function or undo PR460 performance work.

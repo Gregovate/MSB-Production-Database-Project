@@ -73,6 +73,7 @@ jobs:
         run: |
           node FieldWiring/Engineering/test_power_capture.mjs
           node FieldWiring/Engineering/test_breaker_state.mjs
+          node FieldWiring/Engineering/test_breaker_correction.mjs
           node FieldWiring/Engineering/test_power_snapshot_performance.mjs
       - name: Install browser for isolated circuit workflow
         working-directory: FieldWiring/Engineering

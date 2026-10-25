@@ -810,3 +810,12 @@ fingerprints and unchanged Setup; existing CI covers PostgreSQL16 preservation
 and Windows committed-byte transport. Release-tooling exact head/results belong
 in its PR. Production receipt, snapshot and protected browser check remain pending;
 this authorization/preparation is not a deployment claim.
+
+
+## October 25 — isolated unassigned-breaker correction candidate
+
+Greg found mistaken two-pole entries (FC-00 position2 example) impossible to correct despite no assignments. Separate branch `fix/171-unassigned-breaker-correction` from main8836efaa; V0.4.29-breaker-correction. PR463 equipment/cable work remains separate and untouched. Incremental `171_unassigned_breaker_correction.sql` extends the existing command and changes circuit-name uniqueness to active rows; it never deletes historical rows, imports sources, seeds state or changes the optimized snapshot. Pole reduction retires unused extra legs; removal retires the breaker/legs and automatic observation actions, keeping events and audit. Active dependencies block before mutation.
+
+Only this new migration and `171_unassigned_breaker_correction_validation.sql` belong in its disposable current-Production review; PR457/PR460 are prerequisites, not migrations to replay. The command baseline guard intentionally rejects concurrent equipment-migration drift: reconcile migration composition explicitly if PR463 deploys first. Do not overwrite that branch or bypass the guard. Use the existing reusable preview mechanism after the other review has CLEAN EXIT and port8898/source lock are proven free; no concurrent preview launch is authorized here. Production and original GIS files remain unchanged.
+
+Operator acceptance: correct unassigned two-pole to one; verify retained notes, free slot and reload; remove another mistaken breaker and reuse its positions; confirm a connected breaker is blocked with dependency details; confirm state-event history remains. Native/browser CI and exact candidate identity are recorded in the correction PR. Operator acceptance and release remain pending. Milbank/tandem presentation is excluded.

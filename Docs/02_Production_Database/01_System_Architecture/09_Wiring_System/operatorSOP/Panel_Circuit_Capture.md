@@ -230,3 +230,10 @@ expanded details and scroll position within the same browser tab.
 5. The collapsible **Seasonal breaker checklist** retains the change-only workflow: equal known targets are omitted there. Use its Completed and Needs configuration views as needed. Locate links open the maintained panel waypoint on Park Map.
 6. Panel **Number of slots** accepts whole numbers 1–200; **8** is offered for small panels such as FE-00. Existing occupied positions must fit within the selected count. Do not delete real breakers to force a smaller count.
 7. Correct mistaken historical observations through Seasonal power activities / Correct this event. The audit history remains append-only.
+
+
+### Unassigned breaker correction — candidate V0.4.29 (not deployed)
+
+Open **Breaker settings**, correct **Positions / circuits** and **Poles**, then Save. A mistaken 2/4 two-pole entry can become position2 with one pole when no active connections exist. Its retained circuit ID and notes remain; the unused leg is retired and position4 becomes available.
+
+To remove an entire mistaken entry, choose **Remove mistaken breaker**, review the removal summary, and Save. This frees its positions and retires unused circuit records; history is retained. If blocked, the message identifies feeds, controllers, conductor memberships, remote panels or activities requiring reassignment. Automatic position-observation history is preserved. Do not delete a panel or recreate valid inventory to correct a breaker.
