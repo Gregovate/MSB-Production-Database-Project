@@ -1,6 +1,7 @@
 // Actual page against isolated PostgreSQL fixtures; never a Production/browser-auth test.
 import { createFixtureDatabase } from "./power_test_database.mjs";
 import { createServer } from "node:http";
+import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,6 +31,11 @@ const server = createServer(async (req, res) => {
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify(result.rows[0].data));
       return;
+    }
+    if (url.pathname === "/fieldwiring/api/power/report.pdf") {
+      const snapshot=(await db.query('SELECT ref.site_power_snapshot($1) data',[user])).rows[0].data;
+      const pdf=execFileSync('python',['-c',"import sys,json;from breaker_report import build_pdf;d=json.load(sys.stdin);sys.stdout.buffer.write(build_pdf(d,2026,'SETUP','exceptions'))"],{input:JSON.stringify(snapshot),env:{...process.env,PYTHONPATH:app}});
+      res.setHeader('Content-Type','application/pdf');res.setHeader('Content-Disposition','attachment; filename="breakers-2026-ON-exceptions.pdf"');res.end(pdf);return;
     }
     if (url.pathname === "/fieldwiring/api/power/commands") {
       let raw = "";
@@ -266,6 +272,24 @@ try {
   assert.equal(breakerNotes.rows[0].source_evidence,null);
   assert.equal(breakerNotes.rows[0].verification_status,"UNVERIFIED");
   const groupedRow=page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:"Breaker 18/20 grouped",exact:true})});
+  // Local receptacles can retain a breaker note without any waypoint feed.
+  await groupedRow.getByRole("button",{name:"Breaker settings",exact:true}).click();
+  await dialog.locator('[name=source_evidence]').fill('Receptacles at panel');
+  await save();
+  assert.equal(await groupedRow.locator('.power-breaker-notes').innerText(),'Receptacles at panel');
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id WHERE c.site_power_breaker_id=$1 AND f.active",[breakerId])).rows[0].n,0);
+  await groupedRow.getByRole("button",{name:/^Circuit 18 —/}).click();
+  await dialog.locator('[name=description]').fill('Upper panel left receptacle');
+  await save();
+  assert.equal((await db.query("SELECT description FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 AND breaker_pole=1",[breakerId])).rows[0].description,'Upper panel left receptacle');
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id WHERE c.site_power_breaker_id=$1 AND f.active",[breakerId])).rows[0].n,0);
+  await page.reload(); await page.getByText(/Revision \d+/).waitFor();
+  assert.equal(await groupedRow.locator('.power-circuit-notes').innerText(),'Upper panel left receptacle');
+  await groupedRow.getByRole("button",{name:/^Circuit 18 —/}).click();
+  assert.equal(await dialog.locator('[name=description]').inputValue(),'Upper panel left receptacle');
+  page.once('dialog', d=>d.accept());
+  await dialog.locator('#cancel').click();
+  await dialog.waitFor({state:'hidden'});
   for (const leg of ["18","20"]) {
     await groupedRow.getByRole("button",{name:new RegExp(`^Circuit ${leg} —`)}).click();
     await dialog.locator('input[name=waypoint][value="12"]').check();
@@ -273,6 +297,13 @@ try {
     if (leg==="18") await dialog.locator("[name=also_other_leg]").check();
     await evidence(); await save();
   }
+  const feedsBeforeNote=(await db.query("SELECT * FROM ref.site_power_feed ORDER BY site_power_feed_id")).rows;
+  await groupedRow.getByRole("button",{name:/^Circuit 20 —/}).click();
+  await dialog.locator('[name=description]').fill('Upper panel right receptacle');
+  await save();
+  assert.deepEqual((await db.query("SELECT * FROM ref.site_power_feed ORDER BY site_power_feed_id")).rows,feedsBeforeNote);
+  assert.deepEqual(await groupedRow.locator('.power-circuit-notes').allTextContents(),['Upper panel left receptacle','Upper panel right receptacle']);
+  assert.equal(await groupedRow.locator('.power-breaker-notes').innerText(),'Receptacles at panel');
   await groupedRow.getByText("Connections · unverified",{exact:true}).click();
   assert.match(await groupedRow.innerText(),/20 A · 2 poles/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 18/);
@@ -300,6 +331,7 @@ try {
   }
   assert.deepEqual(breakerRatings, [...new Set(breakerRatings)].sort((a,b)=>a-b));
   assert.equal(await dialog.getByRole("button",{name:"Use rating",exact:true}).count(),0);
+  await dialog.locator('[name=source_evidence]').fill('Gate Power — panel receptacles <not markup>');
   await dialog.locator("[name=show_desired_state]").selectOption("OFF");
   failNext=true;
   await dialog.locator("#save").click();
@@ -307,6 +339,15 @@ try {
   await save();
   assert.deepEqual((await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 ORDER BY breaker_pole",[breakerId])).rows,savedIds);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 AND show_desired_state='OFF'",[breakerId])).rows[0].n,2);
+  assert.equal((await db.query("SELECT source_evidence FROM ref.site_power_breaker WHERE site_power_breaker_id=$1",[breakerId])).rows[0].source_evidence,'Gate Power — panel receptacles <not markup>');
+  assert.equal(await groupedRow.locator('.power-breaker-notes').innerText(),'Gate Power — panel receptacles <not markup>');
+  await groupedRow.getByRole("button",{name:"Breaker settings",exact:true}).click();
+  assert.equal(await dialog.locator('[name=source_evidence]').inputValue(),'Gate Power — panel receptacles <not markup>');
+  await dialog.locator('[name=rated_amps]').selectOption('60');
+  await save();
+  await page.reload();
+  await page.getByText(/Revision \d+/).waitFor();
+  assert.equal(await groupedRow.locator('.power-breaker-notes').innerText(),'Gate Power — panel receptacles <not markup>');
   await page.getByRole("button",{name:"Meter / upstream supply",exact:true}).click();
   await dialog.locator("[name=meter_information]").fill("TEST-METER-100");
   await evidence();await save();
@@ -723,6 +764,70 @@ try {
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device")).rows[0].n,devicesBefore);
   await page.goto(base);
   await page.getByText(/Revision \d+/).waitFor();
+  // Seasonal operations use the real command and ledger, without waypoint prerequisites.
+  await db.exec(`UPDATE ref.site_power_breaker SET show_desired_state='ON',restoration_desired_state='OFF' WHERE active`);
+  await page.reload();await page.getByText(/Revision \d+/).waitFor();
+  const firstState=await db.query('SELECT site_power_breaker_id id,site_panel_id panel FROM ref.site_power_breaker WHERE active ORDER BY site_power_breaker_id LIMIT 1');
+  const bid=firstState.rows[0].id;
+  await page.locator('#breaker-checklist > summary').click();
+  await page.locator('#season').selectOption('2026');
+  await page.locator('#breaker-filter').selectOption('open');
+  const checkRow=page.locator(`#breaker-checklist-rows [data-breaker-id="${bid}"]`);
+  failNext=true;
+  await checkRow.locator('[data-record-state="ON"]').click();
+  assert.equal(await page.locator('#editor').isVisible(),false);
+  await page.getByText(/Use Retry recording/).waitFor();
+  const eventCount=(await db.query('SELECT count(*)::int n FROM ops.setup_power_activity_event')).rows[0].n;
+  await page.locator('#retry-state').click();
+  await page.getByText('Breaker position recorded.',{exact:true}).waitFor();
+  assert.equal((await db.query('SELECT count(*)::int n FROM ops.setup_power_activity_event')).rows[0].n,eventCount);
+  await page.locator('#breaker-filter').selectOption('completed');
+  await checkRow.locator('.power-state-on').waitFor();
+  assert.match(await checkRow.innerText(),/Fixture User/);
+  assert.doesNotMatch(await checkRow.innerText(),/crew@example.test|RESTORATION/);
+  await page.locator('#season').selectOption('2025');
+  assert.equal(await checkRow.count(),0);
+  await page.locator('#breaker-filter').selectOption('open');
+  await checkRow.locator('.power-state-on').waitFor();
+  await page.locator('#season').selectOption('2026');
+  await page.locator('#breaker-phase').selectOption('RESTORATION');
+  await checkRow.locator('[data-record-state="OFF"]').click();
+  await page.getByText('Breaker position recorded.',{exact:true}).waitFor();
+  await page.locator('#breaker-filter').selectOption('completed');
+  await checkRow.locator('.power-state-off').waitFor();
+  for(const theme of ['light','dark']) {
+    await page.locator('html').evaluate((e,t)=>e.dataset.theme=t,theme);
+    assert.notEqual(await checkRow.locator('.power-state-off').evaluate(e=>getComputedStyle(e).color),await checkRow.locator('.power-state-off').evaluate(e=>getComputedStyle(e).backgroundColor));
+  }
+  await page.goto(`${base}?panel=${firstState.rows[0].panel}`);
+  await page.locator(`#panel-detail [data-breaker-id="${bid}"] .power-state-off`).waitFor();
+  await page.emulateMedia({media:'print'});
+  assert.equal(await page.locator('#breaker-checklist').isVisible(),true);
+  assert.equal(await page.locator('.power-layout').isVisible(),false);
+  await page.emulateMedia({media:'screen'});
+  // The report includes wrong-state unchanged-target breakers and a direct PDF link.
+  await db.exec(`UPDATE ref.site_power_breaker SET show_desired_state='ON',restoration_desired_state='ON' WHERE site_power_breaker_id=${bid}`);
+  await page.reload();await page.getByText(/Revision \d+/).waitFor();
+  await page.locator('#show-breaker-report').click();
+  assert.match(await page.locator(`[data-report-breaker="${bid}"]`).innerText(),/Wrong state/);
+  assert.match(await page.locator('#download-breaker-report').getAttribute('href'),/report.pdf\?season=2026&phase=SETUP&view=exceptions/);
+  assert.equal(await page.locator('#breaker-phase option:checked').innerText(),'ON');
+  const downloadReady=page.waitForEvent('download');
+  await page.locator('#download-breaker-report').click();
+  const download=await downloadReady;
+  assert.equal(download.suggestedFilename(),'breakers-2026-ON-exceptions.pdf');
+  assert.equal((await readFile(await download.path())).subarray(0,5).toString(),'%PDF-');
+  // Small distribution panels accept eight slots, persist, reopen, and render eight.
+  // Earlier navigation tests deliberately preserve an A5 search; clear it for FE.
+  await page.locator('#find').fill('');
+  await page.getByRole('button',{name:'Add panel',exact:true}).click();
+  await dialog.locator('[name=panel_name]').fill('FE-00 eight-slot fixture');
+  await dialog.locator('[name=branch_position_count]').fill('8');
+  assert.equal(await dialog.locator('[name=branch_position_count]').evaluate(e=>e.checkValidity()),true);
+  await save();
+  await page.locator('#panels').getByRole('button',{name:'FE-00 eight-slot fixture',exact:true}).click();
+  assert.match(await page.locator('#panel-detail').innerText(),/8 slots/);
+  assert.equal((await db.query("SELECT branch_position_count FROM ref.site_panel WHERE panel_name='FE-00 eight-slot fixture'")).rows[0].branch_position_count,8);
   user = "volunteer@example.test";
   await page.reload();
   await page.getByText("Read only", { exact: false }).waitFor();

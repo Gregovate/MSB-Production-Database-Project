@@ -651,3 +651,50 @@ attribution. Keep all evidence. Pending release uses the existing maintenance
 orchestrator with the panel-only profile; no initial importer or Setup promotion.
 Preparation does not claim deployment. Retain final report/snapshot and ONLINE
 proof, then verify the protected Production screen before closeout.
+
+## October25 PR455 server PASS; breaker notes follow-up
+
+Greg returned complete maintenance/freeze/snapshot/migration/validation/source
+promotion/ONLINE server PASS. Report:
+/home/msbadmin/setup-deployment-reports/PR455-Panels-20261025T084618Z.
+The release installs accepted0fd7fabd / V0.4.22; Setup unchanged. Snapshot
+metadata remains in that report directory; exact path/hash transcription pending.
+Protected Production use exposed notes initialization/display defect. V0.4.23
+source-only correction restores existing source_evidence when opening settings
+and displays it on the board. No waypoint required for local receptacles or gate
+loads. No Production data repair is inferred; already overwritten notes, if any,
+require audit evidence before recovery. Candidate review pending.
+
+## October25 PR457 review — circuit notes correction
+
+Breaker notes save; screenshot2 shows Upper Panel GFI's on breaker2/4 while6/8
+is cropped. Assignment notes rejected note-only saves. V0.4.24 introduces an
+independent Circuit notes field using existing description, displays each leg's
+notes on the board and labels assignment evidence separately. Note-only saves
+preserve feeds, breaker notes and the sibling circuit. Source-only; Production
+unchanged. Latest preview CLEAN EXIT has not yet been reported; do not launch
+another preview until the existing review exits and releases8898/source lock.
+
+
+## October 25 — PR457 seasonal state engineering / next disposable test
+
+Greg requested the final engineering candidate after confirming breaker/circuit notes save and display, and reusable preview CLEAN EXIT (8898 and GIS lock available). Implemented V0.4.25-breaker-state: text-labeled green ON/red OFF/gray unknown board state, season/phase context, grouped observation confirmation, change-only checklist with completed/configuration views, print, and maintained panel-waypoint map deep link. Existing note fixes remain included.
+
+`171_breaker_state.sql` narrowly extends the installed post-slot-count command body with atomic observation-action resolution and existing append-only event insertion. No new state tables, imports, inferred positions or task updates. A saved observation captures breaker impact and authenticated actor through existing commands. Read-only validation is `171_breaker_state_validation.sql`. The disposable runner allowlist includes this pair. Production already contains the slot-count migration: next preview applies ONLY the new breaker-state migration, never the initial GIS/FLW load or slot migration.
+
+Local checks: full FieldWiring application 220 passed; Setup application plus GIS preview contracts 902 passed; reference allowlist 10 passed; isolated existing command acceptance and new breaker-state acceptance passed; map deep-link and existing map harness passed. Actual Chromium and real PostGIS CI are required before handing off the exact candidate; CI disposition/exact SHA will be recorded in PR457. No local browser result is claimed. Protected operator acceptance and Production deployment remain pending.
+
+Release scope now includes an incremental database command change plus FieldWiring and Setup map scripts; later release requires the governed DATABASE-CHANGING maintenance procedure and source promotion for both application trees. Previous source-only notes-release classification is superseded. Production remains untouched during engineering. PR455 server report remains `/home/msbadmin/setup-deployment-reports/PR455-Panels-20261025T084618Z`; preserve snapshot/report evidence. Task57's October9 80% report is unchanged, and cannot establish which breakers were switched.
+
+Final test: check unchanged targets omitted, ON/OFF and OFF/ON setup/restoration requirements, no-waypoint and two-pole breakers, ON/OFF board colors and actor/time after reload, completed view, previous-season noncompletion, map panel focus, print, and retained breaker/circuit notes. Finish with ENTER and retain CLEAN EXIT/report. Existing laptop review worktree is reused; final exact-SHA command belongs in PR457 handoff.
+
+
+## October 25 — V0.4.26 field-review corrections / replacement test
+
+V0.4.25 operator review: FE-00 eight-slot entry not discoverable, email instead of name, unwanted restoration wording and confirmation box, and no apparent PDF/exception report. Preview ended CLEAN EXIT, port8898 and source lock available. Not accepted for Production; supersedes the preceding test handoff.
+
+V0.4.26-breaker-reports adds 8 to the existing 1–200 slot suggestions and a real editor/save test. The new unreleased breaker-state migration now inserts direct REPORTED observations without a fabricated impact-review acknowledgment; authenticated actor, impact snapshot, append-only history, revision and exact replay remain. It also extends the existing read-only snapshot to resolve Directus first/last names for event/audit display, preserving stored identity. Season ON/OFF replaces restoration in the normal UI.
+
+A visible report section and authenticated read-only PDF download evaluate every active breaker, including equal targets. Wrong state, no observation, earlier season, other season mode, and unknown required target are distinct exceptions. Existing change-only checklist remains available. PDFs contain panel/breaker/description, required and recorded positions, names/times, totals, revision, generation time and page numbers. PDF generation uses the application runtime's standard library; no Production environment package install is required. A rendered 60-breaker/four-page fixture was visually inspected and parsed independently; no missing rows or emails. It is synthetic QA, not Production data.
+
+Validation and exact replacement SHA are recorded in PR457. Browser regression covers direct recording without a dialog, exact retry after lost confirmation, 8-slot save/display, unchanged-target exceptions and an actual PDF download generated from fixture PostgreSQL. Same disposable mechanism: only revised 171_breaker_state.sql plus its validation on a fresh current-Production clone; never replay installed slot-count or initial GIS/FLW migrations. Production remains unchanged. User acceptance and governed database-changing release remain pending.

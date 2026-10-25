@@ -107,6 +107,11 @@ const mapSearch = (() => {
       if (entry) select(entry);
       else status.textContent = `Container ${id} is not in this season's asset snapshot.`;
     },
+    focusWaypoint(id) {
+      const entry=references.find(a => a.sourceKind === 'map' && a.markers.some(m => m._searchFeature?.properties?.id === 'wp:' + id));
+      if (entry) select(entry);
+      else status.textContent = `Waypoint ${id} is not available on the maintained map.`;
+    },
     onSelection(listener) { selectionListeners.push(listener); },
     addReference(entry) { references.push(entry); update(); },
     // #171: the existing map index must follow the latest *maintained* geometry.

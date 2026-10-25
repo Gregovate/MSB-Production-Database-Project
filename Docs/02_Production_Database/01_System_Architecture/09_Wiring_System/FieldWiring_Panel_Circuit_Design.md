@@ -838,3 +838,104 @@ Storage evidence: database 413 MB; ops.site_source_observation 111 MB and
 ops.linkiq_test 79 MB dominate newly retained source evidence. These are physical
 relation sizes, not exact attribution of the compressed 142M dump. No retention
 change is part of this release. All source evidence remains preserved.
+
+### October 25 — breaker notes after PR455 deployment
+
+Greg reported PR455 server deployment PASS, report
+/home/msbadmin/setup-deployment-reports/PR455-Panels-20261025T084618Z.
+Protected browser review found breaker notes appear unsaved and are absent from
+the board. The editor initializes existing source_evidence to empty, allowing a
+later settings save to overwrite it. Use the existing persisted notes/evidence
+field; initialize from the saved breaker and render it as plain text on its card.
+An explicit clear may remove the current note; unrelated settings edits must
+preserve it. No parallel notes table, new schema or audit rewrite.
+
+Panel14 breaker14 Gate Power and breaker16 Gate Lights can have notes without
+waypoints. Panel receptacle circuits2/4 and6/8 likewise need no fabricated panel
+waypoint or automatic feed. Keep optional waypoint assignment available and label
+it optional; absence of a waypoint is not proof of spare or disconnected hardware.
+Test save/reopen/reload/other-setting preservation and no-waypoint breakers.
+This source-only correction is a new candidate, not yet approved or deployed.
+
+### October25 review — independent circuit notes
+
+Greg's next PR457 review confirms breaker notes persist and optional waypoints
+are useful. Screenshot2 shows Upper Panel GFI's on breaker2/4; breaker6/8 is
+cropped, so its Lower Panel GFI's display is not established by that image.
+Screenshot4 proves the assignment evidence Notes field cannot save without a
+feed change. Add Circuit notes using existing site_power_circuit.description,
+loaded and saved independently of waypoint selections through existing audited
+circuit commands. Display each leg's notes immediately alongside that circuit.
+Keep breaker notes separate, and label feed evidence Assignment correction note.
+A circuit-note-only edit must not create feeds, reverify existing feeds, change
+other-leg notes, or alter breaker notes. Clearing circuit notes is allowed.
+Test no-waypoint and unchanged-waypoint saves, refresh and sibling isolation.
+No schema change or migration; continue PR457, acceptance remains pending.
+
+### October25 — approved seasonal breaker execution checklist
+
+Greg confirmed the following operator design after accepting notes saving and
+panel-board display in V0.4.24. This records the next engineering scope, not an
+implemented feature or Production release approval.
+
+The seasonal-change checklist defaults to active grouped breakers whose known
+show-season and off-season targets differ. Setup uses show_desired_state;
+takedown/restoration uses restoration_desired_state. ON/ON and OFF/OFF breakers
+are omitted from the change list, but remain visible on the full panel board.
+Unknown targets appear under Needs configuration and are never silently omitted.
+
+Each listed breaker shows panel identity/location, breaker designation/description,
+required state, last recorded state, recording person and observation timestamp.
+The control records the physical action already performed: Record ON or Record
+OFF; it does not operate equipment. One control covers a grouped multipole breaker.
+No waypoint is required. Reuse existing panel GIS identity for map navigation;
+missing location remains explicit and does not prevent recording the action.
+
+The panel board shows last recorded state for every breaker, separately from
+planned seasonal settings. With no event, show Not recorded; never initialize
+actual state from desired state, previous task percentage or an assumption that
+work occurred. Retain previous changes in the existing seasonal action/event
+history. Preserve correction semantics and order observations deterministically;
+older historical entries must not overwrite a newer observation. Display when
+the last observation was made, including if it belongs to an earlier season.
+Recorded switch position is not electrical-isolation or absence-of-voltage proof.
+
+Within the selected season and setup/restoration phase, a change-list item moves
+to Completed only when an applicable recorded action matches that phase's target.
+Retain completed items for review. Do not silently count a prior-season event as
+current-season completion. Show outstanding and completed counts with their
+actual scope; incomplete panel inventory must not imply all park work is captured.
+
+Reusable task57, Turn On Site Breakers, has a crew-reported October9,2026 report:
+Crew1,3 hours,3 person-hours,80% complete; remaining access to bathrooms and park
+office to turn off outdoor security lights. Preserve this historical report and
+percentage. It does not identify completed breakers and cannot backfill individual
+states. The checklist covers both ON show power and OFF unwanted lighting; do not
+automatically overwrite Setup progress or create another task/reporting system.
+
+Implementation must reuse the existing site_power_action and append-only seasonal
+event model, command authorization and audit/revision boundaries. Reconcile any
+missing command capability before schema changes; do not create a parallel switch
+state table. Test target matrix, unknown states, grouped breakers, no-waypoint
+loads, ON/OFF history, corrections, prior-season completion isolation, permissions,
+retry/stale requests and panel-map navigation. Production and GIS sources remain
+untouched during engineering; prepare a governed disposable candidate for review.
+
+
+### October 25 — final-test implementation contract
+
+The panelboard uses green **Recorded ON**, red **Recorded OFF**, and gray **Not recorded**, with text labels and actor/time in both themes. Colors represent the latest uncorrected observation, never the desired state. One control operates on a grouped breaker, independent of waypoint membership. A brief impact review precedes recording physical work.
+
+The existing audited `site_power_command` gains an atomic `breaker_state` command. It resolves a reusable breaker/phase observation action and appends a REPORTED event in the existing append-only activity ledger. No second state table or task-progress authority is introduced. Stable request IDs, revision conflicts, actor authorization, impact snapshots, and replay protection remain enforced. Existing custom activities are retained. History is interpreted using the event's captured definition, so editing an action cannot move a historical observation to another breaker or phase.
+
+The checklist is across active panels, with setup/restoration and season selectors and Open, Completed, and Needs configuration views. Equal known targets are omitted. Completion requires the latest uncorrected observation to match the required state AND selected season/phase. Old observations remain visible without claiming current-season completion. Unknown observations supersede old known observations rather than reviving stale ON/OFF. Print uses the selected checklist view. Reusable task 57's October 9 crew report remains unchanged.
+
+Latest operator handoff: reusable preview CLEAN EXIT; port 8898 and GIS source lock available. New engineering and disposable acceptance remain pending; this is not Production deployment authorization.
+
+### October 25 — operator review correction: rapid observations and exception reports
+
+Greg's V0.4.25 disposable review ended CLEAN EXIT. Supersedes the confirmation-box requirement: Record ON/OFF is a single-click observation with no dialog or acknowledgment. Keep authenticated attribution, observed timestamp, immutable history, revision checking, exact retry IDs and grouped impact snapshot; do not manufacture an impact-reviewed acknowledgment. Season mode is labeled ON/OFF (existing SETUP/RESTORATION storage values remain internal); state cards say Season/year/position and person's name, not email. Canonical Directus names are resolved read-only for existing events; original audit identity remains unchanged.
+
+Include 8 in slot suggestions and explicitly accept integer counts 1–200, preserving occupied-slot protections. Test an 8-slot FE-00-style panel through the real editor and database.
+
+Provide visible downloadable PDF status and exception reports, with panel/breaker/description, required and recorded state, last observer/time, season and completion/exception reason. Reports cover ALL active breakers, including unchanged seasonal targets. Explicit exceptions: wrong position, no known recorded position, earlier-season/other-season-mode observation, and unknown required target. Checklist retains change-only workflow; report totals distinguish confirmed, exceptions and missing work without altering task57 or claiming photos were entered as observations. PDF generation is read-only through existing authenticated snapshot access; no second state system. Production and source files remain untouched. New exact disposable candidate required before release.

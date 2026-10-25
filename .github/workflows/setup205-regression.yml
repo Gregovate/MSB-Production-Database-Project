@@ -70,7 +70,9 @@ jobs:
         working-directory: FieldWiring/Engineering
         run: npm ci
       - name: Execute isolated circuit PostgreSQL command acceptance
-        run: node FieldWiring/Engineering/test_power_capture.mjs
+        run: |
+          node FieldWiring/Engineering/test_power_capture.mjs
+          node FieldWiring/Engineering/test_breaker_state.mjs
       - name: Install browser for isolated circuit workflow
         working-directory: FieldWiring/Engineering
         run: npx playwright install --with-deps chromium

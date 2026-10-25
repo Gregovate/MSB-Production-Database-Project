@@ -180,3 +180,35 @@ html[data-theme="dark"] {--power-secondary:#344154;--power-secondary-border:#8b9
 .power-nav a,.power-nav a:visited {background:var(--power-secondary);color:var(--ink);border:1px solid var(--power-secondary-border);border-radius:7px;padding:.45rem .65rem;text-decoration:none;}
 .power-nav a[aria-current="page"] {background:var(--soft);border-color:var(--blue);font-weight:700;}
 .power-nav a:focus-visible,.power-navigation:focus-visible {outline:3px solid var(--blue);outline-offset:2px;}
+
+.power-breaker-notes {font-weight:600;white-space:pre-wrap;overflow-wrap:anywhere;}
+
+.power-circuit-notes {margin-left:.7rem;border-left:3px solid var(--border);padding-left:.6rem;white-space:pre-wrap;overflow-wrap:anywhere;}
+
+/* Actual recorded state, separate from ownership and desired seasonal plans. */
+.power-switch-state {display:grid;gap:.45rem;margin:.65rem 0;padding:.65rem;border:1px solid var(--border,#888);border-radius:.4rem}
+.power-switch-state small {display:block;overflow-wrap:anywhere}
+.power-state {padding:.35rem .65rem;border-radius:.3rem;display:inline-block;width:fit-content}
+.power-state-on {background:#c7f0d6;color:#10472a;border:2px solid #22834d}
+.power-state-off {background:#ffdad6;color:#7b1b16;border:2px solid #b43229}
+.power-state-unknown {background:#e4e7eb;color:#343a40;border:2px solid #747b84}
+[data-theme="dark"] .power-state-on {background:#153f2a;color:#bdf5d2;border-color:#74d998}
+[data-theme="dark"] .power-state-off {background:#542522;color:#ffdad6;border-color:#ff9186}
+[data-theme="dark"] .power-state-unknown {background:#353b43;color:#e4e7eb;border-color:#a5adb7}
+.power-checklist-row {padding:1rem 0;border-bottom:1px solid var(--border,#888);break-inside:avoid}
+.power-checklist-row .power-switch-state {max-width:44rem}
+@media print {
+ body > header,nav,main > :not(#breaker-checklist),#breaker-checklist button,.power-state-controls {display:none!important}
+ #breaker-checklist {display:block!important;background:white!important;color:black!important}
+ #breaker-checklist .power-toolbar {display:flex}
+ .power-state {print-color-adjust:exact;-webkit-print-color-adjust:exact}
+ .power-checklist-row {border-color:#777}
+}
+
+.power-print-title {display:none}
+@media print {.power-print-title {display:block}}
+
+#breaker-report-rows {overflow-x:auto}
+.power-report-table {border-collapse:collapse;width:100%;font-size:.95rem}
+.power-report-table th,.power-report-table td {padding:.5rem;border:1px solid var(--border,#888);text-align:left;vertical-align:top}
+#download-breaker-report {display:inline-block;padding:.6rem;text-decoration:underline}

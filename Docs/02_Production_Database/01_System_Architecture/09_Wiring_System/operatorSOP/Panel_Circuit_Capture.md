@@ -219,3 +219,14 @@ The breaker rating picker includes 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70,
 80, 90, 100, 110, 125, 150, 175 and 200 A, plus existing saved ratings without
 duplicates. Back to panel and browser Back restore the selected panel, filter,
 expanded details and scroll position within the same browser tab.
+
+
+### Seasonal breaker work — PR457 candidate, revised after field review
+
+1. On Panel Circuits, choose Season **2026** and Season mode **ON** (show targets) or **OFF** (off-season targets). Panelboard green **Recorded ON** and red **Recorded OFF** show the last observation, with the person's name and time. Gray means no known recorded position.
+2. After physical work, press **Record ON** or **Record OFF** once. There is no confirmation dialog. The whole grouped breaker is recorded, including a two-pole breaker, and no waypoint is required. These buttons record observations; they do not remotely switch equipment or establish isolation. If confirmation is lost, **Retry recording** safely resends the same observation.
+3. **Breaker reports** covers ALL active breakers, including ON/ON and OFF/OFF targets. Select **Exceptions / missing work**, **All breakers**, or **Completed**. **Show report** displays the table; a panel/breaker button opens its board. **Download PDF report** downloads the selected report with required state, recorded state, person/time and a specific exception reason.
+4. A wrong position, missing observation, older season, different season mode, or unconfigured required state remains an exception. A recorded OFF breaker required ON is included even if its seasonal targets are ON/ON. Reports do not infer work from photos or update task57's historical percentage.
+5. The collapsible **Seasonal breaker checklist** retains the change-only workflow: equal known targets are omitted there. Use its Completed and Needs configuration views as needed. Locate links open the maintained panel waypoint on Park Map.
+6. Panel **Number of slots** accepts whole numbers 1–200; **8** is offered for small panels such as FE-00. Existing occupied positions must fit within the selected count. Do not delete real breakers to force a smaller count.
+7. Correct mistaken historical observations through Seasonal power activities / Correct this event. The audit history remains append-only.
