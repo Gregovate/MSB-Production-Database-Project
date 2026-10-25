@@ -664,3 +664,15 @@ The choice remains active during filtering/refresh in this page. Sorting must on
 rerender the list, retaining selected controller and unsaved detail/connection edits.
 Do not change stage filters, network chain order, assignments, schemas or API.
 Reuse the existing browser regression and disposable preview mechanism.
+
+
+## October 25 picker sorting follows Controller list
+
+Greg accepts V0.4.19 left-list sorting, but screenshots 053857 / 054133 show the
+IN/OUT controller options remain in ID order when the list uses Display name.
+CLEAN EXIT confirms port 8898/source lock available. Extend the same sort choice
+and comparison rules to both port pickers, initially and immediately on sort changes.
+Keep non-controller choices first, preserve selected values and unsaved edits, and
+retain all eligible controllers across stages. Reorder existing options without
+triggering connection-change handlers, reloads or saves. Do not sort the recorded
+chain or change eligibility, topology, power, database or source files.

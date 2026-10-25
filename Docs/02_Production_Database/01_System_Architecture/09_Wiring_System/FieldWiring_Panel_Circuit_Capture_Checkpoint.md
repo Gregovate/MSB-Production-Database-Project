@@ -470,3 +470,15 @@ stage scope, selected controller, unsaved network/power edits and refresh retent
 Exact-head browser and required CI pending at preparation; PR #319 holds final
 candidate SHA/run results and the existing disposable handoff. V0.4.18 display names
 accepted by Greg with screenshot and CLEAN EXIT; V0.4.19 sort acceptance pending.
+
+
+## October 25 picker sorting follows Controller list
+
+Greg accepts V0.4.19 left-list sorting, but screenshots 053857 / 054133 show the
+IN/OUT controller options remain in ID order when the list uses Display name.
+CLEAN EXIT confirms port 8898/source lock available. Extend the same sort choice
+and comparison rules to both port pickers, initially and immediately on sort changes.
+Keep non-controller choices first, preserve selected values and unsaved edits, and
+retain all eligible controllers across stages. Reorder existing options without
+triggering connection-change handlers, reloads or saves. Do not sort the recorded
+chain or change eligibility, topology, power, database or source files.
