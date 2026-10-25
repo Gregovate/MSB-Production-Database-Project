@@ -724,3 +724,25 @@ for reviewed recovery. No automatic OFF, inverse SQL or full-database restore.
 Promote source only after database validation/preservation passes, then recheck
 fence and hashes, controller OFF, exact health and role denial checks. Operator
 Production smoke test and actual deployment-log/server closeout follow receipt.
+
+## October 25 Production panel-entry correction
+
+After PR319 deployment PASS (report PR319-GIS-20261025T062215Z), Greg began
+real panel inventory. WV-00 / Panel 10 needs 40 branch positions; the diagram's
+36-position minimum only expanded to the highest recorded position (38).
+Expose positions 1–40 by default, retain any recorded higher positions up to the
+existing model limit. This is visible entry space, not inferred installed panel
+capacity or a deduction from its 200 A main. Main disconnect remains separate.
+No migration, source reimport, renumbering, or rewrite of Production entries.
+
+Panel list ownership: MSB Owned light blue, City Owned light orange, other/unknown
+neutral; retain explicit owner text and a distinct selected/focus indicator.
+Use consistent primary save/add controls, distinct circuit assignment controls,
+and neutral secondary settings/navigation. Strengthen physical breaker outlines.
+Reduce repeated schedule prose; retain load uncertainty, no usable-capacity claim,
+and isolation/verification details in disclosures. Colors do not indicate live,
+off, safe, verified or load capacity. Preserve existing shared model and commands.
+Validate 40-slot entry, multi-pole layout, reload persistence, ownership colors in
+both themes, existing assignments, read-only behavior and mobile width. Review
+against a fresh disposable current-Production clone so Greg's populated panels
+are available without repeating data entry. Do not rerun initial installation.
