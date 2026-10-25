@@ -928,7 +928,7 @@
         ),
         select("site_power_device_id", "Affected equipment", devices),
         select("site_power_breaker_id", "Affected breaker (choose exactly one target)", options((data.breakers || []).map(b => [b.site_power_breaker_id,b.breaker_name]))),
-        select("phase", "Season mode", options([["SETUP","Season ON"],["OPERATION","Operation"],["RESTORATION","Season OFF"]])),
+        select("phase", "Season mode", options([["SETUP","Season ON"],["OPERATION","Operation"],["RESTORATION","Season OFF"]]),true),
         choose("action_kind", "Activity", [
           "TURN_OFF_LIGHT",
           "REMOVE_FUSE",
