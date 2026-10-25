@@ -536,3 +536,29 @@ Do not copy a preview database or disposable operator wiring into Production.
 Release profile, its fault tests, exact migration/source identities and the merged
 release target remain pending. No maintenance entry, merge or Production mutation
 has occurred. Scope approval is not a claim that deployment engineering is complete.
+
+
+## October 25 release profile preparation
+
+Second read-only receipt: PostGIS 3.5.2, only ref.site_network with 27 rows,
+existing Manager read/manage capability true. Accepted cached GPX/FLW hashes OK.
+No waypoint/power/FLW tables/functions detected. Initial installation is applicable;
+existing network IDs/rows must survive unchanged.
+
+setup_171_release.py is a profile of the existing setup_maintenance_deploy.py,
+not a replacement runner. Default source/live hooks extracted without changing
+historical behavior; existing profiles' helper-byte pins refreshed accordingly.
+setup_171_transport.py reuses existing committed-byte packaging. One existing-pattern
+PowerShell wrapper provides foreground execution and PreflightOnly. The profile
+holds both established deployment/source locks, preserves frozen business and
+Directus rows, and loads sources through the existing parser/import functions via
+the proved local administrator socket. Disposable source gate remains unchanged.
+
+Accepted application SHA stays 439ab237beaae4ac648e7590f824a774969cd84f; later
+commits are deployment tooling/documentation only. Profile requires that approved
+application be contained in main before host execution. Local fault/default-profile
+regression: 58 passed. CI adds real disposable PostGIS socket/import/replay refusal
+and Windows transport/parse proof. Exact-head CI pending at preparation.
+Production remains ONLINE and unchanged. No claim of server release success until
+a retained host receipt proves snapshot, migration, source validation/promotion
+and ONLINE health. A committed/uncertain failure retains maintenance and report.
