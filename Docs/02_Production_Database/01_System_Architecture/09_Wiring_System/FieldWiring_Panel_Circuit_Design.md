@@ -676,3 +676,51 @@ Keep non-controller choices first, preserve selected values and unsaved edits, a
 retain all eligible controllers across stages. Reorder existing options without
 triggering connection-change handlers, reloads or saves. Do not sort the recorded
 chain or change eligibility, topology, power, database or source files.
+
+
+## October 25 approved initial Production installation profile
+
+Production receipt proves PostGIS 3.5.2 and only ref.site_network (27 rows) in
+the new model namespace; no waypoint/power/FLW tables or site functions exist.
+Both accepted source cache hashes pass. Existing Directus Manager capability passes.
+Preserve all 27 network rows/IDs and every pre-existing ref/ops business row.
+
+Extend the established setup_maintenance_deploy.py profile mechanism; retain its
+single lock, controller ON/freeze/snapshot/OFF, journal and failure containment.
+Extract source-promotion/live-proof hooks with unchanged default behavior so the
+#171 profile can promote both shared and dedicated Setup to the accepted app SHA.
+Do not run the September Controller installer or introduce another orchestrator.
+
+Pin accepted app 439ab237beaae4ac648e7590f824a774969cd84f separately from later
+tooling commits. Require app contained in merged main, exact reviewed migration
+blobs and both observed old source SHAs. Recheck clean source, ONLINE, all services
+including Work Management, backup chain, idle preview and exclusive source lock.
+Run detached regression before maintenance. Hold before mutation for any unexpected
+site table/function, altered network schema/count, missing source or runtime probe.
+
+Use the three existing canonical candidate SQL files verbatim, in accepted order,
+under the separate explicit Production approval. Their historical candidate headers
+do not authorize execution independently. Never introduce renamed duplicate schema.
+Reuse bootstrap_expertgps, seed_gpx_panels and ingest_linkiq for one initial load;
+leave accept_site_sources.py's disposable-only guard intact. No fixture commands,
+preview wiring copy, new Directus grants or future incremental ingest interface.
+
+The deployment-only source adapter uses the existing host Python/psycopg2 as root
+to reach the container's existing filesystem Unix socket through /proc/<pid>/root.
+Discover PID/socket directory read-only; prove current_database=msb,
+current_user=msbadmin and inet_client_addr IS NULL before maintenance.
+Do not open a TCP bypass, modify HBA, mount a socket or install dependencies.
+Re-probe while frozen immediately before source intake. Failure stops fenced.
+This path is an implementation of the runbook's local administrator boundary;
+the existing controller remains the sole fence authority.
+
+Freeze and snapshot precede schema or source writes. Fingerprint all pre-existing
+ref/ops tables plus Directus identity/policy tables; newly created #171 tables are
+excluded only by the fixed reviewed table list. Validate read contracts, role
+EXECUTE/no broad DML, 240 waypoints/220 tracks, source bindings/archive and immutable
+FLW counts, preserving source bytes and the original 27 network records. Journal
+each migration and import stage; partial commit or unknown outcome stays fenced
+for reviewed recovery. No automatic OFF, inverse SQL or full-database restore.
+Promote source only after database validation/preservation passes, then recheck
+fence and hashes, controller OFF, exact health and role denial checks. Operator
+Production smoke test and actual deployment-log/server closeout follow receipt.
