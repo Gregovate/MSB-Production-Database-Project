@@ -29,7 +29,7 @@ def main():
     with tempfile.TemporaryDirectory() as directory:
         temp=Path(directory);temp.chmod(0o755)
         gpx=temp/'source.gpx';flw=temp/'source.flw'
-        gpx.write_text('<gpx xmlns="http://www.topografix.com/GPX/1/1"><wpt lat="43.1" lon="-87.1"><name>RA-00</name><type>PANEL</type></wpt><wpt lat="43.2" lon="-87.2"><name>RA-01</name><type>OUT-Combo</type></wpt></gpx>')
+        gpx.write_text('<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:o="http://www.topografix.com/GPX/gpx_overlay/0/5"><wpt lat="43.1" lon="-87.1"><name>RA-00</name><type>PANEL</type><extensions><o:label><o:label_text>RA-00</o:label_text></o:label></extensions></wpt><wpt lat="43.2" lon="-87.2"><name>RA-01</name><type>OUT-Combo</type><extensions><o:label><o:label_text>RA-01</o:label_text></o:label></extensions></wpt></gpx>')
         with sqlite3.connect(flw) as c:
             c.executescript('CREATE TABLE Records (UUID TEXT, Hash INT, CableId TEXT, Project TEXT, Deleted TEXT, TimeSpan REAL, TestStatus INT, Standard TEXT, LengthF REAL, LengthM REAL, TesterType TEXT, Operator TEXT); CREATE TABLE RecordData (Hash INT, BinRec BLOB);')
             uuid='68b4579b-2116-4140-8f24-e7a0d170b8be'
