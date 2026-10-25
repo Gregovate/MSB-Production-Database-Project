@@ -725,24 +725,49 @@ Promote source only after database validation/preservation passes, then recheck
 fence and hashes, controller OFF, exact health and role denial checks. Operator
 Production smoke test and actual deployment-log/server closeout follow receipt.
 
-## October 25 Production panel-entry correction
+## October 25 Production panel-entry correction — final design
 
-After PR319 deployment PASS (report PR319-GIS-20261025T062215Z), Greg began
-real panel inventory. WV-00 / Panel 10 needs 40 branch positions; the diagram's
-36-position minimum only expanded to the highest recorded position (38).
-Expose positions 1–40 by default, retain any recorded higher positions up to the
-existing model limit. This is visible entry space, not inferred installed panel
-capacity or a deduction from its 200 A main. Main disconnect remains separate.
-No migration, source reimport, renumbering, or rewrite of Production entries.
+PR319 server deployment passed (report PR319-GIS-20261025T062215Z). Greg began
+real panel inventory and found WV-00 / Panel 10 stopped at 38 positions. The old
+screen used a 36-position minimum and expanded only to the highest recorded slot.
+The final correction is an explicit **Number of slots** field in Panel setup,
+not a larger fixed minimum and not a count inferred from amperage.
 
-Panel list ownership: MSB Owned light blue, City Owned light orange, other/unknown
-neutral; retain explicit owner text and a distinct selected/focus indicator.
-Use consistent primary save/add controls, distinct circuit assignment controls,
-and neutral secondary settings/navigation. Strengthen physical breaker outlines.
-Reduce repeated schedule prose; retain load uncertainty, no usable-capacity claim,
-and isolation/verification details in disclosures. Colors do not indicate live,
-off, safe, verified or load capacity. Preserve existing shared model and commands.
-Validate 40-slot entry, multi-pole layout, reload persistence, ownership colors in
-both themes, existing assignments, read-only behavior and mobile width. Review
-against a fresh disposable current-Production clone so Greg's populated panels
-are available without repeating data entry. Do not rerun initial installation.
+Persist nullable branch_position_count (1–200) on the existing ref.site_panel.
+Suggest 12/18/20/24/30/40/42 while allowing another actual count. The main is
+excluded; two-pole breakers occupy two slots. Render 1 through the configured
+count, odd left/even right. Empty slots are placeholders, never automatic installed
+breakers or circuit rows. Unknown existing counts stay null: show only the occupied
+extent and a Set number of slots prompt. Do not claim the occupied extent is the
+panel's physical capacity. Block count reduction or breaker placement/movement
+that would put an active branch position beyond the configured count. Preserve
+all existing panel, breaker, circuit and waypoint identities and assignments.
+
+Use one bounded additive migration, 171_panel_slot_count.sql, and the existing
+audited site_power_command. Extend only its panel field allowlist after checking
+the deployed function body; retain authorization, revisions, audit and grants.
+Enforce occupied-slot bounds on panel and breaker writes, sharing the model
+revision lock. No duplicate inventory/schema, source reimport, initial-schema
+replay, panel renumbering or data rewrite. Future deployment is DATABASE-CHANGING
+and requires the existing maintenance/snapshot procedure after candidate approval.
+
+Group panel identity/ownership, main supply, and branch schedule. Each physical
+breaker is one outlined card spanning its occupied rows, containing its circuit
+assignment buttons. Avoid duplicate position headings when the breaker designation
+already supplies the numbers. Shorten load and affected-endpoint disclosure labels;
+retain full incomplete-load, usable-capacity and isolation caveats inside them.
+Keep disclosures closed initially so entry controls remain easy to scan.
+
+Owner tint: MSB Owned light blue, City Owned light orange, other/unknown neutral.
+Include explicit owner text and a separate selected/focus outline. Save/Add use
+shared primary blue; circuit assignment uses a pale blue outlined button;
+settings/navigation/Cancel remain neutral. Disabled controls retain role guards
+and a distinct disabled appearance. Provide readable dark-theme variants.
+No color asserts energized/de-energized, safe, verified, capacity or completed work.
+
+Validate small-panel extent, 40/42-slot entry, multi-pole layout, reload persistence,
+occupied-slot shrink/overflow denial, atomicity, audit/role boundaries, ownership
+colors in both themes and mobile width. Extend only the existing preview SQL
+allowlist and workflow tests. Review on a fresh disposable current-Production clone
+with Greg's populated panels; use only the incremental migration, no initial
+migrations or GPX/FLW intake. Production remains unchanged by this engineering.
