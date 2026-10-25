@@ -281,7 +281,9 @@ try {
   assert.equal(await groupedRow.locator('.power-circuit-notes').innerText(),'Upper panel left receptacle');
   await groupedRow.getByRole("button",{name:/^Circuit 18 —/}).click();
   assert.equal(await dialog.locator('[name=description]').inputValue(),'Upper panel left receptacle');
+  page.once('dialog', d=>d.accept());
   await dialog.locator('#cancel').click();
+  await dialog.waitFor({state:'hidden'});
   for (const leg of ["18","20"]) {
     await groupedRow.getByRole("button",{name:new RegExp(`^Circuit ${leg} —`)}).click();
     await dialog.locator('input[name=waypoint][value="12"]').check();
