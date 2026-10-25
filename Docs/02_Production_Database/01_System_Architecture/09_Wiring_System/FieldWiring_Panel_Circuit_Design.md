@@ -871,3 +871,52 @@ A circuit-note-only edit must not create feeds, reverify existing feeds, change
 other-leg notes, or alter breaker notes. Clearing circuit notes is allowed.
 Test no-waypoint and unchanged-waypoint saves, refresh and sibling isolation.
 No schema change or migration; continue PR457, acceptance remains pending.
+
+### October25 — approved seasonal breaker execution checklist
+
+Greg confirmed the following operator design after accepting notes saving and
+panel-board display in V0.4.24. This records the next engineering scope, not an
+implemented feature or Production release approval.
+
+The seasonal-change checklist defaults to active grouped breakers whose known
+show-season and off-season targets differ. Setup uses show_desired_state;
+takedown/restoration uses restoration_desired_state. ON/ON and OFF/OFF breakers
+are omitted from the change list, but remain visible on the full panel board.
+Unknown targets appear under Needs configuration and are never silently omitted.
+
+Each listed breaker shows panel identity/location, breaker designation/description,
+required state, last recorded state, recording person and observation timestamp.
+The control records the physical action already performed: Record ON or Record
+OFF; it does not operate equipment. One control covers a grouped multipole breaker.
+No waypoint is required. Reuse existing panel GIS identity for map navigation;
+missing location remains explicit and does not prevent recording the action.
+
+The panel board shows last recorded state for every breaker, separately from
+planned seasonal settings. With no event, show Not recorded; never initialize
+actual state from desired state, previous task percentage or an assumption that
+work occurred. Retain previous changes in the existing seasonal action/event
+history. Preserve correction semantics and order observations deterministically;
+older historical entries must not overwrite a newer observation. Display when
+the last observation was made, including if it belongs to an earlier season.
+Recorded switch position is not electrical-isolation or absence-of-voltage proof.
+
+Within the selected season and setup/restoration phase, a change-list item moves
+to Completed only when an applicable recorded action matches that phase's target.
+Retain completed items for review. Do not silently count a prior-season event as
+current-season completion. Show outstanding and completed counts with their
+actual scope; incomplete panel inventory must not imply all park work is captured.
+
+Reusable task57, Turn On Site Breakers, has a crew-reported October9,2026 report:
+Crew1,3 hours,3 person-hours,80% complete; remaining access to bathrooms and park
+office to turn off outdoor security lights. Preserve this historical report and
+percentage. It does not identify completed breakers and cannot backfill individual
+states. The checklist covers both ON show power and OFF unwanted lighting; do not
+automatically overwrite Setup progress or create another task/reporting system.
+
+Implementation must reuse the existing site_power_action and append-only seasonal
+event model, command authorization and audit/revision boundaries. Reconcile any
+missing command capability before schema changes; do not create a parallel switch
+state table. Test target matrix, unknown states, grouped breakers, no-waypoint
+loads, ON/OFF history, corrections, prior-season completion isolation, permissions,
+retry/stale requests and panel-map navigation. Production and GIS sources remain
+untouched during engineering; prepare a governed disposable candidate for review.
