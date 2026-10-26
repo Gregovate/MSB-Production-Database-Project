@@ -23,10 +23,10 @@ nav[aria-label="Field wiring screens"] a:hover {background:#c7d6e5;}
    Keep semantic connection/panel colors separate from command controls. */
 :root {--fw-action-bg:#e6edf5;--fw-action-ink:#172b40;--fw-action-border:#8095ab;--fw-action-hover:#c7d6e5;--fw-neutral-bg:#e6e9ed;}
 [data-theme="dark"] {--fw-action-bg:#253d54;--fw-action-ink:#edf6ff;--fw-action-border:#829ab0;--fw-action-hover:#31516e;--fw-neutral-bg:#334155;}
-:is(#add-device,#manage-equipment-models,.equipment-actions button,body[data-power-screen="equipment"] dialog button) {
+#add-device,#manage-equipment-models,.equipment-actions button,body[data-power-screen="equipment"] dialog button {
  background:var(--fw-action-bg);color:var(--fw-action-ink);border-color:var(--fw-action-border);
 }
-:is(#add-device,#manage-equipment-models,.equipment-actions button,body[data-power-screen="equipment"] dialog button):hover:not(:disabled) {
+#add-device:hover:not(:disabled),#manage-equipment-models:hover:not(:disabled),.equipment-actions button:hover:not(:disabled),body[data-power-screen="equipment"] dialog button:hover:not(:disabled) {
  background:var(--fw-action-hover);
 }
 body[data-power-screen="equipment"] dialog button.equipment-save {background:#1768b3;color:#fff;border-color:#1768b3;}
