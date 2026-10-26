@@ -81,4 +81,9 @@ def locate_assets(picture):
                          "position": geographic_position(event), "observation": observation(event)})
     return {"generated_at": picture["generated_at"], "through_event_id": picture["through_event_id"],
             "containers": containers, "displays": displays,
+            "controllers": [{"controller_id": e["controller_id"], "name": e["name"],
+                             "position": geographic_position(e), "observation": observation(e),
+                             "movement_status": e.get("event_type"),
+                             "current_location_note": e.get("destination_location_note")}
+                            for e in picture.get("controller_observations", [])],
             "scope": "All reference Containers and active independent Displays. No prior-GPS fallback."}

@@ -42,6 +42,7 @@ jobs:
           Setup/Acceptance/test_setup_171_breaker_release.py
           Setup/Acceptance/test_setup_171_performance_release.py
           Setup/Acceptance/test_setup_171_correction_release.py
+          Setup/Acceptance/test_diagnose_171_controller_preview.py
           Setup/Acceptance/test_setup_required_container_deploy.py
           Setup/Acceptance/test_setup_scheduled_search_deploy.py
       - name: Full unchanged Setup regression
@@ -60,6 +61,8 @@ jobs:
         run: |
           $tokens = $null
           $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/measure_171_controller_transport.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
           [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_205_estimates_deploy.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
           if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
           [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_171_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null

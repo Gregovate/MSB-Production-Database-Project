@@ -75,7 +75,9 @@ class SetupMovementRepository:
         reconciliation: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            command = "ops.record_setup_container_reconciliation" if reconciliation else "ops.record_setup_movement_event"
+            command = ("ops.record_setup_controller_location" if asset_type == "CONTROLLER"
+                       else "ops.record_setup_container_reconciliation" if reconciliation
+                       else "ops.record_setup_movement_event")
             extra_placeholder = ",%s::jsonb" if reconciliation else ""
             cur.execute(
                 f"""
@@ -328,6 +330,23 @@ class SetupMovementRepository:
                 result["named_context"] = None
             return result
 
+    def controller_observations(self, setup_session_id: int) -> list[dict[str, Any]]:
+        """Read latest dated controller observations for the existing park map."""
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT e.*,c.controller_id, 'CTRL:' || c.controller_id::text AS name,
+                       s.stage_key,s.stage_name
+                FROM ref.controller c
+                LEFT JOIN LATERAL (
+                    SELECT me.* FROM ops.setup_movement_event me
+                    WHERE me.controller_id=c.controller_id AND me.setup_session_id=%s
+                    ORDER BY me.occurred_at DESC,me.setup_movement_event_id DESC LIMIT 1
+                ) e ON true
+                LEFT JOIN ref.stage s ON s.stage_id=e.destination_stage_id
+                ORDER BY c.controller_id
+            """, (setup_session_id,))
+            return [dict(row) for row in cur.fetchall()]
+
     def search_assets(
         self,
         *,
@@ -370,6 +389,13 @@ class SetupMovementRepository:
                     FROM ref.display AS d
                     WHERE (%s::bigint IS NOT NULL AND d.display_id = %s::bigint)
                        OR d.display_name ILIKE %s
+                    UNION ALL
+                    SELECT 'CONTROLLER'::text,c.controller_id::bigint,
+                           'CTRL:' || c.controller_id::text,
+                           'Controller ' || c.controller_id::text,
+                           1 AS rank_order
+                    FROM ref.controller c
+                    WHERE c.controller_id::text ILIKE %s
                 )
                 SELECT asset_type, asset_id, identity, label
                 FROM matches
@@ -386,6 +412,7 @@ class SetupMovementRepository:
                     numeric_id,
                     numeric_id,
                     numeric_id,
+                    like,
                     like,
                     limit,
                 ),
@@ -488,9 +515,35 @@ class SetupMovementRepository:
                     """,
                     (asset_id, season_year),
                 )
+            elif asset_type == "CONTROLLER":
+                # Latest observation wins, not latest offline arrival. No topology,
+                # inventory home or Display/Container state is modified.
+                cur.execute("""
+                    SELECT ss.setup_session_id,'CONTROLLER'::text AS asset_type,
+                           c.controller_id::bigint AS asset_id,
+                           'Controller ' || c.controller_id::text AS label,
+                           c.current_location_code AS home_location_code,
+                           me.event_type AS movement_status,me.occurred_at AS last_movement_at,
+                           me.destination_stage_id AS current_stage_id,s.stage_key,s.stage_name,
+                           me.destination_location_note AS current_location_note,
+                           me.setup_movement_event_id AS last_movement_event_id,
+                           me.event_type AS last_event_type,me.occurred_at AS last_observed_at,
+                           me.gps_latitude,me.gps_longitude,me.gps_accuracy_m,
+                           me.gps_fix_at,me.gps_fix_age_ms,me.gps_quality,me.gps_quality_note,
+                           me.capture_method,me.offline_captured
+                    FROM ops.setup_session ss
+                    JOIN ref.controller c ON c.controller_id=%s
+                    LEFT JOIN LATERAL (
+                        SELECT e.* FROM ops.setup_movement_event e
+                        WHERE e.setup_session_id=ss.setup_session_id AND e.controller_id=c.controller_id
+                        ORDER BY e.occurred_at DESC,e.setup_movement_event_id DESC LIMIT 1
+                    ) me ON true
+                    LEFT JOIN ref.stage s ON s.stage_id=me.destination_stage_id
+                    WHERE ss.season_year=%s
+                """, (asset_id,season_year))
             else:
                 raise SetupMovementRepositoryError(
-                    "Movement asset type must be CONTAINER or DISPLAY"
+                    "Movement asset type must be CONTAINER, DISPLAY or CONTROLLER"
                 )
             row = cur.fetchone()
             result = dict(row) if row is not None else None
@@ -520,3 +573,18 @@ class SetupMovementRepository:
                 for key in ("gps_latitude", "gps_longitude", "gps_accuracy_m", "gps_fix_at", "gps_fix_age_ms", "gps_quality", "gps_quality_note"):
                     result[key] = location.get(key)
         return result
+
+    def pickup_list(self, season_year: int) -> dict[str, Any]:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM ops.setup_container_pickup_list WHERE season_year=%s ORDER BY stage_key,container_id", (season_year,))
+            rows = [dict(row) for row in cur.fetchall()]
+            cur.execute("SELECT stage_id,stage_key,stage_name FROM ref.stage ORDER BY stage_key,stage_id")
+            return {"containers": rows, "stages": [dict(row) for row in cur.fetchall()]}
+
+    def record_pickup(self, *, email, season_year, client_event_id, container_id, action, stage_id, location_note, empty_confirmed):
+        with self.write_connect() as conn, conn.cursor() as cur:
+            cur.execute("SELECT ops.record_setup_container_pickup(%s,%s,%s::uuid,%s,%s,%s,%s,%s)",
+                        (email, season_year, str(client_event_id), container_id, action, stage_id, location_note, empty_confirmed))
+            event_id = cur.fetchone()[0]
+            conn.commit()
+            return event_id

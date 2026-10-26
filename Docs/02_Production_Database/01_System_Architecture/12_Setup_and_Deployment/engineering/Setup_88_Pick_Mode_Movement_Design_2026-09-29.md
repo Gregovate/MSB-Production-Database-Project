@@ -1,5 +1,13 @@
 # Setup #88 — Pick Mode and Movement Capture Design — 2026-09-29
 
+## October 26 urgent controller location extension — #88/#171 under #122
+
+Controller QR identification already works: Scan CTRL routes to the permanent Controller Inventory. Add a Record Location action there; preserve the existing route and labels. Setup Record Location must accept compact CTRL:id and full /scan/CTRL/id URLs via HID, camera, manual entry and deep link. Reuse its authenticated movement API, explicit location confirmation, GPS/named evidence, training write prohibition, offline queue and client-event retry identity.
+
+Extend the existing ops.setup_movement_event audit with a nullable controller FK and CONTROLLER_MOVE. Keep existing Display/Container commands and histories unchanged; dispatch controller observations to a narrowly scoped authorized SQL command with the same transport contract. No new controller inventory or inferred power/network placement. Latest controller state is derived by observation time then event ID, so delayed offline replay never replaces newer evidence. Exact retries return the original event; changed payload reuse is rejected. Add search/state reads and a type-qualified offline context key to prevent CTRL/DISP numeric-ID collisions. Preserve permanent inventory location fields and accepted controller chains.
+
+Only pending migration 077_add_setup_controller_location.sql applies alongside pending equipment lifecycle/catalog in the existing disposable runner. No completed migrations replayed. Current-clone validation is read-only; fixture writes remain isolated. Test authorization, unknown identities, cross-asset requests, missing/invalid location, exact/conflicting retries, out-of-order capture, training/offline behavior, and existing Display/Container regression before operator acceptance and Production release.
+
 | Document Control | Value |
 |---|---|
 | Status | ACTIVE IMPLEMENTATION DESIGN — V0.3.29 pick-clarity successor |
@@ -1051,3 +1059,18 @@ for current-Production-clone/audit/privilege/operator/tablet acceptance. Reusabl
 **Owner directive:** Greg spoke with Tom and reports additional problems using Container Locate / Record Location / Container Empty. This must be managed as a **separate #122 launch debug**, implemented and tested under existing **#88**, not absorbed into #205 KPI/Manager-email PR #394. The specific problems Tom found are **not yet described**; do not speculate, assume the current candidate is installed, or change movement data or business rules until observations and current Production identity are verified.
 
 **Next reconnaissance:** capture Tom's actual screen/scan sequence, the expected versus observed result, affected Containers, empty/partial/uncertain choices, connectivity/device and displayed app version where available. Compare installed Record Location behavior with existing #88 engineering/acceptance sources and the controlled movement/event model. Retain original events, source identities and operator audit. Derive an isolated debug correction and browser/tablet acceptance under #122; no Production changes authorized by this intake note.
+
+
+## 2026-10-26 launch addition — empty container return pickup
+
+Under #88/#171 and commanding #122, Scan's Container card gains “Setup Complete Return to Shop”. This opens an explicit confirmation in Setup; scanning alone does not write. The operator confirms the container is ready and empty, selects its physical Stage and supplies a short pickup location. This is a collection request, not task completion, inventory reconciliation, or evidence of arrival at the shop. Existing Display attachments are not altered or used to repair the #88 workflow. Takedown remains deferred.
+
+An append-only, season-scoped pickup event ledger records REQUEST/CANCEL with authenticated movement operator, server time, exact-retry UUID and confirmed location. Read access follows Setup; command access follows existing movement authorization and same-origin command guard. Training cannot submit. The printable pickup report has Container, Stage and simple pickup location, sorted by Stage key then Container. New movement evidence after a request supersedes its recorded location when it carries an explicit Stage/location. An actual RETURNED movement after the request closes it; merely viewing/scanning or marking ready never closes it. Cancellation removes an accidental request without changing physical location. Operators record actual shop arrival using existing Record Location / Returned to Home Location. No additional container inventory, outbound pick demand, contents edits or broad #88 redesign is introduced.
+
+Setup navigation exposes **Pickup List** immediately after **Pick List**, before **Record Location**. It opens the existing container pickup report and preserves the selected season; opening the report records no movement or pickup request.
+
+Validation required: exact/conflicting replay, authorization, season isolation, Stage ordering, cancellation, return closure and re-request after return. Pending migration 078 is disposable-only until candidate acceptance and governed release. Scan source and deployed dist must match; include Scan deployment in the final release manifest.
+
+### Display placement invariant retained for launch
+
+Recording an attached Display at its confirmed park Stage creates a Display movement and sets annual operational `position_mode=DETACHED`, with its own Stage/location/GPS evidence. Returning its former Container must not relocate that Display. The reusable `ref.display.container_id` remains the assigned storage association; current physical association is the annual Setup state. A QR lookup alone records nothing. Existing Standalone / singular Display-Pallet objects stay integral and are moved through their Container. The actual SQL regression now explicitly records direct Display placement followed by the former Container's shop return and asserts the original Display movement, Stage and park location remain unchanged.

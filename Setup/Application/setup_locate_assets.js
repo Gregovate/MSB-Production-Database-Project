@@ -107,6 +107,23 @@
       for (const v of values) mapSearch.addAsset(v, container, marker);
     }
   }
+  // Reuse the approved Controller symbol and the same observed-location map.
+  layers.controllers=L.layerGroup();
+  const controllerToggle=document.createElement('input');controllerToggle.type='checkbox';
+  controllerToggle.checked=map.hasLayer(layers.containers);
+  const controllerLabel=document.createElement('label');controllerLabel.append(controllerToggle,document.createTextNode(' Controllers'));
+  document.querySelector('[data-layer="containers"]').parentElement.after(controllerLabel);
+  if(controllerToggle.checked)layers.controllers.addTo(map);
+  controllerToggle.onchange=()=>controllerToggle.checked?layers.controllers.addTo(map):map.removeLayer(layers.controllers);
+  function renderControllers(items){
+    for(const a of items){
+      const text=`<b>${esc(a.name)}</b>${volunteerSummary(a)}<details><summary>Record details</summary>${evidence(a.observation)}</details>`;
+      if(!a.position){const row=document.createElement('details');row.innerHTML=`<summary>${esc(a.name)}</summary>${text}`;unlocated.append(row);continue;}
+      const marker=window.msbReferenceSymbols.marker(a.position,'Controller');
+      window.msbReferenceSymbols.bindPopupAtIconTop(marker,text);
+      marker.addTo(layers.controllers);
+    }
+  }
   async function load() {
     const current = ++sequence;
     refresh.disabled = true;
@@ -116,16 +133,17 @@
       if (!response.ok) throw new Error(`Asset data unavailable (${response.status})`);
       const data = await response.json();
       if (current !== sequence) return;
-      layers.containers.clearLayers(); layers.displays.clearLayers();
+      layers.containers.clearLayers(); layers.displays.clearLayers(); layers.controllers.clearLayers();
       unlocated.replaceChildren(); mapSearch.clearAssets();
-      render(data.containers, true); render(data.displays, false);
+      render(data.containers, true); render(data.displays, false); renderControllers(data.controllers||[]);
       if (requestedContainer && /^\d+$/.test(requestedContainer)) mapSearch.focusContainer(Number(requestedContainer));
-      status.textContent = `${data.containers.length} Containers · ${data.displays.length} independent Displays · ${unlocated.children.length} unlocated · through event ${data.through_event_id}. Icons show recorded associations: Loaded / Partial / Empty / Unknown. Physical loads unconfirmed.`;
+      status.textContent = `${(data.controllers||[]).length} Controllers · ${data.containers.length} Containers · ${data.displays.length} independent Displays · ${unlocated.children.length} unlocated · through event ${data.through_event_id}. Icons show recorded associations: Loaded / Partial / Empty / Unknown. Physical loads unconfirmed.`;
     } catch (error) {
       if (current === sequence) {
         // A failed live API must never leave apparently current movement positions.
         layers.containers.clearLayers();
         layers.displays.clearLayers();
+        layers.controllers.clearLayers();
         unlocated.replaceChildren();
         mapSearch.clearAssets();
         status.textContent = 'CURRENT Container / Display locations unavailable (' +

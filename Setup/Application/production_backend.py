@@ -563,6 +563,11 @@ def locate_preview():
         return _no_store(Response(html, mimetype="text/html"))
     return _no_store(send_from_directory(BASE_DIR, "locate_preview.html"))
 
+@app.get("/container-pickups/")
+def container_pickups():
+    return _no_store(send_from_directory(BASE_DIR, "container_pickups.html"))
+
+
 @app.get("/record-location")
 @app.get("/record-location/")
 def record_location():

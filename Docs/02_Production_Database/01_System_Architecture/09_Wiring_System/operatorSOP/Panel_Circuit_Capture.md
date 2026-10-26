@@ -1,5 +1,19 @@
 # Record panel circuits and seasonal power activity
 
+To record a controller arriving in the park: scan its permanent QR, select **Record Location** from Controller Inventory, review the CTRL identity, then capture GPS or choose a named location and record. You can also scan CTRL directly on Setup Record Location. This records physical whereabouts, not a power/network installation. Use the map Controllers layer for recorded GPS positions; controllers without coordinates remain unlocated.
+
+Installed and unassigned equipment appear in a table, one row per physical unit. Read the equipment number, model/name and condition across the row; use its Edit, Record test/failure, Move/remove or Replace action. Expand Equipment history only when needed.
+
+## Next disposable review — equipment and field test history
+
+FieldWiring is the interim equipment model-entry surface. Additional Equipment starts without installed units. Select the waypoint, choose Install Equipment, choose a model, enter Quantity (default 1) and an optional note, then Save. This records individual units and installation history together; no prior spare-stock entry is required. Purchase totals do not automatically create inventory or installations. Use Manage equipment models to rename or delete an unused model; models already used by recorded equipment cannot be deleted. Cameras and MSB Blue/Green Splitters use this same workflow; controllers retain their CTRL inventory. Labels are deferred.
+
+For cable tests select a network, type part of a test-point name in any letter case, then choose a waypoint from the visible matching list. Column headings sort the list. Compare tests opens only that segment's date/length/speed/result grid. Dates retain tester-local wall time. Unknown dates remain explicit and sort after dated records. Speed is the nominal rate of the saved test standard, not a new throughput measurement. Results now show verified PASS, FAIL or INFO; INFO is not a passing cable qualification. Unrecognized future codes remain Not decoded. Tests in either direction share one history for the same network and accepted endpoints. Length changes stay visible; they do not automatically declare a cable replacement. Source files and provenance remain preserved outside this field grid.
+
+Waypoint Connections shows recorded supply, controllers, equipment and test links. Connection engineering and recorded history is collapsed by default. Recorded state does not prove safe isolation.
+
+Review fixed waypoint, quantity and specific units; create/change models, add a camera and a type, record failure/replacement; verify network-scoped search, sorting, segment-only history and readable dates. Retain preview reports and the FLW result-evidence notices. Exit the preview cleanly. Outcome mapping is verified from the original FLW. Production release still requires browser acceptance and explicit approval.
+
 **Candidate procedure — not yet released to Production.** Authorized Production
 Crew can maintain these records. Managers maintain waypoint names and positions.
 
@@ -237,3 +251,25 @@ expanded details and scroll position within the same browser tab.
 Open **Breaker settings**, correct **Positions / circuits** and **Poles**, then Save. A mistaken 2/4 two-pole entry can become position2 with one pole when no active connections exist. Its retained circuit ID and notes remain; the unused leg is retired and position4 becomes available.
 
 To remove an entire mistaken entry, choose **Remove mistaken breaker**, review the removal summary, and Save. This frees its positions and retires unused circuit records; history is retained. If blocked, the message identifies feeds, controllers, conductor memberships, remote panels or activities requiring reassignment. Automatic position-observation history is preserved. Do not delete a panel or recreate valid inventory to correct a breaker.
+
+### V0.4.30 disposable review — setup equipment and cable tests (not Production)
+
+1. In Additional Equipment, choose any applicable waypoint, or Uninstalled / spares. Add equipment records one physical item; the model field offers existing suggestions and accepts an unknown model. Select its type and record ratings/notes when known. Controllers remain in the existing Controller inventory with unchanged CTRL identity.
+2. Record test / failure opens UNTESTED, WORKING or FAILED, test date/time and notes. Leave the date blank when unknown. History retains actor and entry time. Correct test appends a correction; it does not erase the original.
+3. Move / remove changes an existing item's current waypoint or returns it to spares. Replace selects a different existing spare and records the old/new relationship. Add an unrecorded spare first. Both items and their history remain. Active electrical feed references must be reconciled before movement/replacement; the application does not silently transfer connections.
+4. Cable Test History initially shows all retained tests, grouped by cable/network with latest reliable dates first. Filter by Network and/or Waypoint. Expand All tests for provenance and older/undated observations. Unknown network matches remain visible under All; an undated test prevents a claim that chronological order is certain. Speed is unknown where no measured speed is stored; the source test standard is shown separately, not converted to measured throughput. Recorded result codes remain source evidence, not an invented pass/fail interpretation.
+5. Controller Save connections is blue; Reload connections is gray. Network fields are light blue and power fields light red, with text labels. The ordered chain highlights the selected controller and preserves the recorded origin/ending.
+
+Review only in the disposable clone. Check that existing chains, outlet assignments, panel notes/states and reports remain intact. End through the reusable preview's cleanup and retain its report. Equipment labels are low priority and not required for recording data.
+
+
+## Pending controller performance review
+
+On the next pinned disposable candidate, open Racing Arches or Who from a fresh controller page, then select several controllers in the same chain. Record first-load time separately from subsequent selections. Confirm network light blue, power light red, Save blue, Reload gray, correct chain/display names and recorded power source. Reload connections must fetch current records; test one connection edit only in the disposable clone and confirm retained chain behavior. The existing read-only transport script compares full and controller-scoped response bytes and timings. Retain reports and finish the original preview runner's CLEAN EXIT. These are acceptance steps, not Production release authorization.
+
+
+## Equipment and cable correction review
+
+On the pinned replacement preview, confirm Additional Equipment and Cable Test History contain no breaker report, season selector or seasonal checklist, including after Reload and navigation from a selected panel. Equipment location/Add/Move should offer power/network/combo locations plus spares, excluding Stage points. Infrastructure types such as light poles and disconnects are not Additional Equipment choices. Existing equipment at a legacy location remains visible for reconciliation; new installs there are disabled.
+
+Check a cable result such as1000BASE-T: Test speed / standard should show1000Mbps with the original standard. This is the saved test standard's rate; it is not measured throughput or a claim that the cable passed. Missing standards display Not recorded, unsupported standards remain verbatim, and result codes remain as captured. Confirm lengths, latest dates, network/test-point filters and older history remain intact.

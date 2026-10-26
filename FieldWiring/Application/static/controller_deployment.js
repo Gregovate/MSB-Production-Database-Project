@@ -4,6 +4,21 @@
 (() => {
   let generation=0, dirty=false, pending=null, saving=false;
   const root=()=>document.getElementById("controller-deployment");
+  // A page-local read snapshot, like Panel Circuits. Writes still use its revision.
+  let snapshot=null, snapshotRequest=null, snapshotEpoch=0;
+  function invalidate() {snapshot=null;snapshotRequest=null;snapshotEpoch++;}
+  async function connectionSnapshot(shared) {
+    if(!shared)return api("api/power?view=controller");
+    if(snapshot)return snapshot;
+    if(snapshotRequest)return snapshotRequest;
+    const epoch=snapshotEpoch;
+    const request=api("api/power?view=controller").then(data=>{
+      if(epoch===snapshotEpoch)snapshot=data;
+      return data;
+    }).finally(()=>{if(snapshotRequest===request)snapshotRequest=null;});
+    snapshotRequest=request;return request;
+  }
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)invalidate();});
   const node=(tag,text,parent)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(parent)parent.append(n);return n;};
   const tokens=w=>String(w.type||"").toLowerCase().split(/[-_\s]+/);
   const power=w=>tokens(w).some(t=>["power","combo"].includes(t));
@@ -56,7 +71,7 @@
     const host=mount || root();host.replaceChildren();node("h3",`CTRL ${controllerId} · Network IN / OUT`,host);
     const status=node("p","Loading deployment records…",host);status.setAttribute("role","status");
     try {
-      const data=await api("api/power");if(ticket!==generation)return;
+      const data=await connectionSnapshot(host===root());if(ticket!==generation)return;
       const installation=data.controller_installations.find(x=>x.active&&x.controller_id===controllerId);
       const connection=data.controller_power_connections.find(x=>x.active&&x.controller_id===controllerId);
       const name=id=>data.waypoints.find(w=>w.id===id)?.name||`Waypoint ${id}`;
@@ -75,6 +90,8 @@
       const ending=choose("deployment-out","OUT — cable goes to ");
       const outlet=choose("deployment-outlet","Power outlet waypoint ");
       const circuit=choose("deployment-circuit","Actual supplying circuit ");
+      for(const control of [location,upstream,ending])control.closest("label").classList.add("connection-network");
+      for(const control of [outlet,circuit])control.closest("label").classList.add("connection-power");
       const supplyStatus=node("p",undefined,form);supplyStatus.id="deployment-supply-status";
       supplyStatus.setAttribute("role","status");
       const supplyLink=node("a","Manage panel / circuit assignments",form);
@@ -173,7 +190,8 @@
           if(!next)labels.push(current.chain_end==="TERMINATOR"?"Terminating resistor":current.chain_end==="RETURN_TO_ORIGIN"?`Return to ${name(current.site_waypoint_id)}`:"Ending not recorded");
           current=next;
         }
-        node("p",labels.join(" → "),host).id="deployment-chain";
+        const chain=node("ol",undefined,host);chain.id="deployment-chain";
+        for(const label of labels){const item=node("li",label,chain);if(label===controllerLabel(data,controllerId))item.setAttribute("aria-current","true");}
       }
 
       for(const w of data.waypoints.filter(power)) node("option",`${w.name} (${w.type})`,outlet).value=w.id;
@@ -195,10 +213,10 @@
       circuits(connection?.site_power_circuit_id);
       outlet.onchange=()=>circuits(null);
       node("p","Network choices require current LOR programming and FLW endpoint/network evidence. Choose the actual IN and OUT. Selecting another controller updates both ends together. Changing OUT releases the previous controller’s IN to Not recorded; it does not invent replacement wiring. Occupied ports must be reconciled first. Saved wiring remains unverified. Power records the actual outlet and circuit separately. Choosing Not connected retires that connection and retains its history.",form);
-      const save=node("button","Save connections",form);save.type="submit";save.id="deployment-save";
-      const refresh=node("button","Reload connections",host);refresh.type="button";refresh.onclick=()=>{if(mayLeave())render(controllerId,host,initialWaypoint);};
+      const save=node("button","Save connections",form);save.type="submit";save.id="deployment-save";save.className="equipment-save";
+      const refresh=node("button","Reload connections",host);refresh.type="button";refresh.className="deployment-reload";refresh.onclick=()=>{if(mayLeave()){invalidate();render(controllerId,host,initialWaypoint);}};
       for(const s of [location,upstream,ending,outlet,circuit,save])s.disabled=!data.access.can_edit;
-      status.textContent=data.access.can_edit ? "Current shared waypoint records loaded." : "Read only";
+      status.textContent=`Loaded connection revision ${data.revision}. Reload connections for newer records.${data.access.can_edit ? "" : " Read only."}`;
       form.onchange=()=>{dirty=true;};
       form.onsubmit=async event=>{
         event.preventDefault();if(saving)return;
@@ -223,6 +241,7 @@
         }
         saving=true;save.disabled=true;refresh.disabled=true;status.textContent="Saving connections…";
         try {
+          invalidate(); // A failed response can still mean the server committed.
           await api("api/power/commands",{method:"POST",headers:{"Content-Type":"application/json","X-MSB-Power-Command":"1"},body:JSON.stringify(pending)});
           pending=null;dirty=false;await render(controllerId,host,initialWaypoint);
         } catch(e) {
@@ -239,5 +258,5 @@
     } catch(e){if(ticket===generation)status.textContent=e.message;}
   }
   window.addEventListener("beforeunload",e=>{if(dirty||pending||saving){e.preventDefault();e.returnValue="";}});
-  window.MSBControllerDeployment={render,mayLeave,controllerLabel,controllerCell,compareControllers,sortPickers};
+  window.MSBControllerDeployment={render,mayLeave,invalidate,controllerLabel,controllerCell,compareControllers,sortPickers};
 })();

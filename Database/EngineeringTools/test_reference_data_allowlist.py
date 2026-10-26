@@ -88,6 +88,9 @@ def test_site_reference_sql_and_editor_paths_are_exact_and_ordered():
         "Database/EngineeringTools/sql/171_breaker_state.sql",
         "Database/EngineeringTools/sql/171_power_snapshot_performance.sql",
         "Database/EngineeringTools/sql/171_unassigned_breaker_correction.sql",
+
+        "Database/EngineeringTools/sql/171_equipment_lifecycle.sql",
+        "Database/EngineeringTools/sql/171_equipment_catalog.sql",
     ]
     assert policy["approved_validation_paths"] == [
         "Database/Acceptance/171_site_infrastructure_disposable_validation.sql",
@@ -96,6 +99,10 @@ def test_site_reference_sql_and_editor_paths_are_exact_and_ordered():
         "Database/Acceptance/171_breaker_state_validation.sql",
         "Database/Acceptance/171_power_snapshot_performance_validation.sql",
         "Database/Acceptance/171_unassigned_breaker_correction_validation.sql",
+
+        "Database/Acceptance/171_equipment_lifecycle_validation.sql",
+        "Database/Acceptance/171_equipment_catalog_validation.sql",
+        "Database/Acceptance/171_cable_result_evidence.sql",
     ]
     editor = json.loads((ACCEPTANCE / "reference_data_manager_table_allowlist.json").read_text(
         encoding="utf-8"))

@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createFixtureDatabase} from './power_test_database.mjs';
 const db=await createFixtureDatabase();
+await db.exec(readFileSync("Database/Acceptance/171_unassigned_breaker_correction_validation.sql","utf8"));
+// Exercise the deployed correction after the pending equipment extension, too.
+for(const file of ['171_power_snapshot_performance.sql','171_equipment_lifecycle.sql'])
+ await db.exec(readFileSync(new URL('../../Database/EngineeringTools/sql/'+file,import.meta.url),'utf8'));
 let rev=0;
 async function cmd(kind,id,fields,request=crypto.randomUUID(),email='crew@example.test',revision=rev) {
  const r=(await db.query('select ref.site_power_command($1,$2::uuid,$3,$4,$5,$6::jsonb) r',[email,request,revision,kind,id,JSON.stringify(fields)])).rows[0].r;
@@ -70,7 +74,7 @@ try {
  // Migration replay fails closed and changes no business rows.
  prior=await fingerprint();await assert.rejects(()=>db.exec(readFileSync('Database/EngineeringTools/sql/171_unassigned_breaker_correction.sql','utf8')),/baseline/);await db.exec('ROLLBACK');assert.equal(await fingerprint(),prior);
 
- await db.exec(readFileSync('Database/Acceptance/171_unassigned_breaker_correction_validation.sql','utf8'));
+ await db.exec(readFileSync('Database/Acceptance/171_equipment_lifecycle_validation.sql','utf8'));
  console.log('PASS: correction/removal, freed positions/numbers, retained IDs/notes/events, dependency blockers, rollback, authorization, stale revision, exact retry and migration replay denial');
  console.log('Command MD5:',(await rows("select md5(prosrc) hash from pg_proc where oid='ref.site_power_command(text,uuid,bigint,text,bigint,jsonb)'::regprocedure"))[0].hash);
 } finally {await db.close();}

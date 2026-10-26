@@ -63,9 +63,11 @@ assert field_health.json['version'] == field_version, (field_health.json, field_
 assert client.get('/setup/api/health').json['version'] == PRODUCTION_VERSION
 # Exercise real mounted static routing; the independent Node fixture cannot catch
 # Flask root_path errors caused by loading the second host under an alias.
-for asset in ['power_capture.js','power_capture.css']:
+for asset in ['power_capture.js','power_capture.css','connection_controls.css']:
     response=client.get('/fieldwiring/static/'+asset)
     assert response.status_code==200, (asset,response.status_code)
+assert '--fw-action-bg:#1768b3' in client.get('/fieldwiring/static/connection_controls.css?v=2026-10-26-r32').text
+assert 'background:#1768b3' in client.get('/fieldwiring/fieldwiring.css?v=2026-10-26-r32').text
 # Setup already owns sys.modules['backend']; power must use its own host factory.
 from unittest.mock import MagicMock
 import power_capture

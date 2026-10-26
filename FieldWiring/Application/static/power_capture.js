@@ -6,11 +6,27 @@
   // Focused routes share one snapshot and command implementation, not stores.
   const mode = ({waypoints:"waypoints",equipment:"equipment","cable-tests":"tests"})[location.pathname.split("/").pop()] || "panels";
   document.body.dataset.powerScreen=mode;
-  const title={panels:"Panel Circuits",waypoints:"Waypoint Connections",equipment:"Combo Equipment",tests:"Cable Test History"}[mode];
+  // Visibility must not depend on renderers skipped by focused routes.
+  for(const id of ['breaker-context','breaker-reports','breaker-checklist','state-save-status'])$(id).hidden=mode!=="panels";
+  if(['equipment','tests','waypoints'].includes(mode))$("power-state-help").hidden=true;
+  const equipmentUI=window.MSBEquipmentCapture;
+
+  const title={panels:"Panel Circuits",waypoints:"Waypoint Connections",equipment:"Additional Equipment",tests:"Cable Test History"}[mode];
   document.querySelector("h1").textContent=title; document.title=`${title} — MSB Field Wiring`;
   $("waypoint-detail").open=true;
   $("cable-history").hidden=mode!=="tests";
-  if(mode==="equipment") $("equipment-heading").textContent="Installed Combo equipment";
+  if(mode==="equipment") {
+    $("waypoint-detail").querySelector("summary").textContent="Equipment location";
+    $("equipment-connections").open=false;
+    // Keep electrical context available without filling the inventory view.
+    $("equipment-connections").append($("waypoint-safety"));
+  }
+  if(mode==="waypoints") {
+    const overview=el('section',undefined,$('waypoint-detail'));overview.id='waypoint-overview';
+    const details=el('details',undefined,$('waypoint-detail'));details.id='waypoint-engineering';
+    el('summary','Connection engineering and recorded history',details);
+    for(const id of ['outlet-supply-section','waypoint-safety','outlet-controllers','combo-network-box'])details.append($(id));
+  }
   // Reuse the FieldWiring preference; no separate theme authority for this page.
   function setTheme(theme) {
     document.documentElement.dataset.theme = theme;
@@ -64,11 +80,13 @@
   if(mode!=="panels") {
     const previous=savedPanelView();
     if(previous) {
-      const back=el("a","Back to panel",$("status").parentNode);
-      back.className="power-return power-navigation";
-      back.href="circuits?panel="+previous.panelId;
-      $("status").after(back);
-      navigation.querySelector('a[href="circuits"]').href=back.href;
+      const href="circuits?panel="+previous.panelId;
+      navigation.querySelector('a[href="circuits"]').href=href;
+      if(mode==="waypoints") {
+        const back=el("a","Back to panel");
+        back.className="power-return power-navigation";back.href=href;
+        $("status").after(back);
+      }
     }
   }
   function el(tag, text, parent) {
@@ -161,12 +179,12 @@
     }
     return body;
   }
-  async function load() {
+  async function load(snapshot=null) {
     if (loading) return;
     loading = true;
     $("status").textContent = "Loading current records…";
     try {
-      data = await api("api/power");
+      data = snapshot || await api("api/power");
       const query=new URLSearchParams(location.search);
       const previous=mode==="panels" && !restoredPanelView ? savedPanelView() : null;
       const requestedPanel=Number(query.get("panel"));
@@ -193,7 +211,7 @@
         if(previousPanel) back.textContent=`Back to ${previousPanel.panel_name}`; else {back.remove(); navigation.querySelector('a[href^="circuits"]').href="circuits";}
       }
       const requested=new URLSearchParams(location.search).get("waypoint");
-      if(requested && !$("waypoint-detail").dataset.linkOpened) {
+      if(mode!=="tests" && requested && !$("waypoint-detail").dataset.linkOpened) {
         if(mode==="equipment") {$("detail-waypoint").value=requested;render();} else viewWaypoint(Number(requested));$("waypoint-detail").dataset.linkOpened="1";
       }
       $("status").textContent =
@@ -402,16 +420,99 @@
         detail,
       );
   }
+  function renderEquipment() {
+    const selector=$("detail-waypoint"),prior=selector.value;
+    selector.replaceChildren();
+    el("option","Unassigned equipment",selector).value="";
+    const recorded=data.devices.filter(equipmentUI.isAdditionalDevice).map(d=>d.site_waypoint_id);
+    equipmentUI.waypointChoices(data,recorded).forEach(([id,label])=>{el("option",label,selector).value=id;});
+    selector.value=prior;
+    const waypointId=Number(selector.value);
+    $("combo-network-box").hidden=false;
+    $("add-device").textContent=waypointId?"Install Equipment":"Add new item to inventory";
+    $("equipment-heading").textContent=waypointId?"Installed equipment":"Unassigned equipment";
+    const host=$("equipment");host.replaceChildren();
+    const devices=data.devices.filter(equipmentUI.isAdditionalDevice).filter(d=>waypointId?d.site_waypoint_id===waypointId:!d.site_waypoint_id);
+    if(!devices.length)el("p",waypointId?"No equipment recorded at this waypoint.":"No unassigned equipment recorded.",host);
+    if(devices.length){
+      // One row per physical unit keeps field inventory scannable without
+      // merging identities or hiding its existing test/replacement history.
+      const table=el('table',undefined,host);table.className='equipment-table';
+      const header=el('tr',undefined,el('thead',undefined,table));
+      for(const label of ['Equipment #','Model / name','Condition','Actions']){const th=el('th',label,header);th.scope='col';}
+      const body=el('tbody',undefined,table);
+      devices.forEach(d=>{
+        const row=el('tr',undefined,body);row.dataset.deviceId=d.site_power_device_id;
+        el('td',d.site_power_device_id,row);el('td',d.device_name,row);
+        const condition=el('td',undefined,row),actions=el('td',undefined,row);actions.className='equipment-actions';
+        if(data.access.can_edit){const edit=el('button','Edit / correct',actions);edit.type='button';edit.onclick=()=>equipmentUI.manage(data,d.site_waypoint_id,load,'correct',d);}
+        equipmentUI.render(data,d,actions,load,condition);
+      });
+    }
+    let catalog=$('manage-equipment-models');
+    if(!catalog){catalog=el('button','Manage equipment models');catalog.type='button';catalog.id='manage-equipment-models';$('add-device').insertAdjacentElement('afterend',catalog);}
+    catalog.disabled=!data.access.can_edit;catalog.onclick=()=>equipmentUI.manage(data,waypointId||null,load,'catalog');
+    $("add-device").disabled=!data.access.can_edit || !!waypointId&&!equipmentUI.isEquipmentWaypoint(wp(waypointId));
+    const details=$("equipment-connections");details.hidden=!waypointId;
+    // Build secondary engineering context only when the operator opens it.
+    let built=false;
+    const build=()=>{
+      if(!waypointId||!details.open||built)return;built=true;
+      $("networks").replaceChildren();
+      const codes=[...new Set((data.networks||[]).filter(n=>n.site_waypoint_id===waypointId).map(n=>n.network_code))];
+      codes.forEach(code=>el("p",code,$("networks")));
+      if(!codes.length)el("p","No resolved FLW network endpoints recorded.",$("networks"));
+      const link=el("a","Cable tests for this waypoint",$("networks"));link.href=`cable-tests?waypoint=${waypointId}`;
+      $("feeds").replaceChildren();
+      data.feeds.filter(f=>f.destination_waypoint_id===waypointId||device(f.destination_device_id)?.site_waypoint_id===waypointId||device(f.source_device_id)?.site_waypoint_id===waypointId).forEach(f=>record($("feeds"),feedName(f),f,"feed"));
+      $("conductor-detail").replaceChildren();
+      ["cable_spec","conductor","conductor_circuit"].forEach(kind=>{
+        button(`Add ${kind.replaceAll("_"," ")}`,()=>open(kind,{}),$("conductor-detail"),true);
+        (data[kind+"s"]||[]).forEach(r=>record($("conductor-detail"),r.cable_specification||r.conductor_label||`Conductor ${r.site_power_conductor_id} / ${circuitName(r.site_power_circuit_id)}`,r,kind));
+      });
+      $("add-feed").disabled=!data.access.can_edit;
+      renderSafety(waypointId);
+    };
+    details.ontoggle=build;build();
+  }
+  function renderWaypointSummary(id) {
+    const root=$('waypoint-overview');if(!root)return;root.replaceChildren();
+    const details=$('waypoint-engineering');details.hidden=!id;
+    if(!id){el('p','Select a waypoint to see its supply, controllers, equipment and cable tests.',root);return;}
+    el('h2',wp(id)?.name||'Waypoint',root);
+    const sources=(data.waypoint_power_sources||[]).filter(x=>x.site_waypoint_id===id);
+    el('h3','Recorded supply',root);
+    if(!sources.length)el('p','Supply not recorded.',root);
+    for(const s of sources){const p=panel(s.site_panel_id),b=data.breakers.find(b=>b.site_power_breaker_id===s.site_power_breaker_id);const a=el('a',`${p?.panel_name||'Panel unknown'} · ${b?.breaker_name||'Breaker unknown'} · ${s.site_power_circuit_id?circuitName(s.site_power_circuit_id):'Circuit unknown'} (${(s.verification_states||[]).join(' / ')||'Unverified'})`,el('p',undefined,root));a.href=s.site_power_circuit_id?`circuits?circuit=${s.site_power_circuit_id}`:'circuits';}
+    el('p','Recorded supply and breaker states do not prove safe isolation.',root);
+    el('h3','Controllers',root);
+    const controllers=new Set([...(data.controller_power_connections||[]),...(data.controller_installations||[])].filter(c=>c.active&&c.site_waypoint_id===id).map(c=>c.controller_id));
+    if(!controllers.size)el('p','No controllers recorded.',root);
+    for(const controller of controllers){const c=(data.controller_options||[]).find(c=>c.id===controller);const a=el('a',`CTRL ${controller} · ${c?.model||'Model not recorded'}`,el('p',undefined,root));a.href=`controllers?controller_id=${controller}`;}
+    el('h3','Equipment',root);
+    const units=data.devices.filter(d=>d.active&&d.site_waypoint_id===id&&equipmentUI.isAdditionalDevice(d));
+    el('p',units.length?units.map(d=>`${d.device_name} (#${d.site_power_device_id})`).join(' · '):'No additional equipment recorded.',root);
+    el('a','Install / test equipment',root).href=`equipment?waypoint=${id}`;
+    el('h3','Networks and tests',root);
+    const networks=[...new Set((data.networks||[]).filter(n=>n.site_waypoint_id===id).map(n=>n.network_code))];
+    el('p',networks.join(' · ')||'No resolved network recorded.',root);
+    el('a','Compare cable tests',root).href=`cable-tests?waypoint=${id}`;
+  }
+
   function render() {
+    if(mode==="equipment"){renderEquipment();return;}
+    // Cable history is read-only and needs none of the hidden power editors.
+    if(mode==="tests"){renderCableHistory();return;}
     renderPanels();
     const waypointSelect = $("detail-waypoint"), priorWaypoint = waypointSelect.value;
     waypointSelect.replaceChildren();
-    el("option", "Select a waypoint", waypointSelect).value="";
-    data.waypoints.filter(w=>mode==="equipment" ? isComboWaypoint(w) : isDeploymentWaypoint(w)).forEach(w=>{const o=el("option",`${w.name} (${w.type})`,waypointSelect);o.value=w.id;});
+    el("option", mode==="equipment"?"Unassigned equipment":"Select a waypoint", waypointSelect).value="";
+    data.waypoints.filter(w=>mode==="equipment" || isDeploymentWaypoint(w)).forEach(w=>{const o=el("option",`${w.name} (${w.type})`,waypointSelect);o.value=w.id;});
     waypointSelect.value=priorWaypoint;
     const detailWaypoint=Number(priorWaypoint);
+    renderWaypointSummary(detailWaypoint);
     const combo=isComboWaypoint(wp(detailWaypoint) || {});
-    $("combo-network-box").hidden=mode==="equipment" ? !combo : !isNetworkWaypoint(wp(detailWaypoint) || {});
+    $("combo-network-box").hidden=mode==="equipment" ? false : !isNetworkWaypoint(wp(detailWaypoint) || {});
     $("waypoint-supply").replaceChildren();
     data.circuits.filter(c=>c.active && paths(c.site_power_circuit_id).some(x=>x.waypoint?.id===detailWaypoint))
       .forEach(c=>button(circuitName(c.site_power_circuit_id),()=>{location.href=`circuits?circuit=${c.site_power_circuit_id}`;},$("waypoint-supply")));
@@ -447,8 +548,10 @@
       if(i.active)button("Edit IN / OUT",()=>openPorts(i.controller_id),box,true);
 
     });
-    data.devices.filter(d=>d.site_waypoint_id===detailWaypoint).forEach(d=>{
-      record($("equipment"),`${d.device_name} · ${d.device_kind}`,d,"device");
+    data.devices.filter(d=>d.site_waypoint_id===detailWaypoint || (mode==="equipment" && !detailWaypoint && !d.site_waypoint_id)).forEach(d=>{
+      const item=el("section",undefined,$("equipment"));
+      record(item,`${d.device_name} · ${d.device_kind}`,d,"device");
+      window.MSBEquipmentCapture.render(data,d,item,load);
     });
     $("conductor-detail").replaceChildren();
     ["cable_spec", "conductor", "conductor_circuit"].forEach(kind => {
@@ -475,6 +578,7 @@
         el("p",`${code}: verify switch and power-supply inventory at distribution points where runs approach 300 ft; verify PoE for security cameras on the line. These are equipment expectations, not installed records.`, $("networks"));
     }
     renderCableHistory();
+    if(detailWaypoint){const link=el("a","Cable tests for this waypoint",$("equipment"));link.href=`cable-tests?waypoint=${detailWaypoint}`;}
     renderSafety(detailWaypoint);
     const year = $("season").value;
     $("season").replaceChildren();
@@ -747,8 +851,8 @@
   ];
   const equipmentNameOptions = () => options(
     [...new Set([
-      ...equipmentModels.map(x=>x[0]),
-      ...data.devices.map(d=>d.device_name).filter(Boolean),
+      ...equipmentModels.filter(x=>mode!=="equipment"||equipmentUI.isAdditionalDevice({device_kind:x[1]})).map(x=>x[0]),
+      ...data.devices.filter(d=>mode!=="equipment"||equipmentUI.isAdditionalDevice(d)).map(d=>d.device_name).filter(Boolean),
     ])].map(name=>[name,name]),
   );
   const ratingOptions = () => options(
@@ -770,45 +874,10 @@
   const isNetworkWaypoint = w => w.network_capable===true;
   const isDeploymentWaypoint = w => isElectricalEndpoint(w) || isNetworkWaypoint(w);
   function renderCableHistory() {
-    const selector=$("test-pair"), prior=selector.value;
-    const tests=data.linkiq_evidence || [];
-    const chronology=new Map((data.flw_cable_tests || []).map(t=>[t.test_uuid,t]));
-    // Reuse persisted intake proposals: source-declared endpoints do not create
-    // reviewed cable bindings or route geometry. Resolved endpoints supply networks.
-    const endpoints=t=>{
-      if(t.endpoint_a && t.endpoint_b) return {key:[t.endpoint_a,t.endpoint_b].sort((a,b)=>a-b).join(":"),label:[t.endpoint_a,t.endpoint_b].sort((a,b)=>a-b).map(waypointName).join(" ↔ ")};
-      const proposal=t.source_pair || {}, ids=proposal.endpoint_candidates || [];
-      if(ids.length===2 && ids.every(x=>x.length===1) && ids[0][0]!==ids[1][0]) {
-        const pair=ids.map(x=>x[0]).sort((a,b)=>a-b);return {key:pair.join(":"),label:pair.map(waypointName).join(" ↔ ")};
-      }
-      const labels=proposal.endpoint_labels || [];
-      if(labels.length===2 && labels[0]!==labels[1]) {const pair=[...labels].sort();return {key:"label:"+JSON.stringify(pair),label:pair.join(" ↔ ")+" (source labels; waypoint match unresolved)"};}
-      return {key:"unresolved",label:"Unparsed / ambiguous endpoint labels"};
-    };
-    const pairs=new Map(tests.map(t=>{const pair=endpoints(t);return [pair.key,pair.label];}));
-    selector.replaceChildren(); el("option","Select endpoint pair",selector).value="";
-    for(const [key,label] of pairs) el("option",label,selector).value=key;
-    selector.value=prior;
-    const root=$("test-history");root.replaceChildren();
-    if(!tests.length) el("p","No retained cable tests.",root);
-    const selected=tests.filter(t=>endpoints(t).key===selector.value);
-    const cableKey=t=>t.cable_id ? `Physical cable ${t.cable_id}` : `Source designation ${chronology.get(t.test_uuid)?.network_key || t.source_pair?.designation || "unknown"} — physical cable unreviewed`;
-    for(const key of new Set(selected.map(cableKey))) {
-      const section=el("section",undefined,root);el("h3",key,section);
-      for(const t of selected.filter(t=>cableKey(t)===key).sort((a,b)=>String(b.test_time||"").localeCompare(String(a.test_time||"")))) {
-        const entry=el("article",undefined,section); entry.className="power-record";
-        const dated=chronology.get(t.test_uuid);
-        const clockUnset=!t.test_time || /^1970-/.test(t.test_time);
-        el("h4",`${clockUnset ? "Tester date unset / unknown" : t.test_time} · ${t.test_uuid}`,entry);
-        if(dated?.latest_reliably_dated) el("p",`Latest dated test${dated.has_unknown_test_order || dated.latest_time_tied ? " — test order uncertain" : ""}`,entry);
-        if(dated?.has_unknown_test_order) el("p","This cable also has tests without a reliable date; their order cannot be established.",entry);
-        el("p",`Raw result code: ${t.status_code ?? "Unknown"} · Standard: ${t.test_standard || "Unknown"} · Length: ${t.length_ft ?? "Unknown"} ft · Review: ${t.review_status || "Unknown"}`,entry);
-        if(t.source_pair) el("p",`FLW source label: ${t.source_pair.display_label} · Designation: ${t.source_pair.designation || "Unknown"} · Source: ${t.source_pair.source_sha256 || "Unknown"}`,entry);
-        el("p",`Original test name: ${t.original_name || "Unknown"} · First source SHA-256: ${t.source_sha256 || "Unknown"}`,entry);
-      }
-    }
+    if(mode!=="tests")return;
+    $("test-pair").closest("label").hidden=true;
+    window.MSBCableHistory.render(data,$("test-history"));
   }
-  $("test-pair").onchange=renderCableHistory;
   function specs(kind) {
     const waypoints = options(
       data.waypoints.map((w) => [w.id, `${w.name} (${w.type})`]),
@@ -891,7 +960,7 @@
         select("site_power_circuit_id","Supplying circuit leg",circuits,true),
       ],
       device: [
-        select("device_name", "Equipment / model", equipmentNameOptions(), true),
+        text("device_name", "Equipment / model (Unknown model is allowed)", true),
         choose("device_kind", "Equipment type", [
           "FUSE",
           "DISCONNECT",
@@ -904,8 +973,8 @@
           "ETHERNET_SPLITTER",
           "RS485_REPEATER",
           "OTHER",
-        ]),
-        select("site_waypoint_id", "Waypoint (optional)", waypoints),
+        ].filter(device_kind=>mode!=="equipment"||equipmentUI.isAdditionalDevice({device_kind}))),
+        select("site_waypoint_id", "Waypoint (optional)", mode==="equipment" ? options(equipmentUI.waypointChoices(data)) : waypoints),
         select("owner_name", "Equipment owner (optional)", ownerOptions()),
         text("utility_asset_id", "Existing utility asset reference (advanced)"),
         text("rating", "Existing rating (advanced)"),
@@ -1025,7 +1094,7 @@
     if (spec.type === "select") {
       n.multiple = !!spec.multiple;
       if (!spec.required && !spec.multiple) {
-        const o = el("option", "Unknown / not specified", n);
+        const o = el("option", edit?.kind==="device"&&spec.key==="site_waypoint_id" ? "Unassigned equipment" : "Unknown / not specified", n);
         o.value = "";
       }
       if (spec.key === "device_name" && !value) {
@@ -1078,6 +1147,7 @@
     $("network-port-editor")?.remove();$("edit-form").hidden=false;$("editor").close();load();
   }
   function open(kind, row = {}) {
+    if(mode==="equipment"&&kind==="device"){equipmentUI.manage(data,Number($("detail-waypoint").value)||null,load,row.site_power_device_id?"correct":undefined,row);return;}
     if (!data.access.can_edit) return;
     pending = null;
     // New records always start active; hide the retirement control until an
@@ -1093,6 +1163,10 @@
     $("edit-fields").replaceChildren();
     $("save-status").textContent = "";
     $("save").disabled = false;
+    if(kind==="device"&&row.site_power_device_id&&row.site_waypoint_id&&mode==="equipment") {
+      const spec=edit.specs.find(s=>s.key==="site_waypoint_id");
+      spec.options=options(equipmentUI.waypointChoices(data,[row.site_waypoint_id]));
+    }
     edit.specs.forEach((s) =>
       field(
         s,
@@ -1109,13 +1183,16 @@
         const kind=selected?.[1] || existing?.device_kind;
         if(kind) type.value=kind;
       };
+      const suggestions=el("datalist",undefined,$("edit-fields"));suggestions.id="equipment-models";
+      equipmentNameOptions().forEach(x=>el("option",undefined,suggestions).value=x.value);
+      model.setAttribute("list",suggestions.id);
       model.addEventListener("change",syncType);
       syncType();
-      type.closest("label").hidden=true;
+      type.closest("label").hidden=false;
       for(const name of ["utility_asset_id","rating"]) {
-        if (!row[name]) form.elements[name].closest("label").hidden=true;
+        form.elements[name].closest("label").hidden=false;
       }
-      if(row.site_waypoint_id) form.elements.site_waypoint_id.closest("label").hidden=true;
+      if(row.site_power_device_id) form.elements.site_waypoint_id.closest("label").hidden=true;
       $("edit-title").textContent=row.site_power_device_id ? "Correct equipment" : "Add equipment";
     }
     if(kind==="panel") {

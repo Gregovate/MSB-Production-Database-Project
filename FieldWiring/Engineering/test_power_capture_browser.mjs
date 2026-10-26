@@ -1,3 +1,4 @@
+import './test_equipment_choices.mjs';
 // Actual page against isolated PostgreSQL fixtures; never a Production/browser-auth test.
 import { createFixtureDatabase } from "./power_test_database.mjs";
 import { createServer } from "node:http";
@@ -17,7 +18,9 @@ const app = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../Application",
 );
+async function openEngineering(){const detail=page.locator('#waypoint-engineering');if(await detail.count()&&await detail.isVisible()&&await detail.getAttribute('open')===null)await detail.locator(':scope > summary').click();}
 const db = await createFixtureDatabase();
+for(const migration of ['171_power_snapshot_performance.sql','171_equipment_lifecycle.sql','171_equipment_catalog.sql'])await db.exec(await readFile(path.join(app,'../../Database/EngineeringTools/sql',migration),'utf8'));
 let user = "crew@example.test",
   failNext = false;
 const server = createServer(async (req, res) => {
@@ -29,7 +32,11 @@ const server = createServer(async (req, res) => {
         [user],
       );
       res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(result.rows[0].data));
+      const data=result.rows[0].data;
+      const body=url.searchParams.get('view')==='controller'
+        ? execFileSync('python',['-c',"import sys,json;from power_capture import controller_snapshot;json.dump(controller_snapshot(json.load(sys.stdin)),sys.stdout)"],{input:JSON.stringify(data),env:{...process.env,PYTHONPATH:app}})
+        : JSON.stringify(data);
+      res.end(body);
       return;
     }
     if (url.pathname === "/fieldwiring/api/power/report.pdf") {
@@ -84,7 +91,7 @@ const server = createServer(async (req, res) => {
     if(url.pathname.startsWith("/fieldwiring/api/")) {
       const id=Number(url.pathname.match(/controllers\/(\d+)/)?.[1]||101);
       res.setHeader("Content-Type","application/json");
-      res.end(JSON.stringify({controller:{controller_id:id,manufacturer:"Fixture",model_code:"Fixture",model_name:"Fixture",controller_status_name:"AVAILABLE",lor_network:"REG"},controllers:[],assignments:[],firmware_history:[],access:{can_manage:false},can_manage:false}));return;
+      res.end(JSON.stringify({controller:{controller_id:id,manufacturer:"Fixture",model_code:"Fixture",model_name:"Fixture",controller_status_name:"AVAILABLE",lor_network:"REG",display_assignment_capable:id!==104},controllers:[],assignments:[],firmware_history:[],access:{can_manage_controllers:user==="crew@example.test",can_print_label:false},can_manage:false}));return;
     }
     let filename = url.pathname.replace("/fieldwiring/", "");
     if (["circuits","waypoints","equipment","cable-tests"].includes(filename)) filename = "circuits.html";
@@ -128,7 +135,7 @@ async function save() {
   await dialog.locator("#save").click();
   try { await dialog.waitFor({ state: "hidden", timeout: 10000 }); }
   catch (e) { throw new Error((await dialog.innerText()) + "\n" + e.message); }
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
 }
 try {
   await page.goto(base);
@@ -214,13 +221,13 @@ try {
     1,
   );
   await page.goto(base.replace("circuits","waypoints"));
-  await page.getByText(/Revision \d+/).waitFor();
-  await page.locator("#detail-waypoint").selectOption("11");
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+  await page.locator("#detail-waypoint").selectOption("11"); await openEngineering();
   assert.equal(await page.getByRole("button",{name:"Assign network",exact:true}).count(),0);
   assert.match(await page.locator("#networks").innerText(),/REG.*FLW endpoint record/);
   assert.match(await page.locator("#waypoint-safety").innerText(),/do not prove absence of voltage/);
   await page.goto(base);
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   await page.locator("#seasonal-activities > summary").click();
   await page
     .getByRole("button", { name: "Define activity", exact: true })
@@ -283,7 +290,7 @@ try {
   await save();
   assert.equal((await db.query("SELECT description FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 AND breaker_pole=1",[breakerId])).rows[0].description,'Upper panel left receptacle');
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id WHERE c.site_power_breaker_id=$1 AND f.active",[breakerId])).rows[0].n,0);
-  await page.reload(); await page.getByText(/Revision \d+/).waitFor();
+  await page.reload(); await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   assert.equal(await groupedRow.locator('.power-circuit-notes').innerText(),'Upper panel left receptacle');
   await groupedRow.getByRole("button",{name:/^Circuit 18 —/}).click();
   assert.equal(await dialog.locator('[name=description]').inputValue(),'Upper panel left receptacle');
@@ -311,12 +318,12 @@ try {
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1",[breakerId])).rows[0].n,2);
   await groupedRow.getByRole("button",{name:/^Open Outlet B \/ equipment/}).first().click();
   // Navigation completes before the async shared snapshot populates the picker.
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   assert.equal(await page.locator("#waypoint-detail").getAttribute("open"),"");
   assert.equal(await page.locator("#detail-waypoint").inputValue(),"12");
   assert.equal((await db.query("SELECT count(DISTINCT f.source_circuit_id)::int n FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id WHERE c.site_power_breaker_id=$1 AND f.destination_waypoint_id=12 AND f.active",[breakerId])).rows[0].n,2);
   await page.goto(base);
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   await page.locator("#panels").getByRole("button",{name:"A5 panel",exact:true}).click();
   // Unknown size shows only occupied extent through slot 20; one card spans two slots.
   assert.equal(await page.locator(".power-slot").count(),19);
@@ -346,7 +353,7 @@ try {
   await dialog.locator('[name=rated_amps]').selectOption('60');
   await save();
   await page.reload();
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   assert.equal(await groupedRow.locator('.power-breaker-notes').innerText(),'Gate Power — panel receptacles <not markup>');
   await page.getByRole("button",{name:"Meter / upstream supply",exact:true}).click();
   await dialog.locator("[name=meter_information]").fill("TEST-METER-100");
@@ -391,14 +398,14 @@ try {
     assert.equal(await dialog.locator("[name=panel_positions]").inputValue(),`${start}/${start+2}`);
     await dialog.locator("[name=rated_amps]").selectOption("20"); await save();
   }
-  await page.reload(); await page.getByText(/Revision \d+/).waitFor();
+  await page.reload(); await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   await page.locator("#panels").getByRole("button",{name:"A5 panel",exact:true}).click();
   assert.equal(await page.locator(".power-slot-grid .power-breaker").count(),20);
   const endSlots=await db.query("SELECT panel_positions FROM ref.site_power_breaker WHERE panel_positions && ARRAY[39,40] ORDER BY panel_positions[1]");
   assert.deepEqual(endSlots.rows.map(r=>r.panel_positions),[[37,39],[38,40]]);
   // Owner labels and selected outline survive both themes; colors are not status.
   await db.exec("UPDATE ref.site_panel SET owner_name=CASE WHEN panel_name='A5 panel' THEN 'MSB Owned' ELSE 'City Owned' END");
-  await page.reload(); await page.getByText(/Revision \d+/).waitFor();
+  await page.reload(); await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   for (const theme of ["light","dark"]) {
     if(await page.locator("html").getAttribute("data-theme")!==theme) await page.locator("#theme-toggle").click();
     const msb=page.locator('#panels button[data-owner="msb"]');
@@ -417,8 +424,8 @@ try {
   assert.deepEqual((await db.query("SELECT (SELECT count(*) FROM ref.site_power_breaker)::int breakers,(SELECT count(*) FROM ref.site_power_circuit)::int circuits")).rows[0],hardwareBefore);
   // Power-only outlet has circuit and plug-in controls, no network enclosure form.
   await page.goto(base.replace("circuits","waypoints"));
-  await page.getByText(/Revision \d+/).waitFor();
-  await page.locator("#detail-waypoint").selectOption("13");
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+  await page.locator("#detail-waypoint").selectOption("13"); await openEngineering();
   assert.equal(await page.locator("#combo-network-box").isVisible(),false);
   assert.equal(await page.locator("#connect-controller").isVisible(),true);
   const firstCircuit=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE circuit_code='1'")).rows[0].site_power_circuit_id;
@@ -426,33 +433,33 @@ try {
   await dialog.locator('input[name=waypoint][value="13"]').check();
   await evidence(); await save();
   await page.goto(base.replace("circuits","waypoints?waypoint=13"));
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   await page.getByRole("button",{name:"Connect controller to outlet",exact:true}).click();
   await dialog.locator("[name=controller_id]").selectOption("101");
   await dialog.locator("[name=site_power_circuit_id]").selectOption(String(firstCircuit));
   await evidence();await save();
   assert.match(await page.locator("#plugged-controllers").innerText(),/Controller 101/);
   await page.goto(base);
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   await page.locator("#panels").getByRole("button",{name:"A5 panel",exact:true}).click();
   assert.match(await page.locator("#panel-detail").innerText(),/Display load: 2 A · incomplete/);
   await page.goto(base.replace("circuits","waypoints"));
-  await page.getByText(/Revision \d+/).waitFor();
-  await page.locator("#detail-waypoint").selectOption("12");
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+  await page.locator("#detail-waypoint").selectOption("12"); await openEngineering();
   for(const id of ["101","102"]) {
     await page.getByRole("button",{name:"Install existing controller",exact:true}).click();
     await dialog.locator("#port-controller").selectOption(id);
     await dialog.locator("#deployment-network").waitFor();
     await dialog.locator("#deployment-save").click();
-    await dialog.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+    await dialog.getByText(/^Loaded connection revision /).waitFor();
     await dialog.getByRole("button",{name:"Done",exact:true}).click();
-    await dialog.waitFor({state:"hidden"});await page.getByText(/Revision \d+/).waitFor();
+    await dialog.waitFor({state:"hidden"});await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   }
   assert.equal(await page.locator("#installations .power-record").count(),2);
   // GPX geometry updates do not erase FLW-backed network membership.
   await db.exec("UPDATE ref.site_track SET changed_at='2027-01-01'");
   await page.locator("#reload").click();
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   await page.getByRole("button",{name:"Install existing controller",exact:true}).click();
   await dialog.locator("#port-controller").selectOption("103");
   await dialog.locator("#deployment-network").waitFor();
@@ -461,20 +468,145 @@ try {
   await dialog.waitFor({state:"hidden"});
   await db.exec("UPDATE ref.site_track SET changed_at='2026-01-01'");
   await page.locator("#reload").click();
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   // Network equipment is recorded at its Combo waypoint, not forced into
   // the LOR Controller model inventory.
+  await db.exec("INSERT INTO ref.site_waypoint VALUES(901,'07-Whoville-WV','Stage'),(902,'Network-only box','Network'),(903,'Unrelated monument','Landmark')");
   await page.goto(base.replace("circuits","equipment?waypoint=12"));
-  await page.getByText(/Revision \d+/).waitFor();
-  await page.getByRole("button",{name:"Add new equipment",exact:true}).click();
-  await dialog.locator("[name=device_name]").selectOption("TRENDnet TI-PGLC50 · 5-port PoE+");
-  assert.equal(await dialog.locator("[name=device_kind]").inputValue(),"POE_SWITCH");
-  assert.equal(await dialog.locator("[name=device_kind]").isVisible(),false);
-  assert.equal(await dialog.locator("[name=site_waypoint_id]").inputValue(),"12");
-  await save();
-  assert.match(await page.locator("#equipment").innerText(),/TRENDnet TI-PGLC50 · 5-port PoE\+ · POE_SWITCH/);
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+  assert.equal(await page.locator('h1').innerText(),'Additional Equipment');
+  for(const id of ['controller-placement-help','equipment-controller-link','power-state-help','correction-history','breaker-context','breaker-reports','breaker-checklist'])assert.equal(await page.locator('#'+id).isVisible(),false);
+  assert.equal(await page.locator('#equipment-connections').getAttribute('open'),null);
+  assert.equal(await page.locator('.power-return').count(),0);
+  const equipmentPoints=await page.locator('#detail-waypoint option').evaluateAll(rows=>rows.map(r=>r.value));
+  assert.ok(!equipmentPoints.includes('901')&&!equipmentPoints.includes('903'));
+  assert.ok(equipmentPoints.includes('902'),'network-type locations do not require controller LOR evidence');
+  await page.getByRole('button',{name:'Reload current records',exact:true}).click();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+  assert.equal(await page.locator('#breaker-reports').isVisible(),false);
+
+  assert.equal(await page.locator('#panels button').count(),0);
+  await page.locator('#equipment-connections > summary').click();
+  await page.locator('#waypoint-safety h3').waitFor();
+  assert.ok(await page.locator('#conductor-detail button').count()>0);
+  await page.locator('#equipment-connections > summary').click();
+  await page.locator('#detail-waypoint').selectOption('');
+  assert.equal(await page.locator('#equipment-connections').isVisible(),false);
+  assert.equal(await page.locator('#equipment-heading').innerText(),'Unassigned equipment');
+  await page.locator('#detail-waypoint').selectOption('12');
+  const equipmentDialog=page.locator('dialog[open]');
+  async function addStock(modelName,kind,qty=1,unassigned=false){
+    if(unassigned)await page.locator('#detail-waypoint').selectOption('');
+    await page.locator('#add-device').click();
+    assert.equal(await equipmentDialog.locator('[name=quantity]').inputValue(),'1');
+    assert.equal(await equipmentDialog.locator('[name=units],[name=site_waypoint_id]').count(),0);
+    const supplied=await equipmentDialog.locator('[name=model] option').allTextContents();
+    for(const text of ['Mean Well MDR-60-24','TRENDnet TI-PGLC50','PixieLink','LOR RS485 Repeater','MSB Blue Splitter','MSB Green Splitter','REOLINK RLC-810A'])assert.ok(supplied.some(x=>x.includes(text)));
+    assert.ok(!supplied.some(x=>x==='Other equipment'||x.includes(' · OTHER')));
+    if(!(await db.query('SELECT 1 FROM ref.site_equipment_model WHERE model_name=$1',[modelName])).rows.length){
+      await equipmentDialog.getByRole('button',{name:'Add equipment model',exact:true}).click();
+      await equipmentDialog.locator('[name=model_name]').fill(modelName);
+      await equipmentDialog.locator('[name=device_kind]').selectOption(kind);
+      await equipmentDialog.getByRole('button',{name:'Save',exact:true}).click();
+      await equipmentDialog.getByRole('heading',{name:unassigned?'Add new item to inventory':'Install Equipment',exact:true}).waitFor();
+    }
+    const modelId=(await db.query('SELECT equipment_model_id id FROM ref.site_equipment_model WHERE model_name=$1',[modelName])).rows[0].id;
+    await equipmentDialog.locator('[name=model]').selectOption(String(modelId));
+    await equipmentDialog.locator('[name=model]').selectOption('');
+    await equipmentDialog.locator('[name=model]').selectOption(String(modelId));
+    await equipmentDialog.locator('[name=quantity]').fill(String(qty));
+    assert.equal(await equipmentDialog.locator('[name=notes]').count(),1);
+    assert.equal(await equipmentDialog.locator('[name=owner_name],[name=rating],[name=utility_asset_id]').count(),0);
+    await equipmentDialog.getByRole('button',{name:'Save',exact:true}).click();
+    if(unassigned){await equipmentDialog.getByRole('heading',{name:'Add new item to inventory',exact:true}).waitFor();await equipmentDialog.getByRole('button',{name:'Cancel',exact:true}).click();await page.locator('#detail-waypoint').selectOption('12');}
+    return modelId;
+  }
+  const modelId=await addStock('TRENDnet TI-PGLC50 · 5-port PoE+','POE_SWITCH');
+  await page.getByText('TRENDnet TI-PGLC50 · 5-port PoE+',{exact:true}).waitFor();
+  assert.match(await page.locator("#equipment").innerText(),/TRENDnet TI-PGLC50 · 5-port PoE\+/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_kind='POE_SWITCH' AND site_waypoint_id=12")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,4);
+  const equipmentTable=page.locator('#equipment .equipment-table');
+  assert.deepEqual(await equipmentTable.locator('thead th').allTextContents(),['Equipment #','Model / name','Condition','Actions']);
+  assert.equal(await page.locator('#equipment > section').count(),0);
+  assert.doesNotMatch(await equipmentTable.textContent(),/UNVERIFIED|Inventory recorded through|POE_SWITCH/);
+  for(const width of [1280,768,390]){
+    await page.setViewportSize({width,height:900});
+    assert.ok(await equipmentTable.evaluate(n=>n.scrollWidth<=n.clientWidth+1),'equipment rows must fit the viewport');
+  }
+  await page.setViewportSize({width:1280,height:900});
+  // Shared filled action colors must remain distinct from the surrounding card,
+  // with darker hover and readable text in both explicit themes.
+  for(const theme of ['light','dark']){
+    await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
+    const action=page.locator('#equipment .equipment-actions button').first();
+    await page.mouse.move(0,0);
+    const before=await action.evaluate(n=>({bg:getComputedStyle(n).backgroundColor,ink:getComputedStyle(n).color}));
+    assert.equal(before.bg,'rgb(23, 104, 179)');
+    assert.equal(before.ink,'rgb(255, 255, 255)');
+    await action.hover();
+    assert.equal(await action.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(16, 76, 133)');
+    await page.locator('#add-device').click();
+    const saveButton=page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true});
+    assert.equal(await saveButton.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(23, 104, 179)');
+    await saveButton.hover();
+    assert.equal(await saveButton.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(16, 76, 133)');
+    await page.locator('dialog[open]').getByRole('button',{name:'Cancel',exact:true}).click();
+  }
+  await page.evaluate(()=>document.documentElement.dataset.theme='light');
+  // Cleanup is available before assignment; deleting a model preserves audit.
+  const unusedModel=(await db.query("SELECT equipment_model_id id FROM ref.site_equipment_model WHERE model_name='10/100 Ethernet switch'")).rows[0].id;
+  await page.locator('#manage-equipment-models').click();
+  await equipmentDialog.locator('[name=model]').selectOption(String(unusedModel));
+  await equipmentDialog.locator('[name=model_name]').fill('Unused switch model');
+  await equipmentDialog.getByRole('button',{name:'Save',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('dialog[open] [name=model]')?.value==='');
+  await equipmentDialog.locator('[name=model]').selectOption(String(unusedModel));
+  page.once('dialog',d=>d.accept());
+  await equipmentDialog.getByRole('button',{name:'Delete unused model',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('dialog[open] [name=model]')?.value==='');
+  assert.equal((await db.query('SELECT count(*)::int n FROM ref.site_equipment_model WHERE equipment_model_id=$1',[unusedModel])).rows[0].n,0);
+  await equipmentDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+
+  await page.getByRole('button',{name:'Record test / failure',exact:true}).last().click();
+  const eventDialog=page.locator('dialog[open]');
+  await eventDialog.locator('[name=condition]').selectOption('FAILED');
+  await eventDialog.locator('[name=observed_at]').fill('');
+  await eventDialog.locator('[name=notes]').fill('Fixture failure');
+  failNext=true;
+  await eventDialog.getByRole('button',{name:'Save',exact:true}).click();
+  await eventDialog.getByText(/Retry Save resends/).waitFor();
+  await eventDialog.getByRole('button',{name:'Save',exact:true}).click();
+  await page.locator('#equipment tbody td').filter({hasText:/^FAILED$/}).waitFor();
+  assert.equal((await db.query("SELECT count(*)::int n FROM ops.site_equipment_event WHERE condition='FAILED'")).rows[0].n,1);
+  // Replace through the real form with a previously recorded uninstalled spare.
+  await addStock('Spare supply','POWER_SUPPLY',1,true);
+  const spareId=(await db.query("SELECT site_power_device_id id FROM ref.site_power_device WHERE device_name='Spare supply'")).rows[0].id;
+  await page.getByRole('button',{name:'Replace',exact:true}).last().click();
+  await page.locator('dialog[open] [name=replacement]').selectOption(String(spareId));
+  await page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true}).click();
+  await page.getByText('Spare supply',{exact:true}).waitFor();
+  assert.match(await page.locator('#equipment').textContent(),/Installed as replacement/);
+  assert.match(await page.locator('#equipment').textContent(),/UNTESTED/);
+  await page.getByRole('button',{name:'Move / remove',exact:true}).last().click();
+  assert.equal(await page.locator('dialog[open] [name=destination] option[value="901"]').count(),0);
+  await page.locator('dialog[open] [name=destination]').selectOption('');
+  await page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true}).click();
+  await page.locator('#detail-waypoint').selectOption('');
+  await page.getByText('Spare supply',{exact:true}).waitFor();
+  assert.equal((await db.query('SELECT site_waypoint_id FROM ref.site_power_device WHERE site_power_device_id=$1',[spareId])).rows[0].site_waypoint_id,null);
+  // A legacy placement stays visible for reconciliation without offering new installs.
+  await db.query('UPDATE ref.site_power_device SET site_waypoint_id=901 WHERE site_power_device_id=$1',[spareId]);
+  await page.reload();await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+  await page.locator('#detail-waypoint').selectOption('901');
+  assert.equal(await page.getByRole('button',{name:'Install Equipment',exact:true}).isDisabled(),true);
+  assert.match(await page.locator('#equipment').textContent(),/Spare supply/);
+  await page.getByRole('button',{name:'Move / remove',exact:true}).last().click();
+  assert.equal(await page.locator('dialog[open] [name=destination] option[value="901"]').count(),0);
+  await page.locator('dialog[open] [name=destination]').selectOption('');
+  await page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true}).click();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+
   // Empty selectors must distinguish unresolved LOR from missing FLW endpoints,
   // and a known outlet with no circuit must point back to the existing editor.
   const previousNetwork=(await db.query("SELECT lor_network FROM ref.controller WHERE controller_id=104")).rows[0].lor_network;
@@ -574,13 +706,13 @@ try {
   await page.locator("#deployment-save").click();
   await page.getByText(/Save outcome unknown/).waitFor();
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_controller_installation WHERE controller_id=101 AND active")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_controller_installation WHERE controller_id=101 AND NOT active")).rows[0].n,1);
   assert.equal((await db.query("SELECT site_waypoint_id FROM ref.site_controller_power_connection WHERE controller_id=101 AND active")).rows[0].site_waypoint_id,12);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_controller_power_connection WHERE controller_id=101 AND NOT active")).rows[0].n,1);
   await page.goto(base.replace("circuits","waypoints?waypoint=11"));
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   assert.match(await page.locator("#installations").innerText(),/CTRL 101/);
   assert.equal(await page.locator('#detail-waypoint option[value="10"]').count(),0);
   // A panel-typed waypoint stays eligible when FLW endpoints resolve.
@@ -589,7 +721,7 @@ try {
   await page.locator("#deployment-network").waitFor();
   await page.locator("#deployment-network").selectOption("11");
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   assert.equal((await db.query("SELECT site_waypoint_id FROM ref.site_controller_installation WHERE controller_id=102 AND active")).rows[0].site_waypoint_id,11);
   // Stale revision cannot silently overwrite another screen's update.
   await page.locator("#deployment-network").selectOption("12");
@@ -599,25 +731,25 @@ try {
   assert.equal(await page.locator("#deployment-save").isDisabled(),true);
   page.once("dialog",d=>d.accept());
   await page.getByRole("button",{name:"Reload connections",exact:true}).click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   // Record physical order on Controller Inventory, then correct the same record
   // from Waypoint Connections. These saves do not require a power circuit.
   await page.locator("#deployment-upstream").selectOption("101");
   await page.locator("#deployment-out").selectOption("TERMINATOR");
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   await page.reload();await page.locator("#deployment-upstream").waitFor();
   assert.equal(await page.locator("#deployment-upstream").inputValue(),"101");
   assert.equal(await page.locator("#deployment-out").inputValue(),"TERMINATOR");
   await page.goto(base.replace("circuits","waypoints?waypoint=11"));
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   const chainRecord=page.locator("#installations .power-record").filter({has:page.getByRole("heading",{name:"CTRL 102",exact:true})});
   await chainRecord.getByRole("button",{name:"Edit IN / OUT",exact:true}).click();
   await dialog.locator("#deployment-upstream").waitFor();
   assert.equal(await dialog.locator("#deployment-upstream").inputValue(),"101");
   await dialog.locator("#deployment-out").selectOption("RETURN_TO_ORIGIN");
   await dialog.locator("#deployment-save").click();
-  await dialog.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await dialog.getByText(/^Loaded connection revision /).waitFor();
   await dialog.getByRole("button",{name:"Done",exact:true}).click();
   await dialog.waitFor({state:"hidden"});
   await page.goto(base.replace("circuits","controllers?controller_id=102"));
@@ -627,21 +759,65 @@ try {
   // created in the same save, without manually installing the next controller.
   await page.locator("#deployment-out").selectOption("103");
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   await page.goto(base.replace("circuits","controllers?controller_id=103"));
   await page.locator("#deployment-upstream").waitFor();
   assert.equal(await page.locator("#deployment-upstream").inputValue(),"102");
   assert.equal(await page.locator("#deployment-network").inputValue(),"11");
   await page.locator("#deployment-out").selectOption("104");
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   await page.goto(base.replace("circuits","controllers?controller_id=104"));
   await page.locator("#deployment-upstream").waitFor();
   assert.equal(await page.locator("#deployment-upstream").inputValue(),"103");
   await page.locator("#deployment-out").selectOption("RETURN_TO_ORIGIN");
   await page.locator("#deployment-save").click();
-  await page.getByText("Current shared waypoint records loaded.",{exact:true}).waitFor();
+  await page.getByText(/^Loaded connection revision /).waitFor();
   assert.match(await page.locator(".controller-port-summary").innerText(),/CTRL 103[\s\S]*CTRL 104[\s\S]*return/);
+  // Switching within the recorded chain must not wait for another full snapshot.
+  let selectionPowerReads=0,selectionDetailReads=0;
+  const countSelection=request=>{
+    const path=new URL(request.url()).pathname;
+    if(path.endsWith('/api/power')) {
+      assert.equal(new URL(request.url()).searchParams.get('view'),'controller','deployment must request the scoped payload');
+      selectionPowerReads++;
+    }
+    if(/\/api\/controllers\/10[1-4]$/.test(path))selectionDetailReads++;
+  };
+  page.on('request',countSelection);
+  const selectionTimes=[];
+  for(const id of [101,102,103,104]) {
+    const started=Date.now();
+    await page.evaluate(id=>loadControllerDetail(id),id);
+    await page.locator('#controller-deployment h3').filter({hasText:`CTRL ${id} ·`}).waitFor();
+    await page.locator('#deployment-network').waitFor();
+    const manage=page.locator('#controller-management-actions .manage-assignments-button');
+    await manage.waitFor();
+    assert.equal(await manage.isDisabled(),id===104);
+    // Chain/label/form mutations must not trigger capability HTTP requests.
+    await page.evaluate(()=>{
+      const host=document.querySelector('#controller-deployment');
+      for(let i=0;i<30;i++){const n=document.createElement('span');host.append(n);n.remove();}
+      return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    });
+    selectionTimes.push(Date.now()-started);
+  }
+  assert.equal(selectionPowerReads,0,'same-chain selection must reuse the loaded snapshot');
+  assert.equal(selectionDetailReads,4,'main and label views share each controller detail request');
+  await page.getByRole('button',{name:'Reload connections',exact:true}).click();
+  await page.getByText(/^Loaded connection revision /).waitFor();
+  assert.equal(selectionPowerReads,1,'explicit reload obtains a fresh snapshot');
+  // Overlapping selections share a refresh; a late response cannot select the old ID.
+  await page.evaluate(()=>{
+    MSBControllerDeployment.invalidate();
+    return Promise.all([MSBControllerDeployment.render(101),MSBControllerDeployment.render(104)]);
+  });
+  assert.equal(selectionPowerReads,2);
+  assert.match(await page.locator('#controller-deployment h3').innerText(),/CTRL 104/);
+  assert.equal(await page.locator('#deployment-upstream').inputValue(),'103');
+  page.off('request',countSelection);
+  console.log('Warm same-chain selection ms (management-enabled browser fixture, not Production):',selectionTimes);
+
   assert.equal(await page.locator(".controller-port-summary td").first().evaluate(n=>getComputedStyle(n).borderTopStyle),"solid");
   assert.deepEqual((await db.query("SELECT controller_id,upstream_controller_id FROM ref.site_controller_installation WHERE active ORDER BY controller_id")).rows.map(r=>[r.controller_id,r.upstream_controller_id]),[[101,null],[102,101],[103,102],[104,103]]);
   // Asset IDs and physical display names are independent. A wiring-source
@@ -654,36 +830,71 @@ try {
   await page.locator("#deployment-out").waitFor();
   assert.equal(await page.locator('#deployment-out option[value="104"]').innerText(),"CTRL 104 — WF-Tree-08");
   await page.goto(base.replace("circuits","waypoints?waypoint=11"));
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   const namedRecord=page.locator("#installations .power-record").filter({has:page.getByRole("heading",{name:"CTRL 104",exact:true})});
   assert.equal(await namedRecord.locator("td").nth(1).locator(".controller-port-display").innerText(),"WF-Tree-08");
   assert.equal(await page.evaluate(()=>window.MSBControllerDeployment.controllerLabel({load_lineage:[]},999)),"CTRL 999 — No display assigned");
   assert.equal(await page.evaluate(()=>window.MSBControllerDeployment.controllerLabel({load_lineage:[{controller_id:999,display_name:'Tree B'},{controller_id:999,display_name:'Tree A'}]},999)),"CTRL 999 — Tree A / Tree B");
+  await page.goto(base.replace('circuits','waypoints'));
+  await page.getByText(/Revision \d+/).waitFor();
+  assert.equal(await page.locator('#waypoint-engineering').isVisible(),false);
+  assert.match(await page.locator('#waypoint-overview').textContent(),/Select a waypoint/);
+  await page.locator('#detail-waypoint').selectOption('11');
+  assert.equal(await page.locator('#waypoint-engineering').getAttribute('open'),null);
+  assert.match(await page.locator('#waypoint-overview').textContent(),/Recorded supply/);
+  assert.equal(await page.locator('#waypoint-overview a[href="equipment?waypoint=11"]').count(),1);
   // Separate read-only history retains retests and unresolved identities.
   await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-23',1,'REVIEWED','source-one','Cat6',100,'first'),(gen_random_uuid(),1,'2026-10-24',2,'REVIEWED','source-two','Cat6',101,'retest'),(gen_random_uuid(),NULL,NULL,NULL,'UNMATCHED','source-three',NULL,NULL,'unresolved')");
   await page.goto(base.replace("circuits","cable-tests"));
-  await page.getByText(/Revision \d+/).waitFor();
-  await page.locator("#test-pair").selectOption("11:12");
-  assert.equal(await page.locator("#test-history article").count(),3);
-  assert.match(await page.locator("#test-history").innerText(),/source-one/);
-  assert.match(await page.locator("#test-history").innerText(),/source-two/);
-  await page.locator("#test-pair").selectOption("unresolved");
-  assert.equal(await page.locator("#test-history article").count(),1);
-  assert.equal(await page.locator("#cable-history button").count(),0);
+  for(const id of ['breaker-context','breaker-reports','breaker-checklist','power-state-help'])assert.equal(await page.locator('#'+id).isVisible(),false);
+  assert.equal(await page.locator('.power-return').count(),0);
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+  await page.locator('[data-filter="waypoint"]').selectOption("11");
+  assert.equal(await page.locator("#test-history article").count(),0);
+  await page.getByRole('button',{name:'Compare tests (3)',exact:true}).click();
+  assert.equal(await page.locator('.cable-comparison tbody tr').count(),3);
+  assert.doesNotMatch(await page.locator('.cable-comparison').textContent(),/source-one|source-two|SHA|UUID/);
+  assert.match(await page.locator('.cable-comparison tbody tr').first().textContent(),/Oct 24, 2026/);
+  await page.locator('[data-filter="waypoint"]').selectOption('');
+  await page.locator('[data-filter="network"]').selectOption('Unresolved');
+  assert.match(await page.locator('.cable-results').textContent(),/Date unknown/);
+  assert.doesNotMatch(await page.locator('.cable-results').textContent(),/source-three/);
   // Parsed FLW labels remain browsable before waypoint/cable reconciliation.
-  await db.exec(`INSERT INTO ops.linkiq_test VALUES
+  await db.exec(`INSERT INTO ref.site_network VALUES(80,'AUX-E','LOR');
+    INSERT INTO ops.linkiq_test VALUES
     ('11111111-1111-4111-8111-111111111111',NULL,'2026-10-20',1,'UNMATCHED','flw-source','10BASE-T',210,'FE-02B TO FE-02 AUX-E'),
     ('22222222-2222-4222-8222-222222222222',NULL,'2026-10-20',1,'UNMATCHED','flw-source','10BASE-T',209,'FE-02B TO FE-02 SPARE-01');
     INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal)
     VALUES ('flw-source','11111111-1111-4111-8111-111111111111','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"AUX-E","display_label":"FE-02B TO FE-02 AUX-E"}'),
     ('flw-source','22222222-2222-4222-8222-222222222222','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"SPARE-01","display_label":"FE-02B TO FE-02 SPARE-01"}');`);
-  await page.reload();await page.getByText(/Revision \d+/).waitFor();
-  await page.locator("#test-pair").selectOption('label:["FE-02","FE-02B"]');
-  assert.equal(await page.locator("#test-history article").count(),2);
-  assert.equal(await page.locator("#test-history h3").count(),2);
-  assert.match(await page.locator("#test-history").innerText(),/physical cable unreviewed/);
+  await page.reload();await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+  await page.locator('[data-filter="network"]').selectOption("AUX-E");
+  assert.equal(await page.locator('[data-filter="waypoint"] option[value="11"]').count(),0);
+  await page.locator('[data-filter="search"]').fill('fe-02');
+  const lowerMatches=await page.locator('[data-filter="waypoint"] option').allTextContents();
+  assert.ok(Number(await page.locator('[data-filter="waypoint"]').getAttribute('size'))>1);
+  await page.locator('[data-filter="search"]').fill('FE-02');
+  assert.deepEqual(await page.locator('[data-filter="waypoint"] option').allTextContents(),lowerMatches);
+  await page.locator('.cable-results').getByRole('button',{name:'Length (ft)',exact:true}).click();
+  assert.equal(await page.locator('.cable-results th[aria-sort="ascending"]').innerText(),'Length (ft) ↑');
+  assert.equal(await page.locator("#test-history article").count(),0);
+  await page.locator('[data-filter="waypoint"]').selectOption("label:FE-02B");
+  await page.getByRole('button',{name:'Compare tests (1)',exact:true}).click();
+  assert.equal(await page.locator('.cable-comparison tbody tr').count(),1);
+  for(const width of [1280,768,390]){
+    await page.setViewportSize({width,height:900});
+    assert.ok(await page.locator('.cable-table-scroll').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth+1)),'main and comparison tables must fit, including History buttons');
+  }
+  await page.setViewportSize({width:1280,height:900});
+
+  assert.equal(await page.locator("#panels button").count(),0);
+  assert.match(await page.locator("#test-history").textContent(),/FE-02/);
+  assert.match(await page.locator('#test-history').textContent(),/Speed \(Mbps\)/);
+  assert.doesNotMatch(await page.locator('.cable-comparison').textContent(),/SHA|UUID|10BASE|Source/);
+  for(const id of ['breaker-context','breaker-reports','breaker-checklist'])assert.equal(await page.locator('#'+id).isVisible(),false);
+
   // Save Panel 15 as FE-00's supply even when it has no recorded breakers.
-  await page.goto(base);await page.getByText(/Revision \d+/).waitFor();
+  await page.goto(base);await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   for(const name of ["Panel 15","Panel FE-00"]) {
     await page.getByRole("button",{name:"Add panel",exact:true}).click();
     await dialog.locator("[name=panel_name]").fill(name);await save();
@@ -705,7 +916,7 @@ try {
   page.once("dialog",d=>d.accept());await dialog.locator("#cancel").click();
   await dialog.waitFor({state:"hidden"});
   await page.goto(base);
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   // Leaving a populated panel must preserve its context through either return action.
   await page.locator("#find").fill("A5");
   await page.locator("#panels").getByRole("button",{name:"PANEL A5-00",exact:true}).click();
@@ -716,11 +927,11 @@ try {
     await openWaypoint.scrollIntoViewIfNeeded();
     const previousScroll=await page.evaluate(()=>window.scrollY);
     await openWaypoint.click();
-    await page.getByText(/Revision \d+/).waitFor();
+    await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
     const back=page.getByRole("link",{name:"Back to PANEL A5-00",exact:true});
     await back.waitFor();
     if(backMethod==="browser") await page.goBack(); else await back.click();
-    await page.getByText(/Revision \d+/).waitFor();
+    await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
     assert.equal(await page.locator("#find").inputValue(),"A5");
     assert.equal(await disclosure.evaluate(e=>e.open),true);
     await page.waitForFunction(y=>Math.abs(window.scrollY-y)<5,previousScroll);
@@ -735,7 +946,7 @@ try {
   await page.getByRole("button", {name:/Light mode|Dark mode/}).click();
   const changedTheme = await page.locator("html").getAttribute("data-theme");
   await page.reload();
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   assert.equal(await page.locator("html").getAttribute("data-theme"), changedTheme);
   await page.getByRole("button", {name:/Light mode|Dark mode/}).click();
   assert.notEqual(await page.locator("html").getAttribute("data-theme"), changedTheme);
@@ -757,16 +968,16 @@ try {
     INSERT INTO ops.linkiq_test VALUES('00000000-0000-0000-0000-000000000099',NULL,'2024-01-01',1,'UNMATCHED','expectation','1000BASE-T',306,'Outlet B TO Pole INET');
     INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal) VALUES('expectation','00000000-0000-0000-0000-000000000099','{"endpoint_candidates":[[12],[99]],"designation":"INET","reasons":[]}');`);
   await page.goto(base.replace("circuits","waypoints?waypoint=12"));
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   assert.match(await page.locator("#networks").innerText(),/branch requiring a LOR repeater/);
   assert.match(await page.locator("#networks").innerText(),/verify switch and power-supply inventory/);
   assert.match(await page.locator("#networks").innerText(),/verify PoE/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device")).rows[0].n,devicesBefore);
   await page.goto(base);
-  await page.getByText(/Revision \d+/).waitFor();
+  await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   // Seasonal operations use the real command and ledger, without waypoint prerequisites.
   await db.exec(`UPDATE ref.site_power_breaker SET show_desired_state='ON',restoration_desired_state='OFF' WHERE active`);
-  await page.reload();await page.getByText(/Revision \d+/).waitFor();
+  await page.reload();await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   const firstState=await db.query('SELECT site_power_breaker_id id,site_panel_id panel FROM ref.site_power_breaker WHERE active ORDER BY site_power_breaker_id LIMIT 1');
   const bid=firstState.rows[0].id;
   await page.locator('#breaker-checklist > summary').click();
@@ -807,7 +1018,7 @@ try {
   await page.emulateMedia({media:'screen'});
   // The report includes wrong-state unchanged-target breakers and a direct PDF link.
   await db.exec(`UPDATE ref.site_power_breaker SET show_desired_state='ON',restoration_desired_state='ON' WHERE site_power_breaker_id=${bid}`);
-  await page.reload();await page.getByText(/Revision \d+/).waitFor();
+  await page.reload();await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   await page.locator('#show-breaker-report').click();
   assert.match(await page.locator(`[data-report-breaker="${bid}"]`).innerText(),/Wrong state/);
   assert.match(await page.locator('#download-breaker-report').getAttribute('href'),/report.pdf\?season=2026&phase=SETUP&view=exceptions/);

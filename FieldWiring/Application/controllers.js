@@ -233,6 +233,17 @@ function renderFirmwareHistory(rows) {
     </div>`).join('');
 }
 
+// Share concurrent main-detail/label reads; do not retain details after completion.
+const controllerDetailRequests = new Map();
+function getControllerDetail(controllerId) {
+  if(controllerDetailRequests.has(controllerId))return controllerDetailRequests.get(controllerId);
+  const request=fetch(`api/controllers/${controllerId}`).then(async response=>{
+    const payload=await response.json();
+    if(!response.ok)throw new Error(payload.error || 'Controller could not be loaded.');
+    return payload;
+  }).finally(()=>{if(controllerDetailRequests.get(controllerId)===request)controllerDetailRequests.delete(controllerId);});
+  controllerDetailRequests.set(controllerId,request);return request;
+}
 async function loadControllerDetail(controllerId) {
   if (window.MSBControllerDeployment && !window.MSBControllerDeployment.mayLeave()) return;
   selectedControllerId = controllerId;
@@ -249,11 +260,10 @@ async function loadControllerDetail(controllerId) {
   document.getElementById('firmware-history').innerHTML = '';
 
   try {
-    const response = await fetch(`api/controllers/${controllerId}`);
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || 'Controller could not be loaded.');
+    const payload = await getControllerDetail(controllerId);
     if (selectedControllerId !== controllerId) return;
     const c = payload.controller;
+    window.dispatchEvent(new CustomEvent("msb-controller-detail-loaded", {detail: payload}));
     document.getElementById('detail-id').textContent = `CTRL ${c.controller_id}`;
     document.getElementById('detail-model').textContent = `${c.manufacturer} · ${c.model_code} · ${c.model_name}`;
     const status = document.getElementById('detail-status');
@@ -286,6 +296,12 @@ async function loadControllerDetail(controllerId) {
       fact('Last Updated', formatDate(c.updated_at)),
     ].join('');
 
+    // A normal Scan still identifies the controller; movement requires the
+    // explicit Setup workflow, separate from wiring placement and assignments.
+    let locationAction=document.getElementById('controller-record-location');
+    if(!locationAction){locationAction=document.createElement('a');locationAction.id='controller-record-location';locationAction.className='header-link';document.getElementById('detail-facts').before(locationAction);}
+    locationAction.textContent='Record Location';
+    locationAction.href='/setup/record-location/?asset=CTRL:'+encodeURIComponent(c.controller_id);
     renderAssignments(payload.assignments || []);
     renderFirmwareHistory(payload.firmware_history || []);
   } catch (error) {

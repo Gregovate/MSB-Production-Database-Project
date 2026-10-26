@@ -1,6 +1,248 @@
 # Panel circuit definition and field capture
 
+## October 26 urgent controller location extension — #88/#171 under #122
+
+Controller QR identification already works: Scan CTRL routes to the permanent Controller Inventory. Add a Record Location action there; preserve the existing route and labels. Setup Record Location must accept compact CTRL:id and full /scan/CTRL/id URLs via HID, camera, manual entry and deep link. Reuse its authenticated movement API, explicit location confirmation, GPS/named evidence, training write prohibition, offline queue and client-event retry identity.
+
+Extend the existing ops.setup_movement_event audit with a nullable controller FK and CONTROLLER_MOVE. Keep existing Display/Container commands and histories unchanged; dispatch controller observations to a narrowly scoped authorized SQL command with the same transport contract. No new controller inventory or inferred power/network placement. Latest controller state is derived by observation time then event ID, so delayed offline replay never replaces newer evidence. Exact retries return the original event; changed payload reuse is rejected. Add search/state reads and a type-qualified offline context key to prevent CTRL/DISP numeric-ID collisions. Preserve permanent inventory location fields and accepted controller chains.
+
+Only pending migration 077_add_setup_controller_location.sql applies alongside pending equipment lifecycle/catalog in the existing disposable runner. No completed migrations replayed. Current-clone validation is read-only; fixture writes remain isolated. Test authorization, unknown identities, cross-asset requests, missing/invalid location, exact/conflicting retries, out-of-order capture, training/offline behavior, and existing Display/Container regression before operator acceptance and Production release.
+
+## October 26 final spacing acceptance
+
+Greg accepts the current equipment presentation for launch with two bounded UI corrections: separate adjacent equipment toolbar/model/Save/Cancel buttons, and expose Setup Pickup List beside Pick List. Keep filled colors and accepted workflows. Live Scan acceptance is deferred to post-deployment by Greg; this is not a Scan PASS.
+
+## October 26 button contrast — screenshot133009
+
+Equipment table/functionality are operator PASS on 101c0f99, except button contrast. Cable Table/Search remain PASS. Preview CLEAN EXIT confirmed. Apply the established shared FieldWiring action palette to equipment installation, model management, row actions and dialogs: filled blue-gray secondary actions, blue Save, neutral Reload/Cancel, darker hover and visible keyboard focus in light/dark themes. Reuse connection_controls.css rather than another equipment-only palette. This follows the requested cross-application semantic hierarchy; a repository-wide theme rollout is not claimed by this bounded correction. Preserve accepted layout, controller connection colors, panels, cable results and command behavior. Validate computed button states/contrast in both themes, then prepare the same governed disposable preview. No database change.
+
+## October 26 equipment table correction — screenshot131858
+
+Cable Test Table and Search are operator PASS on ed9113b3; preserve their accepted behavior. Additional Equipment list presentation fails field acceptance: oversized per-device blocks obscure basic inventory. Replace these blocks with a compact semantic table, one row per tracked unit: equipment number, model/name, condition and actions. Keep Edit, Record test/failure, Move/remove, Replace and collapsed history on the same row. Remove repeated Active/UNVERIFIED/source boilerplate and raw type codes from the main list, retaining underlying evidence and command behavior. No schema changes, inventory resets, grouping of distinct units or Production writes. Validate the installed and unassigned tables, lifecycle actions and tablet layout before a fresh disposable candidate.
+
+## October 26 verified FLW outcomes and direction-independent segment history
+
+Read-only inspection of the original corrected-name FLW SQLite upload establishes Records.TestStatus **1 = PASS, 6 = FAIL, 8 = INFO**. Every joined RecordData.BinRec metadata.status agrees: 725 source appearances / 517 unique test UUIDs, comprising 498 PASS, 17 FAIL, 2 INFO. No mismatches. Source SHA256: `de23ad7a096e8118366d82d0524879372a9780834d8c3ce8d5ec91628317403e`. This evidence supersedes earlier unresolved-code holds; Greg need not extract codes or report lines. Preserve INFO; unsupported future codes remain explicitly unclassified.
+
+The screenshot anchors match exact source records: LPFC-03 TO FC-00 REG, 2023-11-01 07:03:42, 137ft, 1000BASE-T, code6/Fail; PO TO LPFT-PS AUX-I, 2023-11-01 07:34:35, 211ft, 1000BASE-T, code1/Pass; Larrys antena, 2026-10-06 14:46:09, Telco/Passive PoE, code8/Info. Retain a minimal source-derived regression fixture and verify all source rows against the UI decoder without modifying/reimporting FLW.
+
+For field comparison, network plus an unordered pair of accepted endpoint identities defines a segment. A→B and B→A belong together even when retained cable IDs differ; cable ID must not override this grouping or combine different networks. Keep all dated tests, including significant length changes that may indicate replacement. Length alone does not establish a replacement event or split history. Ambiguous/unresolved endpoint pairs must not be merged speculatively. Existing physical cable identities and test evidence stay unchanged in the database.
+
+## October 26 field workflow correction — screenshots115647,120740,121252
+
+Greg confirms Additional Equipment is new and nothing is installed. Seed model choices only: no physical quantities, installations or purchase-derived stock. Install Equipment must be waypoint → model → quantity(default1) → one optional note → Save, creating individually traceable units and their installation events atomically. No spare inventory prerequisite or spare-unit chooser. Optional unassigned records and later movement/replacement remain supported. This supersedes prior stock-first requirements above/below.
+
+Clean the catalog using Greg's supplied names: LOR RS485 Repeater (RS485REP / LOR-REP), MSB Blue Splitter, MSB Green Splitter, REOLINK RLC-810A, TRENDnet TI-PGLC50, Ubiquiti LiteBeam LBE-5AC-GEN2, Tupavco TEX-200, Mean Well MDR-60-24, industrial gigabit switch (unknown model; seller Zhipu China), RJ45 splitter (unknown model; seller Mhinese). Remove generic Other equipment and RS485 splitter placeholders from the new reference seed; retain separately specified 10/100, 48V supply and PixieLink choices. Show readable names without raw uppercase type suffixes. Permit rename and deletion of unused model entries through the existing revisioned/audited command boundary; referenced models remain protected. Cleanup must not delay recording field assignments.
+
+Purchase evidence is not a physical inventory count: camera6; industrial gigabit switch6/$232.32; TRENDnet5/$389.50; LiteBeam1kit/2devices/$237.20; TEX-2001kit/2devices/$269; MDR-60-24 10/$299; RJ45splitter4orderedunits/$39.96 with pack size unconfirmed; LORrepeater9 purchased this year. Blue/Green quantities unknown. Costs are reported purchase totals, not inferred unit prices. Preserve this evidence without manufacturing installed/spare records.
+
+Cable sorting is operator PASS. Search must expose case-insensitive matching waypoint choices and apply an exact selected waypoint filter. Table cells and buttons must fit the available field viewport, with comparison scrolled into view and no clipped History controls. PASS/FAIL/INFO numeric mapping is still blocked on retained-code matches; do not relabel unknown numeric outcomes as PASS. Prior LinkWare anchors and bounded report collection remain authoritative.
+
+## October 26 model-list omission correction
+
+Screenshot100436 shows Install Equipment missing the supplied models. The catalog migration omitted the earlier field-picker vocabulary, and installation filtered choices to recorded spares. Restore the supplied model references (24V/48V supplies, TRENDnet PoE switch, 10/100 and gigabit switches, extender, splitter, RS485 repeater/splitter and PixieLink). Model references do not assert stock quantities or installed units. Keep all catalog models visible in Install Equipment; explicitly distinguish no recorded spares and retain the separate inventory-entry action. Preserve existing physical units and controller inventory. Regression must start with zero spare units and still find the supplied models.
+
+## LinkWare outcome cross-check — October 26 screenshot094257
+
+Greg's LinkWare screenshot establishes concrete source anchors: `LPFC-03 TO FC-00 REG`, November1 2023, 137ft, 1000BASE-T = FAIL; `PO TO LPFT-PS AUX-I`, November1 2023, 211ft, 1000BASE-T = PASS; `Larrys antena`, October6 2026, Telco/Passive PoE = INFO. Times are truncated in the screenshot. Match retained test name/date/length/standard before decoding numeric status. INFO is a distinct outcome and must not become PASS or FAIL. The read-only candidate evidence validation prints these named matches and their stored codes; the screenshot alone does not establish the numeric mapping.
+
+## Interim equipment reference management — next disposable candidate
+
+FieldWiring is the interim operator surface for equipment types/models, spare inventory and installation while #230 reference management remains incomplete. Physical additional-equipment units stay in `ref.site_power_device`; controllers retain their existing CTRL inventory. Type/model catalogs are reference vocabulary, not additional inventories. Future #230 ownership requires its explicit allowlist and permission design; installation, tests and replacement remain FieldWiring workflows. Do not repurpose `ref.inventory_type` without establishing its separate domain contract.
+
+Add Camera as an additional-equipment type, supporting multiple models and individually tracked units through the same lifecycle. New types/models use the existing authorized, revisioned, audited command boundary. Install existing stock at a fixed selected waypoint; a separate Add to inventory operation records MSB-owned spares. Quantity defaults to 1 and preserves one identity per unit. Model selection remains changeable. No owner/utility/rating controls and exactly one Notes field. Labels remain deferred.
+
+Cable point selection must support text search and be scoped to the selected network. Only resolved waypoint IDs appear as waypoints; unresolved source labels remain explicitly separate evidence. Sortable column headings expose direction, with newest dated results first and unknown dates last. Preserve physical cable identities. PASS/FAIL numeric decoding remains blocked on retained source evidence, not inferred from a fixture.
+
+## Segment test history — October 26 field-review refinement
+
+Greg rejects the expanded All tests evidence prose (screenshot091014). Replace it with Compare tests for this segment: a compact comparison grid containing exactly Date/time, Length(ft), Speed(Mbps), Result(PASS/FAIL from verified source semantics). One row per retained field test for that segment; newest reliably dated test first. Show the segment endpoints once in the comparison heading. Preserve unknown dates explicitly and keep them after dated tests; never infer a test date from ingest time. Use the existing physical cable/accepted segment identity, and do not merge distinct cables merely because endpoint text matches.
+
+No source SHA, test UUID, source designation, import/review status, repeated raw timestamp or diagnostic paragraphs in the field comparison. Retain provenance in the database for engineering/audit, not in this operator expansion. This supersedes the earlier instruction to place original standard/raw evidence in the expanded field history: those fields do not belong in this comparison either. Keep the main segment list usable while comparing history; avoid expanding a single date cell so wide that endpoint/length/speed columns wrap into unreadable fragments. Use a dedicated segment-detail region with a readable four-column table. Regression must assert segment-only rows, date order, measurements/results, absence of diagnostic fields and readable layout at field-device widths.
+
+This requirement is additive to the pending installation/inventory/cable/waypoint corrections; it does not establish the still-unverified FLW PASS/FAIL code mapping.
+
+
+## October 26 second field review — installation, inventory and field overview
+
+Greg accepts the equipment waypoint lookup on e73fcb7e, but the form/workflow and cable/waypoint presentation remain changes-required (screenshots084154,085817,090016,090257,090348,090433). Preserve that accepted lookup and controller performance. The earlier candidate is not full browser acceptance.
+
+Equipment installation contract:
+
+- Title/action Install Equipment at the already selected waypoint. Show that location as fixed context, not another optional selector. On the spares inventory view, use inventory language rather than installation language.
+- Quantity defaults to1 and is a positive whole number. Preserve individually traceable device IDs for failure/replacement history; batch installation must be atomic and exact-retry safe. Quantity must not silently create missing stock or merge separate unit histories.
+- Replace the datalist-only model field with a selector that can be reopened and changed after selection. Provide an explicit Add new item to inventory path, separate from installation, reusing the existing site-device inventory; return the created item(s) to the installation choice. No separate inventories for supplies/switches/repeaters, and no duplicate controller inventory. Distinguish model/type vocabulary from owned physical units; do not count a model suggestion as owned stock.
+- Existing Equipment Type choices are accepted for now; support for adding new types is required. Current device_kind has a database CHECK vocabulary, so a browser-only arbitrary type is not an implementation. Inspect existing reference catalogs/authority before a governed vocabulary extension; do not repurpose ref.inventory_type without verifying its role or create another inventory master.
+- Additional equipment is MSB owned. Omit owner, utility asset reference and rating from this installation form. Set MSB ownership for new inventory units; preserve existing unrelated infrastructure metadata. Show exactly one Notes field; description and source_evidence must not both appear as Notes. Keep audit attribution automatic.
+
+Cable history contract:
+
+- Main result is PASS/FAIL from verified FLW result semantics. Existing code merely passes numeric Records.TestStatus through; inspect retained raw evidence/known source outcomes before mapping, preserve unrecognized or absent outcomes as unclassified rather than inventing PASS/FAIL. A selected standard is not evidence of success.
+- Main speed column shows speed only (for example1000Mbps). Retain original standard in expandable evidence, not the main table.
+- Waypoint choices depend on the selected network. Use accepted canonical waypoint identities/aliases once per identity. The current pointOptions(all) ignores network selection and can offer both an ID and label-based key for the same visible name; correct both. BELLS and other unresolved source labels must not be presented as established waypoints or silently renamed to guessed destinations. Keep unresolved tests separately discoverable with their original source labels, retaining all evidence and latest/older ordering.
+- Format test dates/times for field reading (for example Oct13,2026,9:58AM). Retain tester-local time when no timezone is recorded; do not invent UTC conversion. Keep raw timestamps in expandable evidence and preserve sorting by reliable source time.
+
+Waypoint Connections purpose and field-first presentation:
+
+This is the location-centric view for a technician at a box/outlet: recorded supplying panel/breaker/circuit, controllers plugged in, installed equipment, and recorded network/cable tests. Panel Circuits remains the panel-centric assignment/switching view; Controllers remains the controller/chain view. It is not intended as a second inventory or an engineering dump.
+
+Before a waypoint is selected, show the selector and a short purpose statement only. After selection, show a compact connection summary with links/actions into the existing owning screens. Put raw topology, duplicated panel/meter metadata, full event history and engineering diagnostics behind collapsed details. Keep actual unknown/unverified conditions clear, and never equate recorded breaker state with verified absence of voltage. Preserve recorded chains, outlet assignments, source evidence and revision/auth checks.
+
+These are recorded engineering requirements and identified implementation causes; they supersede the prior narrower presentation contract. No new implementation is certified by this design update.
+
+
+## October 26 implementation decision — screen boundaries and saved test standard
+
+Apply screen visibility at initialization, before focused rendering. Additional Equipment uses shared type-based power/network/combo waypoint choices for location/Add/Move, independent of controller LOR eligibility. Recorded additional devices at other locations remain selectable as reconciliation records; new installs at those locations are disabled. Filter infrastructure kinds and their model suggestions from Additional Equipment only, preserving shared database records and infrastructure controls.
+
+The existing FLW intake explicitly reads Records.Standard into test_standard. Use that available source value in a column labeled Test speed / standard, displaying the standard's nominal Mbps alongside its original text (10BASE-T=10, 100BASE-TX=100, 1000BASE-T=1000, supported multigigabit standards likewise). This is the test standard's rate, not measured throughput or proof of passing qualification. Remove the invented Unknown measured-speed prefix. Preserve unsupported standards verbatim and genuinely missing standards as Not recorded. Keep status codes as recorded until actual raw-result semantics are established; do not guess PASS from an undocumented numeric code. This closes the displayed Unknown defect without pretending to extract an unavailable raw-result field or reimporting FLW. Raw qualification/negotiated-speed enrichment remains explicitly unverified.
+
+No new migration. Regression must exercise initial load/reload, prior panel context, Add/Move and legacy placements, infrastructure exclusion, saved standard rate labels, missing/nonstandard evidence, and retained controller performance/save behavior. Greg reports the prior reusable preview CLEAN EXIT.
+
+
+## October 26 equipment and cable review — corrections required
+
+Greg's six screenshots (074552, 074744, 074923, 075146, 075405, 075545) reject the remaining equipment/cable presentation on application candidate572c3e1e. Controller performance improvement does not accept these screens. This section supersedes any earlier implication that equipment simplification and cable presentation are complete.
+
+- Equipment location, Add equipment and Move selectors must share a maintained-type filter for actual power/network/combo installation waypoints plus Uninstalled/spares. Exclude Stage and unrelated GIS points from new placement choices. Preserve access to any already recorded out-of-scope placement for explicit reconciliation; never silently move or delete inventory. These controls assign existing waypoints, not create GPX records. No controller-specific LOR eligibility rule should constrain generic network equipment placement.
+- Additional Equipment must offer portable/replaceable supplies, switches, extenders, splitters, RS485 repeaters and appropriate existing model choices. FUSE, DISCONNECT, OUTLET and LIGHT_POLE are infrastructure types, not new Additional Equipment choices. Retain their existing shared records and infrastructure editing paths. Controllers remain the existing CTRL special case. No new inventory table.
+- Equipment and Cable Test History must not display Season/season mode, breaker reports, seasonal checklist or power-only guidance. Establish screen visibility before route-specific rendering. The focused render early returns currently bypass renderChecklist/renderBreakerReports, which contain the hiding logic; regressions must assert actual absence of these controls after initial load, reload and navigation from a selected panel. A panel-specific return banner should not dominate these independent screens; preserve panel navigation context within navigation.
+- Cable speed: current intake maps FLW Records.Standard to test_standard and retains RecordData.BinRec as ops.linkiq_test.original_result. The power snapshot projects test_standard/status_code but no measured_link_speed_mbps. Cable History nevertheless reads that absent field and prints Unknown before every standard. This is a confirmed mapping/presentation gap, not proof the original FLW lacks speed evidence. Trace an actual retained original_result against the FLW source fields and status semantics before choosing qualification/negotiated-speed fields. Show correctly labeled supported test speed/standard and result; do not invent negotiated throughput from a selected test standard. Preserve latest reliable dates, lengths, endpoint/network filters and all older evidence. No source reimport, GPX/FLW edits or broad profiling is authorized by this review.
+
+Next implementation must cover these boundaries in the existing PR463 and preserve accepted controller performance work. These are recorded requirements and source findings, not implemented corrections or a new test candidate.
+
+
+## Controller transport correction — measured October 26
+
+Operator transport report 20261026T010158Z establishes the dominant measured delay: controller detail 136ms total / 1,886 bytes; power headers 1,814/2,400ms, body transfer 24,734/22,952ms, JSON parse 187/210ms, payload 2,366,425 bytes. This measures the preview tunnel, not all Production paths. Do not repeat broad SQL profiling or change controller detail queries.
+
+Implement `GET /api/power?view=controller` as a read projection of the same authorized, read-only snapshot. Retain revision/access and every row of waypoint capabilities, network requirements, placement eligibility, controller options/installations/power connections, circuits/panels, waypoint power sources and physical display names. Project only fields consumed by controller deployment; do not filter eligibility, active/inactive reconciliation records or chain members. Omit cable-test evidence, breaker impacts, audit/equipment history and unrelated report fields from this response. Keep the full default snapshot and command boundary unchanged. This first correction reduces browser transfer; the existing database snapshot computation still runs once and remains a later screen-specific SQL opportunity. No migration or authorization change.
+
+Controller deployment uses this scoped response in both page and waypoint dialogs; preserve cache invalidation, revision conflict handling, uncertain-save retry, sorting and recorded-unresolved choices. Test projection equality at 240 waypoints / 182 requirements / 890 eligibility rows and actual browser save/chain behavior. Record fixture bytes separately from actual preview bytes. Field acceptance remains pending until cold load and warm selection are measured on the next governed disposable candidate; never substitute synthetic timing for field acceptance.
+
+
+## Initial-load measurements — operator server report 20261026T005419Z
+
+The supplied report completed on preview 0e53d5c6. Loopback HTTP: controller access26.3ms; stages11.0ms; all controllers18.6ms; Racing scope15.4ms; controller details10.7/10.7/11.2ms (repeat14.3ms). Power snapshot1211.6/1213.0ms, 2,366,425 bytes. SQL list execution3.097ms for primary list; detail statements0.203/0.198/0.115ms; power snapshot1175.652ms. Thus controller list/detail SQL is not the observed 15-second delay, and the optimized snapshot is approximately1.2seconds on the clone. This report excludes laptop/tunnel transfer and browser rendering; it cannot assign the remaining delay to either.
+
+Next diagnostic is three read-only laptop GETs through the existing localhost8898 tunnel: one controller detail and two power snapshots. Separate response-header wait, body transfer and PowerShell JSON parsing, reporting bytes/status. Parsing is not browser rendering. No replay of SQL profiling, preview rebuild or Production mutation. Only after this evidence select the next correction; the 2.37MB snapshot is a confirmed avoidable payload concern, not yet a proven explanation of the full delay.
+
+
+## Initial controller load — read-only diagnostic contract
+
+Operator reports first load 15 seconds, subsequent selections fast after observer correction. Initial-load acceptance remains FAIL. Before another UI candidate, run one bounded diagnostic against the existing reusable preview, using its recorded state file (not process-environment/credential discovery), exact candidate SHA, owned listener and named disposable container. Reuse the documented /opt/fieldwiring/.venv/bin/python runtime and container-local psql as msbadmin, then SET LOCAL ROLE fieldwiring_app inside BEGIN READ ONLY. No migrations, writes, new clone, service restart, Production connection or GPX/FLW access.
+
+Measure sequential loopback GET response times/bytes/status for controller access, stages, list/scoped list, selected controller details and power snapshot, including repeated detail/snapshot reads. Capture list/detail SELECT statements from the exact preview's existing Python query builders using a recording repository connection; bind their normal parameters with psycopg2 adapters and explain them against the clone with ANALYZE/BUFFERS/FORMAT JSON, a statement timeout and read-only transaction. Include the snapshot SELECT with existing preview identity. Preserve full plans in a report but do not print credentials, environment dumps or business-row payloads. Runtime facts come from the existing runner/state and server-owned disposable standard. Keep the preview alive and leave cleanup to its original foreground runner. This is diagnostics, not another deployment mechanism. Timings label already-running process/cache state; do not claim server cold-start measurement.
+
+
+## Controller management observer — failed field performance review
+
+Greg reports Racing Arches first load 12–13 seconds and subsequent selections 9/12/11 seconds after the prior candidate. Those results fail field acceptance; previous synthetic timings do not establish Production performance. Reconnaissance found the assignment-capability observer issues a controller detail GET for every page DOM mutation whenever management controls exist. The former browser fixture disabled those controls and therefore missed this request amplification. Remove network I/O from that observer: consume the selected controller payload already returned by the main detail loader, guard its identity, and apply capability to newly created buttons locally. Until the selected detail arrives, assignment management is disabled. Preserve server authorization and model capability enforcement. Regression must run with management controls enabled, verify one detail read per selection despite unrelated DOM mutations, deny non-assignment devices, and retain late-response identity protection. This correction does not establish that all field latency is explained; real preview response timing remains an acceptance gate.
+
+
+## Controller selection latency — October 25 review correction
+
+Greg measured 6–9 seconds switching controllers within the same Who chain in candidate 6963b639. Repeated selection must not refetch the all-purpose power snapshot. Reuse one page-local connection snapshot and one in-flight request across controller selections. Explicit Reload, connection save attempts (including uncertain outcomes), inventory/assignment edits, and returning from a hidden page invalidate it. Existing revision-checked commands remain authoritative; stale saves fail closed and require reload. Display the loaded revision rather than claim live data. Dialogs outside Controller Inventory continue to obtain fresh snapshots. Never persist this cache across page loads/users. Initial snapshot loading remains a separate unresolved latency boundary; do not claim it fixed by selection reuse.
+
+The main controller detail and label section must share an in-flight GET for the same controller, without a persistent detail cache. Preserve late-response selection guards, read-only controls, unsaved-edit prompts, reciprocal chain links and sorting. Regression must count network requests for repeated same-chain selection, reload and writes, and exercise failure recovery and out-of-order results. Record browser selection timings separately from cold opening time. No SQL migration or Production change is needed for this correction.
+
+
+## PR463 reconciliation with deployed PR464 — current candidate
+
+Main advanced through PR466 to d2bc9d02. Retain deployed PR464's unassigned breaker correction/removal, dependency checks, retained observations and active-only circuit-name uniqueness. The next candidate is V0.4.30-setup-equipment; earlier V0.4.28 review builds are superseded. Equipment migration must require deployed command MD5 `906289a801cae2e2d85957898984f031` and optimized snapshot MD5 `1409b5a8bada107ecfd5954c8f49a18d`, then add only equipment history. Combined command MD5 is `7c6df16cea62a5635db1579d8dfeacb8`; equipment snapshot MD5 remains `7458c9499a05bf53ad6dc585b369c1f9`. Do not replay the deployed breaker correction or any earlier migration in preview or release. Synthetic clean-database CI builds the prior releases in order, then applies equipment history and exercises both breaker corrections and equipment lifecycle against the combined command. Current-Production clone acceptance remains required.
+
+
 Current October25 release: PR464 installed V0.4.29-breaker-correction at `2548edd130b5cebad33a44786bc1811c2b089bf8`; Setup remains72a94be7 / V0.3.91. See the latest checkpoint receipt for rollback evidence and the pending protected Production browser check. This supersedes earlier current-release statements below; PR463 remains separate.
+
+## Disposable review correction — additional equipment screen
+
+Greg's October 25 screenshot rejects the equipment screen's excess content. Rename Combo Equipment to Additional Equipment. Primary view: waypoint/spares selector, Add equipment, installed/spare items and their existing lifecycle actions/history. Hide controller instructions and inventory link (Controllers remains in navigation), global power disclaimer and global correction history on this route. Show an explicit empty list message instead of an unrelated missing-network warning for spares. Keep network/feed engineering accessible in collapsed Connection details only when a waypoint is selected; retain electrical safety information there. Preserve item audit/verification details, authenticated commands and history. Render equipment independently, without building hidden panels/reports/controller sections. This is presentation only; no schema or Production mutation.
+
+## Disposable review correction — October 25, cable history
+
+The ea080130 candidate is not accepted: Greg reports poor browser response, nonexistent AUX-1/AUX-2 network choices, and a site-wide waypoint picker instead of cable-test points. Network choices must come from the existing network catalog and require an unambiguous normalized match; raw FLW designations remain source evidence and must never create network identities or be silently translated to another network. Unmatched designations remain browsable under Unresolved.
+
+The test-point selector must be derived from retained cable-test endpoints, including source endpoint labels when reconciliation has not assigned waypoint IDs. Exclude unrelated site areas and waypoints with no retained tests. Preserve ID-based equipment links, original labels, dates, lengths and uncertain chronology. Filter changes operate on a cached projection of the current snapshot; opening this screen must not render unrelated power, report or equipment surfaces. Older test details are built only when expanded. These are browser/query-consumer corrections; no migration, source reimport or Production write is authorized. Regression must cover invalid AUX designations, unresolved FE-02/FE-02B test points, unrelated site entries and retained history. Production-scale browser timing and renewed disposable acceptance remain required.
+
+## Current Production receipt — PR460, October 25
+
+Greg supplied `STAGE server deployment PASS; protected browser and documentation closeout pending` and the wrapper's `#171 PERFORMANCE SERVER DEPLOYMENT PASS` after SSH cleanly returned. Report: `/home/msbadmin/setup-deployment-reports/PR460-Performance-20261025T152418Z`.
+
+The accepted release profile promotes FieldWiring to `875003c504e8a60c5851c530ec6496e4430945d9`, V0.4.27-panel-performance, and leaves Setup at `72a94be772f2e4ae8bfaed74051f667fc87201a6`, V0.3.91-integrated-power. Post-deployment screenshots display V0.4.27 and revision421. PR460 merge is `6cc1f9377c7faa7c7547793a55966b59f2b742cf`; tooling PR461 merge is `8836efaa213006f84fc67d9713c6cbf9d382173a`. Documentation commits are not deployed application identities.
+
+Only `171_power_snapshot_performance.sql` belongs to this release. Do not rerun it, PR457, slot-count migrations or initial imports. The pasted final receipt does not supply the rollback snapshot path/hash; retain the server report as the source for those details rather than guessing. The prior ~6→2-second breaker save and improved controller assignments were disposable acceptance observations, not new measured Production SQL timings.
+
+Server deployment is PASS. Screenshots provide post-deployment UI evidence but do not close the full protected browser acceptance checklist. Protected browser acceptance and remaining release documentation closeout stay pending. #171/#230 under #122 remain open for the remaining scope. Earlier release-preparation and PR457-only baseline statements below are historical and superseded by this disposition.
+
+## Setup equipment recording — engineering decision, October 25
+
+Greg's immediate objective is a practical place to record equipment during setup and testing. Inventory reuse, installation, test/failure recording and replacement history take priority. New labels and a finalized human-readable ID scheme must not block data capture. This section supersedes earlier suggestions that all devices require one identifier format or that labels are part of the immediate delivery.
+
+### Reuse the existing identities and inventory
+
+Repository reconnaissance identifies `ref.controller` (with its controller model/status relationships), `ref.site_controller_installation`, `ref.site_controller_power_connection`, and the existing shared `ref.site_power_device`. The latter already includes POWER_SUPPLY, ETHERNET_SWITCH, POE_SWITCH, ETHERNET_EXTENDER, ETHERNET_SPLITTER, RS485_REPEATER and other site device categories, with a generated ID, waypoint, rating, description, active flag and verification metadata. Existing FieldWiring device editing and `site_power_command` already read/write this record type and maintain `ops.site_power_edit_log`.
+
+- Keep controllers as the special existing inventory case. Preserve controller IDs, `CTRL:` identification, existing labels/scan routes and LOR model/firmware/network behavior. Never copy controllers into the site-device inventory to make a combined screen.
+- Reuse the existing common site-device records for additional equipment; do not create independent supply, switch, repeater or lighting-equipment inventory tables. A shared equipment screen may present existing controller and site-device identities together using their real source keys, without a new master inventory copy.
+- Record one physical replaceable device per item, including two identical supplies at the same waypoint. Model/type describes a device; it is not its identity. Generated database identity is sufficient before physical labeling. Existing serial/asset references are optional, and utility references must not be repurposed as MSB IDs.
+- Do not force a destructive consolidation of existing controller and site-device schemas during setup. Verify current schema/catalog and existing records before any incremental migration; the repository reconnaissance is not a new Production catalog inspection. Reconcile duplicates before proposing another inventory authority.
+
+### Immediate operator workflow
+
+Select a waypoint → view installed controllers and other equipment → select an existing item or add an unrecorded device → record installation or test outcome. Also permit an uninstalled/spare item with no waypoint; moving an item reuses its identity. Equipment access must cover applicable network-only and power waypoints as well as Combo boxes. Do not force a waypoint to be classified Combo to record its equipment.
+
+The capture form needs equipment type/model (unknown model allowed), optional serial/existing reference, waypoint when installed, event date/time, outcome and optional notes. Use governed choices for device type and outcome. Reuse existing model choices where available; allow recording genuinely unknown equipment without inventing catalog facts. Current actor comes from authenticated identity, not free text. Default event time to now but allow an explicitly recorded earlier event time; retain both event and entry timestamps. Do not require a historical date the operator does not know.
+
+Keep condition, installation and verification separate. Condition choices initially: UNTESTED, WORKING, FAILED; a subsequent repair/retest can change current condition through another event. Removal or retirement is not a test outcome. `active` must not mean working, and `verification_status` must not become a health flag. A working device does not prove verified cabling or electrical safety. An imported/previous item without a recorded test remains condition unknown/untested, not automatically working.
+
+Provide Record test, Record failure, Move/remove and Replace actions alongside existing edit/add controls. For Replace: select the failed/removed item, select an existing spare or create the newly recorded physical item, and record the old→new link, waypoint, date and reason atomically. Retain the old identity, tests and installation history. Do not automatically reconnect power/network feeds or claim the replacement passed testing; explicitly record any required connection change through existing commands and keep unverified state until checked. Corrections preserve original entries and attribution.
+
+### History and implementation boundary
+
+Existing edit-log before/after records are retained. They are audit evidence, not a substitute for an explicit technician test date or replacement relationship. Extend the existing authenticated, revision-checked `site_power_command` mechanism for site equipment and reuse controller-owned operations for controller identity. Maintain transactional writes, request replay protection and current role permissions.
+
+Before implementation, reconcile existing event/history capabilities. If no suitable event record exists, a minimal append-only equipment lifecycle event relation is permitted as history, not another inventory: reference exactly one existing controller or site-device identity with enforced foreign keys, event kind, outcome, event/entry time, actor, optional waypoint, notes and correction/replacement linkage. Do not store a duplicate inventory master in events. Publish the exact incremental schema and command changes in this design before coding; no runtime migration is authorized by this conceptual section alone. Read current condition from the latest applicable uncorrected event; do not let missing/ambiguous historical timestamps silently imply a known chronology.
+
+Immediate screens show current equipment/condition and expandable dated history. Preserve enough structured model/type and failure/replacement data for later seasonal failure counts and spare-stock planning. Such reports must identify incomplete history; do not invent prior-year failure dates or device identities for the reported three repeaters and one supply. A dedicated planning dashboard is not a prerequisite for setup recording.
+
+### Low-priority labels and validation
+
+Equipment labels remain a later task: maximum 24 mm, likely 12 mm; final layout/prefix and print/scan feasibility undecided. Existing `CTRL:` labels remain unchanged. Reuse the label service when that work is scheduled; no label-service changes or new scan prefix in the immediate candidate.
+
+Acceptance must demonstrate two identical devices at one waypoint with distinct identities; adding an unlabeled/unknown-model item; recording a failed test without falsely verifying wiring; moving the same item with history retained; replacing from existing spare inventory without duplicate creation; correction/retry/concurrent-save behavior; retained controller IDs/chains and no LOR identity edits. Test ordinary authorized Crew and denied writes, with actor attribution. Combine with the already specified controller presentation and cable-test browsing work in the next governed disposable review. Production release requires that candidate's acceptance; no completed migration or source import is replayed.
+
+## October 25 Part 2 field review — current engineering scope
+
+This section records Greg's post-deployment screen review and controls the remaining presentation/workflow scope. These are requirements for the next governed disposable candidate, not implemented or accepted features. Extend existing screens, inventory, commands and stored FLW/LinkIQ evidence; do not build parallel systems.
+
+### Controller presentation
+
+- Use the standard blue primary Save connections button. Reload connections is a secondary light-gray action.
+- Use consistent menu-button colors, including Edit Controller and Manage Assignments, with darker hover states and visible keyboard focus. Apply the same navigation convention across the affected screens and retain light/dark-theme readability.
+- Network connection surfaces use light blue; power connection surfaces use light red. Retain explicit labels so color is not the sole distinction.
+- Replace the long wrapping chain paragraph with a readable ordered presentation. Proposed implementation: vertical controller ID/name list, selected controller highlighted, explicit origin and recorded ending. Preserve actual saved order, reciprocal IN/OUT, same-network cross-stage chains, sorting and eligibility. Do not infer a termination. The reviewed Whoville example runs from WV-03 through CTRL1060 to a recorded terminating resistor; this is operator evidence, not a seed or hard-coded chain.
+- Preserve UNVERIFIED until technician verification. Styling does not change wiring, power assignments or observation status.
+
+### Waypoint equipment and replacement
+
+The reviewed Waypoint Connections and Combo Equipment screens initially show a waypoint selector; the screenshots do not establish whether all post-selection workflows work. Inspect and extend existing controls rather than declaring the underlying inventory absent. Finish discoverable multiple-device inventory at a waypoint/combo box, including 10/100 and gigabit switches, 24V/48V PoE supplies, RS485 repeaters/splitters and Pixie Link. Support adding equipment, recording failures and replacements, and retaining the failed device and dated history. Reconcile the operator-reported three repeater failures and one bad power supply without inventing device identities or installation facts. Link waypoint equipment to its existing cable-test evidence.
+
+### Cable Test History — required browsing and results
+
+The deployed V0.4.27 screen has a Connected waypoint pair selector. It is an existing partial interface, not a completed All/Network/Waypoint browsing workflow.
+
+- Open with all connections and their latest recorded tests; provide All, selected network, and selected waypoint filtering. Waypoint selection matches either test endpoint. Keep unresolved network/waypoint records visible in All with explicit unresolved labels.
+- Show network, test point A, test point B, measured length in feet, reported passing speed/link capability, recorded result and test date. Do not substitute nominal device speed for measured/tested capability. Missing measurements remain unknown, never zero.
+- Show the latest recorded test per cable clearly, with older tests accessible and valid test dates sorted newest first. A/B and B/A on the same network represent the same cable unless replacement evidence distinguishes them. Preserve source/instrument/provenance and source distinctions where results are not comparable.
+- Do not hide a later failed test behind an older passing result. Preserve known tester-clock defects (including 2/10/1970), mark suspect/unknown dates and do not invent corrected dates or claim uncertain chronology is verified. An old test may still be the latest available evidence.
+- Reuse existing FLW/LinkIQ records and existing endpoint/network relationships. Tests remain read-only evidence; they do not create controller LOR membership, geometry, installed equipment or verified wiring.
+- Offer the overall history view and access scoped to the selected waypoint from equipment/connection screens. Keep filters and results clear when no evidence matches.
+
+### Remaining integrated scope and acceptance
+
+Complete/reconcile controller actual outlet and circuit-leg assignments, then Display → Controller → Circuit → Breaker/Panel amperage reporting. Preserve existing nominal rollups, explicit missing/estimated loads, per-pole capacity, remote-panel feeds, seasonal panel-versus-breaker behavior, notes, slots, reports and audit history. Technician verification of outlet assignments, physical labels and supplying breakers remains outstanding; breaker observations must not be inferred from targets or photos.
+
+Sequence: finish controller presentation; review/complete waypoint equipment and replacement; finish cable-test browsing; reconcile power/load reporting and field-verification gaps. Engineering is authorized. Run appropriate regressions and prepare one exact governed disposable candidate for Greg's review before a further Production release. Preserve Production, accepted chains and original GPX/FLW files. Future incremental FLW ingest and governed GPX compare/snapshot/ingest remain deferred; screen-specific API splitting is future work, not a reason to repeat broad profiling.
 
 
 ## Current release disposition — October 25
@@ -1011,3 +1253,13 @@ An operator must be able to correct an accidentally entered two-pole branch brea
 Before reducing poles or removing a breaker, reject active circuit feeds (including equipment feeds), controller power connections, conductor memberships, remote-panel supply, or non-observation activities with actionable dependency details. Removal may retire only the existing automatic breaker-position observation actions, retaining their event history; prerequisite references still block retirement. Existing read/write authorization is unchanged. Removal is explicit in breaker settings; normal saving performs pole reduction without a second workflow. Milbank/tandem layout is separate and excluded. No Production repair or migration is authorized by this design entry.
 
 This isolated correction branches from main 8836efaa; PR463 owns concurrent equipment/cable UI work. Preserve its work and reconcile shared command migration baselines before combining candidates. The new migration does not change the snapshot function or undo PR460 performance work.
+
+### Next candidate exact equipment data contract
+
+Add only `ops.site_equipment_event` as append-only history referencing existing `ref.site_power_device`; it is not an inventory table. Controller inventory and lifecycle remain with existing controller operations in this slice. Columns: generated event_id, existing device FK, kind TEST/MOVE/REPLACE, condition UNTESTED/WORKING/FAILED for TEST only, nullable observed_at (unknown permitted), server recorded_at, prior/new waypoint FK, optional replacement-device FK, optional corrected-test FK, notes, Directus actor/person/email. Enforce TEST-only correction of an uncorrected test on the same device; reject future timestamps, self-replacement and reusing a replacement already installed. Unknown dates remain explicit; current condition uses entry sequence with observed date shown, rather than asserting historical chronology.
+
+Extend the existing site_power_command after authorization/replay/revision checks with `equipment_event`. TEST appends an observation; MOVE changes the existing device waypoint and records old/new locations; REPLACE removes the old item from its waypoint and installs an existing active uninstalled spare there atomically. Replacement does not retire/delete the old inventory identity or mark the spare WORKING. Reject moving/replacing equipment with active feed references until those connections are explicitly reconciled. Historical movement cannot be backdated to silently rewrite present topology: MOVE/REPLACE record the present change; an unknown earlier date can be described in notes. A correction can replace a TEST observation only, not reverse physical topology. Device edit remains the existing metadata correction mechanism; UI routes ordinary moves through the event command. Existing audit before/after history remains intact.
+
+Append equipment_events to the authorized snapshot; retain the optimized network CTEs. Snapshot exposes all lifecycle history for this bounded launch slice, with request splitting deferred. Runtime role gets no direct event writes; event update/delete is denied. One incremental baseline-guarded migration, applied only to the disposable clone for candidate review. Initial/PR457/PR460 migrations are never replayed on Production. Tests must prove security metadata retained, no direct runtime writes, retry, stale revision, atomic replacement, and prior data preserved.
+
+Dependency safeguard integration: register installed `ops.site_equipment_event` in the existing read-only GPX dependency inventory. Use an exact-name catalog presence check for older schemas followed by one MVCC data/catalog snapshot; unknown FK consumers still HOLD. Capture old/new waypoint and device history dependencies without enabling or invoking GPX promotion/ingest. This preserves the deferred workflow's safety boundary when the incremental event table is present.
