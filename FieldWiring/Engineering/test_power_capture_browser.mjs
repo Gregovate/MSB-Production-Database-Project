@@ -542,10 +542,10 @@ try {
     const action=page.locator('#equipment .equipment-actions button').first();
     await page.mouse.move(0,0);
     const before=await action.evaluate(n=>({bg:getComputedStyle(n).backgroundColor,ink:getComputedStyle(n).color}));
-    assert.equal(before.bg,theme==='light'?'rgb(230, 237, 245)':'rgb(37, 61, 84)');
-    assert.equal(before.ink,theme==='light'?'rgb(23, 43, 64)':'rgb(237, 246, 255)');
+    assert.equal(before.bg,'rgb(23, 104, 179)');
+    assert.equal(before.ink,'rgb(255, 255, 255)');
     await action.hover();
-    assert.equal(await action.evaluate(n=>getComputedStyle(n).backgroundColor),theme==='light'?'rgb(199, 214, 229)':'rgb(49, 81, 110)');
+    assert.equal(await action.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(16, 76, 133)');
     await page.locator('#add-device').click();
     const saveButton=page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true});
     assert.equal(await saveButton.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(23, 104, 179)');

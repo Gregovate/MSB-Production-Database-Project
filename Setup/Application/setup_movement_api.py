@@ -130,8 +130,8 @@ def normalize_gps_quality(value: object) -> str:
 
 def normalize_asset_type(value: object) -> str:
     asset_type = str(value or "").strip().upper()
-    if asset_type not in {"CONTAINER", "DISPLAY"}:
-        raise SetupCommandError("asset_type must be CONTAINER or DISPLAY")
+    if asset_type not in {"CONTAINER", "DISPLAY", "CONTROLLER"}:
+        raise SetupCommandError("asset_type must be CONTAINER, DISPLAY or CONTROLLER")
     return asset_type
 
 
@@ -149,6 +149,7 @@ def normalize_action(value: object) -> str:
         "RETURNED",
         "CONTAINER_MOVE",
         "DISPLAY_MOVE",
+        "CONTROLLER_MOVE",
     }:
         raise SetupCommandError("Unsupported Setup movement action")
     return action
@@ -201,7 +202,10 @@ def api_setup_locate_assets() -> Response:
         return jsonify(error="No Setup Session exists for this year"), 404
     from setup_production_report import movement_picture
     from setup_locate_assets import locate_assets
-    response = jsonify(locate_assets(movement_picture(repo(), session["setup_session_id"], include_unobserved=True)))
+    movement_repo = repo()
+    picture = movement_picture(movement_repo, session["setup_session_id"], include_unobserved=True)
+    picture["controller_observations"] = movement_repo.controller_observations(session["setup_session_id"])
+    response = jsonify(locate_assets(picture))
     response.headers["Cache-Control"] = "no-store, max-age=0"
     return response
 
@@ -262,6 +266,8 @@ def api_setup_movement_record() -> tuple[Response, int] | Response:
     asset_id = positive_int(payload.get("asset_id"), "asset_id")
     movement_action = normalize_action(payload.get("movement_action"))
     offline_captured = bool(payload.get("offline_captured", False))
+    if (asset_type == "CONTROLLER") != (movement_action == "CONTROLLER_MOVE"):
+        raise SetupCommandError("Controller location requires CONTROLLER_MOVE")
 
     # Online PICKED is checked against the current authoritative Pick List.
     # Offline replay preserves the original field observation even if the live

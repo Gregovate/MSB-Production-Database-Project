@@ -1,5 +1,13 @@
 # Panel circuit definition and field capture
 
+## October 26 urgent controller location extension — #88/#171 under #122
+
+Controller QR identification already works: Scan CTRL routes to the permanent Controller Inventory. Add a Record Location action there; preserve the existing route and labels. Setup Record Location must accept compact CTRL:id and full /scan/CTRL/id URLs via HID, camera, manual entry and deep link. Reuse its authenticated movement API, explicit location confirmation, GPS/named evidence, training write prohibition, offline queue and client-event retry identity.
+
+Extend the existing ops.setup_movement_event audit with a nullable controller FK and CONTROLLER_MOVE. Keep existing Display/Container commands and histories unchanged; dispatch controller observations to a narrowly scoped authorized SQL command with the same transport contract. No new controller inventory or inferred power/network placement. Latest controller state is derived by observation time then event ID, so delayed offline replay never replaces newer evidence. Exact retries return the original event; changed payload reuse is rejected. Add search/state reads and a type-qualified offline context key to prevent CTRL/DISP numeric-ID collisions. Preserve permanent inventory location fields and accepted controller chains.
+
+Only pending migration 077_add_setup_controller_location.sql applies alongside pending equipment lifecycle/catalog in the existing disposable runner. No completed migrations replayed. Current-clone validation is read-only; fixture writes remain isolated. Test authorization, unknown identities, cross-asset requests, missing/invalid location, exact/conflicting retries, out-of-order capture, training/offline behavior, and existing Display/Container regression before operator acceptance and Production release.
+
 ## October 26 button contrast — screenshot133009
 
 Equipment table/functionality are operator PASS on 101c0f99, except button contrast. Cable Table/Search remain PASS. Preview CLEAN EXIT confirmed. Apply the established shared FieldWiring action palette to equipment installation, model management, row actions and dialogs: filled blue-gray secondary actions, blue Save, neutral Reload/Cancel, darker hover and visible keyboard focus in light/dark themes. Reuse connection_controls.css rather than another equipment-only palette. This follows the requested cross-application semantic hierarchy; a repository-wide theme rollout is not claimed by this bounded correction. Preserve accepted layout, controller connection colors, panels, cable results and command behavior. Validate computed button states/contrast in both themes, then prepare the same governed disposable preview. No database change.

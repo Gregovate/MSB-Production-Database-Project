@@ -42,7 +42,8 @@ def test_map_endpoint_authentication_validation_and_no_store(monkeypatch):
             return {'setup_session_id': 1}
     monkeypatch.setattr(api, 'require_reader', lambda: (Base(), 'reader', {}))
     assert client.get('/api/setup/locate/assets?season_year=bad').status_code == 403
-    monkeypatch.setattr(api, 'repo', lambda: object())
+    from types import SimpleNamespace
+    monkeypatch.setattr(api, 'repo', lambda: SimpleNamespace(controller_observations=lambda sid: []))
     picture = dict(generated_at=None, through_event_id=0, effect_rows=[], containers=[], displays=[])
     monkeypatch.setattr(report, 'movement_picture', lambda repo, sid, **kwargs: picture)
     response = client.get('/api/setup/locate/assets?season_year=2026')
@@ -165,3 +166,15 @@ def test_confirmed_round_trip_preserves_detached_park_locations():
     assert len(result['displays']) == 32
     assert all(d['position'] == [43.776757,-87.745766] for d in result['displays'][:16])
     assert all(d['position'] == [43.776652,-87.745525] for d in result['displays'][16:])
+
+
+def test_controller_map_uses_observed_gps_only_and_existing_symbol():
+    picture=dict(generated_at=None,through_event_id=1,effect_rows=[],containers=[],displays=[],controller_observations=[
+        dict(controller_id=1001,name='CTRL:1001',gps_latitude=43.7,gps_longitude=-87.7,event_type='CONTROLLER_MOVE'),
+        dict(controller_id=1002,name='CTRL:1002')])
+    result=locate_assets(picture)
+    assert result['controllers'][0]['position']==[43.7,-87.7]
+    assert result['controllers'][1]['position'] is None
+    from pathlib import Path
+    source=Path(__file__).with_name('setup_locate_assets.js').read_text()
+    assert "msbReferenceSymbols.marker(a.position,'Controller')" in source

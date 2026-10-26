@@ -11,7 +11,7 @@
   <div>
     <div class="eyebrow">Live Setup field operation</div>
     <h1>Record Location</h1>
-    <p>Identify a Container or Display, review current location evidence, then record where it is now.</p>
+    <p>Identify a Container, Display or Controller, review current location evidence, then record where it is now.</p>
   </div>
   <div class="header-actions">
     <button id="training-exit" type="button" hidden>Exit Training</button>
@@ -38,7 +38,7 @@
     <div class="section-heading">
       <div>
         <div class="eyebrow">1 · Select the asset</div>
-        <h2 id="movement-identity-title">Container / Display</h2>
+        <h2 id="movement-identity-title">Container / Display / Controller</h2>
       </div>
       <span id="operator-badge" class="pill">Checking access…</span>
     </div>
@@ -47,7 +47,7 @@
       <div>
         <label for="movement-manual-input">Asset identity / QR URL</label>
         <div class="entry-row">
-          <input id="movement-manual-input" autocomplete="off" inputmode="text" placeholder="CONT:34, DISP:141, or scan URL">
+          <input id="movement-manual-input" autocomplete="off" inputmode="text" placeholder="CONT:34, DISP:141, CTRL:1014, or scan URL">
           <button id="movement-manual-go" type="button">Use</button>
         </div>
         <div class="muted">With Scanner on, Zebra capture is focusless — do not click Use after a scan. Use/Enter is for manual entry.</div>
@@ -62,11 +62,11 @@
 
     <div id="movement-camera-panel" class="camera-panel" hidden>
       <video id="movement-camera-video" playsinline muted></video>
-      <p class="muted">Point the camera at a Display or Container QR code. The normal permanent QR still identifies the asset; this page supplies the Record Location intent.</p>
+      <p class="muted">Point the camera at a Display, Container or Controller QR code. The normal permanent QR still identifies the asset; this page supplies the Record Location intent.</p>
     </div>
 
     <details class="find-asset">
-      <summary>Find Container / Display instead</summary>
+      <summary>Find Container / Display / Controller instead</summary>
       <div class="entry-row">
         <input id="movement-search-input" type="search" autocomplete="off" placeholder="Name or ID">
         <button id="movement-search-go" type="button">Find</button>
@@ -149,6 +149,6 @@
 </dialog>
 <footer class="muted">V0.3.62-field-networks · Updated 2026-10-10</footer>
 
-<script src="assets/setup_record_location.js?v=2026-10-10.62"></script>
+<script src="assets/setup_record_location.js?v=ctrl077-2026-10-10.62"></script>
 </body>
 </html>

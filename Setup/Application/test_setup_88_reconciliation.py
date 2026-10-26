@@ -16,7 +16,8 @@ def test_actual_record_location_decisions_review_and_payload():
         pytest.skip('Node unavailable; run the guided workflow check on the engineering workstation')
     source = (APP / 'setup_record_location.js').read_text(encoding='utf-8')
     exports = '''globalThis.workflow = {
-      renderContentsDecision, reconciliationPayload, priorLocationText,
+      parseIdentity, renderContentsDecision, reconciliationPayload, priorLocationText,
+      controller: () => {pendingIdentity={asset_type:"CONTROLLER",asset_id:1001,identity:"CTRL:1001"};pendingStateRow={label:"Controller 1001"};pendingContents=null;access={can_move_setup_assets:true,authenticated_email:"operator@example.org"};},
       movementPayload, recordPending, renderRecordReadiness, applyQueuedContainerContext,
       renderDisplayPlacement, confirmPlacementStage, needsDisplayPlacement,
       setAllUnloadGroups, selectedUnloadedDisplayIds, selectUnloadHere,
@@ -56,6 +57,19 @@ def test_actual_record_location_decisions_review_and_payload():
     '''
     assertions = r'''
     const w=workflow;
+    for(const code of ['CTRL:1001','ctrl:1001','https://my.sheboyganlights.org/scan/CTRL/1001']){
+      assert.equal(w.parseIdentity(code).asset_type,'CONTROLLER');
+      assert.equal(w.parseIdentity(code).asset_id,1001);
+    }
+    assert.equal(w.parseIdentity('CTRL:0'),null);
+    assert.equal(w.parseIdentity('DISP:1001').asset_type,'DISPLAY');
+    assert.equal(w.parseIdentity('CONT:1001').asset_type,'CONTAINER');
+    w.controller();w.gps();assert.equal(w.needsDisplayPlacement(),false);
+    await w.recordPending(false);
+    assert.equal(saved.asset_type,'CONTROLLER');assert.equal(saved.movement_action,'CONTROLLER_MOVE');
+    assert.equal(saved.reconciliation,undefined);assert.deepEqual(saved.unloaded_display_ids,[]);
+    globalThis.saved=undefined;
+
     const contents={label:'Panels',home_location_code:'RC02-A-01',last_movement_event_id:33,reconciliation_allowed:true,
       displays:[{display_id:900,display_name:'WV-MtCrumpitPanel-01'},{display_id:901,display_name:'CH-PeaceOnEarth'}],
       prior_location:{event_type:'CONTAINER_MOVE',named_context:'Prior park drop',gps_accuracy_m:5.12,occurred_at:'2026-10-07T10:00:00Z'}};

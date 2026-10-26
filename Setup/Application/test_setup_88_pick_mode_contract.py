@@ -88,7 +88,7 @@ def test_record_location_preserves_many_identity_entry_options_and_scan_handoff(
     assert "BarcodeDetector" in ui
     assert "/api/setup/movements/search" in ui
     assert "pageParams.get('asset')" in ui
-    assert "/scan\\/(CONT|DISP)\\/(\\d+)" in ui
+    assert "/scan\\/(CONT|DISP|CTRL)\\/(\\d+)" in ui
     assert 'id="movement-camera-toggle"' in html
     assert 'id="movement-search-input"' in html
 
@@ -439,11 +439,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-05.1" in pick_html
     assert "setup_pick_mode.js?v=2026-10-06.1" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-06.1" in pick_html
-    assert "msb-setup-record-location-v22" in location_sw
+    assert "msb-setup-record-location-v23-controller" in location_sw
     assert "setup_record_location.css?v=2026-10-10.62" in location_sw
     assert "setup_record_location.css?v=2026-10-10.62" in location_html
-    assert "setup_record_location.js?v=2026-10-10.62" in location_sw
-    assert "setup_record_location.js?v=2026-10-10.62" in location_html
+    assert "setup_record_location.js?v=ctrl077-2026-10-10.62" in location_sw
+    assert "setup_record_location.js?v=ctrl077-2026-10-10.62" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():

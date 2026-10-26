@@ -1,5 +1,7 @@
 # FieldWiring Application
 
+Controller QR scans retain the inventory destination. Record Location now opens Setup with the CTRL identity; physical observations use the existing movement audit and offline workflow, separately from controller wiring. The park map reuses the approved lor-controller.svg symbol for recorded controller locations. Pending migration 077 is required with this combined candidate. Equipment actions use solid blue fills and darker hover; earlier pale-fill acceptance failed.
+
 Status: **PRODUCTION-OPERATIONAL — CONTROLLER INVENTORY INTEGRATION ACTIVE**
 
 This folder contains the browser-based FieldWiring application and the read-side Controller Inventory browser experience.

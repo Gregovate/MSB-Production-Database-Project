@@ -1,5 +1,7 @@
 # Record panel circuits and seasonal power activity
 
+To record a controller arriving in the park: scan its permanent QR, select **Record Location** from Controller Inventory, review the CTRL identity, then capture GPS or choose a named location and record. You can also scan CTRL directly on Setup Record Location. This records physical whereabouts, not a power/network installation. Use the map Controllers layer for recorded GPS positions; controllers without coordinates remain unlocated.
+
 Installed and unassigned equipment appear in a table, one row per physical unit. Read the equipment number, model/name and condition across the row; use its Edit, Record test/failure, Move/remove or Replace action. Expand Equipment history only when needed.
 
 ## Next disposable review — equipment and field test history

@@ -296,6 +296,12 @@ async function loadControllerDetail(controllerId) {
       fact('Last Updated', formatDate(c.updated_at)),
     ].join('');
 
+    // A normal Scan still identifies the controller; movement requires the
+    // explicit Setup workflow, separate from wiring placement and assignments.
+    let locationAction=document.getElementById('controller-record-location');
+    if(!locationAction){locationAction=document.createElement('a');locationAction.id='controller-record-location';locationAction.className='header-link';document.getElementById('detail-facts').before(locationAction);}
+    locationAction.textContent='Record Location';
+    locationAction.href='/setup/record-location/?asset=CTRL:'+encodeURIComponent(c.controller_id);
     renderAssignments(payload.assignments || []);
     renderFirmwareHistory(payload.firmware_history || []);
   } catch (error) {

@@ -220,16 +220,17 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
 (async () => {
   const controls = Object.fromEntries(['asset-year','asset-status','asset-unlocated','asset-refresh'].map(id => [id,element()]));
   let clears = 0, calls = 0;
-  const ctx = {document:{getElementById:id=>controls[id]}, URLSearchParams,
+  const ctx = {document:{getElementById:id=>controls[id],createElement:()=>({append(){}}),createTextNode:t=>t,querySelector:()=>({parentElement:{after(){}}})}, URLSearchParams,
+    L:{layerGroup:()=>({clearLayers(){clears++;},addTo(){}})},map:{hasLayer:()=>false},
     window:{location:{search:''}},
     layers:{containers:{clearLayers(){clears++;}},displays:{clearLayers(){clears++;}}},
     mapSearch:{clearAssets(){clears++;}},
     fetch:async()=>{if (++calls > 1) throw new Error('Offline'); return {ok:true,json:async()=>({containers:[],displays:[],through_event_id:188})};}};
   vm.runInNewContext(read('setup_locate_assets.js'), ctx);
   await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(clears,3);
+  assert.equal(clears,4);
   await controls['asset-refresh'].click();
-  assert.equal(clears,6,'Offline refresh clears both asset marker layers and search');
+  assert.equal(clears,8,'Offline refresh clears Container, Display, Controller marker layers and search');
   assert.match(controls['asset-status'].textContent,/CURRENT Container \/ Display locations unavailable/);
   assert.match(controls['asset-status'].textContent,/No last-known locations are being represented as live/);
   assert.equal(controls['asset-refresh'].disabled,false);
@@ -242,7 +243,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   const symbolCode = read('setup_locate_symbols.js');
   const source = read('setup_locate_assets.js');
   const begin = source.indexOf('  function render(items, container) {');
-  const end = source.indexOf('  async function load() {', begin);
+  const end = source.indexOf('  // Reuse the approved Controller symbol', begin);
   assert(begin >= 0 && end > begin, 'Run the actual current asset renderer');
 
   const made = [];

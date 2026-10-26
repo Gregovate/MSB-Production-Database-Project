@@ -1,5 +1,13 @@
 # Setup #88 — Pick Mode and Movement Capture Design — 2026-09-29
 
+## October 26 urgent controller location extension — #88/#171 under #122
+
+Controller QR identification already works: Scan CTRL routes to the permanent Controller Inventory. Add a Record Location action there; preserve the existing route and labels. Setup Record Location must accept compact CTRL:id and full /scan/CTRL/id URLs via HID, camera, manual entry and deep link. Reuse its authenticated movement API, explicit location confirmation, GPS/named evidence, training write prohibition, offline queue and client-event retry identity.
+
+Extend the existing ops.setup_movement_event audit with a nullable controller FK and CONTROLLER_MOVE. Keep existing Display/Container commands and histories unchanged; dispatch controller observations to a narrowly scoped authorized SQL command with the same transport contract. No new controller inventory or inferred power/network placement. Latest controller state is derived by observation time then event ID, so delayed offline replay never replaces newer evidence. Exact retries return the original event; changed payload reuse is rejected. Add search/state reads and a type-qualified offline context key to prevent CTRL/DISP numeric-ID collisions. Preserve permanent inventory location fields and accepted controller chains.
+
+Only pending migration 077_add_setup_controller_location.sql applies alongside pending equipment lifecycle/catalog in the existing disposable runner. No completed migrations replayed. Current-clone validation is read-only; fixture writes remain isolated. Test authorization, unknown identities, cross-asset requests, missing/invalid location, exact/conflicting retries, out-of-order capture, training/offline behavior, and existing Display/Container regression before operator acceptance and Production release.
+
 | Document Control | Value |
 |---|---|
 | Status | ACTIVE IMPLEMENTATION DESIGN — V0.3.29 pick-clarity successor |

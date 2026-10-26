@@ -179,12 +179,12 @@
 
   function parseIdentity(raw) {
     const text = String(raw || '').trim();
-    const compact = /^(CONT|DISP):(\d+)$/i.exec(text);
+    const compact = /^(CONT|DISP|CTRL):(\d+)$/i.exec(text);
     if (compact) {
       const id = Number(compact[2]);
       if (!Number.isSafeInteger(id) || id <= 0) return null;
       return {
-        asset_type: compact[1].toUpperCase() === 'CONT' ? 'CONTAINER' : 'DISPLAY',
+        asset_type: ({CONT:'CONTAINER',DISP:'DISPLAY',CTRL:'CONTROLLER'})[compact[1].toUpperCase()],
         asset_id: id,
         identity: compact[1].toUpperCase() + ':' + id
       };
@@ -192,12 +192,12 @@
 
     try {
       const url = new URL(text);
-      const match = /\/scan\/(CONT|DISP)\/(\d+)(?:\/|$)/i.exec(url.pathname);
+      const match = /\/scan\/(CONT|DISP|CTRL)\/(\d+)(?:\/|$)/i.exec(url.pathname);
       if (!match) return null;
       const id = Number(match[2]);
       if (!Number.isSafeInteger(id) || id <= 0) return null;
       return {
-        asset_type: match[1].toUpperCase() === 'CONT' ? 'CONTAINER' : 'DISPLAY',
+        asset_type: ({CONT:'CONTAINER',DISP:'DISPLAY',CTRL:'CONTROLLER'})[match[1].toUpperCase()],
         asset_id: id,
         identity: match[1].toUpperCase() + ':' + id
       };
@@ -698,7 +698,7 @@
     const url = '../api/setup/movements/state?season_year=' + encodeURIComponent(seasonYear())
       + '&asset_type=' + encodeURIComponent(identity.asset_type)
       + '&asset_id=' + encodeURIComponent(identity.asset_id);
-    const key = 'msb.setup.display-context.' + seasonYear() + '.' + identity.asset_id;
+    const key = 'msb.setup.asset-context.' + seasonYear() + '.' + identity.asset_type + '.' + identity.asset_id;
     let state;
     try {
       const data = await apiJson(url, {cache: 'no-store'});
@@ -710,7 +710,7 @@
       if (!state) throw error;
     }
     const rows = await queueRows().catch(() => []);
-    if (state && rows.some(row => row.asset_type === 'DISPLAY' && Number(row.asset_id) === identity.asset_id
+    if (identity.asset_type === 'DISPLAY' && state && rows.some(row => row.asset_type === 'DISPLAY' && Number(row.asset_id) === identity.asset_id
         && Number(row.season_year) === seasonYear() && row.movement_action === 'DISPLAY_MOVE'
         && row.queue_status !== 'FAILED')) state.position_mode = 'DETACHED';
     return state;
@@ -1487,7 +1487,7 @@
     }
     const action = returningHome
       ? 'RETURNED'
-      : (identity.asset_type === 'CONTAINER' ? 'CONTAINER_MOVE' : 'DISPLAY_MOVE');
+      : ({CONTAINER:'CONTAINER_MOVE',DISPLAY:'DISPLAY_MOVE',CONTROLLER:'CONTROLLER_MOVE'})[identity.asset_type];
 
     if (!returningHome && !currentGpsSnapshot() && !destinationNote() && !placementStageId) {
       setFeedback('blocked', 'LOCATION NEEDED — start GPS, confirm a named reference, or enter a location note.');
@@ -1596,7 +1596,7 @@
   async function handleIdentity(raw, captureMethod) {
     const identity = parseIdentity(raw);
     if (!identity) {
-      setFeedback('blocked', 'INVALID IDENTITY — expected CONT:<id>, DISP:<id>, or a permanent scan URL.');
+      setFeedback('blocked', 'INVALID IDENTITY — expected CONT:<id>, DISP:<id>, CTRL:<id>, or a permanent scan URL.');
       restoreScannerCapture();
       return;
     }
@@ -1946,7 +1946,7 @@
       if (identity) {
         await handleIdentity(requested, 'TOUCH_SELECT');
       } else {
-        setFeedback('warning', 'The supplied Record Location asset was not a valid CONT:/DISP: identity.');
+        setFeedback('warning', 'The supplied Record Location asset was not a valid CONT:/DISP:/CTRL: identity.');
       }
     }
   }

@@ -21,8 +21,8 @@ nav[aria-label="Field wiring screens"] a:hover {background:#c7d6e5;}
 
 /* Extend the existing shared action palette to equipment and its dialogs.
    Keep semantic connection/panel colors separate from command controls. */
-:root {--fw-action-bg:#e6edf5;--fw-action-ink:#172b40;--fw-action-border:#8095ab;--fw-action-hover:#c7d6e5;--fw-neutral-bg:#e6e9ed;}
-[data-theme="dark"] {--fw-action-bg:#253d54;--fw-action-ink:#edf6ff;--fw-action-border:#829ab0;--fw-action-hover:#31516e;--fw-neutral-bg:#334155;}
+:root {--fw-action-bg:#1768b3;--fw-action-ink:#ffffff;--fw-action-border:#1768b3;--fw-action-hover:#104c85;--fw-neutral-bg:#e6e9ed;}
+[data-theme="dark"] {--fw-action-bg:#1768b3;--fw-action-ink:#ffffff;--fw-action-border:#78afe3;--fw-action-hover:#104c85;--fw-neutral-bg:#334155;}
 #add-device,#manage-equipment-models,.equipment-actions button,body[data-power-screen="equipment"] dialog button {
  background:var(--fw-action-bg);color:var(--fw-action-ink);border-color:var(--fw-action-border);
 }
@@ -31,5 +31,9 @@ nav[aria-label="Field wiring screens"] a:hover {background:#c7d6e5;}
 }
 body[data-power-screen="equipment"] dialog button.equipment-save {background:#1768b3;color:#fff;border-color:#1768b3;}
 body[data-power-screen="equipment"] dialog button.equipment-save:hover:not(:disabled) {background:#104c85;border-color:#104c85;}
-body[data-power-screen="equipment"] dialog button:last-child {background:var(--fw-neutral-bg);color:var(--fw-action-ink);}
-body[data-power-screen="equipment"] dialog button:last-child:hover:not(:disabled) {background:var(--fw-action-hover);}
+body[data-power-screen="equipment"] dialog button:last-child {background:var(--fw-neutral-bg);color:#172b40;}
+body[data-power-screen="equipment"] dialog button:last-child:hover:not(:disabled) {background:#c7d6e5;}
+
+[data-theme="dark"] body[data-power-screen="equipment"] dialog button:last-child {color:#edf6ff;}
+
+[data-theme="dark"] body[data-power-screen="equipment"] dialog button:last-child:hover:not(:disabled) {background:#475569;}
