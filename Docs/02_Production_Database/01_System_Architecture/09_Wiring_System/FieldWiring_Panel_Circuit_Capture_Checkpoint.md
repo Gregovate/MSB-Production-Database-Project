@@ -1,5 +1,10 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## Segment test comparison requirement added
+
+Greg's screenshot091014 rejects All tests as a raw evidence dump. Required replacement: selected-segment comparison grid with Date/time, Length(ft), Speed(Mbps), PASS/FAIL; one row per field test, latest reliably dated first, readable local dates and no SHA/UUID/import metadata. Source provenance remains stored. Expanded comparison must not squeeze the main segment columns into one-word fragments. Recorded in the owning design; implementation and verified result-code mapping remain pending. No Production changes or new candidate in this documentation update.
+
+
 ## October 26 second field review — e73fcb7e changes required
 
 Greg marks equipment waypoint lookup PASS. The active review still requires Install Equipment terminology and fixed waypoint context, quantity default1, separate Add new item to existing inventory, a reopenable model selector, future governed equipment-type additions, MSB ownership without owner/utility/rating controls, and one Notes field. Current form conflates new device creation and installation; its description and source_evidence controls both display Notes.

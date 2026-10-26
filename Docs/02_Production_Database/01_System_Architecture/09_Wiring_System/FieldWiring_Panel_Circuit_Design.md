@@ -1,5 +1,14 @@
 # Panel circuit definition and field capture
 
+## Segment test history — October 26 field-review refinement
+
+Greg rejects the expanded All tests evidence prose (screenshot091014). Replace it with Compare tests for this segment: a compact comparison grid containing exactly Date/time, Length(ft), Speed(Mbps), Result(PASS/FAIL from verified source semantics). One row per retained field test for that segment; newest reliably dated test first. Show the segment endpoints once in the comparison heading. Preserve unknown dates explicitly and keep them after dated tests; never infer a test date from ingest time. Use the existing physical cable/accepted segment identity, and do not merge distinct cables merely because endpoint text matches.
+
+No source SHA, test UUID, source designation, import/review status, repeated raw timestamp or diagnostic paragraphs in the field comparison. Retain provenance in the database for engineering/audit, not in this operator expansion. This supersedes the earlier instruction to place original standard/raw evidence in the expanded field history: those fields do not belong in this comparison either. Keep the main segment list usable while comparing history; avoid expanding a single date cell so wide that endpoint/length/speed columns wrap into unreadable fragments. Use a dedicated segment-detail region with a readable four-column table. Regression must assert segment-only rows, date order, measurements/results, absence of diagnostic fields and readable layout at field-device widths.
+
+This requirement is additive to the pending installation/inventory/cable/waypoint corrections; it does not establish the still-unverified FLW PASS/FAIL code mapping.
+
+
 ## October 26 second field review — installation, inventory and field overview
 
 Greg accepts the equipment waypoint lookup on e73fcb7e, but the form/workflow and cable/waypoint presentation remain changes-required (screenshots084154,085817,090016,090257,090348,090433). Preserve that accepted lookup and controller performance. The earlier candidate is not full browser acceptance.
