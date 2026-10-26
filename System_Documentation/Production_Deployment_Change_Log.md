@@ -9,6 +9,23 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## October 26 — PR463 equipment/location Production server deployment PASS
+
+Greg returned the governed runner's successful receipt for the run starting 2026-10-26 15:54:09 UTC (10:54:09 America/Chicago). This is operator-returned evidence; no independent host probe or protected browser/physical Scan acceptance is claimed.
+
+- Verified FieldWiring and Setup source: `820b154cd664f0cac0d1d8dfd38e47b4fe19df9c` (FieldWiring V0.4.31-field-review; Setup V0.3.91-integrated-power).
+- Application PR463 merge: `2fbd19b812d56158cd4b37ec6938334f944c0c37`. Release tooling PR467 merge: `d4d8147ef2ce410aeab5a59e48687ee1484a2df6`; Windows archive correction PR468 merge: `6527d961dfbc5a3be15b28d8606ea64c794e16ba`.
+- Applied in order: `171_equipment_lifecycle.sql`, `171_equipment_catalog.sql`, `077_add_setup_controller_location.sql`, `078_add_setup_container_pickup.sql`. Earlier breaker/performance migrations were not replayed.
+- Receipt confirms freeze, validated snapshot, all four migrations committed, database validation, both source promotions while fenced, return ONLINE and existing Scan installation gates PASS. The reviewed runner's PASS contract includes existing business-row preservation, new operational rows/nullable-field checks before reopening, health/negative-auth checks and the Container pickup handoff route check.
+- Matching Scan artifact SHA256: `f9b82250df837abb416359a7d2216b26b81fe13fc5b3be0078dcfee91d550521`, enforced by the successful canonical Scan runner. Physical live Scan and protected browser acceptance remain pending.
+- Report: `/home/msbadmin/setup-deployment-reports/PR463-Equipment-Location-20261026T155409Z`.
+- Validated rollback snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr463-equipment-location-PR463-Equipment-Location-20261026T155409Z.dump`.
+- Snapshot SHA256: `81e1cff661cefd2a0c448c42c0a526d773c1964e29edfb9a168badffae8cf780`.
+
+The first attempt (`PR463-Equipment-Location-20261026T154830Z`) stopped before maintenance because Windows Git archive converted LF to CRLF. Its report confirms live Scan/Directus unchanged and disposable cleanup. PR468 corrected archive transport and added Windows regression before this successful run. **Do not rerun the completed release or restore its snapshot as cleanup.**
+
+Remaining acceptance: protected Production Setup Pickup List placement/report; Controller Record Location; Combo Box equipment actions; live CTRL/CONT Scan handoffs. User previously accepted disposable presentation and CLEAN EXIT; physical live Scan was explicitly deferred. #122/#205/#171/#88 remain open as applicable; server PASS alone does not close field acceptance.
+
 ## October 25 — PR464 Production server deployment PASS
 
 Greg returned the reviewed release runner's server PASS receipt. This is operator-returned evidence; no independent live host probe or protected Production browser acceptance is claimed.
