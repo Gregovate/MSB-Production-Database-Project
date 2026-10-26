@@ -1,5 +1,10 @@
 # Setup Acceptance Tooling
 
+## #171 controller initial-load diagnostic (existing preview only)
+
+`diagnose_171_controller_preview.py` attaches read-only to the existing port8898 reusable preview state and exact expected SHA. It performs only loopback GETs and clone-local EXPLAIN ANALYZE SELECTs within BEGIN READ ONLY / SET LOCAL ROLE fieldwiring_app; no migrations, Production connection, credentials/process-environment discovery, service changes or clone lifecycle changes. SQL comes from the running candidate's existing query builders. Uses documented `/opt/fieldwiring/.venv/bin/python`, foreground SSH/sudo and container-local psql. Full HTTP measurements and SQL plans are retained in `/home/msbadmin/setup-acceptance-reports/Controller_Initial_Load_Diagnostic_<tag>.json`. The original preview runner owns cleanup. PR463 contains the exact-byte pinned upload/run/download block; use a second PowerShell window and leave the preview open. This is diagnostic evidence, not Production or browser acceptance.
+
+
 ## #171 accepted panel correction — Production preparation
 
 [PR455 incremental panel-slot release](Setup_171_Panel_Production_Release.md)

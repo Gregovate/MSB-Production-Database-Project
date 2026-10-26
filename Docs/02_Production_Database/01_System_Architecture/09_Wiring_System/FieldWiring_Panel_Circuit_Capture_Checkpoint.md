@@ -1,5 +1,10 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## Current field result and diagnostic handoff
+
+On observer-corrected preview 0e53d5c6, Greg reports first load 15 seconds, then fast selections. Warm selection improved; initial-load acceptance remains FAIL. No more browser retest requests before measured evidence. Added one read-only diagnostic using the existing preview's recorded state and exact SHA, documented server Python and container-local psql. It reports HTTP timing/size/status, repeated detail/snapshot requests, and read-only actual candidate list/detail/snapshot SQL plans. No Production connection or mutation; no preview rebuild, migrations or source imports. Guard/query-capture tests cover Production-target rejection, data-only state parsing, binding and read-only SQL construction. Operator runs from a second PowerShell window while the preview stays open; retrieve the JSON report for analysis.
+
+
 ## Field latency remains FAIL — management-enabled observer correction
 
 Greg's Racing Arches timings: first 12–13 seconds, then 9/12/11 seconds. Prior CI fixture timings are not field acceptance. The prior controller test fixture did not enable controller-management controls; it missed repeated detail GETs from a page-wide assignment-capability MutationObserver. That observer now consumes the existing selected-detail payload with identity guards instead of issuing requests. The fixture now enables Crew management controls, denies assignment capability for one device, and asserts bounded detail request counts even after 30 unrelated DOM mutations per selection. Existing snapshot reuse, safe-save gates and Production panel correction remain. Exact-head CI and renewed field timings are still required; no Production changes or new migration.
