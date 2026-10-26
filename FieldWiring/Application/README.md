@@ -4,7 +4,15 @@ Status: **PRODUCTION-OPERATIONAL — CONTROLLER INVENTORY INTEGRATION ACTIVE**
 
 This folder contains the browser-based FieldWiring application and the read-side Controller Inventory browser experience.
 
-## Current Part 2 candidate — V0.4.30-setup-equipment
+## Current Part 2 candidate — V0.4.31-field-review
+
+FieldWiring temporarily maintains shared additional-equipment type/model references and the existing physical inventory while #230 management remains incomplete. Add to inventory creates MSB-owned spare units; Install Equipment assigns selected units to the chosen waypoint with quantity default 1. Cameras follow the same model/inventory/history workflow. Controllers retain their existing CTRL inventory. Catalog creation uses the existing authorization/revision/audit command contract.
+
+Cable history has searchable network-scoped test points, sortable columns, readable tester-local dates and segment-only comparison tables. Unresolved source labels remain explicit. Numeric FLW PASS/FAIL decoding is not yet verified and remains a release blocker. The preview validation includes a bounded read-only source inspection to supply that evidence. Waypoint Connections opens with a field summary and collapsed engineering details.
+
+Apply only pending lifecycle then catalog migrations to a disposable current-Production clone; use final catalog validation and cable evidence inspection. No completed migrations are replayed. Exact pinned candidate, CI and complete operator launch block are maintained in PR463. This is not a Production release.
+
+### Earlier V0.4.30 review history
 
 October26 equipment/cable correction: breaker/season controls are hidden before focused rendering. Additional Equipment uses power/network/combo locations plus spares and excludes infrastructure types/models; recorded out-of-scope locations remain for reconciliation. Cable History displays the saved FLW test standard and its nominal rate, not an absent measured-speed field. These changes need disposable browser acceptance; controller payload/cache fixes remain. No new migration.
 

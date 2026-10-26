@@ -21,6 +21,12 @@
     // Keep electrical context available without filling the inventory view.
     $("equipment-connections").append($("waypoint-safety"));
   }
+  if(mode==="waypoints") {
+    const overview=el('section',undefined,$('waypoint-detail'));overview.id='waypoint-overview';
+    const details=el('details',undefined,$('waypoint-detail'));details.id='waypoint-engineering';
+    el('summary','Connection engineering and recorded history',details);
+    for(const id of ['outlet-supply-section','waypoint-safety','outlet-controllers','combo-network-box'])details.append($(id));
+  }
   // Reuse the FieldWiring preference; no separate theme authority for this page.
   function setTheme(theme) {
     document.documentElement.dataset.theme = theme;
@@ -423,6 +429,7 @@
     selector.value=prior;
     const waypointId=Number(selector.value);
     $("combo-network-box").hidden=false;
+    $("add-device").textContent=waypointId?"Install Equipment":"Add new item to inventory";
     $("equipment-heading").textContent=waypointId?"Installed equipment":"Spare equipment";
     const host=$("equipment");host.replaceChildren();
     const devices=data.devices.filter(equipmentUI.isAdditionalDevice).filter(d=>waypointId?d.site_waypoint_id===waypointId:!d.site_waypoint_id);
@@ -454,6 +461,30 @@
     };
     details.ontoggle=build;build();
   }
+  function renderWaypointSummary(id) {
+    const root=$('waypoint-overview');if(!root)return;root.replaceChildren();
+    const details=$('waypoint-engineering');details.hidden=!id;
+    if(!id){el('p','Select a waypoint to see its supply, controllers, equipment and cable tests.',root);return;}
+    el('h2',wp(id)?.name||'Waypoint',root);
+    const sources=(data.waypoint_power_sources||[]).filter(x=>x.site_waypoint_id===id);
+    el('h3','Recorded supply',root);
+    if(!sources.length)el('p','Supply not recorded.',root);
+    for(const s of sources){const p=panel(s.site_panel_id),b=data.breakers.find(b=>b.site_power_breaker_id===s.site_power_breaker_id);const a=el('a',`${p?.panel_name||'Panel unknown'} · ${b?.breaker_name||'Breaker unknown'} · ${s.site_power_circuit_id?circuitName(s.site_power_circuit_id):'Circuit unknown'} (${(s.verification_states||[]).join(' / ')||'Unverified'})`,el('p',undefined,root));a.href=s.site_power_circuit_id?`circuits?circuit=${s.site_power_circuit_id}`:'circuits';}
+    el('p','Recorded supply and breaker states do not prove safe isolation.',root);
+    el('h3','Controllers',root);
+    const controllers=new Set([...(data.controller_power_connections||[]),...(data.controller_installations||[])].filter(c=>c.active&&c.site_waypoint_id===id).map(c=>c.controller_id));
+    if(!controllers.size)el('p','No controllers recorded.',root);
+    for(const controller of controllers){const c=(data.controller_options||[]).find(c=>c.id===controller);const a=el('a',`CTRL ${controller} · ${c?.model||'Model not recorded'}`,el('p',undefined,root));a.href=`controllers?controller_id=${controller}`;}
+    el('h3','Equipment',root);
+    const units=data.devices.filter(d=>d.active&&d.site_waypoint_id===id&&equipmentUI.isAdditionalDevice(d));
+    el('p',units.length?units.map(d=>`${d.device_name} (#${d.site_power_device_id})`).join(' · '):'No additional equipment recorded.',root);
+    el('a','Install / test equipment',root).href=`equipment?waypoint=${id}`;
+    el('h3','Networks and tests',root);
+    const networks=[...new Set((data.networks||[]).filter(n=>n.site_waypoint_id===id).map(n=>n.network_code))];
+    el('p',networks.join(' · ')||'No resolved network recorded.',root);
+    el('a','Compare cable tests',root).href=`cable-tests?waypoint=${id}`;
+  }
+
   function render() {
     if(mode==="equipment"){renderEquipment();return;}
     // Cable history is read-only and needs none of the hidden power editors.
@@ -465,6 +496,7 @@
     data.waypoints.filter(w=>mode==="equipment" || isDeploymentWaypoint(w)).forEach(w=>{const o=el("option",`${w.name} (${w.type})`,waypointSelect);o.value=w.id;});
     waypointSelect.value=priorWaypoint;
     const detailWaypoint=Number(priorWaypoint);
+    renderWaypointSummary(detailWaypoint);
     const combo=isComboWaypoint(wp(detailWaypoint) || {});
     $("combo-network-box").hidden=mode==="equipment" ? false : !isNetworkWaypoint(wp(detailWaypoint) || {});
     $("waypoint-supply").replaceChildren();
@@ -1101,6 +1133,7 @@
     $("network-port-editor")?.remove();$("edit-form").hidden=false;$("editor").close();load();
   }
   function open(kind, row = {}) {
+    if(mode==="equipment"&&kind==="device"){equipmentUI.manage(data,Number($("detail-waypoint").value)||null,load,row.site_power_device_id?"correct":undefined,row);return;}
     if (!data.access.can_edit) return;
     pending = null;
     // New records always start active; hide the retirement control until an

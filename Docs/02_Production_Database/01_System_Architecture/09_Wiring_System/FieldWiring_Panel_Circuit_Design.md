@@ -1,5 +1,13 @@
 # Panel circuit definition and field capture
 
+## Interim equipment reference management — next disposable candidate
+
+FieldWiring is the interim operator surface for equipment types/models, spare inventory and installation while #230 reference management remains incomplete. Physical additional-equipment units stay in `ref.site_power_device`; controllers retain their existing CTRL inventory. Type/model catalogs are reference vocabulary, not additional inventories. Future #230 ownership requires its explicit allowlist and permission design; installation, tests and replacement remain FieldWiring workflows. Do not repurpose `ref.inventory_type` without establishing its separate domain contract.
+
+Add Camera as an additional-equipment type, supporting multiple models and individually tracked units through the same lifecycle. New types/models use the existing authorized, revisioned, audited command boundary. Install existing stock at a fixed selected waypoint; a separate Add to inventory operation records MSB-owned spares. Quantity defaults to 1 and preserves one identity per unit. Model selection remains changeable. No owner/utility/rating controls and exactly one Notes field. Labels remain deferred.
+
+Cable point selection must support text search and be scoped to the selected network. Only resolved waypoint IDs appear as waypoints; unresolved source labels remain explicitly separate evidence. Sortable column headings expose direction, with newest dated results first and unknown dates last. Preserve physical cable identities. PASS/FAIL numeric decoding remains blocked on retained source evidence, not inferred from a fixture.
+
 ## Segment test history — October 26 field-review refinement
 
 Greg rejects the expanded All tests evidence prose (screenshot091014). Replace it with Compare tests for this segment: a compact comparison grid containing exactly Date/time, Length(ft), Speed(Mbps), Result(PASS/FAIL from verified source semantics). One row per retained field test for that segment; newest reliably dated test first. Show the segment endpoints once in the comparison heading. Preserve unknown dates explicitly and keep them after dated tests; never infer a test date from ingest time. Use the existing physical cable/accepted segment identity, and do not merge distinct cables merely because endpoint text matches.

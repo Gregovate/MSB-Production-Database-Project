@@ -1,5 +1,15 @@
 # Record panel circuits and seasonal power activity
 
+## Next disposable review — equipment and field test history
+
+FieldWiring is the interim equipment reference-entry surface. Open Additional Equipment, select the installation waypoint, and choose Install Equipment. Model and Quantity select existing spare units; the individual unit list lets you choose the actual items being installed. Quantity defaults to 1. Save records all selected moves atomically. Use Add new item to inventory to record MSB-owned stock first; add a model or type there when missing. Camera models share this inventory. Controllers remain in Controller inventory. Each unit keeps its own tests/failures and replacement history. Labels are deferred.
+
+For cable tests select a network, type part of a test-point name, then select the point. Column headings sort the list. Compare tests opens only that segment's date/length/speed/result grid. Dates retain tester-local wall time. Unknown dates remain explicit and sort after dated records. Speed is the nominal rate of the saved test standard, not a new throughput measurement. Not decoded means the numeric FLW outcome still requires engineering verification; do not interpret it as PASS. Source files and provenance remain preserved outside this field grid.
+
+Waypoint Connections shows recorded supply, controllers, equipment and test links. Connection engineering and recorded history is collapsed by default. Recorded state does not prove safe isolation.
+
+Review fixed waypoint, quantity and specific units; create/change models, add a camera and a type, record failure/replacement; verify network-scoped search, sorting, segment-only history and readable dates. Retain preview reports and the FLW result-evidence notices. Exit the preview cleanly. Production release remains blocked pending verified outcome mapping and browser acceptance.
+
 **Candidate procedure — not yet released to Production.** Authorized Production
 Crew can maintain these records. Managers maintain waypoint names and positions.
 

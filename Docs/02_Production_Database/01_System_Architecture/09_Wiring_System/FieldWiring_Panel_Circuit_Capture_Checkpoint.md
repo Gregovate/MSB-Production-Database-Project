@@ -1,5 +1,17 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## October 26 next candidate — V0.4.31-field-review (PR463)
+
+Implements the accepted feedback in FieldWiring: separate inventory and fixed-location Install Equipment, quantity 1 by default, selectable individual spare units, changeable model selector, new models/types including Camera, one Notes field and automatic MSB ownership. Existing units/controllers are preserved. Shared type/model catalogs are vocabulary only; #230 may take over their maintenance through its explicit allowlist later. No additional equipment inventory master is created.
+
+Cable History adds network-scoped text search, canonical/accepted-alias deduplication, explicit unresolved labels, sortable headers, human-readable tester-local timestamps and a separate selected-segment comparison grid without source SHA/UUID/standard. Nominal saved test rate is displayed; no negotiated throughput is invented. Numeric FLW result decoding is still a release blocker: the UI says Not decoded rather than guessing PASS. A bounded read-only retained-original-result inspection is included in the disposable validation list to collect the missing evidence automatically.
+
+Waypoint Connections adds a compact field overview and moves detailed records under a collapsed engineering disclosure. Controller scoped payload/caching and deployed SQL materialization are retained. Local 232 application checks and SQL/helper regressions run for this candidate; exact-head CI and protected disposable browser review are required before acceptance. Production protected-browser closeout remains separately pending.
+
+Fresh current-Production clone migration order: `171_equipment_lifecycle.sql`, then `171_equipment_catalog.sql`. Validate with `171_equipment_catalog_validation.sql` (includes retained lifecycle, network, eligibility, authorization and breaker-index checks), then `171_cable_result_evidence.sql`. Do not run the older lifecycle hash validation after the catalog extension; it belongs before that extension. New final snapshot hash `ff77cdf2081a3828996e67f452acb7ba`; command hash `43bed006ec8402b74fd3e27d006b6e06`. Completed Production migrations are never replayed. No original GPX/FLW or Production changes.
+
+Earlier entries below are chronological and superseded where this candidate changes the workflow.
+
 ## Segment test comparison requirement added
 
 Greg's screenshot091014 rejects All tests as a raw evidence dump. Required replacement: selected-segment comparison grid with Date/time, Length(ft), Speed(Mbps), PASS/FAIL; one row per field test, latest reliably dated first, readable local dates and no SHA/UUID/import metadata. Source provenance remains stored. Expanded comparison must not squeeze the main segment columns into one-word fragments. Recorded in the owning design; implementation and verified result-code mapping remain pending. No Production changes or new candidate in this documentation update.

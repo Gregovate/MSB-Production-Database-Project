@@ -15,12 +15,22 @@ const source={...data,linkiq_evidence:[
 ]};
 const parsed=api.rows(source);assert.equal(parsed[0].network,'Unresolved');assert.equal(parsed[1].network,'Unresolved');assert.equal(parsed[2].network,'AUX-A');assert.notEqual(parsed[0].key,parsed[1].key);
 assert.equal(parsed[0].designation,'AUX-1');assert.equal(api.rows(source),parsed);
-assert.deepEqual(Array.from(api.pointOptions(parsed),p=>p[1]),['FE-02','FE-02B']);
+assert.deepEqual(Array.from(api.pointOptions(parsed),p=>p[1]),['Unresolved label: FE-02','Unresolved label: FE-02B']);
 assert.ok(!api.pointOptions(r).some(p=>p[1]==='07-Whoville-WV'));
 assert.equal(parsed[0].points[0].value,'label:FE-02B');
 const ambiguous=api.rows({...source,network_options:[{network_code:'AUX-A'},{network_code:'Aux A'}]});assert.equal(ambiguous[2].network,'Unresolved');
 console.log('Catalog-only networks, source-only test points, unrelated waypoint exclusion, ambiguous network and snapshot cache PASS');
 
-for(const [standard,expected] of [['10BASE-T','10 Mbps · 10BASE-T'],['100BASE-TX','100 Mbps · 100BASE-TX'],['1000BASE-T','1000 Mbps · 1000BASE-T'],['2.5GBASE-T','2500 Mbps · 2.5GBASE-T'],['Cat6','Cat6'],['','Not recorded']])assert.equal(api.speedLabel({test_standard:standard}),expected);
+for(const [standard,expected] of [['10BASE-T','10 Mbps'],['100BASE-TX','100 Mbps'],['1000BASE-T','1000 Mbps'],['2.5GBASE-T','2500 Mbps'],['Cat6','Not recorded'],['','Not recorded']])assert.equal(api.speedLabel({test_standard:standard}),expected);
 assert.equal(api.speedLabel({measured_link_speed_mbps:1000}),'Not recorded','never substitute unrelated measurement for saved test standard');
 console.log('Saved FLW test standard rates, original text and missing/unsupported standards PASS');
+
+assert.equal(api.resultLabel({status_code:1}),'Not decoded');
+assert.equal(api.resultLabel({result:'PASS'}),'PASS');
+assert.equal(api.dateLabel('2026-10-13T09:58:00'),'Oct 13, 2026, 9:58 AM');
+const aliases=api.rows({...data,waypoints:[{id:1,name:'CC-00',aliases:['Old CC']}],linkiq_evidence:[{test_uuid:'x',source_pair:{endpoint_labels:['Old CC','BELLS']}},{test_uuid:'y',endpoint_a:1,endpoint_b:2}]});
+assert.equal(aliases[0].points[0].value,'1');
+assert.equal(aliases[0].labels[0],'CC-00');
+assert.equal(aliases[0].points[1].label,'Unresolved label: BELLS');
+assert.equal(api.pointOptions(aliases).filter(p=>p[0]==='1').length,1);
+console.log('Accepted alias deduplication, explicit unresolved labels, local dates and no guessed PASS mapping PASS');

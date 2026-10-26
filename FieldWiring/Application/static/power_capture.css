@@ -221,3 +221,11 @@ body[data-power-screen="equipment"] #equipment-help,
 body[data-power-screen="equipment"] #correction-history {display:none;}
 body[data-power-screen="equipment"] #equipment-connections {margin-top:1rem;}
 body[data-power-screen="equipment"] #equipment > section {border-top:1px solid #aab4c0;padding:.75rem 0;}
+
+/* Keep segment history out of narrow date cells on field devices. */
+.cable-table-scroll { overflow-x: auto; max-width: 100%; }
+.cable-test-table { width: 100%; border-collapse: collapse; }
+.cable-test-table th, .cable-test-table td { padding: .6rem; text-align: left; white-space: nowrap; }
+.cable-test-table th button { font: inherit; font-weight: 600; }
+.cable-comparison { margin-top: 1rem; }
+dialog textarea { display: block; width: 100%; min-height: 5rem; }
