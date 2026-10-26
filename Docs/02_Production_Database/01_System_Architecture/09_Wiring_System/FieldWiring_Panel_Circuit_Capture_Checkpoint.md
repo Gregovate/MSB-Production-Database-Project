@@ -1,5 +1,14 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## October 26 current status — controller improved; equipment/cable rejected
+
+Application reviewed:572c3e1ed53cf8d4f4d1521aefe6eabb6f419764. Controller_Preview_Transport_20261026T074049Z.json: full payload2,366,425B/2178ms total/700ms body; controller payload164,801B/1686 and1421ms total/224 and43ms body; headers1462/1378ms; PowerShell parse23/22ms. This is93% fewer bytes. The unchanged full payload also transferred much faster than the preceding23–25seconds, so the full improvement cannot be attributed to application changes. Greg confirms a noticeable browser improvement. This is not full candidate acceptance or Production release authorization.
+
+Six later screenshots confirm unresolved equipment/cable defects: Stage/unrelated waypoints in equipment location and Add; infrastructure types in Add equipment; breaker reports, seasonal selectors/checklist and unrelated panel/power context on equipment and cable history; repeated Unknown speeds alongside retained test standards. Source inspection confirms unfiltered waypoint/type choices, early-return rendering bypassing breaker visibility setup, and the cable renderer reading a measured speed field absent from the power snapshot. Actual FLW raw-result speed/status mapping remains to be inspected, using retained evidence rather than reimporting sources.
+
+The owning design now records the correction contract. No application changes in this checkpoint update. Keep the current preview under its existing runner; no replacement candidate/retest is requested yet. PR463 remains DRAFT/changes required. Remaining broader work includes equipment lifecycle acceptance, cable data correctness, panel/circuit amperage review and technician outlet/physical-label/breaker verification. Labels remain low priority; breaker observations remain unknown until observed. Protected Production browser closeout remains separately pending.
+
+
 ## Controller transport evidence and scoped response — October 26
 
 Report Controller_Preview_Transport_20261026T010158Z.json: detail 136ms/1,886B; full power headers 1,814/2,400ms, body 24,734/22,952ms, total 26,548/25,352ms, parse187/210ms, 2,366,425B. The measured dominant delay is payload transfer through this preview path. Earlier next-diagnostic instructions below are completed; no repeat broad profiling.

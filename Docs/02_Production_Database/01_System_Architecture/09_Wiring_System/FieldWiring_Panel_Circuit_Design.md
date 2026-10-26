@@ -1,5 +1,17 @@
 # Panel circuit definition and field capture
 
+## October 26 equipment and cable review — corrections required
+
+Greg's six screenshots (074552, 074744, 074923, 075146, 075405, 075545) reject the remaining equipment/cable presentation on application candidate572c3e1e. Controller performance improvement does not accept these screens. This section supersedes any earlier implication that equipment simplification and cable presentation are complete.
+
+- Equipment location, Add equipment and Move selectors must share a maintained-type filter for actual power/network/combo installation waypoints plus Uninstalled/spares. Exclude Stage and unrelated GIS points from new placement choices. Preserve access to any already recorded out-of-scope placement for explicit reconciliation; never silently move or delete inventory. These controls assign existing waypoints, not create GPX records. No controller-specific LOR eligibility rule should constrain generic network equipment placement.
+- Additional Equipment must offer portable/replaceable supplies, switches, extenders, splitters, RS485 repeaters and appropriate existing model choices. FUSE, DISCONNECT, OUTLET and LIGHT_POLE are infrastructure types, not new Additional Equipment choices. Retain their existing shared records and infrastructure editing paths. Controllers remain the existing CTRL special case. No new inventory table.
+- Equipment and Cable Test History must not display Season/season mode, breaker reports, seasonal checklist or power-only guidance. Establish screen visibility before route-specific rendering. The focused render early returns currently bypass renderChecklist/renderBreakerReports, which contain the hiding logic; regressions must assert actual absence of these controls after initial load, reload and navigation from a selected panel. A panel-specific return banner should not dominate these independent screens; preserve panel navigation context within navigation.
+- Cable speed: current intake maps FLW Records.Standard to test_standard and retains RecordData.BinRec as ops.linkiq_test.original_result. The power snapshot projects test_standard/status_code but no measured_link_speed_mbps. Cable History nevertheless reads that absent field and prints Unknown before every standard. This is a confirmed mapping/presentation gap, not proof the original FLW lacks speed evidence. Trace an actual retained original_result against the FLW source fields and status semantics before choosing qualification/negotiated-speed fields. Show correctly labeled supported test speed/standard and result; do not invent negotiated throughput from a selected test standard. Preserve latest reliable dates, lengths, endpoint/network filters and all older evidence. No source reimport, GPX/FLW edits or broad profiling is authorized by this review.
+
+Next implementation must cover these boundaries in the existing PR463 and preserve accepted controller performance work. These are recorded requirements and source findings, not implemented corrections or a new test candidate.
+
+
 ## Controller transport correction — measured October 26
 
 Operator transport report 20261026T010158Z establishes the dominant measured delay: controller detail 136ms total / 1,886 bytes; power headers 1,814/2,400ms, body transfer 24,734/22,952ms, JSON parse 187/210ms, payload 2,366,425 bytes. This measures the preview tunnel, not all Production paths. Do not repeat broad SQL profiling or change controller detail queries.
