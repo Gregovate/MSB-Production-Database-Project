@@ -32,11 +32,19 @@ window.MSBCableHistory=(()=>{
  const network=matches.length===1?matches[0]:'Unresolved';
  const reliable=d?d.reliable_test_time:(t.test_time&&!/^(?:19[0-6][0-9]|1970)-/.test(t.test_time)?t.test_time:null);
  const points=labels.flatMap((label,i)=>label==='Unresolved'?[]:[{value:ids[i]?String(ids[i]):`label:${label}`,label:ids[i]?label:`Unresolved label: ${label}`}]);
- const pair=[...labels].sort().join(' ↔ ');const key=t.cable_id?`cable:${t.cable_id}`:ids.length===2||sourceLabels?`${networkKey(designation)}:${pair}`:`unresolved:${t.test_uuid}`;
+ const pair=[...labels].sort().join(' ↔ ');
+ // Field history follows network + unordered accepted endpoints, not test direction
+ // or a retained cable ID. Length changes stay visible in the same history.
+ const endpoints=ids.length===2&&ids.every(id=>id&&waypoints.has(id))?ids.map(id=>`id:${id}`):sourceLabels?.every(label=>resolve(label))?sourceLabels.map(label=>`id:${resolve(label)}`):null;
+ const key=endpoints&&designation?JSON.stringify([networkKey(designation),...endpoints.sort()]):`unresolved:${t.test_uuid}`;
  return {...t,ids,labels,points,designation,network,pair,key,reliable,uncertain:d?.has_unknown_test_order||!reliable};});
  cache.set(data,result);return result;}
  function pointOptions(all){const points=new Map();for(const t of all)for(const p of t.points)points.set(p.value,p.label);return [...points].sort((a,b)=>a[1].localeCompare(b[1],undefined,{numeric:true}));}
- function resultLabel(test){return ['PASS','FAIL','INFO'].includes(test.result)?test.result:'Not decoded';}
+ function resultLabel(test){
+   // Verified against all 517 test UUIDs in the original FLW and BinRec.metadata.status.
+   // INFO is not a passing cable qualification; unknown codes must never become PASS.
+   return ['PASS','FAIL','INFO'].includes(test.result)?test.result:({1:'PASS',6:'FAIL',8:'INFO'}[test.status_code]||'Not decoded');
+ }
  function dateLabel(value){
    if(!value)return 'Date unknown';
    // Display the saved tester-local wall clock without applying the browser timezone.

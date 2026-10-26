@@ -1,5 +1,13 @@
 # Panel circuit definition and field capture
 
+## October 26 verified FLW outcomes and direction-independent segment history
+
+Read-only inspection of the original corrected-name FLW SQLite upload establishes Records.TestStatus **1 = PASS, 6 = FAIL, 8 = INFO**. Every joined RecordData.BinRec metadata.status agrees: 725 source appearances / 517 unique test UUIDs, comprising 498 PASS, 17 FAIL, 2 INFO. No mismatches. Source SHA256: `de23ad7a096e8118366d82d0524879372a9780834d8c3ce8d5ec91628317403e`. This evidence supersedes earlier unresolved-code holds; Greg need not extract codes or report lines. Preserve INFO; unsupported future codes remain explicitly unclassified.
+
+The screenshot anchors match exact source records: LPFC-03 TO FC-00 REG, 2023-11-01 07:03:42, 137ft, 1000BASE-T, code6/Fail; PO TO LPFT-PS AUX-I, 2023-11-01 07:34:35, 211ft, 1000BASE-T, code1/Pass; Larrys antena, 2026-10-06 14:46:09, Telco/Passive PoE, code8/Info. Retain a minimal source-derived regression fixture and verify all source rows against the UI decoder without modifying/reimporting FLW.
+
+For field comparison, network plus an unordered pair of accepted endpoint identities defines a segment. A→B and B→A belong together even when retained cable IDs differ; cable ID must not override this grouping or combine different networks. Keep all dated tests, including significant length changes that may indicate replacement. Length alone does not establish a replacement event or split history. Ambiguous/unresolved endpoint pairs must not be merged speculatively. Existing physical cable identities and test evidence stay unchanged in the database.
+
 ## October 26 field workflow correction — screenshots115647,120740,121252
 
 Greg confirms Additional Equipment is new and nothing is installed. Seed model choices only: no physical quantities, installations or purchase-derived stock. Install Equipment must be waypoint → model → quantity(default1) → one optional note → Save, creating individually traceable units and their installation events atomically. No spare inventory prerequisite or spare-unit chooser. Optional unassigned records and later movement/replacement remain supported. This supersedes prior stock-first requirements above/below.

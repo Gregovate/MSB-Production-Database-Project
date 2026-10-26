@@ -25,7 +25,11 @@ for(const [standard,expected] of [['10BASE-T','10 Mbps'],['100BASE-TX','100 Mbps
 assert.equal(api.speedLabel({measured_link_speed_mbps:1000}),'Not recorded','never substitute unrelated measurement for saved test standard');
 console.log('Saved FLW test standard rates, original text and missing/unsupported standards PASS');
 
-assert.equal(api.resultLabel({status_code:1}),'Not decoded');
+assert.equal(api.resultLabel({status_code:1}),'PASS');
+assert.equal(api.resultLabel({status_code:6}),'FAIL');
+assert.equal(api.resultLabel({status_code:8}),'INFO');
+assert.equal(api.resultLabel({status_code:97}),'Not decoded');
+assert.equal(api.resultLabel({}),'Not decoded');
 assert.equal(api.resultLabel({result:'PASS'}),'PASS');
 assert.equal(api.dateLabel('2026-10-13T09:58:00'),'Oct 13, 2026, 9:58 AM');
 const aliases=api.rows({...data,waypoints:[{id:1,name:'CC-00',aliases:['Old CC']}],linkiq_evidence:[{test_uuid:'x',source_pair:{endpoint_labels:['Old CC','BELLS']}},{test_uuid:'y',endpoint_a:1,endpoint_b:2}]});
@@ -33,4 +37,18 @@ assert.equal(aliases[0].points[0].value,'1');
 assert.equal(aliases[0].labels[0],'CC-00');
 assert.equal(aliases[0].points[1].label,'Unresolved label: BELLS');
 assert.equal(api.pointOptions(aliases).filter(p=>p[0]==='1').length,1);
-console.log('Accepted alias deduplication, explicit unresolved labels, local dates and no guessed PASS mapping PASS');
+console.log('Accepted alias deduplication, explicit unresolved labels, local dates and verified FLW result mapping PASS');
+
+// Source-derived anchors match the operator's LinkWare screenshot, not synthetic codes.
+const evidence=JSON.parse(readFileSync(new URL('./flw_result_evidence.json',import.meta.url),'utf8'));
+for(const t of evidence.anchors)assert.equal(api.resultLabel(t),t.expected_result);
+const reverse=api.rows({...data,linkiq_evidence:[
+ {test_uuid:'old',cable_id:10,endpoint_a:1,endpoint_b:2,source_pair:{designation:'Aux A'},length_ft:137},
+ {test_uuid:'new',cable_id:20,endpoint_a:2,endpoint_b:1,source_pair:{designation:'AUX-A'},length_ft:250},
+ {test_uuid:'other',cable_id:10,endpoint_a:1,endpoint_b:2,source_pair:{designation:'AUX-B'}},
+ {test_uuid:'missing',cable_id:10,endpoint_a:1,endpoint_b:2}
+]});
+assert.equal(reverse[0].key,reverse[1].key,'reverse direction/different cable IDs/length do not split a segment');
+assert.notEqual(reverse[0].key,reverse[2].key,'same cable ID must not combine networks');
+assert.notEqual(reverse[0].key,reverse[3].key,'missing network cannot establish the same segment');
+console.log('Original FLW anchors and direction-independent network segment history PASS');
