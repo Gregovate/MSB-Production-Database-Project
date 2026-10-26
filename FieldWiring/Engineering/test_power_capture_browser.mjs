@@ -535,6 +535,25 @@ try {
     assert.ok(await equipmentTable.evaluate(n=>n.scrollWidth<=n.clientWidth+1),'equipment rows must fit the viewport');
   }
   await page.setViewportSize({width:1280,height:900});
+  // Shared filled action colors must remain distinct from the surrounding card,
+  // with darker hover and readable text in both explicit themes.
+  for(const theme of ['light','dark']){
+    await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
+    const action=page.locator('#equipment .equipment-actions button').first();
+    await page.mouse.move(0,0);
+    const before=await action.evaluate(n=>({bg:getComputedStyle(n).backgroundColor,ink:getComputedStyle(n).color}));
+    assert.equal(before.bg,theme==='light'?'rgb(230, 237, 245)':'rgb(37, 61, 84)');
+    assert.equal(before.ink,theme==='light'?'rgb(23, 43, 64)':'rgb(237, 246, 255)');
+    await action.hover();
+    assert.equal(await action.evaluate(n=>getComputedStyle(n).backgroundColor),theme==='light'?'rgb(199, 214, 229)':'rgb(49, 81, 110)');
+    await page.locator('#add-device').click();
+    const saveButton=page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true});
+    assert.equal(await saveButton.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(23, 104, 179)');
+    await saveButton.hover();
+    assert.equal(await saveButton.evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(16, 76, 133)');
+    await page.locator('dialog[open]').getByRole('button',{name:'Cancel',exact:true}).click();
+  }
+  await page.evaluate(()=>document.documentElement.dataset.theme='light');
   // Cleanup is available before assignment; deleting a model preserves audit.
   const unusedModel=(await db.query("SELECT equipment_model_id id FROM ref.site_equipment_model WHERE model_name='10/100 Ethernet switch'")).rows[0].id;
   await page.locator('#manage-equipment-models').click();
