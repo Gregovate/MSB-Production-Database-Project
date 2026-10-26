@@ -8,6 +8,10 @@ Extend the existing ops.setup_movement_event audit with a nullable controller FK
 
 Only pending migration 077_add_setup_controller_location.sql applies alongside pending equipment lifecycle/catalog in the existing disposable runner. No completed migrations replayed. Current-clone validation is read-only; fixture writes remain isolated. Test authorization, unknown identities, cross-asset requests, missing/invalid location, exact/conflicting retries, out-of-order capture, training/offline behavior, and existing Display/Container regression before operator acceptance and Production release.
 
+## October 26 final spacing acceptance
+
+Greg accepts the current equipment presentation for launch with two bounded UI corrections: separate adjacent equipment toolbar/model/Save/Cancel buttons, and expose Setup Pickup List beside Pick List. Keep filled colors and accepted workflows. Live Scan acceptance is deferred to post-deployment by Greg; this is not a Scan PASS.
+
 ## October 26 button contrast — screenshot133009
 
 Equipment table/functionality are operator PASS on 101c0f99, except button contrast. Cable Table/Search remain PASS. Preview CLEAN EXIT confirmed. Apply the established shared FieldWiring action palette to equipment installation, model management, row actions and dialogs: filled blue-gray secondary actions, blue Save, neutral Reload/Cancel, darker hover and visible keyboard focus in light/dark themes. Reuse connection_controls.css rather than another equipment-only palette. This follows the requested cross-application semantic hierarchy; a repository-wide theme rollout is not claimed by this bounded correction. Preserve accepted layout, controller connection colors, panels, cable results and command behavior. Validate computed button states/contrast in both themes, then prepare the same governed disposable preview. No database change.

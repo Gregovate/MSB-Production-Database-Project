@@ -22,7 +22,8 @@
 const $=id=>document.getElementById(id), params=new URLSearchParams(location.search);
 const match=/^CONT:(\d+)$/i.exec(params.get('asset')||''), containerId=match?Number(match[1]):null;
 const training=params.get('training')==='1';let pending=null,busy=false;
-$('year').value=new Date().getFullYear();
+// Honor the season selected in Setup when opening its pickup report.
+$('year').value=params.get('season_year')||new Date().getFullYear();
 async function api(path,options={}){const r=await fetch('../api/setup/'+path,{cache:'no-store',...options});const data=await r.json();if(!r.ok)throw Error(data.error||'Request failed');return data;}
 function cell(row,text){const td=document.createElement('td');td.textContent=text;row.append(td);return td;}
 async function load(){

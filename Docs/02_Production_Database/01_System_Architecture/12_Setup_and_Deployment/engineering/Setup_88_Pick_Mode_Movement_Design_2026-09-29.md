@@ -1067,6 +1067,8 @@ Under #88/#171 and commanding #122, Scan's Container card gains “Setup Complet
 
 An append-only, season-scoped pickup event ledger records REQUEST/CANCEL with authenticated movement operator, server time, exact-retry UUID and confirmed location. Read access follows Setup; command access follows existing movement authorization and same-origin command guard. Training cannot submit. The printable pickup report has Container, Stage and simple pickup location, sorted by Stage key then Container. New movement evidence after a request supersedes its recorded location when it carries an explicit Stage/location. An actual RETURNED movement after the request closes it; merely viewing/scanning or marking ready never closes it. Cancellation removes an accidental request without changing physical location. Operators record actual shop arrival using existing Record Location / Returned to Home Location. No additional container inventory, outbound pick demand, contents edits or broad #88 redesign is introduced.
 
+Setup navigation exposes **Pickup List** immediately after **Pick List**, before **Record Location**. It opens the existing container pickup report and preserves the selected season; opening the report records no movement or pickup request.
+
 Validation required: exact/conflicting replay, authorization, season isolation, Stage ordering, cancellation, return closure and re-request after return. Pending migration 078 is disposable-only until candidate acceptance and governed release. Scan source and deployed dist must match; include Scan deployment in the final release manifest.
 
 ### Display placement invariant retained for launch

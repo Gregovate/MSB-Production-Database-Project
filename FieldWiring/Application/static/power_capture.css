@@ -246,3 +246,11 @@ dialog textarea { display: block; width: 100%; min-height: 5rem; }
 .equipment-actions article {padding:.35rem 0;border-top:1px solid var(--border,#8894a5);}
 .equipment-actions article p {margin:.25rem 0;}
 @media(max-width:600px){.equipment-table{font-size:.8rem;}.equipment-table th,.equipment-table td{padding:.3rem;}.equipment-table th:nth-child(2){width:30%;}.equipment-actions button{padding:.35rem;margin-right:.15rem;}}
+
+/* Separate adjacent equipment/form actions without changing shared colors. */
+dialog form > button,
+#add-device,
+#manage-equipment-models {
+  margin-inline-end: .5rem;
+  margin-block-end: .5rem;
+}
