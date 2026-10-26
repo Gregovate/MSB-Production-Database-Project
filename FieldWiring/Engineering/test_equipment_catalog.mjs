@@ -24,6 +24,7 @@ await assert.rejects(cmd('equipment_inventory',{...fields,quantity:4},undefined,
 for(const quantity of [0,-1,1.5,101,null])await assert.rejects(cmd('equipment_inventory',{...fields,quantity}));
 await assert.rejects(cmd('equipment_model',{device_kind:'CAMERA',model_name:' field CAMERA '}));
 await assert.rejects(cmd('equipment_type',{type_name:'Camera'}));
+for(const type_name of ['CTRL','Controller','Controllers'])await assert.rejects(cmd('equipment_type',{type_name}));
 await assert.rejects(cmd('equipment_type',{type_name:'Unauthorized'},'volunteer@example.test'));
 await assert.rejects(cmd('equipment_model',{device_kind:'LIGHT_POLE',model_name:'Pole'}));
 const snap=(await db.query("SELECT ref.site_power_snapshot('crew@example.test') s")).rows[0].s;

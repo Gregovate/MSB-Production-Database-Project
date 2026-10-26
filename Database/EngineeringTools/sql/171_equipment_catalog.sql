@@ -7,7 +7,7 @@ DO $$ BEGIN
 END $$;
 CREATE TABLE ref.site_equipment_type (
  equipment_type_id bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
- device_kind text PRIMARY KEY CHECK(device_kind ~ '^[A-Z][A-Z0-9_]{0,63}$'),
+ device_kind text PRIMARY KEY CHECK(device_kind ~ '^[A-Z][A-Z0-9_]{0,63}$' AND device_kind NOT IN ('CTRL','CONTROLLER','CONTROLLERS')),
  type_name text NOT NULL CHECK(length(btrim(type_name)) BETWEEN 1 AND 100),
  additional_equipment boolean NOT NULL DEFAULT true
 );
