@@ -11,6 +11,11 @@ const projected=(await db.query("SELECT ref.site_power_snapshot('crew@example.te
 delete projected.equipment_models;delete projected.equipment_types;for(const d of projected.devices)delete d.equipment_model_id;assert.deepEqual(projected,baseline);
 await db.exec(readFileSync(new URL('../../Database/Acceptance/171_equipment_catalog_validation.sql',import.meta.url),'utf8'));
 await db.exec(readFileSync(new URL('../../Database/Acceptance/171_cable_result_evidence.sql',import.meta.url),'utf8'));
+// Exercise the bounded JSON traversal too; arbitrary fixture code is NOT a mapping.
+await db.exec(`ALTER TABLE ops.linkiq_test ADD COLUMN original_result jsonb;
+INSERT INTO ops.linkiq_test(test_uuid,test_status_code,tester_original_name,original_result) VALUES(gen_random_uuid(),97,'Fixture only','{"status":{"result":"INFO"},"tests":[{"speed":100}]}'::jsonb);`);
+await db.exec(readFileSync(new URL('../../Database/Acceptance/171_cable_result_evidence.sql',import.meta.url),'utf8'));
+
 
 let rev=0;
 async function cmd(kind,fields,email='crew@example.test',uuid=crypto.randomUUID(),revision=rev){const r=(await db.query('SELECT ref.site_power_command($1,$2::uuid,$3,$4,NULL,$5::jsonb) r',[email,uuid,revision,kind,JSON.stringify(fields)])).rows[0].r;rev=r.revision;return r;}

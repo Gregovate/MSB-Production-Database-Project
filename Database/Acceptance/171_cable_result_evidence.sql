@@ -6,7 +6,7 @@ DECLARE item record;
 BEGIN
  -- LinkWare screenshot supplied by Greg, October 26: FAIL/PASS/INFO anchors.
  FOR item IN SELECT tester_original_name,test_time_local,length_ft,test_standard,test_status_code
- FROM ops.linkiq_test WHERE lower(btrim(tester_original_name)) IN ('lpfc-03 to fc-00 reg','po to lpft-ps aux-i','larrys antena')
+ FROM ops.linkiq_test WHERE lower(btrim(tester_original_name)) IN ('lpfc-03 to fc-00 reg','po to lpft-ps aux-i','p0 to lpft-ps aux-i','larrys antena')
  ORDER BY tester_original_name,test_time_local LIMIT 30 LOOP
   RAISE NOTICE 'LinkWare match: name=% date=% length_ft=% standard=% stored_code=%',item.tester_original_name,item.test_time_local,item.length_ft,item.test_standard,item.test_status_code;
  END LOOP;
