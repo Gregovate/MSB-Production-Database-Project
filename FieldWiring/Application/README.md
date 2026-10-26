@@ -6,7 +6,7 @@ This folder contains the browser-based FieldWiring application and the read-side
 
 ## Current Part 2 candidate — V0.4.31-field-review
 
-FieldWiring temporarily maintains shared additional-equipment type/model references and the existing physical inventory while #230 management remains incomplete. Add to inventory creates MSB-owned spare units; Install Equipment assigns selected units to the chosen waypoint with quantity default 1. Cameras follow the same model/inventory/history workflow. Controllers retain their existing CTRL inventory. Catalog creation uses the existing authorization/revision/audit command contract.
+FieldWiring temporarily maintains shared additional-equipment type/model references and the existing physical inventory while #230 management remains incomplete. Install Equipment directly records units at the chosen waypoint from model, quantity(default1) and one optional note; no spare-stock prerequisite. Model rename/delete supports cleanup before use. Model seeds and purchase totals create no physical units. Cameras follow the same model/inventory/history workflow. Controllers retain their existing CTRL inventory. Catalog creation uses the existing authorization/revision/audit command contract.
 
 Cable history has searchable network-scoped test points, sortable columns, readable tester-local dates and segment-only comparison tables. Unresolved source labels remain explicit. Numeric FLW PASS/FAIL decoding is not yet verified and remains a release blocker. The preview validation includes a bounded read-only source inspection to supply that evidence. Waypoint Connections opens with a field summary and collapsed engineering details.
 

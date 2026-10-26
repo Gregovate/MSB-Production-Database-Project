@@ -28,13 +28,15 @@ INSERT INTO ref.site_equipment_model(device_kind,model_name) VALUES
  ('POWER_SUPPLY','NDR 120 W · 48 V 2.5 A DIN supply'),
  ('POE_SWITCH','TRENDnet TI-PGLC50 · 5-port PoE+'),
  ('ETHERNET_SWITCH','10/100 Ethernet switch'),
- ('ETHERNET_SWITCH','Industrial 5-port Gigabit switch'),
- ('ETHERNET_EXTENDER','VDSL Ethernet extender kit'),
- ('ETHERNET_SPLITTER','RJ45 1-to-2 Ethernet splitter'),
- ('RS485_REPEATER','RS485 network repeater'),
- ('OTHER','RS485 network splitter'),
- ('OTHER','PixieLink'),
- ('OTHER','Other equipment');
+ ('ETHERNET_SWITCH','Industrial 5-port Gigabit switch · model unknown, seller Zhipu China'),
+ ('ETHERNET_EXTENDER','Tupavco TEX-200 · VDSL Ethernet extender'),
+ ('ETHERNET_SPLITTER','RJ45 1-to-2 splitter · model unknown, seller Mhinese'),
+ ('RS485_REPEATER','LOR RS485 Repeater · RS485REP / LOR-REP'),
+ ('OTHER','MSB Blue Splitter'),
+ ('OTHER','MSB Green Splitter'),
+ ('OTHER','Ubiquiti LiteBeam LBE-5AC-GEN2 · wireless bridge'),
+ ('CAMERA','REOLINK RLC-810A · PoE security camera'),
+ ('OTHER','PixieLink');
 ALTER TABLE ref.site_power_device DROP CONSTRAINT site_power_device_device_kind_check;
 ALTER TABLE ref.site_power_device ADD CONSTRAINT site_power_device_kind_fk FOREIGN KEY(device_kind) REFERENCES ref.site_equipment_type;
 ALTER TABLE ref.site_power_device ADD COLUMN equipment_model_id bigint;
@@ -52,8 +54,29 @@ addition:=$branch$
   AND regexp_split_to_array(lower(btrim(waypoint_type)), '[-_[:space:]]+') && ARRAY['power','network','combo']) THEN
   RAISE EXCEPTION 'Install equipment at a Power, Network or Combo waypoint' USING ERRCODE='23514';
  END IF;
- IF p_kind IN ('equipment_type','equipment_model','equipment_inventory') THEN
-  DECLARE model ref.site_equipment_model%ROWTYPE; kind text; name text; qty integer; unit_id bigint; unit_ids jsonb:='[]';
+ -- Model cleanup never deletes physical equipment or lifecycle evidence.
+ IF p_kind IN ('equipment_model_rename','equipment_model_delete') THEN
+  IF p_id IS NULL OR (p_kind='equipment_model_delete' AND p_data<>'{}'::jsonb)
+   OR (p_kind='equipment_model_rename' AND (NOT p_data ? 'model_name' OR EXISTS(SELECT 1 FROM jsonb_object_keys(p_data) k WHERE k<>'model_name'))) THEN
+   RAISE EXCEPTION 'Select a model and valid cleanup fields' USING ERRCODE='22023'; END IF;
+  SELECT to_jsonb(m) INTO before_row FROM ref.site_equipment_model m WHERE equipment_model_id=p_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Equipment model not found' USING ERRCODE='P0002'; END IF;
+  IF p_kind='equipment_model_delete' THEN
+   IF EXISTS(SELECT 1 FROM ref.site_power_device WHERE equipment_model_id=p_id) THEN
+    RAISE EXCEPTION 'Model is used by recorded equipment; its identity and history must be retained' USING ERRCODE='23514'; END IF;
+   DELETE FROM ref.site_equipment_model WHERE equipment_model_id=p_id;
+   after_row:=jsonb_build_object('deleted',true,'equipment_model_id',p_id);
+  ELSE
+   UPDATE ref.site_equipment_model SET model_name=btrim(p_data->>'model_name') WHERE equipment_model_id=p_id RETURNING to_jsonb(site_equipment_model) INTO after_row;
+  END IF;
+  target:=p_id;
+  UPDATE ref.site_power_revision SET revision=revision+1 WHERE singleton RETURNING revision INTO rev;
+  INSERT INTO ops.site_power_edit_log(revision,request_id,command,target_id,payload,before_data,after_data,directus_user_id,person_id,operator_email)
+  VALUES(rev,p_request,p_kind,target,jsonb_build_object('id',p_id,'fields',request_fields),before_row,after_row,actor.directus_user_id,actor.person_id,lower(btrim(p_email)));
+  RETURN jsonb_build_object('revision',rev,'target_id',target,'replayed',false);
+ END IF;
+ IF p_kind IN ('equipment_type','equipment_model','equipment_inventory','equipment_install') THEN
+  DECLARE model ref.site_equipment_model%ROWTYPE; kind text; name text; qty integer; destination bigint:=(p_data->>'site_waypoint_id')::bigint; unit_id bigint; unit_ids jsonb:='[]';
   BEGIN
    IF p_id IS NOT NULL THEN RAISE EXCEPTION 'Catalog identities are immutable; create a new record' USING ERRCODE='22023'; END IF;
    IF p_kind='equipment_type' THEN
@@ -65,17 +88,25 @@ addition:=$branch$
     IF NOT EXISTS(SELECT 1 FROM ref.site_equipment_type WHERE device_kind=p_data->>'device_kind' AND additional_equipment) THEN RAISE EXCEPTION 'Additional equipment type required' USING ERRCODE='22023'; END IF;
     INSERT INTO ref.site_equipment_model(device_kind,model_name) VALUES(p_data->>'device_kind',btrim(p_data->>'model_name')) RETURNING equipment_model_id,to_jsonb(site_equipment_model) INTO target,after_row;
    ELSE
-    IF EXISTS(SELECT 1 FROM jsonb_object_keys(p_data) k WHERE k NOT IN ('equipment_model_id','quantity','notes')) OR coalesce(p_data->>'quantity','') !~ '^[1-9][0-9]*$' OR length(coalesce(p_data->>'notes',''))>4000 THEN RAISE EXCEPTION 'Invalid inventory fields or quantity' USING ERRCODE='22023'; END IF;
+    IF EXISTS(SELECT 1 FROM jsonb_object_keys(p_data) k WHERE k NOT IN ('equipment_model_id','quantity','notes','site_waypoint_id')) OR coalesce(p_data->>'quantity','') !~ '^[1-9][0-9]*$' OR length(coalesce(p_data->>'notes',''))>4000 THEN RAISE EXCEPTION 'Invalid inventory fields or quantity' USING ERRCODE='22023'; END IF;
+    IF p_kind='equipment_install' THEN
+     IF destination IS NULL OR NOT EXISTS(SELECT 1 FROM ref.site_waypoint WHERE site_waypoint_id=destination AND regexp_split_to_array(lower(btrim(waypoint_type)), '[-_[:space:]]+') && ARRAY['power','network','combo']) THEN
+      RAISE EXCEPTION 'Select a Power, Network or Combo waypoint' USING ERRCODE='23514'; END IF;
+    ELSIF p_data ? 'site_waypoint_id' THEN RAISE EXCEPTION 'Use Install Equipment to record a placement' USING ERRCODE='22023'; END IF;
     qty:=(p_data->>'quantity')::integer;
     IF qty>100 THEN RAISE EXCEPTION 'Quantity must be 1 to 100' USING ERRCODE='22023'; END IF;
     SELECT m.* INTO model FROM ref.site_equipment_model m JOIN ref.site_equipment_type t USING(device_kind) WHERE equipment_model_id=(p_data->>'equipment_model_id')::bigint AND t.additional_equipment;
     IF NOT FOUND THEN RAISE EXCEPTION 'Select an equipment model' USING ERRCODE='22023'; END IF;
     FOR i IN 1..qty LOOP
-     INSERT INTO ref.site_power_device(device_name,device_kind,equipment_model_id,owner_name,description,source_evidence,verification_status)
-     VALUES(model.model_name,model.device_kind,model.equipment_model_id,'MSB',coalesce(p_data->>'notes',''),'Inventory recorded through FieldWiring','UNVERIFIED') RETURNING site_power_device_id INTO unit_id;
+     INSERT INTO ref.site_power_device(device_name,device_kind,equipment_model_id,site_waypoint_id,owner_name,description,source_evidence,verification_status)
+     VALUES(model.model_name,model.device_kind,model.equipment_model_id,destination,'MSB',coalesce(p_data->>'notes',''),'Inventory recorded through FieldWiring','UNVERIFIED') RETURNING site_power_device_id INTO unit_id;
+     IF destination IS NOT NULL THEN
+      INSERT INTO ops.site_equipment_event(site_power_device_id,event_kind,observed_at,from_waypoint_id,to_waypoint_id,notes,directus_user_id,person_id,operator_email)
+      VALUES(unit_id,'MOVE',clock_timestamp(),NULL,destination,coalesce(p_data->>'notes',''),actor.directus_user_id,actor.person_id,lower(btrim(p_email)));
+     END IF;
      unit_ids:=unit_ids||to_jsonb(unit_id);
     END LOOP;
-    target:=unit_id;after_row:=jsonb_build_object('device_ids',unit_ids,'equipment_model_id',model.equipment_model_id,'quantity',qty,'notes',coalesce(p_data->>'notes',''));
+    target:=unit_id;after_row:=jsonb_build_object('device_ids',unit_ids,'equipment_model_id',model.equipment_model_id,'quantity',qty,'site_waypoint_id',destination,'notes',coalesce(p_data->>'notes',''));
    END IF;
    UPDATE ref.site_power_revision SET revision=revision+1 WHERE singleton RETURNING revision INTO rev;
    INSERT INTO ops.site_power_edit_log(revision,request_id,command,target_id,payload,before_data,after_data,directus_user_id,person_id,operator_email)

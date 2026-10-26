@@ -52,6 +52,29 @@ assert.equal((await move(ids[0],11,moveRequest,moveRevision)).replayed,true);
 assert.equal((await db.query('SELECT count(*)::integer n FROM ops.site_equipment_event')).rows[0].n,2);
 await assert.rejects(cmd('equipment_type',{type_name:'Stale'},undefined,crypto.randomUUID(),0));
 console.log('Installation eligibility, transaction rollback, distinct unit histories and exact movement retry PASS');
+// Direct field entry starts without stock and creates one traceable unit per quantity.
+rev=(await db.query('SELECT revision FROM ref.site_power_revision WHERE singleton')).rows[0].revision;
+const directRequest=crypto.randomUUID(),directRevision=rev;
+const directFields={equipment_model_id:model,quantity:2,site_waypoint_id:12,notes:'Observed installation'};
+const direct=await cmd('equipment_install',directFields,undefined,directRequest);
+assert.equal((await cmd('equipment_install',directFields,undefined,directRequest,directRevision)).replayed,true);
+assert.equal((await db.query('SELECT count(*)::integer n FROM ref.site_power_device WHERE site_waypoint_id=12')).rows[0].n,2);
+assert.equal((await db.query('SELECT count(*)::integer n FROM ops.site_equipment_event WHERE to_waypoint_id=12')).rows[0].n,2);
+await assert.rejects(cmd('equipment_install',{...directFields,site_waypoint_id:10}));
+await assert.rejects(cmd('equipment_install',{...directFields,quantity:0}));
+await assert.rejects(cmd('equipment_inventory',directFields));
+await assert.rejects(cmd('equipment_install',directFields,'volunteer@example.test'));
+async function cleanup(kind,id,fields={},email='crew@example.test',request=crypto.randomUUID(),revision=rev){const r=(await db.query('SELECT ref.site_power_command($1,$2::uuid,$3,$4,$5,$6::jsonb) r',[email,request,revision,kind,id,JSON.stringify(fields)])).rows[0].r;rev=r.revision;return r;}
+const unused=(await cmd('equipment_model',{device_kind:'OTHER',model_name:'Unused duplicate'})).target_id;
+await assert.rejects(cleanup('equipment_model_delete',unused,{},'volunteer@example.test'));
+await cleanup('equipment_model_rename',unused,{model_name:'Corrected model'});
+const deleteRequest=crypto.randomUUID(),deleteRevision=rev;
+await cleanup('equipment_model_delete',unused,{},undefined,deleteRequest);
+assert.equal((await cleanup('equipment_model_delete',unused,{},undefined,deleteRequest,deleteRevision)).replayed,true);
+await assert.rejects(cleanup('equipment_model_delete',model));
+assert.equal((await db.query("SELECT count(*)::integer n FROM ops.site_power_edit_log WHERE command='equipment_model_delete' AND before_data->>'model_name'='Corrected model' AND after_data->>'deleted'='true'")).rows[0].n,1);
+console.log('Direct quantity installation, retry, invalid location/quantity denial, model rename/delete, history protection and audit PASS');
+
 console.log((await db.query("SELECT proname,md5(prosrc) hash FROM pg_proc WHERE oid IN ('ref.site_power_command(text,uuid,bigint,text,bigint,jsonb)'::regprocedure,'ref.site_power_snapshot(text)'::regprocedure)")).rows);
 console.log('Shared camera inventory, catalog uniqueness, permissions, quantity, exact retry and stock identities PASS');
 await db.close();

@@ -21,7 +21,7 @@ BEGIN
  WHERE u.status='active' AND coalesce((ref.site_power_access(u.email)->>'can_read')::boolean,false)
  ORDER BY u.email LIMIT 1;
  IF email IS NULL THEN RAISE EXCEPTION 'No authorized existing identity available for snapshot validation'; END IF;
- IF (SELECT md5(prosrc) FROM pg_proc WHERE oid='ref.site_power_command(text,uuid,bigint,text,bigint,jsonb)'::regprocedure)<>'43bed006ec8402b74fd3e27d006b6e06'
+ IF (SELECT md5(prosrc) FROM pg_proc WHERE oid='ref.site_power_command(text,uuid,bigint,text,bigint,jsonb)'::regprocedure)<>'bfe6d9975b672fcbd6ec5506110007d2'
  OR has_table_privilege('fieldwiring_app','ops.site_equipment_event','INSERT,UPDATE,DELETE') THEN
   RAISE EXCEPTION 'Equipment command or direct-write boundary changed'; END IF;
  IF (SELECT pg_get_expr(indpred,indrelid) FROM pg_index WHERE indexrelid='ref.site_power_circuit_panel_code_uq'::regclass) IS DISTINCT FROM 'active' THEN

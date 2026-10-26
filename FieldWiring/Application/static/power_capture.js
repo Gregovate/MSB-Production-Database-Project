@@ -423,21 +423,24 @@
   function renderEquipment() {
     const selector=$("detail-waypoint"),prior=selector.value;
     selector.replaceChildren();
-    el("option","Uninstalled / spares",selector).value="";
+    el("option","Unassigned equipment",selector).value="";
     const recorded=data.devices.filter(equipmentUI.isAdditionalDevice).map(d=>d.site_waypoint_id);
     equipmentUI.waypointChoices(data,recorded).forEach(([id,label])=>{el("option",label,selector).value=id;});
     selector.value=prior;
     const waypointId=Number(selector.value);
     $("combo-network-box").hidden=false;
     $("add-device").textContent=waypointId?"Install Equipment":"Add new item to inventory";
-    $("equipment-heading").textContent=waypointId?"Installed equipment":"Spare equipment";
+    $("equipment-heading").textContent=waypointId?"Installed equipment":"Unassigned equipment";
     const host=$("equipment");host.replaceChildren();
     const devices=data.devices.filter(equipmentUI.isAdditionalDevice).filter(d=>waypointId?d.site_waypoint_id===waypointId:!d.site_waypoint_id);
-    if(!devices.length)el("p",waypointId?"No equipment recorded at this waypoint.":"No spare equipment recorded.",host);
+    if(!devices.length)el("p",waypointId?"No equipment recorded at this waypoint.":"No unassigned equipment recorded.",host);
     devices.forEach(d=>{const item=el("section",undefined,host);
       record(item,`${d.device_name} · ${d.device_kind}`,d,"device");
       window.MSBEquipmentCapture.render(data,d,item,load);
     });
+    let catalog=$('manage-equipment-models');
+    if(!catalog){catalog=el('button','Manage equipment models');catalog.type='button';catalog.id='manage-equipment-models';$('add-device').insertAdjacentElement('afterend',catalog);}
+    catalog.disabled=!data.access.can_edit;catalog.onclick=()=>equipmentUI.manage(data,waypointId||null,load,'catalog');
     $("add-device").disabled=!data.access.can_edit || !!waypointId&&!equipmentUI.isEquipmentWaypoint(wp(waypointId));
     const details=$("equipment-connections");details.hidden=!waypointId;
     // Build secondary engineering context only when the operator opens it.
@@ -492,7 +495,7 @@
     renderPanels();
     const waypointSelect = $("detail-waypoint"), priorWaypoint = waypointSelect.value;
     waypointSelect.replaceChildren();
-    el("option", mode==="equipment"?"Uninstalled / spares":"Select a waypoint", waypointSelect).value="";
+    el("option", mode==="equipment"?"Unassigned equipment":"Select a waypoint", waypointSelect).value="";
     data.waypoints.filter(w=>mode==="equipment" || isDeploymentWaypoint(w)).forEach(w=>{const o=el("option",`${w.name} (${w.type})`,waypointSelect);o.value=w.id;});
     waypointSelect.value=priorWaypoint;
     const detailWaypoint=Number(priorWaypoint);
@@ -1080,7 +1083,7 @@
     if (spec.type === "select") {
       n.multiple = !!spec.multiple;
       if (!spec.required && !spec.multiple) {
-        const o = el("option", edit?.kind==="device"&&spec.key==="site_waypoint_id" ? "Uninstalled / spares" : "Unknown / not specified", n);
+        const o = el("option", edit?.kind==="device"&&spec.key==="site_waypoint_id" ? "Unassigned equipment" : "Unknown / not specified", n);
         o.value = "";
       }
       if (spec.key === "device_name" && !value) {

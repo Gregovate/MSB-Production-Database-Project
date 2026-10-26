@@ -1,5 +1,15 @@
 # Panel circuit definition and field capture
 
+## October 26 field workflow correction — screenshots115647,120740,121252
+
+Greg confirms Additional Equipment is new and nothing is installed. Seed model choices only: no physical quantities, installations or purchase-derived stock. Install Equipment must be waypoint → model → quantity(default1) → one optional note → Save, creating individually traceable units and their installation events atomically. No spare inventory prerequisite or spare-unit chooser. Optional unassigned records and later movement/replacement remain supported. This supersedes prior stock-first requirements above/below.
+
+Clean the catalog using Greg's supplied names: LOR RS485 Repeater (RS485REP / LOR-REP), MSB Blue Splitter, MSB Green Splitter, REOLINK RLC-810A, TRENDnet TI-PGLC50, Ubiquiti LiteBeam LBE-5AC-GEN2, Tupavco TEX-200, Mean Well MDR-60-24, industrial gigabit switch (unknown model; seller Zhipu China), RJ45 splitter (unknown model; seller Mhinese). Remove generic Other equipment and RS485 splitter placeholders from the new reference seed; retain separately specified 10/100, 48V supply and PixieLink choices. Show readable names without raw uppercase type suffixes. Permit rename and deletion of unused model entries through the existing revisioned/audited command boundary; referenced models remain protected. Cleanup must not delay recording field assignments.
+
+Purchase evidence is not a physical inventory count: camera6; industrial gigabit switch6/$232.32; TRENDnet5/$389.50; LiteBeam1kit/2devices/$237.20; TEX-2001kit/2devices/$269; MDR-60-24 10/$299; RJ45splitter4orderedunits/$39.96 with pack size unconfirmed; LORrepeater9 purchased this year. Blue/Green quantities unknown. Costs are reported purchase totals, not inferred unit prices. Preserve this evidence without manufacturing installed/spare records.
+
+Cable sorting is operator PASS. Search must expose case-insensitive matching waypoint choices and apply an exact selected waypoint filter. Table cells and buttons must fit the available field viewport, with comparison scrolled into view and no clipped History controls. PASS/FAIL/INFO numeric mapping is still blocked on retained-code matches; do not relabel unknown numeric outcomes as PASS. Prior LinkWare anchors and bounded report collection remain authoritative.
+
 ## October 26 model-list omission correction
 
 Screenshot100436 shows Install Equipment missing the supplied models. The catalog migration omitted the earlier field-picker vocabulary, and installation filtered choices to recorded spares. Restore the supplied model references (24V/48V supplies, TRENDnet PoE switch, 10/100 and gigabit switches, extender, splitter, RS485 repeater/splitter and PixieLink). Model references do not assert stock quantities or installed units. Keep all catalog models visible in Install Equipment; explicitly distinguish no recorded spares and retain the separate inventory-entry action. Preserve existing physical units and controller inventory. Regression must start with zero spare units and still find the supplied models.

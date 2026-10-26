@@ -62,9 +62,13 @@ window.MSBCableHistory=(()=>{
    function fill(s,options){const prior=s.value;s.replaceChildren();el('option','All',s).value='';for(const [v,l] of options)el('option',l,s).value=v;s.value=prior;if(s.selectedIndex<0)s.value='';}
    fill(network,[...new Set(all.map(t=>t.network))].sort().map(x=>[x,x]));
    const scoped=all.filter(t=>!network.value||t.network===network.value),query=search.value.trim().toLowerCase();
-   fill(waypoint,pointOptions(scoped).filter(p=>p[1].toLowerCase().includes(query)));
+   const matches=pointOptions(scoped).filter(p=>p[1].toLowerCase().includes(query));
+   fill(waypoint,matches);
+   // Expose matches while typing instead of leaving a closed picker on All.
+   waypoint.size=query?Math.min(7,matches.length+1):1;
+   waypoint.options[0].textContent=query?(matches.length?'Choose a matching waypoint':'No matching waypoints'):'All';
    if(!root.dataset.linkApplied){waypoint.value=new URLSearchParams(location.search).get('waypoint')||'';root.dataset.linkApplied='1';}
-   const filtered=scoped.filter(t=>(!waypoint.value||t.points.some(p=>p.value===waypoint.value))&&(!query||t.points.some(p=>p.label.toLowerCase().includes(query))));
+   const filtered=scoped.filter(t=>(!waypoint.value||t.points.some(p=>p.value===waypoint.value)));
    const host=root.querySelector('.cable-results');host.replaceChildren();
    const comparison=root.querySelector('.cable-comparison');comparison.replaceChildren();
    if(!filtered.length){el('p','No cable tests match these filters.',host);return;}
@@ -78,7 +82,7 @@ window.MSBCableHistory=(()=>{
    for(const [key,label] of columns){const th=el('th',undefined,head);th.setAttribute('aria-sort',key===sort?(direction==='asc'?'ascending':'descending'):'none');const b=el('button',label+(key===sort?(direction==='asc'?' ↑':' ↓'):''),th);b.type='button';b.onclick=()=>{root.dataset.sort=key;root.dataset.direction=key===sort&&direction==='asc'?'desc':'asc';render(data,root);};}
    el('th','History',head);const body=el('tbody',undefined,table);
    function compare(group){comparison.replaceChildren();root.dataset.segment=group[0].key;el('h3',`${group[0].network}: ${displayPoints(group[0]).join(' ↔ ')}`,comparison);const wrap=el('div',undefined,comparison);wrap.className='cable-table-scroll';const grid=el('table',undefined,wrap);grid.className='cable-test-table';const header=el('tr',undefined,el('thead',undefined,grid));['Date/time','Length (ft)','Speed (Mbps)','Result'].forEach(v=>el('th',v,header));const tbody=el('tbody',undefined,grid);for(const t of group){const tr=el('tr',undefined,tbody);[dateLabel(t.reliable),t.length_ft??'Not recorded',speedLabel(t).replace(' Mbps',''),resultLabel(t)].forEach(v=>el('td',v,tr));}}
-   for(const group of ordered){const t=group[0],tr=el('tr',undefined,body);[t.network,...displayPoints(t),t.length_ft??'Not recorded',speedLabel(t).replace(' Mbps',''),resultLabel(t),dateLabel(t.reliable)].forEach(v=>el('td',v,tr));const b=el('button',`Compare tests (${group.length})`,el('td',undefined,tr));b.type='button';b.onclick=()=>compare(group);if(root.dataset.segment===t.key)compare(group);}
+   for(const group of ordered){const t=group[0],tr=el('tr',undefined,body);[t.network,...displayPoints(t),t.length_ft??'Not recorded',speedLabel(t).replace(' Mbps',''),resultLabel(t),dateLabel(t.reliable)].forEach(v=>el('td',v,tr));const b=el('button',`Compare tests (${group.length})`,el('td',undefined,tr));b.type='button';b.onclick=()=>{compare(group);comparison.tabIndex=-1;comparison.focus({preventScroll:true});comparison.scrollIntoView({block:'nearest',behavior:'instant'});};if(root.dataset.segment===t.key)compare(group);}
  }
  return {rows,pointOptions,speedLabel,resultLabel,dateLabel,render};
 })();

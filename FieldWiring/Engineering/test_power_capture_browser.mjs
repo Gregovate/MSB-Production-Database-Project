@@ -492,27 +492,23 @@ try {
   await page.locator('#equipment-connections > summary').click();
   await page.locator('#detail-waypoint').selectOption('');
   assert.equal(await page.locator('#equipment-connections').isVisible(),false);
-  assert.equal(await page.locator('#equipment-heading').innerText(),'Spare equipment');
+  assert.equal(await page.locator('#equipment-heading').innerText(),'Unassigned equipment');
   await page.locator('#detail-waypoint').selectOption('12');
   const equipmentDialog=page.locator('dialog[open]');
-  async function addStock(modelName,kind,qty=1){
-    await page.getByRole('button',{name:'Install Equipment',exact:true}).click();
+  async function addStock(modelName,kind,qty=1,unassigned=false){
+    if(unassigned)await page.locator('#detail-waypoint').selectOption('');
+    await page.locator('#add-device').click();
     assert.equal(await equipmentDialog.locator('[name=quantity]').inputValue(),'1');
-    assert.equal(await equipmentDialog.locator('[name=site_waypoint_id]').count(),0);
+    assert.equal(await equipmentDialog.locator('[name=units],[name=site_waypoint_id]').count(),0);
     const supplied=await equipmentDialog.locator('[name=model] option').allTextContents();
-    assert.ok(supplied.some(x=>x.includes('Mean Well MDR-60-24')));
-    assert.ok(supplied.some(x=>x.includes('TRENDnet TI-PGLC50')));
-    assert.ok(supplied.some(x=>x.includes('PixieLink')));
-    await equipmentDialog.getByRole('button',{name:'Add new item to inventory',exact:true}).click();
+    for(const text of ['Mean Well MDR-60-24','TRENDnet TI-PGLC50','PixieLink','LOR RS485 Repeater','MSB Blue Splitter','MSB Green Splitter','REOLINK RLC-810A'])assert.ok(supplied.some(x=>x.includes(text)));
+    assert.ok(!supplied.some(x=>x==='Other equipment'||x.includes(' · OTHER')));
     if(!(await db.query('SELECT 1 FROM ref.site_equipment_model WHERE model_name=$1',[modelName])).rows.length){
-    await equipmentDialog.getByRole('button',{name:'Add new equipment model',exact:true}).click();
-    const kinds=await equipmentDialog.locator('[name=device_kind] option').evaluateAll(rows=>rows.map(r=>r.value));
-    for(const type of ['FUSE','DISCONNECT','OUTLET','LIGHT_POLE'])assert.ok(!kinds.includes(type));
-    assert.ok(kinds.includes('CAMERA'));
-    await equipmentDialog.locator('[name=model_name]').fill(modelName);
-    await equipmentDialog.locator('[name=device_kind]').selectOption(kind);
-    await equipmentDialog.getByRole('button',{name:'Save',exact:true}).click();
-    await equipmentDialog.getByRole('heading',{name:'Add new item to inventory',exact:true}).waitFor();
+      await equipmentDialog.getByRole('button',{name:'Add equipment model',exact:true}).click();
+      await equipmentDialog.locator('[name=model_name]').fill(modelName);
+      await equipmentDialog.locator('[name=device_kind]').selectOption(kind);
+      await equipmentDialog.getByRole('button',{name:'Save',exact:true}).click();
+      await equipmentDialog.getByRole('heading',{name:unassigned?'Add new item to inventory':'Install Equipment',exact:true}).waitFor();
     }
     const modelId=(await db.query('SELECT equipment_model_id id FROM ref.site_equipment_model WHERE model_name=$1',[modelName])).rows[0].id;
     await equipmentDialog.locator('[name=model]').selectOption(String(modelId));
@@ -522,16 +518,28 @@ try {
     assert.equal(await equipmentDialog.locator('[name=notes]').count(),1);
     assert.equal(await equipmentDialog.locator('[name=owner_name],[name=rating],[name=utility_asset_id]').count(),0);
     await equipmentDialog.getByRole('button',{name:'Save',exact:true}).click();
-    await equipmentDialog.getByRole('heading',{name:'Install Equipment',exact:true}).waitFor();
+    if(unassigned){await equipmentDialog.getByRole('heading',{name:'Add new item to inventory',exact:true}).waitFor();await equipmentDialog.getByRole('button',{name:'Cancel',exact:true}).click();await page.locator('#detail-waypoint').selectOption('12');}
     return modelId;
   }
   const modelId=await addStock('TRENDnet TI-PGLC50 · 5-port PoE+','POE_SWITCH');
-  await equipmentDialog.locator('[name=model]').selectOption('model:'+modelId);
-  await equipmentDialog.getByRole('button',{name:'Save',exact:true}).click();
   await page.getByText('TRENDnet TI-PGLC50 · 5-port PoE+ · POE_SWITCH',{exact:true}).waitFor();
   assert.match(await page.locator("#equipment").innerText(),/TRENDnet TI-PGLC50 · 5-port PoE\+ · POE_SWITCH/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_kind='POE_SWITCH' AND site_waypoint_id=12")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,4);
+  // Cleanup is available before assignment; deleting a model preserves audit.
+  const unusedModel=(await db.query("SELECT equipment_model_id id FROM ref.site_equipment_model WHERE model_name='10/100 Ethernet switch'")).rows[0].id;
+  await page.locator('#manage-equipment-models').click();
+  await equipmentDialog.locator('[name=model]').selectOption(String(unusedModel));
+  await equipmentDialog.locator('[name=model_name]').fill('Unused switch model');
+  await equipmentDialog.getByRole('button',{name:'Save',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('dialog[open] [name=model]')?.value==='');
+  await equipmentDialog.locator('[name=model]').selectOption(String(unusedModel));
+  page.once('dialog',d=>d.accept());
+  await equipmentDialog.getByRole('button',{name:'Delete unused model',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('dialog[open] [name=model]')?.value==='');
+  assert.equal((await db.query('SELECT count(*)::int n FROM ref.site_equipment_model WHERE equipment_model_id=$1',[unusedModel])).rows[0].n,0);
+  await equipmentDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+
   await page.getByRole('button',{name:'Record test / failure',exact:true}).last().click();
   const eventDialog=page.locator('dialog[open]');
   await eventDialog.locator('[name=condition]').selectOption('FAILED');
@@ -544,8 +552,7 @@ try {
   await page.getByText('Condition: FAILED',{exact:false}).waitFor();
   assert.equal((await db.query("SELECT count(*)::int n FROM ops.site_equipment_event WHERE condition='FAILED'")).rows[0].n,1);
   // Replace through the real form with a previously recorded uninstalled spare.
-  await addStock('Spare supply','POWER_SUPPLY');
-  await equipmentDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+  await addStock('Spare supply','POWER_SUPPLY',1,true);
   const spareId=(await db.query("SELECT site_power_device_id id FROM ref.site_power_device WHERE device_name='Spare supply'")).rows[0].id;
   await page.getByRole('button',{name:'Replace',exact:true}).last().click();
   await page.locator('dialog[open] [name=replacement]').selectOption(String(spareId));
@@ -835,13 +842,23 @@ try {
   await page.reload();await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   await page.locator('[data-filter="network"]').selectOption("AUX-E");
   assert.equal(await page.locator('[data-filter="waypoint"] option[value="11"]').count(),0);
+  await page.locator('[data-filter="search"]').fill('fe-02');
+  const lowerMatches=await page.locator('[data-filter="waypoint"] option').allTextContents();
+  assert.ok(Number(await page.locator('[data-filter="waypoint"]').getAttribute('size'))>1);
   await page.locator('[data-filter="search"]').fill('FE-02');
+  assert.deepEqual(await page.locator('[data-filter="waypoint"] option').allTextContents(),lowerMatches);
   await page.locator('.cable-results').getByRole('button',{name:'Length (ft)',exact:true}).click();
   assert.equal(await page.locator('.cable-results th[aria-sort="ascending"]').innerText(),'Length (ft) ↑');
   assert.equal(await page.locator("#test-history article").count(),0);
   await page.locator('[data-filter="waypoint"]').selectOption("label:FE-02B");
   await page.getByRole('button',{name:'Compare tests (1)',exact:true}).click();
   assert.equal(await page.locator('.cable-comparison tbody tr').count(),1);
+  for(const width of [1280,768,390]){
+    await page.setViewportSize({width,height:900});
+    assert.ok(await page.locator('.cable-table-scroll').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth+1)),'main and comparison tables must fit, including History buttons');
+  }
+  await page.setViewportSize({width:1280,height:900});
+
   assert.equal(await page.locator("#panels button").count(),0);
   assert.match(await page.locator("#test-history").textContent(),/FE-02/);
   assert.match(await page.locator('#test-history').textContent(),/Speed \(Mbps\)/);

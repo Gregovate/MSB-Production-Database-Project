@@ -1,5 +1,13 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## October 26 direct-install and cable review corrections
+
+User confirms this is brand-new Additional Equipment with no installations. Remove the stock-first prerequisite: selected waypoint/model/quantity(default1)/single note directly records individual units plus installation events in one revisioned transaction. Model seeds create zero physical units; purchase quantities remain reference evidence only. Models now use supplied names, including LOR RS485 Repeater, MSB Blue/Green Splitters, REOLINK camera, LiteBeam and TEX-200. Remove generic Other equipment/RS485 splitter seed placeholders and raw type suffixes. Manage equipment models supports audited rename and delete before a model is referenced by any equipment record; used identities/history remain protected.
+
+Cable sorting is operator PASS. Search now shows matching waypoint choices while typing, case-insensitively, then filters tests by the selected point. Main/comparison tables wrap to available width; Compare brings the detail into view. Regression covers 1280/768/390px table fit, mixed-case choices, direct installation without stock, model cleanup, audit, permissions and retry. Numeric FLW result decoding is still unresolved; obtain the already-collected LinkWare match lines from the preview report. No PASS/FAIL/INFO mapping has been guessed.
+
+Pending migration order remains lifecycle then catalog on a fresh disposable current-Production clone only. Final command hash is now bfe6d9975b672fcbd6ec5506110007d2; snapshot remains ff77cdf2081a3828996e67f452acb7ba. Do not replay deployed migrations or reset shared existing infrastructure. Earlier stock-first instructions below are superseded. Current operator preview must finish through its own runner before a replacement preview starts. No Production changes.
+
 ## Screenshot100436 — supplied model list restored
 
 The V0.4.31 review omitted the prior equipment picker model vocabulary when introducing the shared catalog; Install Equipment also hid catalog entries without recorded spare units. Correct the pending catalog migration to carry forward supplied model references, including documented 10/100 switch, RS485 splitter and PixieLink choices. Install lists all catalog models plus retained legacy stock descriptions, with an explicit no-recorded-spares message. No stock quantities, physical identities or installations are invented. Added zero-stock model-presence SQL/browser regression. Current preview remains disposable; finish its original runner with CLEAN EXIT before starting the corrected candidate. Production unchanged.
