@@ -1,5 +1,9 @@
 # Panel circuit definition and field capture
 
+## October 26 model-list omission correction
+
+Screenshot100436 shows Install Equipment missing the supplied models. The catalog migration omitted the earlier field-picker vocabulary, and installation filtered choices to recorded spares. Restore the supplied model references (24V/48V supplies, TRENDnet PoE switch, 10/100 and gigabit switches, extender, splitter, RS485 repeater/splitter and PixieLink). Model references do not assert stock quantities or installed units. Keep all catalog models visible in Install Equipment; explicitly distinguish no recorded spares and retain the separate inventory-entry action. Preserve existing physical units and controller inventory. Regression must start with zero spare units and still find the supplied models.
+
 ## LinkWare outcome cross-check — October 26 screenshot094257
 
 Greg's LinkWare screenshot establishes concrete source anchors: `LPFC-03 TO FC-00 REG`, November1 2023, 137ft, 1000BASE-T = FAIL; `PO TO LPFT-PS AUX-I`, November1 2023, 211ft, 1000BASE-T = PASS; `Larrys antena`, October6 2026, Telco/Passive PoE = INFO. Times are truncated in the screenshot. Match retained test name/date/length/standard before decoding numeric status. INFO is a distinct outcome and must not become PASS or FAIL. The read-only candidate evidence validation prints these named matches and their stored codes; the screenshot alone does not establish the numeric mapping.

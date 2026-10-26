@@ -499,7 +499,12 @@ try {
     await page.getByRole('button',{name:'Install Equipment',exact:true}).click();
     assert.equal(await equipmentDialog.locator('[name=quantity]').inputValue(),'1');
     assert.equal(await equipmentDialog.locator('[name=site_waypoint_id]').count(),0);
+    const supplied=await equipmentDialog.locator('[name=model] option').allTextContents();
+    assert.ok(supplied.some(x=>x.includes('Mean Well MDR-60-24')));
+    assert.ok(supplied.some(x=>x.includes('TRENDnet TI-PGLC50')));
+    assert.ok(supplied.some(x=>x.includes('PixieLink')));
     await equipmentDialog.getByRole('button',{name:'Add new item to inventory',exact:true}).click();
+    if(!(await db.query('SELECT 1 FROM ref.site_equipment_model WHERE model_name=$1',[modelName])).rows.length){
     await equipmentDialog.getByRole('button',{name:'Add new equipment model',exact:true}).click();
     const kinds=await equipmentDialog.locator('[name=device_kind] option').evaluateAll(rows=>rows.map(r=>r.value));
     for(const type of ['FUSE','DISCONNECT','OUTLET','LIGHT_POLE'])assert.ok(!kinds.includes(type));
@@ -508,6 +513,7 @@ try {
     await equipmentDialog.locator('[name=device_kind]').selectOption(kind);
     await equipmentDialog.getByRole('button',{name:'Save',exact:true}).click();
     await equipmentDialog.getByRole('heading',{name:'Add new item to inventory',exact:true}).waitFor();
+    }
     const modelId=(await db.query('SELECT equipment_model_id id FROM ref.site_equipment_model WHERE model_name=$1',[modelName])).rows[0].id;
     await equipmentDialog.locator('[name=model]').selectOption(String(modelId));
     await equipmentDialog.locator('[name=model]').selectOption('');

@@ -70,13 +70,17 @@ window.MSBEquipmentCapture = (() => {
     if(['install','inventory'].includes(mode)) {
       if(!Array.isArray(data.equipment_models)){el('p','Equipment catalog release is required.',form);const close=el('button','Close',form);close.type='button';close.onclick=()=>dialog.remove();dialog.showModal();return;}
       const spare=data.devices.filter(d=>isAdditionalDevice(d)&&d.active&&!d.site_waypoint_id);
-      const choices=mode==='install'? [...new Map(spare.map(d=>[d.equipment_model_id?`model:${d.equipment_model_id}`:`legacy:${d.device_kind}:${d.device_name}`,d])).entries()].map(([key,d])=>[key,`${d.device_name} · ${d.device_kind.replaceAll('_',' ')}`]):data.equipment_models.map(m=>[m.equipment_model_id,`${m.model_name} · ${m.device_kind.replaceAll('_',' ')}`]);
+      // A model remains selectable before stock is recorded; do not hide the
+      // supplied reference vocabulary merely because there are no spare units.
+      const choices=data.equipment_models.map(m=>[mode==='install'?`model:${m.equipment_model_id}`:m.equipment_model_id,`${m.model_name} · ${m.device_kind.replaceAll('_',' ')}`]);
+      if(mode==='install')for(const [key,d] of new Map(spare.filter(d=>!d.equipment_model_id).map(d=>[`legacy:${d.device_kind}:${d.device_name}`,d])))choices.push([key,`${d.device_name} · ${d.device_kind.replaceAll('_',' ')}`]);
+
       model=select('model','Equipment model',[['','Select model'],...choices]);
       quantity=input('quantity','Quantity');quantity.type='number';quantity.min='1';quantity.max='100';quantity.step='1';quantity.value='1';
       if(mode==='install') {
         const stock=el('p','Select a model to see available spares.',form);
         unitChoice=select('units','Spare units to install',[]);unitChoice.multiple=true;unitChoice.size=4;
-        model.onchange=()=>{units=spare.filter(d=>(d.equipment_model_id?`model:${d.equipment_model_id}`:`legacy:${d.device_kind}:${d.device_name}`)===model.value).sort((a,b)=>a.site_power_device_id-b.site_power_device_id);stock.textContent=units.length?`${units.length} spare(s): ${units.map(d=>'#'+d.site_power_device_id).join(', ')}`:'No spares available';quantity.max=String(Math.max(1,units.length));unitChoice.replaceChildren();for(const d of units)el('option',`#${d.site_power_device_id} · ${d.device_name}`,unitChoice).value=d.site_power_device_id;quantity.oninput();};
+        model.onchange=()=>{units=spare.filter(d=>(d.equipment_model_id?`model:${d.equipment_model_id}`:`legacy:${d.device_kind}:${d.device_name}`)===model.value).sort((a,b)=>a.site_power_device_id-b.site_power_device_id);stock.textContent=units.length?`${units.length} spare(s): ${units.map(d=>'#'+d.site_power_device_id).join(', ')}`:'No spare units recorded for this model. Use Add new item to inventory to record the equipment you have.';quantity.max=String(Math.max(1,units.length));unitChoice.replaceChildren();for(const d of units)el('option',`#${d.site_power_device_id} · ${d.device_name}`,unitChoice).value=d.site_power_device_id;quantity.oninput();};
         quantity.oninput=()=>Array.from(unitChoice.options).forEach((o,i)=>o.selected=i<Number(quantity.value));
         jump('Add new item to inventory','inventory');
       } else jump('Add new equipment model','model');

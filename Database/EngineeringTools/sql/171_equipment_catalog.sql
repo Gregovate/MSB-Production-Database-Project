@@ -21,6 +21,20 @@ CREATE TABLE ref.site_equipment_model (
  UNIQUE(equipment_model_id,device_kind)
 );
 CREATE UNIQUE INDEX site_equipment_model_name_uq ON ref.site_equipment_model(device_kind,lower(btrim(model_name)));
+-- Carry forward the supplied field-picker vocabulary as references only.
+-- No owned units, quantities, model assignments or placements are inferred.
+INSERT INTO ref.site_equipment_model(device_kind,model_name) VALUES
+ ('POWER_SUPPLY','Mean Well MDR-60-24 · 24 V 2.5 A'),
+ ('POWER_SUPPLY','NDR 120 W · 48 V 2.5 A DIN supply'),
+ ('POE_SWITCH','TRENDnet TI-PGLC50 · 5-port PoE+'),
+ ('ETHERNET_SWITCH','10/100 Ethernet switch'),
+ ('ETHERNET_SWITCH','Industrial 5-port Gigabit switch'),
+ ('ETHERNET_EXTENDER','VDSL Ethernet extender kit'),
+ ('ETHERNET_SPLITTER','RJ45 1-to-2 Ethernet splitter'),
+ ('RS485_REPEATER','RS485 network repeater'),
+ ('OTHER','RS485 network splitter'),
+ ('OTHER','PixieLink'),
+ ('OTHER','Other equipment');
 ALTER TABLE ref.site_power_device DROP CONSTRAINT site_power_device_device_kind_check;
 ALTER TABLE ref.site_power_device ADD CONSTRAINT site_power_device_kind_fk FOREIGN KEY(device_kind) REFERENCES ref.site_equipment_type;
 ALTER TABLE ref.site_power_device ADD COLUMN equipment_model_id bigint;

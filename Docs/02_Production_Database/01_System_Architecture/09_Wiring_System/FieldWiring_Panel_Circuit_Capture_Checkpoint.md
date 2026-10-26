@@ -1,5 +1,9 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## Screenshot100436 — supplied model list restored
+
+The V0.4.31 review omitted the prior equipment picker model vocabulary when introducing the shared catalog; Install Equipment also hid catalog entries without recorded spare units. Correct the pending catalog migration to carry forward supplied model references, including documented 10/100 switch, RS485 splitter and PixieLink choices. Install lists all catalog models plus retained legacy stock descriptions, with an explicit no-recorded-spares message. No stock quantities, physical identities or installations are invented. Added zero-stock model-presence SQL/browser regression. Current preview remains disposable; finish its original runner with CLEAN EXIT before starting the corrected candidate. Production unchanged.
+
 ## October 26 next candidate — V0.4.31-field-review (PR463)
 
 Implements the accepted feedback in FieldWiring: separate inventory and fixed-location Install Equipment, quantity 1 by default, selectable individual spare units, changeable model selector, new models/types including Camera, one Notes field and automatic MSB ownership. Existing units/controllers are preserved. Shared type/model catalogs are vocabulary only; #230 may take over their maintenance through its explicit allowlist later. No additional equipment inventory master is created.
