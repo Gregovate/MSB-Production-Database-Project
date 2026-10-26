@@ -794,6 +794,14 @@ try {
   assert.equal(await namedRecord.locator("td").nth(1).locator(".controller-port-display").innerText(),"WF-Tree-08");
   assert.equal(await page.evaluate(()=>window.MSBControllerDeployment.controllerLabel({load_lineage:[]},999)),"CTRL 999 — No display assigned");
   assert.equal(await page.evaluate(()=>window.MSBControllerDeployment.controllerLabel({load_lineage:[{controller_id:999,display_name:'Tree B'},{controller_id:999,display_name:'Tree A'}]},999)),"CTRL 999 — Tree A / Tree B");
+  await page.goto(base.replace('circuits','waypoints'));
+  await page.getByText(/Revision \d+/).waitFor();
+  assert.equal(await page.locator('#waypoint-engineering').isVisible(),false);
+  assert.match(await page.locator('#waypoint-overview').textContent(),/Select a waypoint/);
+  await page.locator('#detail-waypoint').selectOption('11');
+  assert.equal(await page.locator('#waypoint-engineering').getAttribute('open'),null);
+  assert.match(await page.locator('#waypoint-overview').textContent(),/Recorded supply/);
+  assert.equal(await page.locator('#waypoint-overview a[href="equipment?waypoint=11"]').count(),1);
   // Separate read-only history retains retests and unresolved identities.
   await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-23',1,'REVIEWED','source-one','Cat6',100,'first'),(gen_random_uuid(),1,'2026-10-24',2,'REVIEWED','source-two','Cat6',101,'retest'),(gen_random_uuid(),NULL,NULL,NULL,'UNMATCHED','source-three',NULL,NULL,'unresolved')");
   await page.goto(base.replace("circuits","cable-tests"));
@@ -802,15 +810,14 @@ try {
   await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   await page.locator('[data-filter="waypoint"]').selectOption("11");
   assert.equal(await page.locator("#test-history article").count(),0);
-  for(const detail of await page.locator("#test-history details").all()) await detail.locator("summary").click();
-  await page.waitForFunction(()=>document.querySelectorAll("#test-history article").length===3);
-  assert.match(await page.locator("#test-history").textContent(),/source-one/);
-  assert.match(await page.locator("#test-history").textContent(),/source-two/);
-  await page.locator('[data-filter="waypoint"]').selectOption("");
-  await page.locator('[data-filter="network"]').selectOption("Unresolved");
-  for(const detail of await page.locator("#test-history details").all()) await detail.locator("summary").click();
-  await page.getByText(/source-three/).waitFor();
-  assert.equal(await page.locator("#cable-history button").count(),0);
+  await page.getByRole('button',{name:'Compare tests (3)',exact:true}).click();
+  assert.equal(await page.locator('.cable-comparison tbody tr').count(),3);
+  assert.doesNotMatch(await page.locator('.cable-comparison').textContent(),/source-one|source-two|SHA|UUID/);
+  assert.match(await page.locator('.cable-comparison tbody tr').first().textContent(),/Oct 24, 2026/);
+  await page.locator('[data-filter="waypoint"]').selectOption('');
+  await page.locator('[data-filter="network"]').selectOption('Unresolved');
+  assert.match(await page.locator('.cable-results').textContent(),/Date unknown/);
+  assert.doesNotMatch(await page.locator('.cable-results').textContent(),/source-three/);
   // Parsed FLW labels remain browsable before waypoint/cable reconciliation.
   await db.exec(`INSERT INTO ref.site_network VALUES(80,'AUX-E','LOR');
     INSERT INTO ops.linkiq_test VALUES
@@ -821,6 +828,10 @@ try {
     ('flw-source','22222222-2222-4222-8222-222222222222','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"SPARE-01","display_label":"FE-02B TO FE-02 SPARE-01"}');`);
   await page.reload();await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   await page.locator('[data-filter="network"]').selectOption("AUX-E");
+  assert.equal(await page.locator('[data-filter="waypoint"] option[value="11"]').count(),0);
+  await page.locator('[data-filter="search"]').fill('FE-02');
+  await page.locator('.cable-results').getByRole('button',{name:'Length (ft)',exact:true}).click();
+  assert.equal(await page.locator('.cable-results th[aria-sort="ascending"]').innerText(),'Length (ft) ↑');
   assert.equal(await page.locator("#test-history article").count(),0);
   await page.locator('[data-filter="waypoint"]').selectOption("label:FE-02B");
   await page.getByRole('button',{name:'Compare tests (1)',exact:true}).click();

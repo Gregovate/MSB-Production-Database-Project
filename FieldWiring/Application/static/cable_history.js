@@ -36,7 +36,7 @@ window.MSBCableHistory=(()=>{
  return {...t,ids,labels,points,designation,network,pair,key,reliable,uncertain:d?.has_unknown_test_order||!reliable};});
  cache.set(data,result);return result;}
  function pointOptions(all){const points=new Map();for(const t of all)for(const p of t.points)points.set(p.value,p.label);return [...points].sort((a,b)=>a[1].localeCompare(b[1],undefined,{numeric:true}));}
- function resultLabel(test){return ['PASS','FAIL'].includes(test.result)?test.result:'Not decoded';}
+ function resultLabel(test){return ['PASS','FAIL','INFO'].includes(test.result)?test.result:'Not decoded';}
  function dateLabel(value){
    if(!value)return 'Date unknown';
    // Display the saved tester-local wall clock without applying the browser timezone.

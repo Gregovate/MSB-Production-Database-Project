@@ -8,7 +8,7 @@
   document.body.dataset.powerScreen=mode;
   // Visibility must not depend on renderers skipped by focused routes.
   for(const id of ['breaker-context','breaker-reports','breaker-checklist','state-save-status'])$(id).hidden=mode!=="panels";
-  if(['equipment','tests'].includes(mode))$("power-state-help").hidden=true;
+  if(['equipment','tests','waypoints'].includes(mode))$("power-state-help").hidden=true;
   const equipmentUI=window.MSBEquipmentCapture;
 
   const title={panels:"Panel Circuits",waypoints:"Waypoint Connections",equipment:"Additional Equipment",tests:"Cable Test History"}[mode];
@@ -179,12 +179,12 @@
     }
     return body;
   }
-  async function load() {
+  async function load(snapshot=null) {
     if (loading) return;
     loading = true;
     $("status").textContent = "Loading current records…";
     try {
-      data = await api("api/power");
+      data = snapshot || await api("api/power");
       const query=new URLSearchParams(location.search);
       const previous=mode==="panels" && !restoredPanelView ? savedPanelView() : null;
       const requestedPanel=Number(query.get("panel"));

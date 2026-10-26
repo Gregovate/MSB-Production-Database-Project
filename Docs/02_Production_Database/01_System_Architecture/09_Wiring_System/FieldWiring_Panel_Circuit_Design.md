@@ -1,5 +1,9 @@
 # Panel circuit definition and field capture
 
+## LinkWare outcome cross-check — October 26 screenshot094257
+
+Greg's LinkWare screenshot establishes concrete source anchors: `LPFC-03 TO FC-00 REG`, November1 2023, 137ft, 1000BASE-T = FAIL; `PO TO LPFT-PS AUX-I`, November1 2023, 211ft, 1000BASE-T = PASS; `Larrys antena`, October6 2026, Telco/Passive PoE = INFO. Times are truncated in the screenshot. Match retained test name/date/length/standard before decoding numeric status. INFO is a distinct outcome and must not become PASS or FAIL. The read-only candidate evidence validation prints these named matches and their stored codes; the screenshot alone does not establish the numeric mapping.
+
 ## Interim equipment reference management — next disposable candidate
 
 FieldWiring is the interim operator surface for equipment types/models, spare inventory and installation while #230 reference management remains incomplete. Physical additional-equipment units stay in `ref.site_power_device`; controllers retain their existing CTRL inventory. Type/model catalogs are reference vocabulary, not additional inventories. Future #230 ownership requires its explicit allowlist and permission design; installation, tests and replacement remain FieldWiring workflows. Do not repurpose `ref.inventory_type` without establishing its separate domain contract.

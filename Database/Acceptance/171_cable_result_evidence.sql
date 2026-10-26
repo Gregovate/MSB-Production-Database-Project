@@ -4,6 +4,12 @@ BEGIN READ ONLY;
 DO $evidence$
 DECLARE item record;
 BEGIN
+ -- LinkWare screenshot supplied by Greg, October 26: FAIL/PASS/INFO anchors.
+ FOR item IN SELECT tester_original_name,test_time_local,length_ft,test_standard,test_status_code
+ FROM ops.linkiq_test WHERE lower(btrim(tester_original_name)) IN ('lpfc-03 to fc-00 reg','po to lpft-ps aux-i','larrys antena')
+ ORDER BY tester_original_name,test_time_local LIMIT 30 LOOP
+  RAISE NOTICE 'LinkWare match: name=% date=% length_ft=% standard=% stored_code=%',item.tester_original_name,item.test_time_local,item.length_ft,item.test_standard,item.test_status_code;
+ END LOOP;
  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='linkiq_test' AND column_name='original_result') THEN
   RAISE NOTICE 'FLW outcome decoding: retained original_result not present in this fixture';
   RETURN;

@@ -115,7 +115,7 @@ window.MSBEquipmentCapture = (() => {
         pending=null;completed=true;
         if(['inventory','model','type'].includes(mode)) {
           const fresh=await fetch('api/power');if(!fresh.ok)throw Error('Saved. Reload records before continuing.');
-          const updated=await fresh.json();dialog.remove();reload();
+          const updated=await fresh.json();dialog.remove();reload(updated);
           manage(updated,waypointId,reload,mode==='type'?'model':mode==='model'?'inventory':waypointId?'install':'inventory');
         } else {dialog.remove();reload();}
       }catch(error){status.textContent=error.message+(pending?' Retry Save resends the identical request.':stale?' Close and reload current records.':'');}
