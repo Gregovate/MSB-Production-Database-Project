@@ -12,11 +12,14 @@ window.MSBEquipmentCapture = (() => {
     return data.waypoints.filter(w=>isEquipmentWaypoint(w)||recorded.has(w.id))
       .map(w=>[w.id,`${w.name} (${w.type})${isEquipmentWaypoint(w)?'':' — recorded; reconcile location'}`]);
   }
-  function render(data,device,host,reload) {
+  function render(data,device,host,reload,conditionHost=null) {
     const events=(data.equipment_events||[]).filter(e=>e.site_power_device_id===device.site_power_device_id).sort((a,b)=>b.event_id-a.event_id);
     const corrected=new Set(events.map(e=>e.corrects_event_id));
     const latest=events.find(e=>e.event_kind==='TEST'&&!corrected.has(e.event_id));
-    el('p',`Condition: ${latest?.condition||'UNTESTED'} · Equipment #${device.site_power_device_id}`,host);
+    // The equipment table has a dedicated condition cell; other screens retain
+    // their existing detail presentation and use the same lifecycle commands.
+    if(conditionHost)conditionHost.textContent=device.active?(latest?.condition||'UNTESTED'):'RETIRED';
+    else el('p',`Condition: ${latest?.condition||'UNTESTED'} · Equipment #${device.site_power_device_id}`,host);
     const wp=id=>data.waypoints.find(w=>w.id===id)?.name||'Unassigned equipment';
     function open(kind,corrects=null) {
       const dialog=el('dialog',undefined,document.body),form=el('form',undefined,dialog);

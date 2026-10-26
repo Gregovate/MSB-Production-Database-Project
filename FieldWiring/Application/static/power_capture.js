@@ -434,10 +434,21 @@
     const host=$("equipment");host.replaceChildren();
     const devices=data.devices.filter(equipmentUI.isAdditionalDevice).filter(d=>waypointId?d.site_waypoint_id===waypointId:!d.site_waypoint_id);
     if(!devices.length)el("p",waypointId?"No equipment recorded at this waypoint.":"No unassigned equipment recorded.",host);
-    devices.forEach(d=>{const item=el("section",undefined,host);
-      record(item,`${d.device_name} · ${d.device_kind}`,d,"device");
-      window.MSBEquipmentCapture.render(data,d,item,load);
-    });
+    if(devices.length){
+      // One row per physical unit keeps field inventory scannable without
+      // merging identities or hiding its existing test/replacement history.
+      const table=el('table',undefined,host);table.className='equipment-table';
+      const header=el('tr',undefined,el('thead',undefined,table));
+      for(const label of ['Equipment #','Model / name','Condition','Actions']){const th=el('th',label,header);th.scope='col';}
+      const body=el('tbody',undefined,table);
+      devices.forEach(d=>{
+        const row=el('tr',undefined,body);row.dataset.deviceId=d.site_power_device_id;
+        el('td',d.site_power_device_id,row);el('td',d.device_name,row);
+        const condition=el('td',undefined,row),actions=el('td',undefined,row);actions.className='equipment-actions';
+        if(data.access.can_edit){const edit=el('button','Edit / correct',actions);edit.type='button';edit.onclick=()=>equipmentUI.manage(data,d.site_waypoint_id,load,'correct',d);}
+        equipmentUI.render(data,d,actions,load,condition);
+      });
+    }
     let catalog=$('manage-equipment-models');
     if(!catalog){catalog=el('button','Manage equipment models');catalog.type='button';catalog.id='manage-equipment-models';$('add-device').insertAdjacentElement('afterend',catalog);}
     catalog.disabled=!data.access.can_edit;catalog.onclick=()=>equipmentUI.manage(data,waypointId||null,load,'catalog');

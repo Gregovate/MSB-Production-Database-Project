@@ -1,5 +1,7 @@
 # Record panel circuits and seasonal power activity
 
+Installed and unassigned equipment appear in a table, one row per physical unit. Read the equipment number, model/name and condition across the row; use its Edit, Record test/failure, Move/remove or Replace action. Expand Equipment history only when needed.
+
 ## Next disposable review — equipment and field test history
 
 FieldWiring is the interim equipment model-entry surface. Additional Equipment starts without installed units. Select the waypoint, choose Install Equipment, choose a model, enter Quantity (default 1) and an optional note, then Save. This records individual units and installation history together; no prior spare-stock entry is required. Purchase totals do not automatically create inventory or installations. Use Manage equipment models to rename or delete an unused model; models already used by recorded equipment cannot be deleted. Cameras and MSB Blue/Green Splitters use this same workflow; controllers retain their CTRL inventory. Labels are deferred.

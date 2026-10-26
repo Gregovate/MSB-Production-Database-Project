@@ -1,5 +1,9 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## October 26 equipment table correction — screenshot131858
+
+Cable Test Table and Search are operator PASS on ed9113b3; preserve their accepted behavior. Additional Equipment list presentation fails field acceptance: oversized per-device blocks obscure basic inventory. Replace these blocks with a compact semantic table, one row per tracked unit: equipment number, model/name, condition and actions. Keep Edit, Record test/failure, Move/remove, Replace and collapsed history on the same row. Remove repeated Active/UNVERIFIED/source boilerplate and raw type codes from the main list, retaining underlying evidence and command behavior. No schema changes, inventory resets, grouping of distinct units or Production writes. Validate the installed and unassigned tables, lifecycle actions and tablet layout before a fresh disposable candidate.
+
 ## October 26 direct-install and cable review corrections
 
 User confirms this is brand-new Additional Equipment with no installations. Remove the stock-first prerequisite: selected waypoint/model/quantity(default1)/single note directly records individual units plus installation events in one revisioned transaction. Model seeds create zero physical units; purchase quantities remain reference evidence only. Models now use supplied names, including LOR RS485 Repeater, MSB Blue/Green Splitters, REOLINK camera, LiteBeam and TEX-200. Remove generic Other equipment/RS485 splitter seed placeholders and raw type suffixes. Manage equipment models supports audited rename and delete before a model is referenced by any equipment record; used identities/history remain protected.

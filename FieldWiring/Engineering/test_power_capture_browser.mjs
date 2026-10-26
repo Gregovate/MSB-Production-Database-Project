@@ -522,10 +522,19 @@ try {
     return modelId;
   }
   const modelId=await addStock('TRENDnet TI-PGLC50 · 5-port PoE+','POE_SWITCH');
-  await page.getByText('TRENDnet TI-PGLC50 · 5-port PoE+ · POE_SWITCH',{exact:true}).waitFor();
-  assert.match(await page.locator("#equipment").innerText(),/TRENDnet TI-PGLC50 · 5-port PoE\+ · POE_SWITCH/);
+  await page.getByText('TRENDnet TI-PGLC50 · 5-port PoE+',{exact:true}).waitFor();
+  assert.match(await page.locator("#equipment").innerText(),/TRENDnet TI-PGLC50 · 5-port PoE\+/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_kind='POE_SWITCH' AND site_waypoint_id=12")).rows[0].n,1);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,4);
+  const equipmentTable=page.locator('#equipment .equipment-table');
+  assert.deepEqual(await equipmentTable.locator('thead th').allTextContents(),['Equipment #','Model / name','Condition','Actions']);
+  assert.equal(await page.locator('#equipment > section').count(),0);
+  assert.doesNotMatch(await equipmentTable.textContent(),/UNVERIFIED|Inventory recorded through|POE_SWITCH/);
+  for(const width of [1280,768,390]){
+    await page.setViewportSize({width,height:900});
+    assert.ok(await equipmentTable.evaluate(n=>n.scrollWidth<=n.clientWidth+1),'equipment rows must fit the viewport');
+  }
+  await page.setViewportSize({width:1280,height:900});
   // Cleanup is available before assignment; deleting a model preserves audit.
   const unusedModel=(await db.query("SELECT equipment_model_id id FROM ref.site_equipment_model WHERE model_name='10/100 Ethernet switch'")).rows[0].id;
   await page.locator('#manage-equipment-models').click();
@@ -549,7 +558,7 @@ try {
   await eventDialog.getByRole('button',{name:'Save',exact:true}).click();
   await eventDialog.getByText(/Retry Save resends/).waitFor();
   await eventDialog.getByRole('button',{name:'Save',exact:true}).click();
-  await page.getByText('Condition: FAILED',{exact:false}).waitFor();
+  await page.locator('#equipment tbody td').filter({hasText:/^FAILED$/}).waitFor();
   assert.equal((await db.query("SELECT count(*)::int n FROM ops.site_equipment_event WHERE condition='FAILED'")).rows[0].n,1);
   // Replace through the real form with a previously recorded uninstalled spare.
   await addStock('Spare supply','POWER_SUPPLY',1,true);
@@ -557,15 +566,15 @@ try {
   await page.getByRole('button',{name:'Replace',exact:true}).last().click();
   await page.locator('dialog[open] [name=replacement]').selectOption(String(spareId));
   await page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true}).click();
-  await page.getByText('Spare supply · POWER_SUPPLY',{exact:true}).waitFor();
+  await page.getByText('Spare supply',{exact:true}).waitFor();
   assert.match(await page.locator('#equipment').textContent(),/Installed as replacement/);
-  assert.match(await page.locator('#equipment').textContent(),/Condition: UNTESTED/);
+  assert.match(await page.locator('#equipment').textContent(),/UNTESTED/);
   await page.getByRole('button',{name:'Move / remove',exact:true}).last().click();
   assert.equal(await page.locator('dialog[open] [name=destination] option[value="901"]').count(),0);
   await page.locator('dialog[open] [name=destination]').selectOption('');
   await page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true}).click();
   await page.locator('#detail-waypoint').selectOption('');
-  await page.getByText('Spare supply · POWER_SUPPLY',{exact:true}).waitFor();
+  await page.getByText('Spare supply',{exact:true}).waitFor();
   assert.equal((await db.query('SELECT site_waypoint_id FROM ref.site_power_device WHERE site_power_device_id=$1',[spareId])).rows[0].site_waypoint_id,null);
   // A legacy placement stays visible for reconciliation without offering new installs.
   await db.query('UPDATE ref.site_power_device SET site_waypoint_id=901 WHERE site_power_device_id=$1',[spareId]);

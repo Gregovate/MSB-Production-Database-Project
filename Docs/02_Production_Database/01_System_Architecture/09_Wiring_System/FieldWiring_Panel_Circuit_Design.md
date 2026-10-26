@@ -1,5 +1,9 @@
 # Panel circuit definition and field capture
 
+## October 26 equipment table correction — screenshot131858
+
+Cable Test Table and Search are operator PASS on ed9113b3; preserve their accepted behavior. Additional Equipment list presentation fails field acceptance: oversized per-device blocks obscure basic inventory. Replace these blocks with a compact semantic table, one row per tracked unit: equipment number, model/name, condition and actions. Keep Edit, Record test/failure, Move/remove, Replace and collapsed history on the same row. Remove repeated Active/UNVERIFIED/source boilerplate and raw type codes from the main list, retaining underlying evidence and command behavior. No schema changes, inventory resets, grouping of distinct units or Production writes. Validate the installed and unassigned tables, lifecycle actions and tablet layout before a fresh disposable candidate.
+
 ## October 26 verified FLW outcomes and direction-independent segment history
 
 Read-only inspection of the original corrected-name FLW SQLite upload establishes Records.TestStatus **1 = PASS, 6 = FAIL, 8 = INFO**. Every joined RecordData.BinRec metadata.status agrees: 725 source appearances / 517 unique test UUIDs, comprising 498 PASS, 17 FAIL, 2 INFO. No mismatches. Source SHA256: `de23ad7a096e8118366d82d0524879372a9780834d8c3ce8d5ec91628317403e`. This evidence supersedes earlier unresolved-code holds; Greg need not extract codes or report lines. Preserve INFO; unsupported future codes remain explicitly unclassified.
