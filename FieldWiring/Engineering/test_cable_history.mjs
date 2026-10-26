@@ -20,3 +20,7 @@ assert.ok(!api.pointOptions(r).some(p=>p[1]==='07-Whoville-WV'));
 assert.equal(parsed[0].points[0].value,'label:FE-02B');
 const ambiguous=api.rows({...source,network_options:[{network_code:'AUX-A'},{network_code:'Aux A'}]});assert.equal(ambiguous[2].network,'Unresolved');
 console.log('Catalog-only networks, source-only test points, unrelated waypoint exclusion, ambiguous network and snapshot cache PASS');
+
+for(const [standard,expected] of [['10BASE-T','10 Mbps · 10BASE-T'],['100BASE-TX','100 Mbps · 100BASE-TX'],['1000BASE-T','1000 Mbps · 1000BASE-T'],['2.5GBASE-T','2500 Mbps · 2.5GBASE-T'],['Cat6','Cat6'],['','Not recorded']])assert.equal(api.speedLabel({test_standard:standard}),expected);
+assert.equal(api.speedLabel({measured_link_speed_mbps:1000}),'Not recorded','never substitute unrelated measurement for saved test standard');
+console.log('Saved FLW test standard rates, original text and missing/unsupported standards PASS');

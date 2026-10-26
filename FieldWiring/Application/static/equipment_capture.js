@@ -2,6 +2,16 @@
 "use strict";
 window.MSBEquipmentCapture = (() => {
   const el=(tag,text,parent)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;parent?.append(n);return n;};
+  const infrastructureKinds=new Set(['FUSE','DISCONNECT','OUTLET','LIGHT_POLE']);
+  const isAdditionalDevice=device=>!infrastructureKinds.has(device.device_kind);
+  // Installation capability comes from maintained waypoint type, not LOR evidence.
+  const isEquipmentWaypoint=waypoint=>String(waypoint?.type||'').toLowerCase()
+    .split(/[-_\s]+/).some(token=>['power','network','combo'].includes(token));
+  function waypointChoices(data,recordedIds=[]) {
+    const recorded=new Set(recordedIds);
+    return data.waypoints.filter(w=>isEquipmentWaypoint(w)||recorded.has(w.id))
+      .map(w=>[w.id,`${w.name} (${w.type})${isEquipmentWaypoint(w)?'':' — recorded; reconcile location'}`]);
+  }
   function render(data,device,host,reload) {
     const events=(data.equipment_events||[]).filter(e=>e.site_power_device_id===device.site_power_device_id).sort((a,b)=>b.event_id-a.event_id);
     const corrected=new Set(events.map(e=>e.corrects_event_id));
@@ -15,8 +25,8 @@ window.MSBEquipmentCapture = (() => {
       const select=(name,label,rows)=>{const n=el('select',undefined,el('label',label,form));n.name=name;for(const [value,text] of rows)el('option',text,n).value=value;return n;};
       let condition,date,destination,replacement;
       if(kind==='TEST') {condition=select('condition','Test result',[['UNTESTED','Untested'],['WORKING','Working'],['FAILED','Failed']]); date=input('observed_at','Test date/time (leave blank if unknown)','datetime-local');const now=new Date();date.value=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-      if(kind==='MOVE')destination=select('destination','Install at / move to',[['','Uninstalled / spares'],...data.waypoints.map(w=>[w.id,w.name])]);
-      if(kind==='REPLACE') {el('p','Select an existing spare. Add an unrecorded replacement through Add equipment first. Connections are not transferred automatically.',form);replacement=select('replacement','Replacement device',[['','Select spare'],...data.devices.filter(d=>d.active&&!d.site_waypoint_id&&d.site_power_device_id!==device.site_power_device_id).map(d=>[d.site_power_device_id,`#${d.site_power_device_id} · ${d.device_name}`])]);replacement.required=true;}
+      if(kind==='MOVE')destination=select('destination','Install at / move to',[['','Uninstalled / spares'],...waypointChoices(data)]);
+      if(kind==='REPLACE') {el('p','Select an existing spare. Add an unrecorded replacement through Add equipment first. Connections are not transferred automatically.',form);replacement=select('replacement','Replacement device',[['','Select spare'],...data.devices.filter(d=>isAdditionalDevice(d)&&d.active&&!d.site_waypoint_id&&d.site_power_device_id!==device.site_power_device_id).map(d=>[d.site_power_device_id,`#${d.site_power_device_id} · ${d.device_name}`])]);replacement.required=true;}
       const notes=input('notes','Notes (optional)');notes.maxLength=4000;
       const status=el('p','',form);status.setAttribute('role','alert');
       const save=el('button','Save',form);save.type='submit';save.className='equipment-save';
@@ -46,5 +56,5 @@ window.MSBEquipmentCapture = (() => {
     const incoming=(data.equipment_events||[]).filter(e=>e.replacement_device_id===device.site_power_device_id);
     incoming.forEach(e=>el('p',`Installed as replacement for equipment #${e.site_power_device_id} · ${new Date(e.recorded_at).toLocaleString()}`,history));
   }
-  return {render};
+  return {render,isAdditionalDevice,isEquipmentWaypoint,waypointChoices};
 })();

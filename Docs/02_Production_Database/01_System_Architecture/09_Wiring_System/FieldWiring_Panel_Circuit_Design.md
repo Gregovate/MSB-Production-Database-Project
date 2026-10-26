@@ -1,5 +1,14 @@
 # Panel circuit definition and field capture
 
+## October 26 implementation decision — screen boundaries and saved test standard
+
+Apply screen visibility at initialization, before focused rendering. Additional Equipment uses shared type-based power/network/combo waypoint choices for location/Add/Move, independent of controller LOR eligibility. Recorded additional devices at other locations remain selectable as reconciliation records; new installs at those locations are disabled. Filter infrastructure kinds and their model suggestions from Additional Equipment only, preserving shared database records and infrastructure controls.
+
+The existing FLW intake explicitly reads Records.Standard into test_standard. Use that available source value in a column labeled Test speed / standard, displaying the standard's nominal Mbps alongside its original text (10BASE-T=10, 100BASE-TX=100, 1000BASE-T=1000, supported multigigabit standards likewise). This is the test standard's rate, not measured throughput or proof of passing qualification. Remove the invented Unknown measured-speed prefix. Preserve unsupported standards verbatim and genuinely missing standards as Not recorded. Keep status codes as recorded until actual raw-result semantics are established; do not guess PASS from an undocumented numeric code. This closes the displayed Unknown defect without pretending to extract an unavailable raw-result field or reimporting FLW. Raw qualification/negotiated-speed enrichment remains explicitly unverified.
+
+No new migration. Regression must exercise initial load/reload, prior panel context, Add/Move and legacy placements, infrastructure exclusion, saved standard rate labels, missing/nonstandard evidence, and retained controller performance/save behavior. Greg reports the prior reusable preview CLEAN EXIT.
+
+
 ## October 26 equipment and cable review — corrections required
 
 Greg's six screenshots (074552, 074744, 074923, 075146, 075405, 075545) reject the remaining equipment/cable presentation on application candidate572c3e1e. Controller performance improvement does not accept these screens. This section supersedes any earlier implication that equipment simplification and cable presentation are complete.

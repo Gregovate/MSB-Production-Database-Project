@@ -6,6 +6,11 @@
   // Focused routes share one snapshot and command implementation, not stores.
   const mode = ({waypoints:"waypoints",equipment:"equipment","cable-tests":"tests"})[location.pathname.split("/").pop()] || "panels";
   document.body.dataset.powerScreen=mode;
+  // Visibility must not depend on renderers skipped by focused routes.
+  for(const id of ['breaker-context','breaker-reports','breaker-checklist','state-save-status'])$(id).hidden=mode!=="panels";
+  if(['equipment','tests'].includes(mode))$("power-state-help").hidden=true;
+  const equipmentUI=window.MSBEquipmentCapture;
+
   const title={panels:"Panel Circuits",waypoints:"Waypoint Connections",equipment:"Additional Equipment",tests:"Cable Test History"}[mode];
   document.querySelector("h1").textContent=title; document.title=`${title} — MSB Field Wiring`;
   $("waypoint-detail").open=true;
@@ -72,7 +77,7 @@
       const back=el("a","Back to panel",$("status").parentNode);
       back.className="power-return power-navigation";
       back.href="circuits?panel="+previous.panelId;
-      $("status").after(back);
+      if(mode==="waypoints")$("status").after(back);
       navigation.querySelector('a[href="circuits"]').href=back.href;
     }
   }
@@ -411,19 +416,20 @@
     const selector=$("detail-waypoint"),prior=selector.value;
     selector.replaceChildren();
     el("option","Uninstalled / spares",selector).value="";
-    data.waypoints.forEach(w=>{el("option",w.name,selector).value=w.id;});
+    const recorded=data.devices.filter(equipmentUI.isAdditionalDevice).map(d=>d.site_waypoint_id);
+    equipmentUI.waypointChoices(data,recorded).forEach(([id,label])=>{el("option",label,selector).value=id;});
     selector.value=prior;
     const waypointId=Number(selector.value);
     $("combo-network-box").hidden=false;
     $("equipment-heading").textContent=waypointId?"Installed equipment":"Spare equipment";
     const host=$("equipment");host.replaceChildren();
-    const devices=data.devices.filter(d=>waypointId?d.site_waypoint_id===waypointId:!d.site_waypoint_id);
+    const devices=data.devices.filter(equipmentUI.isAdditionalDevice).filter(d=>waypointId?d.site_waypoint_id===waypointId:!d.site_waypoint_id);
     if(!devices.length)el("p",waypointId?"No equipment recorded at this waypoint.":"No spare equipment recorded.",host);
     devices.forEach(d=>{const item=el("section",undefined,host);
       record(item,`${d.device_name} · ${d.device_kind}`,d,"device");
       window.MSBEquipmentCapture.render(data,d,item,load);
     });
-    $("add-device").disabled=!data.access.can_edit;
+    $("add-device").disabled=!data.access.can_edit || !!waypointId&&!equipmentUI.isEquipmentWaypoint(wp(waypointId));
     const details=$("equipment-connections");details.hidden=!waypointId;
     // Build secondary engineering context only when the operator opens it.
     let built=false;
@@ -797,8 +803,8 @@
   ];
   const equipmentNameOptions = () => options(
     [...new Set([
-      ...equipmentModels.map(x=>x[0]),
-      ...data.devices.map(d=>d.device_name).filter(Boolean),
+      ...equipmentModels.filter(x=>mode!=="equipment"||equipmentUI.isAdditionalDevice({device_kind:x[1]})).map(x=>x[0]),
+      ...data.devices.filter(d=>mode!=="equipment"||equipmentUI.isAdditionalDevice(d)).map(d=>d.device_name).filter(Boolean),
     ])].map(name=>[name,name]),
   );
   const ratingOptions = () => options(
@@ -919,8 +925,8 @@
           "ETHERNET_SPLITTER",
           "RS485_REPEATER",
           "OTHER",
-        ]),
-        select("site_waypoint_id", "Waypoint (optional)", waypoints),
+        ].filter(device_kind=>mode!=="equipment"||equipmentUI.isAdditionalDevice({device_kind}))),
+        select("site_waypoint_id", "Waypoint (optional)", mode==="equipment" ? options(equipmentUI.waypointChoices(data)) : waypoints),
         select("owner_name", "Equipment owner (optional)", ownerOptions()),
         text("utility_asset_id", "Existing utility asset reference (advanced)"),
         text("rating", "Existing rating (advanced)"),
@@ -1040,7 +1046,7 @@
     if (spec.type === "select") {
       n.multiple = !!spec.multiple;
       if (!spec.required && !spec.multiple) {
-        const o = el("option", "Unknown / not specified", n);
+        const o = el("option", edit?.kind==="device"&&spec.key==="site_waypoint_id" ? "Uninstalled / spares" : "Unknown / not specified", n);
         o.value = "";
       }
       if (spec.key === "device_name" && !value) {
@@ -1108,6 +1114,10 @@
     $("edit-fields").replaceChildren();
     $("save-status").textContent = "";
     $("save").disabled = false;
+    if(kind==="device"&&row.site_power_device_id&&row.site_waypoint_id&&mode==="equipment") {
+      const spec=edit.specs.find(s=>s.key==="site_waypoint_id");
+      spec.options=options(equipmentUI.waypointChoices(data,[row.site_waypoint_id]));
+    }
     edit.specs.forEach((s) =>
       field(
         s,

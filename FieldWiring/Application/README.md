@@ -6,6 +6,9 @@ This folder contains the browser-based FieldWiring application and the read-side
 
 ## Current Part 2 candidate — V0.4.30-setup-equipment
 
+October26 equipment/cable correction: breaker/season controls are hidden before focused rendering. Additional Equipment uses power/network/combo locations plus spares and excludes infrastructure types/models; recorded out-of-scope locations remain for reconciliation. Cable History displays the saved FLW test standard and its nominal rate, not an absent measured-speed field. These changes need disposable browser acceptance; controller payload/cache fixes remain. No new migration.
+
+
 October26 transport evidence: the full2.37MB snapshot took23–25seconds to transfer through preview. Controller deployment now uses `api/power?view=controller`, retaining the same authorized snapshot/revision and only controller-consumed fields. Full snapshot/report consumers and commands are unchanged. Synthetic scale payload falls87%; actual preview bytes and cold-load timing remain pending. This reduces transfer, not the existing SQL computation.
 
 

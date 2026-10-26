@@ -252,3 +252,10 @@ Review only in the disposable clone. Check that existing chains, outlet assignme
 ## Pending controller performance review
 
 On the next pinned disposable candidate, open Racing Arches or Who from a fresh controller page, then select several controllers in the same chain. Record first-load time separately from subsequent selections. Confirm network light blue, power light red, Save blue, Reload gray, correct chain/display names and recorded power source. Reload connections must fetch current records; test one connection edit only in the disposable clone and confirm retained chain behavior. The existing read-only transport script compares full and controller-scoped response bytes and timings. Retain reports and finish the original preview runner's CLEAN EXIT. These are acceptance steps, not Production release authorization.
+
+
+## Equipment and cable correction review
+
+On the pinned replacement preview, confirm Additional Equipment and Cable Test History contain no breaker report, season selector or seasonal checklist, including after Reload and navigation from a selected panel. Equipment location/Add/Move should offer power/network/combo locations plus spares, excluding Stage points. Infrastructure types such as light poles and disconnects are not Additional Equipment choices. Existing equipment at a legacy location remains visible for reconciliation; new installs there are disabled.
+
+Check a cable result such as1000BASE-T: Test speed / standard should show1000Mbps with the original standard. This is the saved test standard's rate; it is not measured throughput or a claim that the cable passed. Missing standards display Not recorded, unsupported standards remain verbatim, and result codes remain as captured. Confirm lengths, latest dates, network/test-point filters and older history remain intact.

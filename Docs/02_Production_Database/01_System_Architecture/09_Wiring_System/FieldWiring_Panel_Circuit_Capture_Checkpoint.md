@@ -1,5 +1,14 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## Equipment/cable correction implemented — disposable acceptance pending
+
+Greg supplied reusable preview CLEAN EXIT. Refreshed main remains d2bc9d02; changes preserve controller application572c3e1e and Production PR464. Screen visibility now precedes focused renders, removing breaker reports, season controls/checklist and power-only guidance from equipment/history. Independent screens retain the panel navigation link/context without the separate return banner. Additional Equipment filters infrastructure types/models and uses one maintained-type waypoint filter for location/Add/Move; legacy recorded locations remain available for reconciliation with new installs blocked. Shared inventory/schema and command enforcement are unchanged.
+
+Cable History displays FLW Records.Standard as a labeled test-standard speed (for example1000Mbps /1000BASE-T), with no absent measured-speed property or invented Unknown prefix. Original standard text and numeric result codes remain; undocumented raw-result qualification/negotiated-speed interpretation is not claimed. Original files and database evidence are unchanged. No new SQL migration.
+
+Local232 application tests, shared equipment-choice regression, cable-history mapping/filter regression, JS syntax and diff checks PASS. Browser regression now covers unwanted controls on initial load/reload, Stage exclusion in location/Add/Move, infrastructure type/model exclusion, network-type locations without LOR evidence, retained legacy locations and standard speed display. Exact-head CI and operator acceptance pending; next pinned SHA/complete launch block belongs in PR463. Only equipment lifecycle migration applies to a fresh current-Production clone; completed migrations are not replayed.
+
+
 ## October 26 current status — controller improved; equipment/cable rejected
 
 Application reviewed:572c3e1ed53cf8d4f4d1521aefe6eabb6f419764. Controller_Preview_Transport_20261026T074049Z.json: full payload2,366,425B/2178ms total/700ms body; controller payload164,801B/1686 and1421ms total/224 and43ms body; headers1462/1378ms; PowerShell parse23/22ms. This is93% fewer bytes. The unchanged full payload also transferred much faster than the preceding23–25seconds, so the full improvement cannot be attributed to application changes. Greg confirms a noticeable browser improvement. This is not full candidate acceptance or Production release authorization.

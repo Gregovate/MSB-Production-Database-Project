@@ -1,3 +1,4 @@
+import './test_equipment_choices.mjs';
 // Actual page against isolated PostgreSQL fixtures; never a Production/browser-auth test.
 import { createFixtureDatabase } from "./power_test_database.mjs";
 import { createServer } from "node:http";
@@ -469,11 +470,20 @@ try {
   await page.getByText(/Revision \d+/).waitFor();
   // Network equipment is recorded at its Combo waypoint, not forced into
   // the LOR Controller model inventory.
+  await db.exec("INSERT INTO ref.site_waypoint VALUES(901,'07-Whoville-WV','Stage'),(902,'Network-only box','Network'),(903,'Unrelated monument','Landmark')");
   await page.goto(base.replace("circuits","equipment?waypoint=12"));
   await page.getByText(/Revision \d+/).waitFor();
   assert.equal(await page.locator('h1').innerText(),'Additional Equipment');
-  for(const id of ['controller-placement-help','equipment-controller-link','power-state-help','correction-history'])assert.equal(await page.locator('#'+id).isVisible(),false);
+  for(const id of ['controller-placement-help','equipment-controller-link','power-state-help','correction-history','breaker-context','breaker-reports','breaker-checklist'])assert.equal(await page.locator('#'+id).isVisible(),false);
   assert.equal(await page.locator('#equipment-connections').getAttribute('open'),null);
+  assert.equal(await page.locator('.power-return').count(),0);
+  const equipmentPoints=await page.locator('#detail-waypoint option').evaluateAll(rows=>rows.map(r=>r.value));
+  assert.ok(!equipmentPoints.includes('901')&&!equipmentPoints.includes('903'));
+  assert.ok(equipmentPoints.includes('902'),'network-type locations do not require controller LOR evidence');
+  await page.getByRole('button',{name:'Reload current records',exact:true}).click();
+  await page.getByText(/Revision \d+/).waitFor();
+  assert.equal(await page.locator('#breaker-reports').isVisible(),false);
+
   assert.equal(await page.locator('#panels button').count(),0);
   await page.locator('#equipment-connections > summary').click();
   await page.locator('#waypoint-safety h3').waitFor();
@@ -484,6 +494,10 @@ try {
   assert.equal(await page.locator('#equipment-heading').innerText(),'Spare equipment');
   await page.locator('#detail-waypoint').selectOption('12');
   await page.getByRole("button",{name:"Add new equipment",exact:true}).click();
+  const kinds=await dialog.locator('[name=device_kind] option').evaluateAll(rows=>rows.map(r=>r.value));
+  for(const kind of ['FUSE','DISCONNECT','OUTLET','LIGHT_POLE'])assert.ok(!kinds.includes(kind));
+  assert.equal(await dialog.locator('[name=site_waypoint_id] option[value="901"]').count(),0);
+  assert.equal(await dialog.locator('#equipment-models option[value="Light pole"]').count(),0);
   await dialog.locator("[name=device_name]").fill("TRENDnet TI-PGLC50 · 5-port PoE+");
   await dialog.locator("[name=device_kind]").selectOption("POE_SWITCH");
   assert.equal(await dialog.locator("[name=device_kind]").isVisible(),true);
@@ -517,11 +531,24 @@ try {
   assert.match(await page.locator('#equipment').textContent(),/Installed as replacement/);
   assert.match(await page.locator('#equipment').textContent(),/Condition: UNTESTED/);
   await page.getByRole('button',{name:'Move / remove',exact:true}).last().click();
+  assert.equal(await page.locator('dialog[open] [name=destination] option[value="901"]').count(),0);
   await page.locator('dialog[open] [name=destination]').selectOption('');
   await page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true}).click();
   await page.locator('#detail-waypoint').selectOption('');
   await page.getByText('Spare supply · POWER_SUPPLY',{exact:true}).waitFor();
   assert.equal((await db.query('SELECT site_waypoint_id FROM ref.site_power_device WHERE site_power_device_id=$1',[spareId])).rows[0].site_waypoint_id,null);
+  // A legacy placement stays visible for reconciliation without offering new installs.
+  await db.query('UPDATE ref.site_power_device SET site_waypoint_id=901 WHERE site_power_device_id=$1',[spareId]);
+  await page.reload();await page.getByText(/Revision \d+/).waitFor();
+  await page.locator('#detail-waypoint').selectOption('901');
+  assert.equal(await page.getByRole('button',{name:'Add new equipment',exact:true}).isDisabled(),true);
+  assert.match(await page.locator('#equipment').textContent(),/Spare supply/);
+  await page.getByRole('button',{name:'Move / remove',exact:true}).last().click();
+  assert.equal(await page.locator('dialog[open] [name=destination] option[value="901"]').count(),0);
+  await page.locator('dialog[open] [name=destination]').selectOption('');
+  await page.locator('dialog[open]').getByRole('button',{name:'Save',exact:true}).click();
+  await page.getByText(/Revision \d+/).waitFor();
+
   // Empty selectors must distinguish unresolved LOR from missing FLW endpoints,
   // and a known outlet with no circuit must point back to the existing editor.
   const previousNetwork=(await db.query("SELECT lor_network FROM ref.controller WHERE controller_id=104")).rows[0].lor_network;
@@ -753,6 +780,8 @@ try {
   // Separate read-only history retains retests and unresolved identities.
   await db.exec("INSERT INTO ops.linkiq_test VALUES(gen_random_uuid(),1,'2026-10-23',1,'REVIEWED','source-one','Cat6',100,'first'),(gen_random_uuid(),1,'2026-10-24',2,'REVIEWED','source-two','Cat6',101,'retest'),(gen_random_uuid(),NULL,NULL,NULL,'UNMATCHED','source-three',NULL,NULL,'unresolved')");
   await page.goto(base.replace("circuits","cable-tests"));
+  for(const id of ['breaker-context','breaker-reports','breaker-checklist','power-state-help'])assert.equal(await page.locator('#'+id).isVisible(),false);
+  assert.equal(await page.locator('.power-return').count(),0);
   await page.getByText(/Revision \d+/).waitFor();
   await page.locator('[data-filter="waypoint"]').selectOption("11");
   assert.equal(await page.locator("#test-history article").count(),0);
@@ -781,6 +810,10 @@ try {
   await page.waitForFunction(()=>document.querySelectorAll("#test-history article").length===1);
   assert.equal(await page.locator("#panels button").count(),0);
   assert.match(await page.locator("#test-history").textContent(),/FE-02/);
+  assert.match(await page.locator('#test-history').textContent(),/10 Mbps · 10BASE-T/);
+  assert.doesNotMatch(await page.locator('#test-history').textContent(),/Unknown \/ 10BASE/);
+  for(const id of ['breaker-context','breaker-reports','breaker-checklist'])assert.equal(await page.locator('#'+id).isVisible(),false);
+
   // Save Panel 15 as FE-00's supply even when it has no recorded breakers.
   await page.goto(base);await page.getByText(/Revision \d+/).waitFor();
   for(const name of ["Panel 15","Panel FE-00"]) {
