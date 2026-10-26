@@ -1,5 +1,14 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## October 26 second field review — e73fcb7e changes required
+
+Greg marks equipment waypoint lookup PASS. The active review still requires Install Equipment terminology and fixed waypoint context, quantity default1, separate Add new item to existing inventory, a reopenable model selector, future governed equipment-type additions, MSB ownership without owner/utility/rating controls, and one Notes field. Current form conflates new device creation and installation; its description and source_evidence controls both display Notes.
+
+Cable History requires verified PASS/FAIL rather than numeric codes, speed only in the main table, network-scoped canonical waypoint choices without duplicate ID/raw-label entries or misleading BELLS, and human-readable local timestamps. Source inspection confirms pointOptions(all) uses all networks and keys resolved IDs/raw labels separately. Numeric TestStatus mapping is still unverified; do not guess from code1 or the saved standard.
+
+Waypoint Connections requires a field-oriented location overview rather than a topology/evidence dump. Purpose: identify supplying panel/breaker/circuits, plugged controllers, installed equipment and network/tests at a selected waypoint. Retain compact verification state and owning-screen links; collapse raw engineering/history. The owning design now specifies these boundaries. No application changes or replacement candidate in this checkpoint update. Existing preview lifecycle remains with its original runner; no new CLEAN EXIT has been supplied for this review. Production unchanged, full acceptance/release pending.
+
+
 ## Equipment/cable correction implemented — disposable acceptance pending
 
 Greg supplied reusable preview CLEAN EXIT. Refreshed main remains d2bc9d02; changes preserve controller application572c3e1e and Production PR464. Screen visibility now precedes focused renders, removing breaker reports, season controls/checklist and power-only guidance from equipment/history. Independent screens retain the panel navigation link/context without the separate return banner. Additional Equipment filters infrastructure types/models and uses one maintained-type waypoint filter for location/Add/Move; legacy recorded locations remain available for reconciliation with new installs blocked. Shared inventory/schema and command enforcement are unchanged.

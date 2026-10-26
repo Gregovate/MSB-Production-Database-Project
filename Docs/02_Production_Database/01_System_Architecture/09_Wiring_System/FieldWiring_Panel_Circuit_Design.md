@@ -1,5 +1,33 @@
 # Panel circuit definition and field capture
 
+## October 26 second field review — installation, inventory and field overview
+
+Greg accepts the equipment waypoint lookup on e73fcb7e, but the form/workflow and cable/waypoint presentation remain changes-required (screenshots084154,085817,090016,090257,090348,090433). Preserve that accepted lookup and controller performance. The earlier candidate is not full browser acceptance.
+
+Equipment installation contract:
+
+- Title/action Install Equipment at the already selected waypoint. Show that location as fixed context, not another optional selector. On the spares inventory view, use inventory language rather than installation language.
+- Quantity defaults to1 and is a positive whole number. Preserve individually traceable device IDs for failure/replacement history; batch installation must be atomic and exact-retry safe. Quantity must not silently create missing stock or merge separate unit histories.
+- Replace the datalist-only model field with a selector that can be reopened and changed after selection. Provide an explicit Add new item to inventory path, separate from installation, reusing the existing site-device inventory; return the created item(s) to the installation choice. No separate inventories for supplies/switches/repeaters, and no duplicate controller inventory. Distinguish model/type vocabulary from owned physical units; do not count a model suggestion as owned stock.
+- Existing Equipment Type choices are accepted for now; support for adding new types is required. Current device_kind has a database CHECK vocabulary, so a browser-only arbitrary type is not an implementation. Inspect existing reference catalogs/authority before a governed vocabulary extension; do not repurpose ref.inventory_type without verifying its role or create another inventory master.
+- Additional equipment is MSB owned. Omit owner, utility asset reference and rating from this installation form. Set MSB ownership for new inventory units; preserve existing unrelated infrastructure metadata. Show exactly one Notes field; description and source_evidence must not both appear as Notes. Keep audit attribution automatic.
+
+Cable history contract:
+
+- Main result is PASS/FAIL from verified FLW result semantics. Existing code merely passes numeric Records.TestStatus through; inspect retained raw evidence/known source outcomes before mapping, preserve unrecognized or absent outcomes as unclassified rather than inventing PASS/FAIL. A selected standard is not evidence of success.
+- Main speed column shows speed only (for example1000Mbps). Retain original standard in expandable evidence, not the main table.
+- Waypoint choices depend on the selected network. Use accepted canonical waypoint identities/aliases once per identity. The current pointOptions(all) ignores network selection and can offer both an ID and label-based key for the same visible name; correct both. BELLS and other unresolved source labels must not be presented as established waypoints or silently renamed to guessed destinations. Keep unresolved tests separately discoverable with their original source labels, retaining all evidence and latest/older ordering.
+- Format test dates/times for field reading (for example Oct13,2026,9:58AM). Retain tester-local time when no timezone is recorded; do not invent UTC conversion. Keep raw timestamps in expandable evidence and preserve sorting by reliable source time.
+
+Waypoint Connections purpose and field-first presentation:
+
+This is the location-centric view for a technician at a box/outlet: recorded supplying panel/breaker/circuit, controllers plugged in, installed equipment, and recorded network/cable tests. Panel Circuits remains the panel-centric assignment/switching view; Controllers remains the controller/chain view. It is not intended as a second inventory or an engineering dump.
+
+Before a waypoint is selected, show the selector and a short purpose statement only. After selection, show a compact connection summary with links/actions into the existing owning screens. Put raw topology, duplicated panel/meter metadata, full event history and engineering diagnostics behind collapsed details. Keep actual unknown/unverified conditions clear, and never equate recorded breaker state with verified absence of voltage. Preserve recorded chains, outlet assignments, source evidence and revision/auth checks.
+
+These are recorded engineering requirements and identified implementation causes; they supersede the prior narrower presentation contract. No new implementation is certified by this design update.
+
+
 ## October 26 implementation decision — screen boundaries and saved test standard
 
 Apply screen visibility at initialization, before focused rendering. Additional Equipment uses shared type-based power/network/combo waypoint choices for location/Add/Move, independent of controller LOR eligibility. Recorded additional devices at other locations remain selectable as reconciliation records; new installs at those locations are disabled. Filter infrastructure kinds and their model suggestions from Additional Equipment only, preserving shared database records and infrastructure controls.
