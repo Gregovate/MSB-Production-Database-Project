@@ -1,5 +1,10 @@
 # Panel circuit definition and field capture
 
+## Controller management observer — failed field performance review
+
+Greg reports Racing Arches first load 12–13 seconds and subsequent selections 9/12/11 seconds after the prior candidate. Those results fail field acceptance; previous synthetic timings do not establish Production performance. Reconnaissance found the assignment-capability observer issues a controller detail GET for every page DOM mutation whenever management controls exist. The former browser fixture disabled those controls and therefore missed this request amplification. Remove network I/O from that observer: consume the selected controller payload already returned by the main detail loader, guard its identity, and apply capability to newly created buttons locally. Until the selected detail arrives, assignment management is disabled. Preserve server authorization and model capability enforcement. Regression must run with management controls enabled, verify one detail read per selection despite unrelated DOM mutations, deny non-assignment devices, and retain late-response identity protection. This correction does not establish that all field latency is explained; real preview response timing remains an acceptance gate.
+
+
 ## Controller selection latency — October 25 review correction
 
 Greg measured 6–9 seconds switching controllers within the same Who chain in candidate 6963b639. Repeated selection must not refetch the all-purpose power snapshot. Reuse one page-local connection snapshot and one in-flight request across controller selections. Explicit Reload, connection save attempts (including uncertain outcomes), inventory/assignment edits, and returning from a hidden page invalidate it. Existing revision-checked commands remain authoritative; stale saves fail closed and require reload. Display the loaded revision rather than claim live data. Dialogs outside Controller Inventory continue to obtain fresh snapshots. Never persist this cache across page loads/users. Initial snapshot loading remains a separate unresolved latency boundary; do not claim it fixed by selection reuse.

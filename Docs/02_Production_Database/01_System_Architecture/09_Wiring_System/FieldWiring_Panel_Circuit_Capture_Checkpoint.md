@@ -1,5 +1,10 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## Field latency remains FAIL — management-enabled observer correction
+
+Greg's Racing Arches timings: first 12–13 seconds, then 9/12/11 seconds. Prior CI fixture timings are not field acceptance. The prior controller test fixture did not enable controller-management controls; it missed repeated detail GETs from a page-wide assignment-capability MutationObserver. That observer now consumes the existing selected-detail payload with identity guards instead of issuing requests. The fixture now enables Crew management controls, denies assignment capability for one device, and asserts bounded detail request counts even after 30 unrelated DOM mutations per selection. Existing snapshot reuse, safe-save gates and Production panel correction remain. Exact-head CI and renewed field timings are still required; no Production changes or new migration.
+
+
 ## Controller selection performance — further review HOLD
 
 Greg reports 6–9 seconds switching controllers within the same Who chain on 6963b639; candidate remains unaccepted. Controller deployment now reuses one page-local connection snapshot and shares overlapping reads. Reload, save attempts (including uncertain outcomes), inventory/assignment writes and page hiding invalidate it. Server revision/authorization and exact retry handling are retained. Main controller detail and label rendering share an in-flight detail GET. Cold opening still needs the initial snapshot; no cold-load improvement is claimed. Browser regression records warm selection times, requires zero additional power reads for four same-chain selections, one detail request per selection, a fresh Reload, and correct selection after overlapping responses. Existing stale-save/uncertain-retry/chain tests remain required. No SQL or Production changes.

@@ -263,6 +263,7 @@ async function loadControllerDetail(controllerId) {
     const payload = await getControllerDetail(controllerId);
     if (selectedControllerId !== controllerId) return;
     const c = payload.controller;
+    window.dispatchEvent(new CustomEvent("msb-controller-detail-loaded", {detail: payload}));
     document.getElementById('detail-id').textContent = `CTRL ${c.controller_id}`;
     document.getElementById('detail-model').textContent = `${c.manufacturer} · ${c.model_code} · ${c.model_name}`;
     const status = document.getElementById('detail-status');

@@ -85,7 +85,7 @@ const server = createServer(async (req, res) => {
     if(url.pathname.startsWith("/fieldwiring/api/")) {
       const id=Number(url.pathname.match(/controllers\/(\d+)/)?.[1]||101);
       res.setHeader("Content-Type","application/json");
-      res.end(JSON.stringify({controller:{controller_id:id,manufacturer:"Fixture",model_code:"Fixture",model_name:"Fixture",controller_status_name:"AVAILABLE",lor_network:"REG"},controllers:[],assignments:[],firmware_history:[],access:{can_manage:false},can_manage:false}));return;
+      res.end(JSON.stringify({controller:{controller_id:id,manufacturer:"Fixture",model_code:"Fixture",model_name:"Fixture",controller_status_name:"AVAILABLE",lor_network:"REG",display_assignment_capable:id!==104},controllers:[],assignments:[],firmware_history:[],access:{can_manage_controllers:user==="crew@example.test",can_print_label:false},can_manage:false}));return;
     }
     let filename = url.pathname.replace("/fieldwiring/", "");
     if (["circuits","waypoints","equipment","cable-tests"].includes(filename)) filename = "circuits.html";
@@ -699,6 +699,15 @@ try {
     await page.evaluate(id=>loadControllerDetail(id),id);
     await page.locator('#controller-deployment h3').filter({hasText:`CTRL ${id} ·`}).waitFor();
     await page.locator('#deployment-network').waitFor();
+    const manage=page.locator('#controller-management-actions .manage-assignments-button');
+    await manage.waitFor();
+    assert.equal(await manage.isDisabled(),id===104);
+    // Chain/label/form mutations must not trigger capability HTTP requests.
+    await page.evaluate(()=>{
+      const host=document.querySelector('#controller-deployment');
+      for(let i=0;i<30;i++){const n=document.createElement('span');host.append(n);n.remove();}
+      return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    });
     selectionTimes.push(Date.now()-started);
   }
   assert.equal(selectionPowerReads,0,'same-chain selection must reuse the loaded snapshot');
@@ -715,7 +724,7 @@ try {
   assert.match(await page.locator('#controller-deployment h3').innerText(),/CTRL 104/);
   assert.equal(await page.locator('#deployment-upstream').inputValue(),'103');
   page.off('request',countSelection);
-  console.log('Warm same-chain selection ms (browser fixture, not Production):',selectionTimes);
+  console.log('Warm same-chain selection ms (management-enabled browser fixture, not Production):',selectionTimes);
 
   assert.equal(await page.locator(".controller-port-summary td").first().evaluate(n=>getComputedStyle(n).borderTopStyle),"solid");
   assert.deepEqual((await db.query("SELECT controller_id,upstream_controller_id FROM ref.site_controller_installation WHERE active ORDER BY controller_id")).rows.map(r=>[r.controller_id,r.upstream_controller_id]),[[101,null],[102,101],[103,102],[104,103]]);
