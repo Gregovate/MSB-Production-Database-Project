@@ -26,6 +26,7 @@ try{
  await page.goto(base+'?asset=CTRL:1001&season_year=2026');
  await page.locator('#movement-pending-title').filter({hasText:'CTRL:1001'}).waitFor();
  assert.equal(writes.length,0,'scanning/deep link alone must not record');
+ await page.locator('.location-note-details > summary').click();
  await page.locator('#movement-location-note').fill('Park arrival');
  await page.locator('#movement-record-here').click();
  await page.waitForFunction(()=>document.querySelector('#movement-feedback').textContent.includes('RECORDED'));
@@ -44,6 +45,7 @@ try{
  assert.equal(writes.length,2);assert.equal(writes[1].offline_captured,true);assert.equal(writes[1].asset_type,'CONTROLLER');
  await page.goto(base+'?asset=CTRL:1001&season_year=2026&training=1');
  await page.locator('#movement-pending-title').filter({hasText:'CTRL:1001'}).waitFor();
+ await page.locator('.location-note-details > summary').click();
  await page.locator('#movement-location-note').fill('Training only');await page.locator('#movement-record-here').click();
  await page.waitForFunction(()=>document.querySelector('#movement-feedback').textContent.includes('NOTHING RECORDED'));
  assert.equal(writes.length,2);
