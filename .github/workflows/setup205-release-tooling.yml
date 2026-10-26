@@ -42,6 +42,7 @@ jobs:
           Setup/Acceptance/test_setup_171_breaker_release.py
           Setup/Acceptance/test_setup_171_performance_release.py
           Setup/Acceptance/test_setup_171_correction_release.py
+          Setup/Acceptance/test_setup_463_release.py
           Setup/Acceptance/test_diagnose_171_controller_preview.py
           Setup/Acceptance/test_setup_required_container_deploy.py
           Setup/Acceptance/test_setup_scheduled_search_deploy.py
@@ -99,3 +100,6 @@ jobs:
           if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
           python Setup/Acceptance/setup_171_correction_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb171-correction-package')
           if ($LASTEXITCODE -ne 0) { throw 'Breaker correction committed transport failed' }
+
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_463_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }

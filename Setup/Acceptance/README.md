@@ -1,5 +1,7 @@
 # Setup Acceptance Tooling
 
+PR463 accepted equipment/location release: `run_setup_463_release.ps1` defaults to ONLINE preflight; `-Deploy` runs the established maintenance controller and snapshot gates for the four pending migrations, then the existing Scan runner. Exact app `820b154cd664f0cac0d1d8dfd38e47b4fe19df9c`; live Scan acceptance remains pending. Failure retains the report and snapshot; do not replay. Production execution is not yet recorded.
+
 `measure_171_controller_transport.ps1` complements the server probe with three read-only GETs through the already-running localhost8898 preview tunnel. It reports headers/body download/PowerShell parse durations and bytes to Documents/MSB-Diagnostics, without API writes, SSH changes or database access. Browser rendering is not measured. Use only while the existing preview remains open; PR463 supplies the pinned no-edit invocation.
 
 
