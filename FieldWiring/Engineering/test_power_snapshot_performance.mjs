@@ -3,6 +3,8 @@ import {createFixtureDatabase} from './power_test_database.mjs';
 import {populatePowerScale} from './power_scale_fixture.mjs';
 import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 const db=await createFixtureDatabase();
 const migration=readFileSync(new URL('../../Database/EngineeringTools/sql/171_power_snapshot_performance.sql',import.meta.url),'utf8');
 const canonical=value=>Array.isArray(value)?value.map(canonical).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])):value;
@@ -20,6 +22,19 @@ try {
  const candidate=await snapshot('site_power_snapshot');
  assert.deepEqual(canonical(candidate),canonical(baseline),'all snapshot content/multiplicity, not just counts');
  assert.deepEqual(candidate.waypoints,baseline.waypoints,'waypoint ordering and aliases');
+ const scoped=JSON.parse(execFileSync('python',['-c',"import sys,json;from power_capture import controller_snapshot;json.dump(controller_snapshot(json.load(sys.stdin)),sys.stdout)"],{input:JSON.stringify(candidate),env:{...process.env,PYTHONPATH:fileURLToPath(new URL('../Application',import.meta.url))}}));
+ assert.equal(scoped.revision,candidate.revision);
+ assert.deepEqual(scoped.access,candidate.access);
+ for(const [key,rows] of Object.entries(scoped).filter(([,v])=>Array.isArray(v))) {
+  assert.equal(rows.length,candidate[key].length,`${key}: no filtering or deduplication`);
+  rows.forEach((row,i)=>{for(const [field,value] of Object.entries(row))assert.deepEqual(value,candidate[key][i][field],`${key}.${field}`);});
+ }
+ for(const [key,count] of Object.entries({waypoints:240,network_requirements:182,placement_eligibility:890}))assert.equal(scoped[key].length,count);
+ for(const key of ['flw_cable_tests','linkiq_evidence','history','breaker_impacts','equipment_events'])assert.equal(key in scoped,false);
+ const fullBytes=Buffer.byteLength(JSON.stringify(candidate)), scopedBytes=Buffer.byteLength(JSON.stringify(scoped));
+ assert.ok(scopedBytes < fullBytes * 0.3,'controller payload must omit at least 70% of the scale-fixture bytes');
+ console.log(JSON.stringify({fixture:'synthetic Production-scale counts; not measured field latency',fullBytes,scopedBytes,reductionPercent:Math.round(100*(1-scopedBytes/fullBytes))}));
+
  await db.exec(readFileSync(new URL('../../Database/Acceptance/171_power_snapshot_performance_validation.sql',import.meta.url),'utf8'));
  for(const email of ['crew@example.test','manager@example.test','volunteer@example.test']) {
   const rows=(await db.query('SELECT ref.fixture_snapshot_baseline($1) old,ref.site_power_snapshot($1) new',[email])).rows[0];

@@ -56,3 +56,33 @@ def test_snapshot_uses_read_only_transaction(db):
     assert r.status_code==200
     conn.set_session.assert_called_once_with(readonly=True)
     assert cur.execute.call_args.args[1]==('crew@example.test',)
+
+
+def test_scoped_snapshot_uses_same_authorized_read_and_preserves_records(db):
+    conn, cur = db
+    data = {'revision': 42, 'access': {'can_edit': False},
+            **{key: [] for key in power_capture.CONTROLLER_FIELDS},
+            'flw_cable_tests': [{'private_history': 'not needed here'}]}
+    data['waypoints'] = [{'id': 1, 'name': 'Recorded', 'type': 'combo',
+                          'network_capable': False, 'extra': 'omit'}]
+    data['controller_installations'] = [
+        {'controller_id': 1001, 'active': False, 'upstream_controller_id': None,
+         'verification_status': 'UNVERIFIED'}]
+    cur.fetchone.return_value = (data,)
+    response = backend.app.test_client().get('/api/power?view=controller', headers=HEADERS)
+    assert response.status_code == 200
+    actual = response.get_json()
+    assert actual['revision'] == 42 and actual['access'] == data['access']
+    assert actual['waypoints'] == [dict(id=1, name='Recorded', type='combo', network_capable=False)]
+    assert actual['controller_installations'] == data['controller_installations']
+    assert 'flw_cable_tests' not in actual
+    conn.set_session.assert_called_once_with(readonly=True)
+    cur.execute.assert_called_once_with('SELECT ref.site_power_snapshot(%s)', ('crew@example.test',))
+    assert response.headers['Cache-Control'] == 'no-store'
+    full = backend.app.test_client().get('/api/power', headers=HEADERS)
+    assert full.get_json() == data
+
+
+def test_scoped_snapshot_missing_identity_denied_before_db(db):
+    assert backend.app.test_client().get('/api/power?view=controller').status_code == 401
+    db[1].execute.assert_not_called()

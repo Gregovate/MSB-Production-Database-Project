@@ -28,6 +28,36 @@ def private_response(response):
     return response
 
 
+# Explicit wire contract for controller_deployment.js; no eligibility recomputation.
+CONTROLLER_FIELDS = {
+    'waypoints': ('id', 'name', 'type', 'network_capable'),
+    'network_requirements': ('controller_id', 'lor_network', 'required_network', 'requirement_status'),
+    'placement_eligibility': ('controller_id', 'site_waypoint_id'),
+    'controller_options': ('id',),
+    'controller_installations': ('controller_id', 'active', 'site_waypoint_id',
+        'upstream_controller_id', 'upstream_kind', 'chain_end', 'verification_status'),
+    'controller_power_connections': ('site_controller_power_connection_id',
+        'controller_id', 'active', 'site_waypoint_id', 'site_power_circuit_id'),
+    'panels': ('site_panel_id', 'panel_name'),
+    'circuits': ('site_power_circuit_id', 'site_panel_id', 'circuit_code', 'active'),
+    'waypoint_power_sources': ('site_waypoint_id', 'site_power_circuit_id'),
+    'load_lineage': ('controller_id', 'display_name'),
+}
+
+
+def controller_snapshot(data):
+    """Shrink transfer only, after the existing database authorization gate.
+
+    Preserve row order/multiplicity, nulls and unresolved/inactive records.
+    Commands still validate the same revision and authority in PostgreSQL.
+    """
+    return {'revision': data['revision'], 'access': data['access'], **{
+        key: [{field: row[field] for field in fields if field in row}
+              for row in data[key]]
+        for key, fields in CONTROLLER_FIELDS.items()
+    }}
+
+
 @power_api.get('/api/power')
 def snapshot():
     email = cloudflare_operator_email(request.headers)
@@ -35,7 +65,8 @@ def snapshot():
         connection.set_session(readonly=True)
         with connection.cursor() as cursor:
             cursor.execute('SELECT ref.site_power_snapshot(%s)', (email,))
-            return jsonify(cursor.fetchone()[0])
+            data = cursor.fetchone()[0]
+            return jsonify(controller_snapshot(data) if request.args.get("view") == "controller" else data)
 
 
 @power_api.post('/api/power/commands')

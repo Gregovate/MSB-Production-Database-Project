@@ -13,7 +13,7 @@ New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
 $report = Join-Path $outDir "Controller_Preview_Transport_$stamp.json"
 try {
-    foreach ($path in @('/api/controllers/1001', '/api/power', '/api/power')) {
+    foreach ($path in @('/api/controllers/1001', '/api/power', '/api/power?view=controller', '/api/power?view=controller')) {
         Write-Host "Measuring $path ..."
         $response = $null
         $timer = [Diagnostics.Stopwatch]::StartNew()

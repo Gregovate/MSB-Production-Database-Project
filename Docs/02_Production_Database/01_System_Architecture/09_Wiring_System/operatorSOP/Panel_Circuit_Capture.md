@@ -247,3 +247,8 @@ To remove an entire mistaken entry, choose **Remove mistaken breaker**, review t
 5. Controller Save connections is blue; Reload connections is gray. Network fields are light blue and power fields light red, with text labels. The ordered chain highlights the selected controller and preserves the recorded origin/ending.
 
 Review only in the disposable clone. Check that existing chains, outlet assignments, panel notes/states and reports remain intact. End through the reusable preview's cleanup and retain its report. Equipment labels are low priority and not required for recording data.
+
+
+## Pending controller performance review
+
+On the next pinned disposable candidate, open Racing Arches or Who from a fresh controller page, then select several controllers in the same chain. Record first-load time separately from subsequent selections. Confirm network light blue, power light red, Save blue, Reload gray, correct chain/display names and recorded power source. Reload connections must fetch current records; test one connection edit only in the disposable clone and confirm retained chain behavior. The existing read-only transport script compares full and controller-scoped response bytes and timings. Retain reports and finish the original preview runner's CLEAN EXIT. These are acceptance steps, not Production release authorization.

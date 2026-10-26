@@ -1,5 +1,14 @@
 # Panel circuit definition and field capture
 
+## Controller transport correction — measured October 26
+
+Operator transport report 20261026T010158Z establishes the dominant measured delay: controller detail 136ms total / 1,886 bytes; power headers 1,814/2,400ms, body transfer 24,734/22,952ms, JSON parse 187/210ms, payload 2,366,425 bytes. This measures the preview tunnel, not all Production paths. Do not repeat broad SQL profiling or change controller detail queries.
+
+Implement `GET /api/power?view=controller` as a read projection of the same authorized, read-only snapshot. Retain revision/access and every row of waypoint capabilities, network requirements, placement eligibility, controller options/installations/power connections, circuits/panels, waypoint power sources and physical display names. Project only fields consumed by controller deployment; do not filter eligibility, active/inactive reconciliation records or chain members. Omit cable-test evidence, breaker impacts, audit/equipment history and unrelated report fields from this response. Keep the full default snapshot and command boundary unchanged. This first correction reduces browser transfer; the existing database snapshot computation still runs once and remains a later screen-specific SQL opportunity. No migration or authorization change.
+
+Controller deployment uses this scoped response in both page and waypoint dialogs; preserve cache invalidation, revision conflict handling, uncertain-save retry, sorting and recorded-unresolved choices. Test projection equality at 240 waypoints / 182 requirements / 890 eligibility rows and actual browser save/chain behavior. Record fixture bytes separately from actual preview bytes. Field acceptance remains pending until cold load and warm selection are measured on the next governed disposable candidate; never substitute synthetic timing for field acceptance.
+
+
 ## Initial-load measurements — operator server report 20261026T005419Z
 
 The supplied report completed on preview 0e53d5c6. Loopback HTTP: controller access26.3ms; stages11.0ms; all controllers18.6ms; Racing scope15.4ms; controller details10.7/10.7/11.2ms (repeat14.3ms). Power snapshot1211.6/1213.0ms, 2,366,425 bytes. SQL list execution3.097ms for primary list; detail statements0.203/0.198/0.115ms; power snapshot1175.652ms. Thus controller list/detail SQL is not the observed 15-second delay, and the optimized snapshot is approximately1.2seconds on the clone. This report excludes laptop/tunnel transfer and browser rendering; it cannot assign the remaining delay to either.

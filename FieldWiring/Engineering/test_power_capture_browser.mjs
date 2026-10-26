@@ -30,7 +30,11 @@ const server = createServer(async (req, res) => {
         [user],
       );
       res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(result.rows[0].data));
+      const data=result.rows[0].data;
+      const body=url.searchParams.get('view')==='controller'
+        ? execFileSync('python',['-c',"import sys,json;from power_capture import controller_snapshot;json.dump(controller_snapshot(json.load(sys.stdin)),sys.stdout)"],{input:JSON.stringify(data),env:{...process.env,PYTHONPATH:app}})
+        : JSON.stringify(data);
+      res.end(body);
       return;
     }
     if (url.pathname === "/fieldwiring/api/power/report.pdf") {
@@ -689,7 +693,10 @@ try {
   let selectionPowerReads=0,selectionDetailReads=0;
   const countSelection=request=>{
     const path=new URL(request.url()).pathname;
-    if(path.endsWith('/api/power'))selectionPowerReads++;
+    if(path.endsWith('/api/power')) {
+      assert.equal(new URL(request.url()).searchParams.get('view'),'controller','deployment must request the scoped payload');
+      selectionPowerReads++;
+    }
     if(/\/api\/controllers\/10[1-4]$/.test(path))selectionDetailReads++;
   };
   page.on('request',countSelection);

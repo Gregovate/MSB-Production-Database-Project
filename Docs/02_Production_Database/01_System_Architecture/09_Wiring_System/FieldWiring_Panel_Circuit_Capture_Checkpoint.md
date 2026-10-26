@@ -1,5 +1,14 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## Controller transport evidence and scoped response — October 26
+
+Report Controller_Preview_Transport_20261026T010158Z.json: detail 136ms/1,886B; full power headers 1,814/2,400ms, body 24,734/22,952ms, total 26,548/25,352ms, parse187/210ms, 2,366,425B. The measured dominant delay is payload transfer through this preview path. Earlier next-diagnostic instructions below are completed; no repeat broad profiling.
+
+Candidate controller deployment now requests `/api/power?view=controller`, a field projection after the identical authorized read-only snapshot call. Default full snapshot, SQL, command validation, all eligibility rows, recorded connections and save retry behavior remain. No new migration. Scale fixture transfers150,039B instead of1,124,593B (87% reduction); 240 waypoints /182 requirements /890 eligibility rows preserved with content/order/multiplicity checks. This is synthetic payload evidence, not the actual preview size or field speed. Local232 application tests PASS. Exact-head Chromium/CI and renewed cold-load field acceptance remain required.
+
+Use the existing disposable runner after the prior preview's CLEAN EXIT; apply only equipment lifecycle migration to a fresh current-Production clone. The transport script now compares one full response with two scoped responses and controller detail. Production unchanged; protected Production browser closeout remains pending.
+
+
 ## Server diagnostic received — initial-load isolation
 
 Report Controller_Initial_Load_Diagnostic_20261026T005419Z.json on preview0e53d5c6 PASS (diagnostic only). HTTP controller list/detail11–19ms; power1211.6/1213.0ms and2,366,425bytes. Snapshot SQL1175.652ms; primary controller list3.097ms; detail queries each below0.21ms. The 15-second field delay is not reproduced by loopback server timing. Remaining unmeasured boundary: laptop/tunnel transfer and browser work. Added `measure_171_controller_transport.ps1` for three read-only GETs through the existing localhost8898 tunnel, separating headers/body/PowerShell parsing. Do not close/restart preview or rerun migrations. Initial-load acceptance remains FAIL; no network/hardware blame inferred.

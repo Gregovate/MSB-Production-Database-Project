@@ -8,11 +8,11 @@
   let snapshot=null, snapshotRequest=null, snapshotEpoch=0;
   function invalidate() {snapshot=null;snapshotRequest=null;snapshotEpoch++;}
   async function connectionSnapshot(shared) {
-    if(!shared)return api("api/power");
+    if(!shared)return api("api/power?view=controller");
     if(snapshot)return snapshot;
     if(snapshotRequest)return snapshotRequest;
     const epoch=snapshotEpoch;
-    const request=api("api/power").then(data=>{
+    const request=api("api/power?view=controller").then(data=>{
       if(epoch===snapshotEpoch)snapshot=data;
       return data;
     }).finally(()=>{if(snapshotRequest===request)snapshotRequest=null;});
