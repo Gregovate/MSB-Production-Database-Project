@@ -1,3 +1,7 @@
+## October 26 PR463 Production server PASS — browser/Scan acceptance pending
+
+Operator-returned receipt `PR463-Equipment-Location-20261026T155409Z` confirms accepted `820b154cd664f0cac0d1d8dfd38e47b4fe19df9c` installed in FieldWiring and Setup, all four pending migrations committed/validated, preserved business data, return ONLINE and matching Scan installation gates PASS. Full report, rollback snapshot/hash, tooling identities and the corrected Windows archive failure are recorded newest-first in `System_Documentation/Production_Deployment_Change_Log.md`. Do not replay this release. Protected browser and physical live Scan acceptance remain pending; earlier preparation/pending-deployment notes below are historical.
+
 ## October 26 PR463 release preparation — not deployed
 
 Accepted application: `820b154cd664f0cac0d1d8dfd38e47b4fe19df9c`; all CI PASS; operator CLEAN EXIT. Greg authorized the two final UI corrections and migration, with live Scan acceptance deferred. Read-only operator evidence confirms shared `2548edd130b5cebad33a44786bc1811c2b089bf8`, Setup `72a94be772f2e4ae8bfaed74051f667fc87201a6`, Scan SHA256 `c2bc2d4e7d9d7ff86c57a7d30a52d427f9897f538aa2ce68c5ffc4f0a305bfea`, healthy real ONLINE and current NAS replication.
