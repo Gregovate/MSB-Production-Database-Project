@@ -20,3 +20,10 @@ test('normal Scan routes remain the identity hub', () => {
   assert.match(src, /Procedures/);
   assert.match(src, /Open Work Orders/);
 });
+
+
+test('container return pickup is an explicit Setup handoff in source and deployed bundle', () => {
+  assert.equal(src, dist);
+  assert.match(src, /setup\/container-pickups\/\?asset=CONT:/);
+  assert.match(src, /Setup Complete Return to Shop/);
+});

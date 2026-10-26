@@ -573,3 +573,18 @@ class SetupMovementRepository:
                 for key in ("gps_latitude", "gps_longitude", "gps_accuracy_m", "gps_fix_at", "gps_fix_age_ms", "gps_quality", "gps_quality_note"):
                     result[key] = location.get(key)
         return result
+
+    def pickup_list(self, season_year: int) -> dict[str, Any]:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM ops.setup_container_pickup_list WHERE season_year=%s ORDER BY stage_key,container_id", (season_year,))
+            rows = [dict(row) for row in cur.fetchall()]
+            cur.execute("SELECT stage_id,stage_key,stage_name FROM ref.stage ORDER BY stage_key,stage_id")
+            return {"containers": rows, "stages": [dict(row) for row in cur.fetchall()]}
+
+    def record_pickup(self, *, email, season_year, client_event_id, container_id, action, stage_id, location_note, empty_confirmed):
+        with self.write_connect() as conn, conn.cursor() as cur:
+            cur.execute("SELECT ops.record_setup_container_pickup(%s,%s,%s::uuid,%s,%s,%s,%s,%s)",
+                        (email, season_year, str(client_event_id), container_id, action, stage_id, location_note, empty_confirmed))
+            event_id = cur.fetchone()[0]
+            conn.commit()
+            return event_id

@@ -1,5 +1,10 @@
 # Setup Session Application
 
+## Pending final launch candidate: controller location and container pickup
+
+PR463 adds CTRL identity to Record Location and uses the existing Controller park-map symbol. Scan Controller still opens inventory, with an explicit Record Location action. The Container Scan card adds **Setup Complete Return to Shop**. Confirm an empty container, physical Stage and simple pickup location; the printable `/setup/container-pickups/` list is sorted by Stage. Record actual arrival with **Returned to Home Location** to close the request. Cancellation only cancels collection. No contents reconciliation or takedown redesign is included. Pending SQL 077/078 applies only in the disposable preview until release approval. Scan source and dist changes require the established Scan extension deployment in addition to Setup/FieldWiring. Protected browser acceptance is pending.
+
+
 ## #88 guided contents reconciliation candidate
 
 [Implementation, reconnaissance, verification and exact-candidate review handoff](../Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).

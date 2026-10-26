@@ -403,3 +403,37 @@ def movement_database_error(exc: psycopg2.Error) -> tuple[Response, int]:
         or "Setup movement database command failed"
     ).strip()
     return jsonify(error=message, engineering_error=str(exc)), status
+
+
+@setup_movement_api.get("/api/setup/container-pickups")
+def api_setup_container_pickups():
+    require_reader()
+    response = jsonify(repo().pickup_list(positive_int(request.args.get("season_year"), "season_year")))
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@setup_movement_api.post("/api/setup/container-pickups")
+def api_setup_container_pickup_record():
+    require_setup_command()
+    _, email, _ = require_movement_operator()
+    payload = json_body()
+    if payload.get("training"):
+        raise SetupCommandError("Training cannot record pickup requests")
+    action = str(payload.get("action") or "").upper()
+    if action not in {"REQUEST", "CANCEL"}:
+        raise SetupCommandError("Unsupported pickup action")
+    try:
+        event_id = repo().record_pickup(
+            email=email, season_year=positive_int(payload.get("season_year"), "season_year"),
+            client_event_id=required_uuid(payload.get("client_event_id"), "client_event_id"),
+            container_id=positive_int(payload.get("container_id"), "container_id"), action=action,
+            stage_id=optional_positive_int(payload.get("stage_id"), "stage_id"),
+            location_note=optional_text(payload.get("location_note")), empty_confirmed=payload.get("empty_confirmed") is True)
+    except psycopg2.Error as exc:
+        if exc.pgcode in {"22023", "23503", "23514", "P0002", "P0003"}:
+            raise SetupCommandError("Check container, active season, Stage, pickup location and empty confirmation") from exc
+        if exc.pgcode == "23505":
+            return jsonify(error="Pickup retry has different data; reload before submitting"), 409
+        raise
+    return jsonify(pickup_event_id=event_id), 201

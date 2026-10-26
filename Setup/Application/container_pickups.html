@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Return containers to shop</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#172b40;background:#f4f7fa}body{max-width:1000px;margin:auto;padding:18px}h1{font-size:1.6rem}a{color:#105ca0}button,.button{background:#1768b3;color:white;border:1px solid #104c85;border-radius:5px;padding:10px 14px;font:inherit;cursor:pointer;text-decoration:none;display:inline-block}button:hover,.button:hover{background:#104c85}button:disabled{opacity:.55;cursor:wait}input,select{font:inherit;padding:8px;max-width:100%;box-sizing:border-box}label{display:block;margin:12px 0}form{background:white;padding:16px;border:1px solid #bbc9d6;border-radius:6px}table{border-collapse:collapse;width:100%;background:white;margin-top:16px}th,td{text-align:left;border-bottom:1px solid #ccd6df;padding:10px;overflow-wrap:anywhere}#status{min-height:1.5em}nav{display:flex;gap:12px;flex-wrap:wrap}.secondary{background:#e6e9ed;color:#172b40;border-color:#8a9baa}.secondary:hover{background:#c7d6e5}caption{text-align:left;font-weight:bold;padding:8px 0}@media print{form,nav,button,.actions,.controls{display:none!important}body{padding:0;background:white}th,td{padding:8px}thead{display:table-header-group}}
+</style></head><body>
+<h1>Return containers to shop</h1>
+<nav><a href="../">Setup</a><a href="../record-location/">Record Location / Shop Arrival</a><button type="button" id="print">Print pickup list</button></nav>
+<p>Collect the containers below from their park locations. At the shop, scan each container and use Record Location → Returned to Home Location.</p>
+<label class="controls">Season <input id="year" type="number" min="2020" max="2100" required> <button id="reload" type="button" class="secondary">Reload list</button></label>
+<form id="request" hidden>
+<h2>Setup Complete Return to Shop</h2><p id="identity"></p>
+<label>Stage <select id="stage" required><option value="">Choose physical Stage</option></select></label>
+<label>Pickup location <input id="location" maxlength="240" required placeholder="e.g. behind the arches, beside the service road" style="width:100%"></label>
+<label><input type="checkbox" id="empty" required> This container is empty and ready for pickup.</label>
+<p>This adds a pickup request. It does not record shop arrival or change container contents.</p>
+<button id="save" type="submit">Setup Complete Return to Shop</button>
+</form>
+<p id="status" role="status" aria-live="polite"></p>
+<table><caption id="caption">Containers awaiting pickup</caption><thead><tr><th>Stage</th><th>Container</th><th>Pickup location</th><th class="actions">Actions</th></tr></thead><tbody id="rows"></tbody></table>
+<script>
+'use strict';
+const $=id=>document.getElementById(id), params=new URLSearchParams(location.search);
+const match=/^CONT:(\d+)$/i.exec(params.get('asset')||''), containerId=match?Number(match[1]):null;
+const training=params.get('training')==='1';let pending=null,busy=false;
+$('year').value=new Date().getFullYear();
+async function api(path,options={}){const r=await fetch('../api/setup/'+path,{cache:'no-store',...options});const data=await r.json();if(!r.ok)throw Error(data.error||'Request failed');return data;}
+function cell(row,text){const td=document.createElement('td');td.textContent=text;row.append(td);return td;}
+async function load(){
+ const year=Number($('year').value);if(!Number.isInteger(year)||year<2020||year>2100)throw Error('Choose a valid season');
+ const data=await api('container-pickups?season_year='+year);
+ const selected=$('stage').value;$('stage').replaceChildren(new Option('Choose physical Stage',''));
+ for(const s of data.stages)$('stage').add(new Option(s.stage_key+' — '+s.stage_name,s.stage_id));$('stage').value=selected;
+ $('rows').replaceChildren();
+ for(const c of data.containers){const row=document.createElement('tr');cell(row,c.stage_key+' — '+c.stage_name);cell(row,'CONT:'+c.container_id);cell(row,c.location_note);
+ const actions=cell(row,'');actions.className='actions';const arrival=document.createElement('a');arrival.textContent='Record shop arrival';arrival.href='../record-location/?asset=CONT:'+c.container_id;actions.append(arrival,document.createTextNode(' '));
+ const cancel=document.createElement('button');cancel.textContent='Cancel request';cancel.className='secondary';cancel.type='button';cancel.onclick=()=>{if(confirm('Remove CONT:'+c.container_id+' from the pickup list? This does not change its location.'))submit('CANCEL',c.container_id);};actions.append(cancel);$('rows').append(row);}
+ $('caption').textContent=year+' — '+data.containers.length+' containers awaiting pickup';
+ if(containerId){const state=(await api('movements/state?season_year='+year+'&asset_type=CONTAINER&asset_id='+containerId)).state;
+ $('identity').textContent='CONT:'+containerId+' — '+(state.label||'Container');
+ if(!$('location').value)$('location').value=state.current_location_note||'';
+ if(!$('stage').value)$('stage').value=state.current_stage_id||'';
+ $('request').hidden=false;}
+}
+async function submit(action,id){if(busy)return;busy=true;$('save').disabled=true;
+ try{if(training)throw Error('Training — nothing recorded');
+ const values={season_year:Number($('year').value),container_id:id,action,stage_id:action==='REQUEST'?Number($('stage').value):null,location_note:action==='REQUEST'?$('location').value.trim():null,empty_confirmed:action==='REQUEST'&&$('empty').checked};
+ const fingerprint=JSON.stringify(values);if(!pending||pending.fingerprint!==fingerprint)pending={fingerprint,payload:{...values,client_event_id:crypto.randomUUID()}};
+ await api('container-pickups',{method:'POST',headers:{'Content-Type':'application/json','X-MSB-Setup-Command':'1'},body:JSON.stringify(pending.payload)});pending=null;
+ $('status').textContent=action==='REQUEST'?'Pickup requested. Container remains at its park location.':'Pickup request cancelled.';await load();
+ }catch(e){$('status').textContent=e.message;}finally{busy=false;$('save').disabled=false;}}
+$('request').onsubmit=e=>{e.preventDefault();submit('REQUEST',containerId);};
+$('reload').onclick=()=>load().catch(e=>$('status').textContent=e.message);$('print').onclick=()=>window.print();
+load().catch(e=>$('status').textContent=e.message);
+</script></body></html>

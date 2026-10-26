@@ -29,3 +29,23 @@ def test_existing_scan_destination_exposes_explicit_location_action():
     assert '/fieldwiring/controllers?controller_id=' in scan
     assert "'/setup/record-location/?asset=CTRL:'" in client
     assert "locationAction.textContent='Record Location'" in client
+
+
+def test_container_pickup_command_guards(monkeypatch):
+    import setup_movement_api as api
+    from production_backend import app
+    calls=[]
+    monkeypatch.setattr(api,'require_movement_operator',lambda:(None,'crew@example.org',{}))
+    monkeypatch.setattr(api,'repo',lambda:SimpleNamespace(record_pickup=lambda **kw:(calls.append(kw) or 1)))
+    client=app.test_client()
+    payload=dict(season_year=2026,client_event_id='88000000-0000-4000-8000-000000001001',container_id=95,
+                 action='REQUEST',stage_id=15,location_note='Beside arches',empty_confirmed=True)
+    assert client.post('/api/setup/container-pickups',json=payload).status_code==403
+    headers={'X-MSB-Setup-Command':'1'}
+    assert client.post('/api/setup/container-pickups',headers=headers,json=payload|{'training':True}).status_code==403
+    assert not calls
+    assert client.post('/api/setup/container-pickups',headers=headers,json=payload).status_code==201
+    assert calls[0]['email']=='crew@example.org'
+    assert calls[0]['empty_confirmed'] is True
+    assert client.post('/api/setup/container-pickups',headers=headers,json=payload|{'action':'RETURNED'}).status_code==403
+    assert len(calls)==1
