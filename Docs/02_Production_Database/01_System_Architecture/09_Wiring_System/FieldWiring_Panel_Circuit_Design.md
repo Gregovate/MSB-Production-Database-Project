@@ -1,5 +1,12 @@
 # Panel circuit definition and field capture
 
+## Initial-load measurements — operator server report 20261026T005419Z
+
+The supplied report completed on preview 0e53d5c6. Loopback HTTP: controller access26.3ms; stages11.0ms; all controllers18.6ms; Racing scope15.4ms; controller details10.7/10.7/11.2ms (repeat14.3ms). Power snapshot1211.6/1213.0ms, 2,366,425 bytes. SQL list execution3.097ms for primary list; detail statements0.203/0.198/0.115ms; power snapshot1175.652ms. Thus controller list/detail SQL is not the observed 15-second delay, and the optimized snapshot is approximately1.2seconds on the clone. This report excludes laptop/tunnel transfer and browser rendering; it cannot assign the remaining delay to either.
+
+Next diagnostic is three read-only laptop GETs through the existing localhost8898 tunnel: one controller detail and two power snapshots. Separate response-header wait, body transfer and PowerShell JSON parsing, reporting bytes/status. Parsing is not browser rendering. No replay of SQL profiling, preview rebuild or Production mutation. Only after this evidence select the next correction; the 2.37MB snapshot is a confirmed avoidable payload concern, not yet a proven explanation of the full delay.
+
+
 ## Initial controller load — read-only diagnostic contract
 
 Operator reports first load 15 seconds, subsequent selections fast after observer correction. Initial-load acceptance remains FAIL. Before another UI candidate, run one bounded diagnostic against the existing reusable preview, using its recorded state file (not process-environment/credential discovery), exact candidate SHA, owned listener and named disposable container. Reuse the documented /opt/fieldwiring/.venv/bin/python runtime and container-local psql as msbadmin, then SET LOCAL ROLE fieldwiring_app inside BEGIN READ ONLY. No migrations, writes, new clone, service restart, Production connection or GPX/FLW access.

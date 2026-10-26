@@ -61,6 +61,8 @@ jobs:
         run: |
           $tokens = $null
           $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/measure_171_controller_transport.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
           [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_205_estimates_deploy.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
           if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
           [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_171_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null

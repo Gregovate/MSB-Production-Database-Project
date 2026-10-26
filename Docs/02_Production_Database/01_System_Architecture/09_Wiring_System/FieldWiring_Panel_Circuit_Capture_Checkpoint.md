@@ -1,5 +1,10 @@
 # FieldWiring panel circuit capture — implementation checkpoint
 
+## Server diagnostic received — initial-load isolation
+
+Report Controller_Initial_Load_Diagnostic_20261026T005419Z.json on preview0e53d5c6 PASS (diagnostic only). HTTP controller list/detail11–19ms; power1211.6/1213.0ms and2,366,425bytes. Snapshot SQL1175.652ms; primary controller list3.097ms; detail queries each below0.21ms. The 15-second field delay is not reproduced by loopback server timing. Remaining unmeasured boundary: laptop/tunnel transfer and browser work. Added `measure_171_controller_transport.ps1` for three read-only GETs through the existing localhost8898 tunnel, separating headers/body/PowerShell parsing. Do not close/restart preview or rerun migrations. Initial-load acceptance remains FAIL; no network/hardware blame inferred.
+
+
 ## Current field result and diagnostic handoff
 
 On observer-corrected preview 0e53d5c6, Greg reports first load 15 seconds, then fast selections. Warm selection improved; initial-load acceptance remains FAIL. No more browser retest requests before measured evidence. Added one read-only diagnostic using the existing preview's recorded state and exact SHA, documented server Python and container-local psql. It reports HTTP timing/size/status, repeated detail/snapshot requests, and read-only actual candidate list/detail/snapshot SQL plans. No Production connection or mutation; no preview rebuild, migrations or source imports. Guard/query-capture tests cover Production-target rejection, data-only state parsing, binding and read-only SQL construction. Operator runs from a second PowerShell window while the preview stays open; retrieve the JSON report for analysis.
