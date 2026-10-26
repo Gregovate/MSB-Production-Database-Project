@@ -74,11 +74,13 @@
   if(mode!=="panels") {
     const previous=savedPanelView();
     if(previous) {
-      const back=el("a","Back to panel",$("status").parentNode);
-      back.className="power-return power-navigation";
-      back.href="circuits?panel="+previous.panelId;
-      if(mode==="waypoints")$("status").after(back);
-      navigation.querySelector('a[href="circuits"]').href=back.href;
+      const href="circuits?panel="+previous.panelId;
+      navigation.querySelector('a[href="circuits"]').href=href;
+      if(mode==="waypoints") {
+        const back=el("a","Back to panel");
+        back.className="power-return power-navigation";back.href=href;
+        $("status").after(back);
+      }
     }
   }
   function el(tag, text, parent) {
