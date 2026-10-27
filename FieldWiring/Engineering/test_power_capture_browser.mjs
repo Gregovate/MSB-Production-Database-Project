@@ -1060,22 +1060,20 @@ try {
   await page.locator('#panels').getByRole('button',{name:'FE-00 eight-slot fixture',exact:true}).click();
   await page.getByRole('button',{name:'Position 2 · Add breaker',exact:true}).click();
   await save();
-  // Panel-local outlets use the existing panel marker and atomic command.
-  await page.getByRole('button',{name:'Add panel receptacle',exact:true}).click();
-  await dialog.locator('[name=device_name]').fill('Lower left');
-  const outletCircuit=await dialog.locator('[name=site_power_circuit_id] option').evaluateAll(options=>options.find(o=>o.value)?.value);
-  await dialog.locator('[name=site_power_circuit_id]').selectOption(outletCircuit);
+  // Designate the existing breaker; never add duplicate physical receptacles.
+  assert.equal(await page.getByRole('button',{name:'Add panel receptacle',exact:true}).count(),0);
+  await page.locator('.power-breaker').getByRole('button',{name:'Breaker settings',exact:true}).first().click();
+  await dialog.locator('[name=source_evidence]').fill('Bottom Panel Outlets');
+  await dialog.locator('[name=panel_outlets]').selectOption('true');
   await save();
-  assert.match(await page.locator('#panel-receptacles').innerText(),/Lower left.*Circuit 2/);
+  assert.match(await page.locator('#panel-detail').innerText(),/Circuit 2 — Outlets at panel/);
   await page.reload();
   await page.locator('#panels').getByRole('button',{name:'FE-00 eight-slot fixture',exact:true}).click();
-  await page.getByRole('button',{name:'Edit / remove Lower left',exact:true}).click();
-  await dialog.locator('[name=device_name]').fill('Upper left');
-  await save();
-  await page.getByRole('button',{name:'Edit / remove Upper left',exact:true}).click();
-  await dialog.locator('[name=remove_outlet]').check();await save();
-  assert.match(await page.locator('#panel-receptacles').innerText(),/No panel receptacles recorded/);
-  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_name='Upper left' AND NOT active AND site_panel_id IS NOT NULL AND site_waypoint_id IS NULL")).rows[0].n,1);
+  await page.locator('.power-breaker').getByRole('button',{name:'Breaker settings',exact:true}).first().click();
+  assert.equal(await dialog.locator('[name=panel_outlets]').inputValue(),'true');
+  assert.equal(await dialog.locator('[name=source_evidence]').inputValue(),'Bottom Panel Outlets');
+  await dialog.locator('[name=panel_outlets]').selectOption('false');await save();
+  assert.match(await page.locator('#panel-detail').innerText(),/Bottom Panel Outlets/);
   user = "volunteer@example.test";
   await page.reload();
   await page.getByText("Read only", { exact: false }).waitFor();

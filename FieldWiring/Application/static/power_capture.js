@@ -299,18 +299,6 @@
       const unresolved=el("details",undefined,box); unresolved.dataset.viewKey="unresolved";
       el("summary","Unresolved Display loads (all locations)",unresolved);
       (data.load_lineage || []).filter(x=>x.load_status!=="RECORDED_BASIS_UNVERIFIED").forEach(x=>el("p",`Display ${x.display_id} ${x.display_name} · Controller ${x.controller_id ?? "Unknown"} · ${x.load_status}`,unresolved));
-      const outlets = el("section", undefined, detail); outlets.id="panel-receptacles";
-      el("h3", "Receptacles at this panel", outlets);
-      el("p", "Each named receptacle shares this panel location. Record its actual supplying circuit; no separate waypoint is needed.", outlets);
-      button("Add panel receptacle", () => openPanelOutlet(selected), outlets, true);
-      const local = data.devices.filter(d => d.active && d.site_panel_id===panelId);
-      if (!local.length) el("p", "No panel receptacles recorded.", outlets);
-      for (const d of local) {
-        const feed=data.feeds.find(f=>f.active && f.destination_device_id===d.site_power_device_id);
-        const row=el("div", undefined, outlets);
-        el("span", `${d.device_name} · Circuit ${data.circuits.find(c=>c.site_power_circuit_id===feed?.source_circuit_id)?.circuit_code || "not recorded"} `, row);
-        button("Edit / remove "+d.device_name,()=>openPanelOutlet(selected,d,feed),row,true);
-      }
       const board = el("section", undefined, detail); board.className = "power-panelboard";
       el("h3", "Panel schedule", board);
       el("p", "Odd positions left, even positions right. Select a circuit to assign its supplied waypoints. Verify installed numbering.", board);
@@ -330,10 +318,7 @@
           .sort((a,b)=>a.breaker_pole-b.breaker_pole);
         circuits.forEach(c => {
           const names=[...new Set(paths(c.site_power_circuit_id).map(x=>x.waypoint?.name || "Unknown waypoint"))];
-          for (const f of data.feeds.filter(f=>f.active && f.source_circuit_id===c.site_power_circuit_id)) {
-            const d=data.devices.find(d=>d.active && d.site_power_device_id===f.destination_device_id && d.site_panel_id===panelId);
-            if(d) names.push("At panel: "+d.device_name);
-          }
+          if (b.panel_outlets) names.unshift("Outlets at panel");
           const leg=button(`Circuit ${c.circuit_code} — ${names.join(", ") || "Waypoints (optional)"}`,()=>openAssignments(c),row,true);
           if (c.description) el("p", c.description, row).className="power-circuit-notes";
           const load=(data.circuit_loads || []).find(x=>x.site_power_circuit_id===c.site_power_circuit_id);
@@ -1310,6 +1295,8 @@
     field(select("rated_amps","Breaker rating (A)",ratingOptions()),row.rated_amps);
     const poles=field(select("pole_count","Poles",options([1,2,3].map(x=>[x,String(x)])),true),row.pole_count || (role==="MAIN"?2:1));
     field(text("source_evidence","Breaker notes / correction reason (optional)"),row.source_evidence);
+    // Designation belongs to the existing breaker; notes and circuit IDs stay intact.
+    if (role!=="MAIN") field(select("panel_outlets","Supplies outlets at this panel",options([["false","No"],["true","Yes"]]),true),String(Boolean(row.panel_outlets)));
     const states=options(["UNKNOWN","ON","OFF"].map(v=>[v,v]));
     field(select("show_desired_state","Season ON / OFF",states,true),row.show_desired_state || "UNKNOWN");
     field(select("restoration_desired_state","Non-season ON / OFF",states,true),row.restoration_desired_state || "UNKNOWN");
@@ -1331,6 +1318,7 @@
       if(slots && slots.length!==count) throw new Error("Positions must match the number of circuit legs.");
       return {
         breaker:{site_panel_id:row.site_panel_id,breaker_role:role,
+          panel_outlets:role!=="MAIN" && form.elements.panel_outlets.value==="true",
           breaker_name:form.elements.breaker_name.value.trim() || (role==="MAIN"?"Main":slots?.join("/")),
           panel_positions:slots,pole_count:count,rated_amps:form.elements.rated_amps.value?Number(form.elements.rated_amps.value):null,
           source_evidence:form.elements.source_evidence.value.trim() || null,
@@ -1355,17 +1343,6 @@
         $("save-status").textContent = "";
       }, $("edit-fields"));
     }
-    $("editor").showModal();
-  }
-  function openPanelOutlet(parent, outlet={}, feed={}) {
-    pending=null; edit={kind:"panel_outlet", row:outlet};
-    $("edit-title").textContent=parent.panel_name+" — panel receptacle";
-    $("edit-fields").replaceChildren(); $("save-status").textContent=""; $("save").disabled=false;
-    field(text("device_name","Receptacle name / position",true),outlet.device_name || "");
-    field(select("site_power_circuit_id","Supplying circuit",options(data.circuits.filter(c=>c.active && c.site_panel_id===parent.site_panel_id).map(c=>[c.site_power_circuit_id,c.circuit_code])),true),feed.source_circuit_id);
-    const label=el("label","Remove this receptacle (retain history)",$("edit-fields"));
-    const remove=el("input",undefined,label); remove.type="checkbox"; remove.name="remove_outlet"; remove.disabled=!outlet.site_power_device_id;
-    edit.read=()=>({site_panel_id:parent.site_panel_id,device_name:$("edit-form").elements.device_name.value.trim(),site_power_circuit_id:Number($("edit-form").elements.site_power_circuit_id.value),active:!remove.checked});
     $("editor").showModal();
   }
   function openAssignments(c) {
@@ -1479,9 +1456,7 @@
     try {
     if (!pending) {
       let commands;
-      if (edit.kind === "panel_outlet") {
-        commands=[command("panel_outlet",edit.row.site_power_device_id,edit.read())];
-      } else if (edit.kind === "breaker_schedule") {
+      if (edit.kind === "breaker_schedule") {
         commands=[command("breaker_schedule",edit.row.site_power_breaker_id,edit.read())];
       } else if (edit.kind === "breaker_remove") {
         commands=[command("breaker_remove",edit.row.site_power_breaker_id,{})];

@@ -453,15 +453,23 @@ report directory. Do not rerun the completed release for documentation.
 
 [Authorized release and pinned identities](Setup_171_Breaker_Correction_Release.md): existing maintenance runner, incremental unassigned-breaker command/index migration, FieldWiring-only promotion. PR463 equipment work excluded; PR464 server deployment PASS, protected Production browser check pending.
 
-## October 27 panel supplies and local receptacles correction
+## October 27 panel supplies, breaker outlets and FLW map correction
 
-Candidate versions: Setup `V0.3.92-panel-supplies`, FieldWiring `V0.4.32-panel-receptacles`.
+Candidate versions: Setup `V0.3.93-map-details`, FieldWiring `V0.4.33-breaker-outlets`.
+The first PR470 preview ended CLEAN EXIT with changes required. The replacement
+uses the existing breaker: Breaker settings → Supplies outlets at this panel → Yes.
+Existing Bottom/Top Panel Outlets notes remain; there is no Add panel receptacle.
+
 Use the existing reusable browser runner on 8898, exact candidate SHA/ref,
 `-MigrationPaths @('Database/EngineeringTools/sql/171_panel_receptacles.sql')`
 and `-ValidationPaths @('Database/Acceptance/171_panel_receptacles_validation.sql')`.
-These are the only pending files after the completed PR463 deployment. Preserve
-current GIS imports and circuit assignments; do not replay PR463 migrations.
-Review 42-03S's supplying circuits and named receptacles at Panel42-00, including
-separate supplies, save/reload/edit/removal and no extra map waypoints. Retain
-CLEAN EXIT. Candidate testing does not constitute Production deployment or
-protected browser/physical Scan acceptance. See the owning panel circuit checkpoint.
+Apply this revised candidate only to a fresh current-Production clone; never layer
+it onto the old PR470 device-parent migration. PR463 migrations remain installed.
+Preserve current GIS imports and circuit assignments; no GPX/FLW reimport.
+
+Review 42-03S's power circuits and FLW networks/test pairs; Show details must open
+and scroll to plain-language details. At Panel42-00, retain Bottom Panel Outlets
+(1/3) and Top Panel Outlets (2/4), designate their existing breakers, save/reload,
+then clear a designation and confirm notes/circuits remain. No extra devices or
+waypoints. End with CLEAN EXIT and retain the report. Production deployment and
+live Scan acceptance remain separate gates.

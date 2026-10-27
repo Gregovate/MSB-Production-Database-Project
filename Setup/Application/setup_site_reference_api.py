@@ -46,11 +46,11 @@ def _permissions(cursor, email: str) -> dict:
 
 @site_reference_api.get("/api/setup/locate/references")
 def read_references() -> Response:
-    """One coherent revision of maintained PostGIS and LinkIQ *reviewed* facts."""
+    """Read maintained map references and resolved FLW test connections together."""
     _repo, email, access = require_reader()
     with closing(psycopg2.connect(setup_database_dsn())) as connection:
         with connection.cursor() as cursor:
-            cursor.execute("SELECT ref.site_reference_snapshot() || jsonb_build_object('panel_outlets', ref.site_panel_outlet_snapshot())")
+            cursor.execute("SELECT ref.site_reference_snapshot() || ref.site_map_power_details()")
             snapshot = cursor.fetchone()[0]
             permissions = _permissions(cursor, email)
     if not isinstance(snapshot, dict) or snapshot.get("data_mode") != "postgres":

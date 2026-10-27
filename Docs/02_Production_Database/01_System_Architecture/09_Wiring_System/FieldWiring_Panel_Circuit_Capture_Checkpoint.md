@@ -1,3 +1,13 @@
+## October 27 PR470 browser findings — revised candidate, Production unchanged
+
+Greg returned CLEAN EXIT for e25f3fd913bb5363e88f40b43cee3431d473eb58. Supplying circuits now appear, but the candidate is not accepted: map network names/tests were hidden, details were overly technical, existing 1/3 and 2/4 panel-outlet notes were replaced by unknown destinations, and the separate receptacle-creation workflow duplicated existing breakers.
+
+Revised design removes the uninstalled device/feed model entirely. One boolean designation on the existing branch breaker is saved through Breaker settings and the existing breaker_schedule command. Bottom/Top Panel Outlets notes, identities, circuit legs, observations and remote assignments remain. Map shows notes even before designation; does not infer the designation or create records. MAIN designation is rejected. Fresh disposable clone only; do not apply an earlier PR470 migration first.
+
+Networks already derive from FLW through site_network_availability. Correct the network lookup to site_network_id, deduplicate names, and expose existing resolved site_flw_cable_test rows without requiring physical cable binding. Map Show details opens/focuses/scrolls to concise power/network/test information and links to panel circuits/test history. No raw UUIDs, DB revision, hashes or source-review jargon in the normal waypoint view.
+
+Revised versions: FieldWiring V0.4.33-breaker-outlets; Setup V0.3.93-map-details. Local 906 Setup + 10 reference contracts and 232 FieldWiring checks PASS; actual map rendering/navigation and SQL auth/retry/rollback/preservation/FLW-only evidence regressions PASS. Exact CI/browser and fresh current-clone review pending. Prior CI/browser results below apply only to the rejected old candidate. Same PR470, same existing preview runner/8898, revised 171_panel_receptacles.sql and read-only validation; no completed Production migrations replayed. Live Scan acceptance remains deferred.
+
 ## October 27 post-install correction — candidate, not deployed
 
 Greg's field evidence shows Panel 42-00 circuits 8/10 supplying 42-03S while the destination map popup reports no circuits. Root cause: matchingCircuits used the default `id` key against circuit records keyed by `site_power_circuit_id`. Fix the lookup without rewriting existing assignments. Separately, named OUTLET devices can now belong directly to a panel with nullable `site_panel_id`, inheriting its location and retaining individual circuit feeds; no overlapping synthetic waypoints. Creation, rename, source reassignment and retirement use the existing authorized revision/idempotency/audit command. Guards protect all generic mutation paths as well.

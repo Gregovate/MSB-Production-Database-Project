@@ -48,8 +48,8 @@ def test_day_and_crew_identity_and_visible_actions():
 def test_version_and_asset_pins_change_together():
     html = source("production.html")
     assert "2026-10-21.87r3" in html
-    assert "V0.3.92-panel-supplies" in source("production_backend.py")
-    assert "V0.3.92-panel-supplies" in source("setup_catalog_dirty_guard.js")
+    assert "V0.3.93-map-details" in source("production_backend.py")
+    assert "V0.3.93-map-details" in source("setup_catalog_dirty_guard.js")
 
 
 def test_new_crew_move_preserves_captain_inside_one_guarded_transaction():
