@@ -42,6 +42,7 @@ jobs:
           Setup/Acceptance/test_setup_171_breaker_release.py
           Setup/Acceptance/test_setup_171_performance_release.py
           Setup/Acceptance/test_setup_171_correction_release.py
+          Setup/Acceptance/test_setup_470_release.py
           Setup/Acceptance/test_setup_463_release.py
           Setup/Acceptance/test_setup_463_transport.py
           Setup/Acceptance/test_diagnose_171_controller_preview.py
@@ -109,3 +110,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Transport test dependency install failed' }
           python -m pytest -q Setup/Acceptance/test_setup_463_transport.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows Scan archive byte regression failed' }
+
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_470_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          python Setup/Acceptance/setup_470_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb470-package')
+          if ($LASTEXITCODE -ne 0) { throw 'PR470 committed transport failed' }

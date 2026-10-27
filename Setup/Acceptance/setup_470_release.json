@@ -1,0 +1,17 @@
+{
+  "profile": "site-470-map",
+  "release_tag": "PR470-Park-Map",
+  "candidate": "b463f10d852d30b24aacf8e9657622ef93ed08de",
+  "target": "b463f10d852d30b24aacf8e9657622ef93ed08de",
+  "tree": "6d2cc26bd21bee61a3d6e4b52e78fdedd7770468",
+  "shared": "820b154cd664f0cac0d1d8dfd38e47b4fe19df9c",
+  "old_setup": "820b154cd664f0cac0d1d8dfd38e47b4fe19df9c",
+  "blobs": {
+    "Database/EngineeringTools/sql/171_panel_receptacles.sql": "1ca418652538a8f44ee5d51e1e366c3d21607eb1",
+    "Database/Acceptance/171_panel_receptacles_validation.sql": "fbab425bd076f8de805ae6834dd53fdf5dabbce0"
+  },
+  "helpers": {
+    "setup_470_release.py": "8b3d2a2b77a7186a01576eb2354c88bfc5ebee65fc3ebf605ba8a018c5ecbc0a",
+    "setup_maintenance_deploy.py": "4a2e34064ce1eced57e277b368048810fd8c122034749792ac121e1367c970ab"
+  }
+}
