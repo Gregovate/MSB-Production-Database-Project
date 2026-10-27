@@ -396,3 +396,22 @@ Normal users are told only:
 No user-facing instruction should tell programmers to run the installer, open PowerShell, select a preview-version folder, inspect LOR2DB reports, edit XML, or use Git.
 
 The updater continues to resolve the controlled master through the latest accepted COMPLETED LOR2DB report; moving support files into the support subfolder must not hard-code a versioned master path.
+
+
+### Migration safety
+
+The production shared-folder layout above is a **deployment target**, not a manual file-move instruction for an existing test installation.
+
+Do **not** manually move the current runtime files into `MSB Preview Sync Support\`. Existing checkpoints derive runtime paths from the script/launcher location, so moving individual files can break report discovery, logging, icon loading, deployment identity, or the shortcut target.
+
+The production release must include a committed migration/deployment installer that:
+
+1. builds the support subfolder;
+2. installs the exact committed runtime files into it;
+3. preserves existing `LOR2DB_Reports`, logs and deployment backups;
+4. creates/recreates the root tree/star shortcut with the correct target;
+5. verifies all deployed file hashes and deployment identity;
+6. verifies the updater can still resolve the latest COMPLETED LOR2DB report;
+7. removes only explicitly superseded root files after successful verification.
+
+Until that installer is accepted, leave the current shared folder contents in place.
