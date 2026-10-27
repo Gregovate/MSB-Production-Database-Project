@@ -77,6 +77,7 @@ jobs:
           node FieldWiring/Engineering/test_power_snapshot_performance.mjs
           node FieldWiring/Engineering/test_equipment_lifecycle.mjs
           node FieldWiring/Engineering/test_equipment_catalog.mjs
+          node FieldWiring/Engineering/test_panel_receptacles.mjs
           node FieldWiring/Engineering/test_cable_history.mjs
           node FieldWiring/Engineering/test_controller_location.mjs
           node FieldWiring/Engineering/test_container_pickups.mjs

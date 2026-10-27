@@ -58,7 +58,15 @@
   const lookupLabel = id => byId(current?.waypoints, id)?.label || 'Unknown waypoint #' + id;
   const matchingCircuits = id => (current?.destinations || [])
     .filter(d => Number(d.site_waypoint_id) === Number(id))
-    .map(d => byId(current.circuits, d.site_power_circuit_id)).filter(Boolean);
+    .map(d => byId(current.circuits, d.site_power_circuit_id, 'site_power_circuit_id')).filter(Boolean);
+  // Local receptacles are explicit panel-owned devices, never synthetic waypoints.
+  const localOutlets = c => (current?.panel_outlets || []).filter(o =>
+    Number(o.site_power_circuit_id) === Number(c.site_power_circuit_id));
+  const destinationLabels = c => [
+    ...current.destinations.filter(d => Number(d.site_power_circuit_id) === Number(c.site_power_circuit_id))
+      .map(d => lookupLabel(d.site_waypoint_id)),
+    ...localOutlets(c).map(o => 'At panel: ' + o.device_name)
+  ];
   const inspectedCables = id => (current?.cables || []).filter(c =>
     Number(c.endpoint_a) === Number(id) || Number(c.endpoint_b) === Number(id));
   const networkNames = id => (current?.memberships || [])
@@ -154,9 +162,9 @@
       line(display, 'Breaker / circuit numbers: ' + (own.length ? own.map(c => c.circuit_code +
         ' (' + c.owner_code + ')').join(', ') : 'Not recorded / unreviewed'));
       for (const c of own) {
-        const destinations = current.destinations.filter(d => Number(d.site_power_circuit_id) === Number(c.site_power_circuit_id));
+        const destinations = destinationLabels(c);
         line(display, c.circuit_code + ' supplies ' + (destinations.length ?
-          destinations.map(d => lookupLabel(d.site_waypoint_id)).join(', ') : 'unknown destinations'));
+          destinations.join(', ') : 'unknown destinations'));
         for (const i of current.instructions.filter(i => Number(i.site_power_circuit_id) === Number(c.site_power_circuit_id))) {
           line(display, i.season_year + ' planned ON: ' + textValue(i.turn_on_instruction)
             + '; planned OFF: ' + textValue(i.turn_off_instruction) + ' (not observed state)');
@@ -205,11 +213,11 @@
     line(body,'Recorded sources may be incomplete. Planned OFF does not prove absence of voltage. Open FieldWiring for upstream isolation and dated field/utility evidence.');
 
     if (ownCircuits.length) for (const c of ownCircuits) {
-      const dests = current.destinations.filter(d => Number(d.site_power_circuit_id) === Number(c.site_power_circuit_id));
+      const dests = destinationLabels(c);
       line(body, 'Circuit ' + c.circuit_code + (c.circuit_label ? ' (' + c.circuit_label + ')' : '')
         + ' · owner ' + c.owner_code + ' · breaker '
         + textValue(c.breaker_rating_amps) + ' A → '
-        + (dests.length ? dests.map(d => lookupLabel(d.site_waypoint_id)).join(', ') : 'Destinations unreviewed'));
+        + (dests.length ? dests.join(', ') : 'Destinations unreviewed'));
       for (const i of current.instructions.filter(i => Number(i.site_power_circuit_id) === Number(c.site_power_circuit_id))) {
         line(body, i.season_year + ' planned ON: ' + textValue(i.turn_on_instruction)
           + ' | planned OFF: ' + textValue(i.turn_off_instruction) + ' (not observed state)');

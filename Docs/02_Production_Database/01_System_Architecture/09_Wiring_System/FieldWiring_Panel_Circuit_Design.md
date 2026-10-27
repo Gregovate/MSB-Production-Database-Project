@@ -1,3 +1,13 @@
+## October 27 field correction — map supplies and at-panel receptacles
+
+Greg reports the deployed map hides known 42-03S circuit8/10 assignments while the panel schedule displays them. Correct the consumer lookup to the snapshot's `site_power_circuit_id`; no inferred or recreated electrical assignments. Test actual rendering with the SQL payload shape.
+
+A physical receptacle at a panel uses an existing OUTLET device identity with explicit parent `site_panel_id`, no individual waypoint. Its one recorded circuit feed must belong to that panel. Multiple independently supplied receptacles (including the reported1–6) share the panel's existing map location. Preserve unidentified destinations as unknown; no NULL-waypoint inference, fake GPX points, inferred outlet inventory, or conversion of current records. Keep panel-local devices distinct from remotely located OUTLET devices. Parent-panel location changes propagate by reference.
+
+Use a bounded incremental migration adding the nullable parent field, relational guards, and one atomic `panel_outlet` command in the existing power authorization/revision/idempotency/audit boundary. Add/edit/retire the named receptacle and its circuit feed together; retain identities and retired feed history. Reject competing feeds, wrong-panel circuits, inactive parents, and geographic waypoint assignment on a panel-local outlet. Generic equipment moves/feeds must not bypass these guards. Map snapshot exposes named local outlets separately from remote destinations; do not represent local outlets as incoming supply to their own panel.
+
+Panel schedule offers Add panel receptacle and Edit/remove for each named outlet. Map panel popup/detail shows the same outlet names/circuits. No additional map markers. No change to Controller network or actual plug-in assignments. Existing panel/breaker/waypoint data, audit, GPX/FLW and additional-equipment inventory remain preserved. Regression covers separate breakers at one panel,1–6 outlets, two-pole remote assignments, missing destinations, authorization, stale/conflicting retries, rollback, retirement, and map rendering. Current-Production disposable and operator review precede Production deployment.
+
 # Panel circuit definition and field capture
 
 ## October 26 urgent controller location extension — #88/#171 under #122

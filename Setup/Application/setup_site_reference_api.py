@@ -50,7 +50,7 @@ def read_references() -> Response:
     _repo, email, access = require_reader()
     with closing(psycopg2.connect(setup_database_dsn())) as connection:
         with connection.cursor() as cursor:
-            cursor.execute("SELECT ref.site_reference_snapshot()")
+            cursor.execute("SELECT ref.site_reference_snapshot() || jsonb_build_object('panel_outlets', ref.site_panel_outlet_snapshot())")
             snapshot = cursor.fetchone()[0]
             permissions = _permissions(cursor, email)
     if not isinstance(snapshot, dict) or snapshot.get("data_mode") != "postgres":

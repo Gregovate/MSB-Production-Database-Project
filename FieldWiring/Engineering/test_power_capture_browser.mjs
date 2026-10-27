@@ -20,7 +20,7 @@ const app = path.resolve(
 );
 async function openEngineering(){const detail=page.locator('#waypoint-engineering');if(await detail.count()&&await detail.isVisible()&&await detail.getAttribute('open')===null)await detail.locator(':scope > summary').click();}
 const db = await createFixtureDatabase();
-for(const migration of ['171_power_snapshot_performance.sql','171_equipment_lifecycle.sql','171_equipment_catalog.sql'])await db.exec(await readFile(path.join(app,'../../Database/EngineeringTools/sql',migration),'utf8'));
+for(const migration of ['171_power_snapshot_performance.sql','171_equipment_lifecycle.sql','171_equipment_catalog.sql','171_panel_receptacles.sql'])await db.exec(await readFile(path.join(app,'../../Database/EngineeringTools/sql',migration),'utf8'));
 let user = "crew@example.test",
   failNext = false;
 const server = createServer(async (req, res) => {
@@ -1060,6 +1060,22 @@ try {
   await page.locator('#panels').getByRole('button',{name:'FE-00 eight-slot fixture',exact:true}).click();
   await page.getByRole('button',{name:'Position 2 · Add breaker',exact:true}).click();
   await save();
+  // Panel-local outlets use the existing panel marker and atomic command.
+  await page.getByRole('button',{name:'Add panel receptacle',exact:true}).click();
+  await dialog.locator('[name=device_name]').fill('Lower left');
+  const outletCircuit=await dialog.locator('[name=site_power_circuit_id] option').evaluateAll(options=>options.find(o=>o.value)?.value);
+  await dialog.locator('[name=site_power_circuit_id]').selectOption(outletCircuit);
+  await save();
+  assert.match(await page.locator('#panel-receptacles').innerText(),/Lower left.*Circuit 2/);
+  await page.reload();
+  await page.locator('#panels').getByRole('button',{name:'FE-00 eight-slot fixture',exact:true}).click();
+  await page.getByRole('button',{name:'Edit / remove Lower left',exact:true}).click();
+  await dialog.locator('[name=device_name]').fill('Upper left');
+  await save();
+  await page.getByRole('button',{name:'Edit / remove Upper left',exact:true}).click();
+  await dialog.locator('[name=remove_outlet]').check();await save();
+  assert.match(await page.locator('#panel-receptacles').innerText(),/No panel receptacles recorded/);
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_device WHERE device_name='Upper left' AND NOT active AND site_panel_id IS NOT NULL AND site_waypoint_id IS NULL")).rows[0].n,1);
   user = "volunteer@example.test";
   await page.reload();
   await page.getByText("Read only", { exact: false }).waitFor();
