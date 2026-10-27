@@ -11,7 +11,7 @@ for file in /opt/lor-preflight/backend.py /opt/lor-preflight/publish_lor_reconci
 done
 # The accepted runtime uses this mount for NAS static files, not a new route.
 findmnt --target /mnt/msb-web -no TARGET,FSTYPE
-sudo docker exec -i msb-postgres psql -X -U postgres -d msb -v ON_ERROR_STOP=1 <<'SQL'
+sudo docker exec -i msb-postgres psql -X -U msbadmin -d msb -v ON_ERROR_STOP=1 <<'SQL'
 BEGIN READ ONLY;
 SELECT current_database(),
        has_function_privilege('lor_preflight_app',

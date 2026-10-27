@@ -60,12 +60,12 @@ be mistaken for backend authorization. Do not alter live policy in this step.
    fingerprints before/after. Preserve the deployed publisher rather than
    replacing it from an older checkout. Restart only lor-preflight-api.service
    according to the reconciled source-update procedure.
-5. Require health V0.6.5, 401 without identity, and current-source accepted
+5. Require health V0.6.6, 401 without identity, and current-source accepted
    evidence from a trusted proxy-authenticated request. Verify a crew login can
    read source and cannot invoke administrator operations. No ingest or Finish
    operation is used as an acceptance test.
 6. Back up NAS `/mnt/msb-web/my/lor2db/index.html` and any existing `pc/` files.
-   Publish only the committed landing index plus `pc/index.html` and `handoff.js`;
+   Publish only the committed landing index and `lor2db.js` plus `pc/index.html` and `handoff.js`;
    exclude tests. Existing preflight API proxy already covers current-source;
    no new backend listener or firewall opening is intended. Require mount and
    destination identity before writes; do not populate an unmounted directory.

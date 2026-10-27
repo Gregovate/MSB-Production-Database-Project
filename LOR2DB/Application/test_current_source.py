@@ -100,6 +100,21 @@ class CurrentSourceTests(unittest.TestCase):
                 backend.operator_email()
             self.assertEqual(rejected.exception.status, 403)
 
+    def test_shared_dashboard_does_not_grant_parser_or_ingest(self):
+        import backend
+        app = backend.app.test_client()
+        headers = {'Cf-Access-Authenticated-User-Email': 'viewer@example.org'}
+        with patch.dict(os.environ, {'LOR_PREFLIGHT_OPERATORS': 'admin@example.org'}), patch.object(backend, 'database'), patch.object(backend, 'load_dashboard', return_value={'workflow': {}}):
+            self.assertEqual(app.get('/dashboard').status_code, 401)
+            response = app.get('/dashboard', headers=headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertFalse(response.json['access']['can_run_parser'])
+            self.assertFalse(response.json['access']['can_operate_lor'])
+            self.assertIn('no-store', response.headers['Cache-Control'])
+            for path in ['/parser/run', '/ingest/start', '/parser/approve', '/runs/start']:
+                with self.subTest(path=path):
+                    self.assertEqual(app.post(path, headers=headers, json={}).status_code, 403)
+
 
 if __name__ == '__main__':
     unittest.main()

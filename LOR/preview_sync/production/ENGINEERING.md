@@ -144,3 +144,19 @@ The new PC HTML entry was previously present locally but excluded by the global
 `*.html` ignore rule. Candidate 1.0.2 explicitly tracks this entry and adds a
 narrow ignore exception. No deployment had occurred from the incomplete prior
 candidate. Browser test checks now require the entry and both referenced assets.
+
+
+## Shared landing-page visibility
+
+Greg clarified from the live landing screenshot that parser execution is the
+restricted feature; displayed status, source details and reports are shareable.
+GET /dashboard now accepts any identity authenticated by the existing protected
+Access proxy. The response marks parser/operator capabilities from the existing
+operator allowlist; unauthenticated requests return 401. Viewer rendering hides
+the parser launch and start-mutation button. Backend parser/ingest/approval/start
+routes continue to enforce the existing operator allowlist independently.
+The version information/link and completed-report link remain visible.
+LOR2PC still requires the established active Production Crew role/policy.
+Public/anonymous access has not been introduced. Live Cloudflare policy inspection
+and changes remain separate from source implementation. Backend V0.6.6; landing
+JS V0.6.3/cache key updated. No underlying preview-engine change from 1.0.2.

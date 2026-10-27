@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-10-27  V0.6.5
+Current Version : 2026-10-27  V0.6.6
 Author          : GAL / OpenAI
 
 Purpose:
@@ -84,7 +84,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.6.5"
+APP_VERSION = "V0.6.6"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 STAGE_AUTHORITY_ACTIONS = {
     "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",
@@ -151,6 +151,14 @@ def runner_request(path: str, payload: dict[str, Any] | None = None,
     if not isinstance(result, dict):
         raise ApiError("LOR runner returned an invalid response", 502)
     return result
+
+
+def signed_in_email() -> str:
+    """Read-only viewers share the existing trusted Access proxy boundary."""
+    email = request.headers.get("Cf-Access-Authenticated-User-Email", "").strip().lower()
+    if not email or "@" not in email:
+        raise ApiError("Authenticated MSB login required", 401)
+    return email
 
 
 def operator_email() -> str:
@@ -357,7 +365,7 @@ def dashboard_state(snapshot: dict[str, Any] | None,
     }
 
 
-def load_dashboard(conn: Any) -> dict[str, Any]:
+def load_dashboard(conn: Any, viewer: str | None = None) -> dict[str, Any]:
     """Load the current snapshot and its authoritative reconciliation owner."""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
@@ -417,7 +425,7 @@ def load_dashboard(conn: Any) -> dict[str, Any]:
         "latest_run": snapshot_run,
         "workflow": state,
         "reports_url": "reports/",
-        "operator": operator_email(),
+        "operator": viewer if viewer is not None else operator_email(),
         "parser_ingest_mode": "WEBSITE_RUNNER" if runner_state else "MANUAL",
         "parser_runner": runner_state,
         "parser_runner_error": runner_error,
@@ -549,9 +557,14 @@ def get_run(run_id: int) -> Response:
 
 @app.get("/dashboard")
 def get_dashboard() -> Response:
-    operator_email()
+    email = signed_in_email()
+    allowed = {item.strip().lower() for item in required_setting("LOR_PREFLIGHT_OPERATORS").split(",") if item.strip()}
     with database() as conn:
-        return jsonify(load_dashboard(conn))
+        document = load_dashboard(conn, viewer=email)
+    document["access"] = {"can_run_parser": email in allowed, "can_operate_lor": email in allowed}
+    response = jsonify(document)
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
 
 
 @app.post("/parser/candidate")

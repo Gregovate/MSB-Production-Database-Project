@@ -573,7 +573,7 @@ class BackendSafetyTests(unittest.TestCase):
             parser_page,
         )
         self.assertIn(
-            'lor2db.js?v=0.6.2',
+            'lor2db.js?v=0.6.3',
             landing_page,
         )
         self.assertIn("Start reconciliation", parser_source)
