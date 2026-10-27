@@ -629,7 +629,70 @@ The exact 2025-to-2026 folder/version transition inside `C:\LOR` must be based o
 
 ---
 
-## 11. Remaining Setup Steps
+## 11. Migrate Show Sequences and Required Audio
+
+The new Show PC must not inherit the entire historical LOR media library merely because older sequence folders exist.
+
+### Fixed runtime paths
+
+The production runtime remains under:
+
+```text
+C:\LOR
+```
+
+Current LOR folders include:
+
+```text
+C:\LOR\Audio
+C:\LOR\Sequences
+```
+
+The 2025 sequence source is the Google Shared Drive backup tree under:
+
+```text
+G:\Shared drives\Seasonal Files\2025\LOR\Sequences
+```
+
+The 2025 sequence folders have been copied to the new PC as the starting point for the 2026 show build.
+
+### Do not carry historical audio forward blindly
+
+Older sequence folders include material from many prior years. A sequence from a prior year may not be directly reusable in the current show even when it uses the same audio track.
+
+For the new PC:
+
+1. Treat the selected 2025 production sequences as the authoritative starting set.
+2. Determine which audio/media files those sequences actually reference.
+3. Produce a reviewable manifest before copying media.
+4. Copy only the required audio/media files into `C:\LOR\Audio`.
+5. Preserve the exact filenames expected by the LOR sequence files.
+6. Verify every selected sequence opens and resolves its media while the PC is offline.
+7. Build the 2026 show from the verified local 2025 baseline.
+
+### Existing catalog project
+
+An existing repository was located:
+
+```text
+Gregovate/MSB-Music-Sequence-Catalog
+```
+
+Its stated scope is to catalog songs, audio files, sequences, purchased RGB+ content, and show-playlist history.
+
+As of this appliance migration, the repository is still largely a scaffold:
+
+- the README defines the intended catalog;
+- the data-model and ingestion-plan documents are empty placeholders;
+- the audio/RGB+/LSS import scripts are placeholders and are not production tools.
+
+Do not assume the existing catalog repository can currently perform the migration.
+
+The immediate engineering task is to add a read-only sequence/media inventory workflow that can identify the media dependencies of the selected 2025 sequence set and generate a copy manifest without modifying source files.
+
+---
+
+## 12. Remaining Setup Steps
 
 The following items still need to be performed and verified on the new Show PC before they become part of the confirmed procedure:
 
