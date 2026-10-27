@@ -1,4 +1,4 @@
-# MSB LOR Preview Sync - Production Candidate v1.0.1
+# MSB LOR Preview Sync - Production Candidate v1.0.2
 # Programmer-facing MASTER -> LOCAL synchronization tool.
 #
 # Normal operators launch this through:
@@ -314,7 +314,7 @@ if (Test-Path -LiteralPath $AppIconPath -PathType Leaf) {
 
 $LogFolder = Join-Path $Root 'logs'
 $DeploymentPath = Join-Path $Root 'DEPLOYMENT.json'
-$ApplicationVersion = '1.0.1'
+$ApplicationVersion = '1.0.2'
 $CandidateXml = Join-Path $localParent 'LORPreviews.MSB_SYNC_CANDIDATE.xml'
 $CandidateCsv = Join-Path $localParent 'LORPreviews.MSB_SYNC_REPORT.csv'
 
@@ -358,6 +358,10 @@ function Show-Message {
     }
 }
 
+function Invoke-SyncEvents {
+    [Windows.Forms.Application]::DoEvents()
+}
+
 function Receive-BrowserSource {
     $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0)
     $listener.Start()
@@ -368,7 +372,7 @@ function Receive-BrowserSource {
     try {
         Start-Process ($origin + '/lor2db/pc/#port=' + $port + '&nonce=' + $nonce)
         while ([DateTime]::UtcNow -lt $deadline) {
-            [Windows.Forms.Application]::DoEvents()
+            Invoke-SyncEvents
             if (-not $listener.Pending()) { Start-Sleep -Milliseconds 100; continue }
             $client = $listener.AcceptTcpClient()
             try {
@@ -1399,7 +1403,7 @@ try {
         exit 0
     }
 
-    if ($AuditOnly) {
+    if ($AuditOnly -or -not $prepared.Deployment.apply_enabled) {
         $null = Write-SharedLog -Report $accepted -Build $build -Result 'AUDIT_ONLY' `
             -SourceStateHash $prepared.SourceStateHash -OriginalHash $prepared.OriginalHash `
             -CandidateHash $prepared.CandidateHash

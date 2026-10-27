@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-10-27  V0.6.4
+Current Version : 2026-10-27  V0.6.5
 Author          : GAL / OpenAI
 
 Purpose:
@@ -84,7 +84,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.6.4"
+APP_VERSION = "V0.6.5"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 STAGE_AUTHORITY_ACTIONS = {
     "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",

@@ -71,7 +71,7 @@ def load_current_source(conn, cursor_factory):
             FROM (SELECT * FROM ops.lor_reconciliation_run
                   WHERE status = 'COMPLETED'
                   ORDER BY completed_at DESC, lor_reconciliation_run_id DESC LIMIT 1) r
-            LEFT JOIN ops.v_lor_reconciliation_source_run sr
+            LEFT JOIN ops.lor_reconciliation_source_run sr
               ON sr.lor_reconciliation_run_id = r.lor_reconciliation_run_id
         ''')
         row = cur.fetchone()

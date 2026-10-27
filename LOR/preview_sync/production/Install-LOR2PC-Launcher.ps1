@@ -8,7 +8,7 @@ try {
     $metadata = Join-Path $PSScriptRoot 'DEPLOYMENT.json'
     if (-not (Test-Path $metadata)) { throw 'Missing committed-release deployment identity. Administrator preparation is required.' }
     $release = Get-Content $metadata -Raw | ConvertFrom-Json
-    if ($release.version -ne '1.0.1' -or $release.source_commit -notmatch '^[a-f0-9]{40}$' -or
+    if ($release.version -ne '1.0.2' -or $release.source_commit -notmatch '^[a-f0-9]{40}$' -or
         $release.files.'Update_MSB_Previews.ps1' -ine (Get-FileHash $source -Algorithm SHA256).Hash) { throw 'Updater release identity/hash mismatch.' }
     $destination = Join-Path $env:LOCALAPPDATA ('MSB\LOR2PC\' + $release.source_commit)
     New-Item -ItemType Directory -Path $destination -Force | Out-Null
@@ -23,7 +23,7 @@ try {
     New-ItemProperty -Path $protocol -Name 'URL Protocol' -Value '' -Force | Out-Null
     $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
     # Fixed executable/script only: protocol URI input is deliberately ignored.
-    Set-Item -Path ($protocol + '\shell\open\command') -Value ('"' + $powershell + '" -NoLogo -NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File "' + $installed + '"')
+    Set-Item -Path ($protocol + '\shell\open\command') -Value ('"' + $powershell + '" -NoLogo -NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File "' + $installed + '" -AuditOnly')
     Add-Type -AssemblyName System.Windows.Forms
     [void][Windows.Forms.MessageBox]::Show('MSB PC Preview Updater launcher installed. No previews were changed.', 'MSB LOR2PC')
 } catch {

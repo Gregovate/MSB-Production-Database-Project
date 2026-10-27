@@ -539,11 +539,11 @@ If either layer is read-only, the Linux mount may succeed but report publication
 
 ## #81 current-source / #299 LOR2PC candidate — 2026-10-27
 
-Backend V0.6.4 adds read-only `GET /current-source` under the existing protected
+Backend V0.6.5 adds read-only `GET /current-source` under the existing protected
 `/lor2db/preflight/api/` prefix. Latest clean COMPLETED frozen evidence, not a
 historical CSV, supplies source authority. The Production Crew role/policy check
-uses the existing `ref.setup_browser_capabilities(text)` resolver; installed
-backend EXECUTE privilege must be inspected before deployment. Administrator
+uses the existing `ref.setup_browser_capabilities(text)` resolver; migration 0043 supplies the narrow
+backend EXECUTE privilege under the approved database maintenance boundary. Administrator
 operator routes retain their existing allowlist. No live policy changes occurred.
 
 `landing/pc/` is the separate crew browser surface and authenticated handoff.

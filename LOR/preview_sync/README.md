@@ -16,7 +16,7 @@ Do not treat files manually overwritten in that shared folder as authoritative e
 
 ## Active development — 2026-10-27
 
-Candidate 1.0.1 text source and the current engineering/acceptance boundary are
+Candidate 1.0.2 text source and the current engineering/acceptance boundary are
 in [production/ENGINEERING.md](production/ENGINEERING.md). This supersedes the
 historical CSV/report authority described below. #81 owns the read-only current
 source contract; #299 owns browser handoff and PC merge. Production Crew is the

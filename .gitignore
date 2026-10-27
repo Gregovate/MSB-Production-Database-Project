@@ -110,3 +110,6 @@ Thumbs.db
 
 # FieldWiring engineering snapshots
 fieldwiring_snapshot*.db
+
+# Controlled LOR2PC browser entry (other generated HTML stays ignored).
+!LOR2DB/Application/landing/pc/index.html

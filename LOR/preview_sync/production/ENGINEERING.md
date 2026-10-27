@@ -1,7 +1,7 @@
 # LOR2PC candidate engineering
 
-Filename: ENGINEERING.md · Revision 1 · 2026-10-27 · #299 / draft PR #300
-Status: DEVELOPMENT CANDIDATE 1.0.1 — NOT DEPLOYED OR PRODUCTION ACCEPTED
+Filename: ENGINEERING.md · Revision 2 · 2026-10-27 · #299 / draft PR #300
+Status: DEVELOPMENT CANDIDATE 1.0.2 — NOT DEPLOYED OR PRODUCTION ACCEPTED
 
 ## Repository reconciliation
 
@@ -29,9 +29,11 @@ publication, inventory or exact version-folder evidence BLOCKS; it never falls
 back to an older completed run with more convenient evidence. REPORTING,
 CANCELLED and COMPLETED_WITH_EXCEPTIONS are not accepted sources.
 The source digest and SQLite digest are already frozen by migration 0031.
-No schema migration is introduced. A read-only function permission may be needed
-for the installed backend database role; inspect it before deployment, never
-substitute broad Directus-table grants.
+No schema is changed. Migration 0043 grants the existing backend role EXECUTE
+on the shared read-only capability resolver. This is DATABASE-CHANGING permission
+work requiring the approved maintenance/snapshot boundary. Do not substitute
+broad Directus-table grants. Current-source queries the already-granted frozen
+source table rather than requiring an additional view grant.
 
 #299 consumes the contract, matches PreviewID/name/revision inventory and the
 whole-folder parser digest, and merges only controlled identities. Revision is
@@ -68,8 +70,8 @@ a fresh browser handoff to check that accepted evidence is still current.
 Windows browser Local Network Access/private-network permission, custom-protocol
 confirmation, proxy route behavior and authentication redirects REQUIRE real PC
 acceptance. Do not disable browser protections to make the handoff work.
-The updater blocks if authentication or handoff fails. Native TCP/HTTP handling
-has not yet had real-browser integration acceptance. Keep release blocked.
+The updater blocks if authentication or handoff fails. Native TCP/HTTP transport now passes an actual loopback socket test (Linux
+PowerShell); real Windows browser integration remains unaccepted. Keep release blocked.
 
 ## Source-only preparation and installation boundary
 
@@ -91,7 +93,7 @@ remains authoritative; rollout/rollback integration is still required before rel
   identity mismatch, post-run edit, clean add, preservation, stale local/candidate,
   exact backup, repeat no-op, revision-only, replacement and conflict rejection.
 - Node browser-logic checks: PASS; mocked fetch/DOM, no browser or actual listener.
-- Windows PowerShell 5.1, installer/registry, loopback handoff, copied real inputs,
+- Installer/registry, actual Windows browser handoff, copied real inputs,
   UI responsiveness, LOR reopen and live PC acceptance: NOT RUN.
 
 ## First Show PC step — disposable engine only
@@ -111,3 +113,34 @@ verify accepted source (currently expected 34), first clean Show PC ADD 34 /
 REPLACE 0, preserve default/store previews, approve apply, retain backup/audit,
 reopen LOR and verify usability, close it and require ADD 0 / REPLACE 0.
 Do not mark #300 ready or #299 closed before that evidence exists.
+
+
+## Continuation — candidate 1.0.2
+
+Show PC operator-reported Windows disposable result at candidate 717cfc4e: all
+15 checks PASS. Evidence:
+`C:\Users\Light-O-Rama\AppData\Local\Temp\msb299-ee4c33b1c12c4263aace4dca81fe890b`.
+The test launcher targets Windows PowerShell 5.1; no explicit version printout
+was provided. This is engine acceptance, not browser or live-library acceptance.
+
+Candidate 1.0.2 separates the UI event pump from the transport so actual socket
+requests can be tested without launching the whole application. The test rejects
+wrong origins/nonces/methods, duplicate headers and chunked bodies, tests OPTIONS,
+accepts the valid request and proves the listener closes. Test uses the actual
+TCP function, with browser opening/UI pumping substituted; no real browser/login.
+
+Installer protocol now always uses `-AuditOnly`. Prepared metadata independently
+sets `apply_enabled=false`; either guard forces comparison-only execution.
+Live install remains blocked until a separate explicitly approved candidate.
+The backend release identity is V0.6.5. See
+[deployment and rollback preparation](deployment/DEPLOYMENT_AND_ROLLBACK.md).
+Read-only prerequisite runner:
+`deployment/Inspect LOR2PC Production - Read Only.vbs` invokes its neighboring
+PowerShell/SSH wrapper without uploading a remote file. It does not change live
+source, permissions, services, preview content or access policy. It requires the
+usual SSH/sudo credentials interactively, never stores or prints them.
+
+The new PC HTML entry was previously present locally but excluded by the global
+`*.html` ignore rule. Candidate 1.0.2 explicitly tracks this entry and adds a
+narrow ignore exception. No deployment had occurred from the incomplete prior
+candidate. Browser test checks now require the entry and both referenced assets.
