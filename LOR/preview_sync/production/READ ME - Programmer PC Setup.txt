@@ -11,10 +11,12 @@ checks previews but cannot install preview changes. It is not the general releas
    Installation does not need the G: drive.
 4. Extract all files to a folder on this PC.
 5. Double-click "Setup MSB PC Preview Updater.vbs" in the extracted folder.
-6. Require the message "MSB PC Preview Updater launcher installed. No previews
-   were changed." If blocked or another error appears, contact the administrator.
-7. Open https://my.sheboyganlights.org/lor2db/ in your browser.
-8. Click "Update this PC's MSB Previews", then "Open PC Preview Updater".
+6. Require the message "MSB PC Preview Updater installed. A shortcut is on your
+   Desktop. No previews were changed." If blocked or another error appears, contact the administrator.
+7. Double-click "MSB PC Preview Updater" on your Desktop, or open
+   https://my.sheboyganlights.org/lor2db/ to launch it from the website.
+8. If using the website, click "Update this PC's MSB Previews", then
+   "Open PC Preview Updater". Both entry points run the same updater.
 9. Allow the requested app launch and complete your normal MSB sign-in.
 10. Review the result and send it, including any error, to the MSB administrator.
 

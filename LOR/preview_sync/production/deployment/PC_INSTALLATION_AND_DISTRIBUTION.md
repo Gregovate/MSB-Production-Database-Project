@@ -135,3 +135,15 @@ both files and double-click Setup MSB PC Preview Updater.vbs. It installs under
 the same Windows user without elevation. Prior manual installer filenames are
 engineering/history only. The current candidate remains comparison-only and
 requires actual Windows setup/handoff review before distribution.
+
+## Candidate 1.0.5 desktop launch
+
+The installer creates MSB PC Preview Updater.lnk on the current user's actual
+Desktop (including redirected folders) and registers the website handler. Both
+use the same fixed command generator and -AuditOnly. The existing tree/star icon
+applies to the shortcut and protocol; PowerShell taskbar grouping is separate.
+The corrected first-colon header parser successfully received the real Windows
+probe document. This does not establish full updater/source/master acceptance.
+After installation, launch from the Desktop, finish the normal protected browser
+handoff and retain the comparison result. Do not apply; the candidate cannot
+replace previews. The ZIP still exposes only setup plus instructions.

@@ -358,3 +358,23 @@ ambiguous Split overload. This is a compatibility correction, not a proven root
 cause of Greg's rejection. Actual Windows retest remains necessary. The separate
 temporary browser-review terminal can be cleaned up by pressing Enter and
 requiring its CLEAN EXIT; closing only a browser tab does not clean its clone.
+
+## Actual handoff receipt and desktop entry — candidate 1.0.5
+
+Greg's second Windows probe records LISTENING -> CONNECTED -> DOCUMENT_RECEIVED
+-> STOPPED on port60493 at 23:11:36 UTC, with no rejection. This is actual
+transport receipt with the revised first-colon parser; full source/master
+validation and sync have NOT passed. The prior failure's exact exception is
+unknown, so this is not a retrospective claim of its proven cause.
+Temporary browser review reported CLEAN EXIT; retained evidence:
+/tmp/msb-lor2pc-review.twOp9ObV.
+
+Greg authorized an installer-created desktop shortcut as an alternate launch
+entry. Candidate 1.0.5 installs MSB PC Preview Updater.lnk on the actual current
+user Desktop, including redirected folders. It targets the same fixed installed
+script with -AuditOnly; the website and desktop entries still require the same
+protected source evidence. The desktop and protocol DefaultIcon use the existing
+tree/star asset. This does not claim the PowerShell taskbar icon is corrected.
+The outer download remains exactly setup plus instructions; no exposed runtime.
+Native self-contained Windows setup, shortcut, full updater comparison, protected
+download hosting and live apply/reopen/repeat remain acceptance gates.

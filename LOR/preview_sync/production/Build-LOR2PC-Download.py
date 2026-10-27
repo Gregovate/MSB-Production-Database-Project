@@ -10,7 +10,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = Path(__file__).parent
-TARGET = ROOT/'LOR2DB/Application/landing/pc/downloads/MSB-PC-Preview-Updater-1.0.4.zip'
+TARGET = ROOT/'LOR2DB/Application/landing/pc/downloads/MSB-PC-Preview-Updater-1.0.5.zip'
 SETUP = 'Setup MSB PC Preview Updater.vbs'
 README = 'READ ME Instructions.txt'
 
