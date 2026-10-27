@@ -341,3 +341,20 @@ the existing protected page and retains only its isolated listener trace. No
 launcher installation/registration, library access, master validation, migration
 or preview synchronization. Receipt proves transport only. This lets Greg test
 the listener without reinstalling a working launcher. Root cause remains HOLD.
+
+## First actual Windows probe evidence
+
+Greg reports Edge also failed. Probe log for port 62627 at 23:04:10 UTC records
+LISTENING -> CONNECTED -> REQUEST_REJECTED(reason=request-read), then timeout
+with connections=1/preflights=0/rejections=1 and STOPPED at 23:06:10 UTC. This
+proves one connection reached the listener, not that a valid HTTP request arrived
+or that the browser permission gate succeeded. The rejection's exception was
+not captured, so the immediate next probe adds exception type and source line,
+plus reader-init/request-line/header-read/header-separator/header-duplicate
+stages. It still records no request text, nonce, headers or credentials.
+
+Header parsing now explicitly uses first-colon IndexOf/Substring instead of the
+ambiguous Split overload. This is a compatibility correction, not a proven root
+cause of Greg's rejection. Actual Windows retest remains necessary. The separate
+temporary browser-review terminal can be cleaned up by pressing Enter and
+requiring its CLEAN EXIT; closing only a browser tab does not clean its clone.

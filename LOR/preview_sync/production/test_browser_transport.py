@@ -86,7 +86,7 @@ $body=Receive-BrowserSource
                         client.settimeout(3); client.sendall(request.encode('ascii'))
                         try: return client.recv(8192)
                         except ConnectionResetError: return b''
-                for bad in [dict(origin='https://evil.example'), dict(path='wrong'), dict(method='GET'), dict(extra='Transfer-Encoding: chunked\r\n'), dict(extra='Origin: https://my.sheboyganlights.org\r\n')]:
+                for bad in [dict(origin='https://evil.example'), dict(path='wrong'), dict(method='GET'), dict(extra='Transfer-Encoding: chunked\r\n'), dict(extra='Origin: https://my.sheboyganlights.org\r\n'), dict(extra='NoSeparator\r\n')]:
                     self.assertNotIn(b'200 OK', send(**bad))
                     self.assertFalse(result.exists(), 'Rejected request leaked into accepted result')
                 reply = send(method='OPTIONS', body='')
@@ -101,7 +101,10 @@ $body=Receive-BrowserSource
                 trace=(root/'logs/browser-handoff.log').read_text()
                 events=[json.loads(line) for line in trace.splitlines()]
                 self.assertEqual(events[0]['event'], 'LISTENING')
-                self.assertEqual(sum(x['event']=='REQUEST_REJECTED' for x in events), 5)
+                self.assertEqual(sum(x['event']=='REQUEST_REJECTED' for x in events), 6)
+                rejected=[x for x in events if x['event']=='REQUEST_REJECTED']
+                self.assertTrue(all(x['exception_type'] and x['line'] > 0 for x in rejected))
+                self.assertIn('header-separator', [x['reason'] for x in rejected])
                 self.assertIn('PREFLIGHT_REPLIED', [x['event'] for x in events])
                 self.assertIn('DOCUMENT_RECEIVED', [x['event'] for x in events])
                 self.assertEqual(events[-1]['event'], 'STOPPED')

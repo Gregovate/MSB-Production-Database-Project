@@ -363,11 +363,11 @@ function Invoke-SyncEvents {
 }
 
 function Write-HandoffTrace {
-    param([string]$Event, [int]$Port = 0, [string]$Reason = '')
+    param([string]$Event, [int]$Port = 0, [string]$Reason = '', [string]$ExceptionType = '', [int]$SourceLine = 0)
     # Fixed event/reason codes only: never record nonce, URL, headers, cookies,
     # source document, email or credentials. Preserve evidence across attempts.
     [void][IO.Directory]::CreateDirectory($LogFolder)
-    $record = [ordered]@{ timestamp = [DateTime]::UtcNow.ToString('o'); event = $Event; port = $Port; reason = $Reason }
+    $record = [ordered]@{ timestamp = [DateTime]::UtcNow.ToString('o'); event = $Event; port = $Port; reason = $Reason; exception_type = $ExceptionType; line = $SourceLine }
     $line = ($record | ConvertTo-Json -Compress) + [Environment]::NewLine
     [IO.File]::AppendAllText((Join-Path $LogFolder 'browser-handoff.log'), $line, (New-Object Text.UTF8Encoding($false)))
 }
@@ -388,21 +388,31 @@ function Receive-BrowserSource {
             if (-not $listener.Pending()) { Start-Sleep -Milliseconds 100; continue }
             $client = $listener.AcceptTcpClient()
             $connections++
-            $reason = 'request-read'
+            $reason = 'reader-init'
             try {
                 Write-HandoffTrace -Event 'CONNECTED' -Port $port
                 $stream = $client.GetStream(); $stream.ReadTimeout = 5000; $stream.WriteTimeout = 5000
                 $reader = New-Object IO.StreamReader($stream, [Text.Encoding]::UTF8, $false, 4096, $true)
+                $reason = 'request-line'
                 $first = $reader.ReadLine(); $headers = @{}; $total = 0
+                if ($null -eq $first) { throw 'Empty browser connection.' }
                 while ($true) {
+                    $reason = 'header-read'
                     $line = $reader.ReadLine()
                     if ($null -eq $line) { throw 'Incomplete browser handoff.' }
                     $total += $line.Length
                     if ($total -gt 8192) { throw 'Browser handoff headers too large.' }
                     if ($line -eq '') { break }
-                    $pair = $line.Split(@(':'), 2)
-                    if ($pair.Count -ne 2 -or $headers.ContainsKey($pair[0])) { throw 'Invalid handoff headers.' }
-                    $headers[$pair[0]] = $pair[1].Trim()
+                    # IndexOf/Substring avoid framework-dependent Split overload
+                    # selection under Windows PowerShell 5.1. Split only at the
+                    # first colon; URI/header values may contain more colons.
+                    $reason = 'header-separator'
+                    $separator = $line.IndexOf([char]':')
+                    if ($separator -le 0) { throw 'Invalid handoff header.' }
+                    $name = $line.Substring(0, $separator)
+                    $reason = 'header-duplicate'
+                    if ($headers.ContainsKey($name)) { throw 'Duplicate handoff header.' }
+                    $headers[$name] = $line.Substring($separator + 1).Trim()
                 }
                 $reason = 'origin'
                 if ($headers['Origin'] -cne $origin) { throw 'Untrusted browser origin.' }
@@ -432,7 +442,7 @@ function Receive-BrowserSource {
                 Write-HandoffTrace -Event 'PREFLIGHT_REPLIED' -Port $port
             } catch {
                 $rejections++
-                Write-HandoffTrace -Event 'REQUEST_REJECTED' -Port $port -Reason $reason
+                Write-HandoffTrace -Event 'REQUEST_REJECTED' -Port $port -Reason $reason -ExceptionType ($_.Exception.GetType().FullName) -SourceLine $_.InvocationInfo.ScriptLineNumber
                 Write-Verbose 'Rejected or incomplete loopback request.'
             }
             finally { $client.Close() }
