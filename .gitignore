@@ -113,3 +113,5 @@ fieldwiring_snapshot*.db
 
 # Controlled LOR2PC browser entry (other generated HTML stays ignored).
 !LOR2DB/Application/landing/pc/index.html
+
+!LOR/preview_sync/production/evidence/production-preflight-2026-10-27.json

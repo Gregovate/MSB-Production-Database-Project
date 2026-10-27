@@ -1,6 +1,6 @@
 # LOR2PC deployment preparation and rollback
 
-Filename: DEPLOYMENT_AND_ROLLBACK.md · Revision 1 · 2026-10-27
+Filename: DEPLOYMENT_AND_ROLLBACK.md · Revision 2 · 2026-10-27
 Owner: #81 accepted-source API; #299 PC application; Server Management runtime
 Status: NOT AUTHORIZED FOR PRODUCTION EXECUTION
 
@@ -16,8 +16,7 @@ Project rule: `System_Documentation/Project_Rules/Runbook_First_Production_Rule.
 RUNBOOK GAP FOUND: the server's LOR-specific document still describes initial
 V0.1.0 deployment. It does not cover the new role-resolver grant, current-source
 module, loopback browser handoff, or rollback of a source-only LOR update.
-This application document records the required release boundaries; final runtime
-commands must be reconciled in Server Management after live read-only preflight.
+This application document records the required release boundaries; the runtime candidate and selective rollback are now in Server Management draft PR #102. They remain undeployed and subject to current-clone/browser gates.
 Do not improvise a live deployment from the old initial-install instructions.
 
 ## Read-only prerequisite
@@ -27,7 +26,7 @@ It checks the existing service, fingerprints the deployed backend/publisher,
 checks the accepted NAS mount, and queries source/permission evidence inside
 `BEGIN READ ONLY`. It never reads or prints environment-file credentials,
 changes files/grants, restarts services or calls parser/ingest/reconciliation.
-The script has syntax validation only here; it has NOT been run on Production.
+Greg ran the corrected transport successfully. The service, mount, accepted-source and missing-privilege results are recorded in ../evidence/production-preflight-2026-10-27.json.
 Its expected container/database names must match the existing accepted runtime.
 A nonzero result is HOLD; do not retry by weakening permissions.
 

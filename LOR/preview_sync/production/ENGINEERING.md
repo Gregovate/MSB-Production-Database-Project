@@ -173,3 +173,42 @@ original silent-zero reproduction, entire-script execution, failure propagation.
 Actual Windows SSH and live preflight remain pending. The original 1.0.2 ZIP's
 wrapper is superseded; its unchanged Inspect-LOR2PC-Production.sh can be invoked
 with the corrected transport without redownloading or modifying Production.
+
+
+## Verified preflight and next browser-review candidate
+
+Greg's corrected read-only production preflight PASS is captured in
+[evidence/production-preflight-2026-10-27.json](evidence/production-preflight-2026-10-27.json).
+This proves Run 32 already has the accepted source digest and that only the
+narrow read-only role-resolver EXECUTE privilege is missing. No new ingest or
+reconciliation is required by the authority fix.
+
+Server Management draft [PR #102](https://github.com/Gregovate/MSB-Server-Management/pull/102)
+owns the frozen deployment/selective rollback candidate and runtime runbook
+reconciliation. Eight disposable filesystem/state tests passed there; it has not
+run against Production. Application work remains on #299 branch / PR #300.
+
+The next candidate review uses `deployment/review_clone.sh` and
+`preview_entry.py`. It creates a uniquely named current-production disposable
+Postgres clone, restores without original owners/ACL, recreates reviewed role
+permissions, proves migration 0043 changes only the required role capability,
+and runs the actual candidate backend/static entry on the sequential reusable
+localhost review port 8898. An explicit existing reviewer email is used only in
+the isolated wrapper. Production DSNs/names and remote/browser writes are rejected.
+The real Windows parser is never configured or called. The parser card therefore
+truthfully shows unavailable in this preview; this is not a parser workflow test.
+
+The shell harness and Windows launcher have syntax checks only. The WSGI test
+passed for real static/health routes, write rejection, remote request rejection,
+path escape rejection and Production DSN rejection. Current-clone restore and
+operator browser acceptance have NOT run. The launcher opens no browser until
+readiness; the operator opens the printed URL manually. It requires both local
+and server 8898 availability and stops on an occupied listener. Cleanup targets
+only its unique container, worktree and recorded process command. Logs/private
+snapshot evidence are retained, rather than claiming remote cleanup from local
+SSH cancellation. Actual browser login and native PC handoff remain separate
+protected-site acceptance gates after this screen/source review.
+
+VS Code is optional for inspecting the exact checkout or running the normal
+terminal; no VS Code extension, Python installation on the Show PC, or manual XML
+editing is required by the Windows one-click review launcher.
