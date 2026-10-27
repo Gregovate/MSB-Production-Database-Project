@@ -344,3 +344,55 @@ Automated modal-window probing did not complete and was stopped; actual Windows
 taskbar appearance is explicitly an operator retest, not claimed passed.
 Install from this committed checkpoint with the controlled-PC installer; retain
 backup/report/log folders. No broader acceptance or responsiveness claim changes.
+
+
+## Production shared-folder layout
+
+The production deployment under:
+
+```text
+G:\Shared drives\MSB Database\UserPreviewStaging\LOR2DB_2PC_Sync
+```
+
+must present a deliberately simple programmer-facing root.
+
+Required visible layout:
+
+```text
+LOR2DB_2PC_Sync\
+    Update your PC Previews to LOR Master Files.lnk
+    MSB Preview Sync Support\
+```
+
+Everything technical belongs under `MSB Preview Sync Support\`, including:
+
+```text
+MSB Preview Sync Support\
+    Update_MSB_Previews.ps1
+    Install MSB Preview Update Shortcut.vbs
+    MSB Preview Update Tree v2.ico
+    VERSION.txt
+    LOR2DB_Reports\
+    logs\
+    deployment-backups\
+    tools\
+    README.txt
+```
+
+The production shortcut may point into the support subfolder, but programmers must not need to open that folder during normal use.
+
+Old diagnostics, superseded launchers, duplicate icons, loose engineering files and obsolete test artifacts must not remain in the programmer-facing root.
+
+### Programmer-facing operating instruction
+
+Normal users are told only:
+
+1. Close Light-O-Rama.
+2. Open `G:\Shared drives\MSB Database\UserPreviewStaging\LOR2DB_2PC_Sync`.
+3. Double-click **Update your PC Previews to LOR Master Files**.
+4. Review the summary, acknowledge required warnings, and update.
+5. Reopen Light-O-Rama.
+
+No user-facing instruction should tell programmers to run the installer, open PowerShell, select a preview-version folder, inspect LOR2DB reports, edit XML, or use Git.
+
+The updater continues to resolve the controlled master through the latest accepted COMPLETED LOR2DB report; moving support files into the support subfolder must not hard-code a versioned master path.
