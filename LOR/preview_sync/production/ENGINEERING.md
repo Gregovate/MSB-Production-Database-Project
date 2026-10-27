@@ -271,3 +271,31 @@ comparison, and live apply/reopen/repeat acceptance remain outstanding. The
 prepared Show PC runtime comes from clean exact 30fabb49; its deployment metadata
 sets apply_enabled=false and its registered handler uses -AuditOnly. Installing
 this per-user launcher does not authorize preview replacement.
+
+## Candidate 1.0.3 — installation/distribution and required data folder
+
+Greg confirmed all programmers have shared G: access and that C:\LOR is the
+mandatory LOR data folder on every programmer PC, including the new Show PC.
+The ShowPC staging directory shown in his screenshot belongs to the older
+Windows 10 PC; it is not discovery evidence for a new PC. No alternate library
+selection is part of the programmer workflow.
+
+The installer now blocks before file-copy/registration work if the required
+C:\LOR\CommonData\LORPreviews.xml is missing. The failure directs the user to
+initialize LOR with the required folder and close it. Functions-only checks
+exercise both missing and present prerequisites; they do not prove live Windows
+registration. Candidate 1.0.3 retains both comparison-only safeguards.
+
+The PC entry adds Install / Repair PC Updater, local extraction/double-click
+instructions and a comparison-only notice. Installation is per Windows user and
+independent of G:; master validation still uses the accepted shared folder.
+The fixed versioned ZIP is built by Build-LOR2PC-Download.py from a clean exact
+committed source, never overwritten, and served through the existing protected
+static site. No new backend route, role grant, listener or public bypass.
+Tests compare every packaged runtime file to its recorded source commit and
+hash; the read-only review entry permits only the exact named archive.
+
+This change is not deployed. Server Management owns the bounded static update
+and rollback. Exact-candidate browser review, authenticated download, Windows
+install/native handoff and Show PC master comparison remain operator gates.
+The prior server installation acceptance does not cover these new assets.

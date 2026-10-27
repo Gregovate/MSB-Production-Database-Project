@@ -1,4 +1,4 @@
-# MSB LOR Preview Sync - Production Candidate v1.0.2
+# MSB LOR Preview Sync - Production Candidate v1.0.3
 # Programmer-facing MASTER -> LOCAL synchronization tool.
 #
 # Normal operators launch this through:
@@ -314,7 +314,7 @@ if (Test-Path -LiteralPath $AppIconPath -PathType Leaf) {
 
 $LogFolder = Join-Path $Root 'logs'
 $DeploymentPath = Join-Path $Root 'DEPLOYMENT.json'
-$ApplicationVersion = '1.0.2'
+$ApplicationVersion = '1.0.3'
 $CandidateXml = Join-Path $localParent 'LORPreviews.MSB_SYNC_CANDIDATE.xml'
 $CandidateCsv = Join-Path $localParent 'LORPreviews.MSB_SYNC_REPORT.csv'
 

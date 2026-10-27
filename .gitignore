@@ -115,3 +115,6 @@ fieldwiring_snapshot*.db
 !LOR2DB/Application/landing/pc/index.html
 
 !LOR/preview_sync/production/evidence/production-preflight-2026-10-27.json
+
+# #299 immutable authenticated-site installer asset
+!LOR2DB/Application/landing/pc/downloads/MSB-PC-Preview-Updater-1.0.3.zip

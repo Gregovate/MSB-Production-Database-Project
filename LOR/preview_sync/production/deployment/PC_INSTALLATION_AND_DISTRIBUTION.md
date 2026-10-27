@@ -1,6 +1,6 @@
 # PC installation and distribution procedure
 
-Filename: PC_INSTALLATION_AND_DISTRIBUTION.md · Revision 1 · 2026-10-27
+Filename: PC_INSTALLATION_AND_DISTRIBUTION.md · Revision 2 · 2026-10-27
 Owner: #299 / PR #300; protected website hosting owned by Server Management.
 Status: COMPARISON-ONLY PILOT; not approved for general programmer distribution.
 
@@ -36,7 +36,8 @@ the installed handler uses -AuditOnly. This package cannot perform live apply.
 2. On the programmer's PC, sign into the Windows account the programmer will use.
    Ensure LOR is installed and the expected local library is
    C:\lor\CommonData\LORPreviews.xml. The current launcher uses that fixed path;
-   other installations require engineering review, not an improvised path override.
+   C:\LOR is the required MSB data folder. The installer blocks before any copy or
+   registry change if the required library is missing; no alternate path is offered.
 3. Close LOR. Verify the user can access the shared drive and the protected
    https://my.sheboyganlights.org/lor2db/ page with their own account.
 4. Transfer the complete approved ZIP without depending on G:. Extract all files
@@ -109,3 +110,18 @@ previews and original-byte backup/audit; LOR reopen/usability; close LOR and rep
 ADD 0 / REPLACE 0. Publish simple programmer instructions only with that accepted
 release. Keep server maintenance, hashes and engineering commands out of normal
 programmer instructions.
+
+## Candidate 1.0.3 distribution implementation
+
+The PC page now includes Install / Repair PC Updater and numbered local setup
+steps. It downloads pc/downloads/MSB-PC-Preview-Updater-1.0.3.zip through the
+existing protected static site; no public GitHub or shared-drive installer link.
+The archive is immutable for this version and records its runtime source commit
+and hashes. The package includes the programmer readme. The installer checks
+C:\LOR\CommonData\LORPreviews.xml before any installation mutation.
+
+This is repository implementation, not a claim of deployed download availability.
+Server Management must publish only the exact committed static page/script/archive,
+preserve rollback bytes and validate the download. Existing authentication must
+cover the download path; do not add a public bypass. Comparison-only safeguards
+remain enabled. Guided uninstall and signed-executable packaging remain unimplemented.
