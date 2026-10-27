@@ -316,3 +316,28 @@ with its source commit. Native VBScript execution remains Windows acceptance;
 Linux package/static checks do not establish a successful Windows installation.
 The required C:\LOR check and both comparison-only guards are preserved. The
 1.0.3 assets are historical; the new immutable filename is 1.0.4, not an overwrite.
+
+## Browser handoff HOLD and bounded diagnosis
+
+Actual Windows candidate 1.0.3/e578acd5 installed and launched from the browser.
+Greg allowed the local-app prompt; Chrome still reported permission denied for
+loopback access and net::ERR_FAILED. A screenshot shows Apps on device=Allow,
+Local network=Ask without an operator change. These observations do not prove
+a persisted permission denial or an HTTP CORS-header defect. Do not instruct
+reinstallation, global security bypasses or repeated permission changes.
+The taskbar remains the PowerShell icon (minor unresolved presentation defect).
+
+The old timeout log had no request evidence and incorrectly implied sign-in was
+the cause. New fixed-code listener events distinguish no connection, preflight
+reply, rejected origin/host/method-or-nonce/body/response and document receipt.
+No nonce, raw headers, body, email, cookies or tokens enter the trace. Browser
+diagnostics separately identify source-fetch versus loopback-fetch failure and
+query reported granular permission states only as evidence, never authority.
+The browser diagnostic UI has not been deployed to Production.
+
+Build-LOR2PC-HandoffProbe.py produces a standalone read-only engineering probe
+from clean committed source. It extracts the actual transport functions, opens
+the existing protected page and retains only its isolated listener trace. No
+launcher installation/registration, library access, master validation, migration
+or preview synchronization. Receipt proves transport only. This lets Greg test
+the listener without reinstalling a working launcher. Root cause remains HOLD.
