@@ -292,7 +292,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
       queueMicrotask(() => this.onload?.());
     }
   }
-  const ctx = {window:{},L,Image:ImageStub,setTimeout,clearTimeout};
+  const ctx = {window:{},L,Image:ImageStub,setTimeout,clearTimeout,document:{createElement:()=>({})}};
   vm.createContext(ctx);
   vm.runInContext(symbolCode,ctx);
   Object.assign(ctx,{
@@ -391,4 +391,27 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   zoom=17;handlers.zoomend();assert.equal(rendered.length,0);
   assert.equal(ctx.manager.placement([[100,100],[102,102]],100),null,'short track has no forced label');
   console.log('PASS: zoom-aware waypoint/track labels, alignment, collision, source text and layer cleanup');
+}
+
+// Controller popups expose one latest record directly and escape source names.
+{
+  const source=read('setup_locate_assets.js'), popups=[];
+  const ctx={esc:v=>String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),
+    layers:{controllers:{}}, unlocated:{append(){}},
+    window:{msbReferenceSymbols:{marker:()=>({addTo(){}}),bindPopupAtIconTop:(m,t)=>popups.push(t)}}};
+  vm.createContext(ctx);
+  vm.runInContext(source.slice(source.indexOf('  function evidence('),source.indexOf('  function popup(')),ctx);
+  vm.runInContext(source.slice(source.indexOf('  function renderControllers('),source.indexOf('  async function load(')),ctx);
+  ctx.renderControllers([{controller_id:1057,name:'Tree <West> · AUX-A / 0A',position:[43,-87],
+    observation:{event_type:'CONTROLLER_MOVE',setup_movement_event_id:42,occurred_at:'2026-10-27T14:00:00Z',destination_location_note:'Panel 42'}}]);
+  assert.match(popups[0],/Tree &lt;West&gt;/);
+  assert.match(popups[0],/CTRL:1057/);
+  assert.match(popups[0],/Controller location recorded/);
+  assert.match(popups[0],/Latest record/);
+  assert.match(popups[0],/Event: 42/);
+  assert.match(popups[0],/Panel 42/);
+  assert.doesNotMatch(popups[0],/<details>|<summary>/);
+  ctx.renderControllers([{controller_id:1,name:'Controller',position:[43,-87]}]);
+  assert.match(popups[1],/Observation: not recorded/);
+  console.log('PASS: controller names and latest record visible without disclosure');
 }

@@ -4,7 +4,7 @@
  * No credentials, #88 live movement API, command POST, or edit permission cached.
  */
 'use strict';
-const VERSION = 'msb-park-map-offline-20261027-r3';
+const VERSION = 'msb-park-map-offline-20261027-r4';
 const PREFIX = 'msb-park-map-package-';
 const META = 'msb-park-map-metadata-v1';
 const ROOT = self.registration.scope;

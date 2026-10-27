@@ -1146,6 +1146,20 @@ try {
   assert.equal(await mapPage.locator('.gis-map-label-text').count(),2);
   await mapPage.evaluate(()=>labelMap.removeLayer(labelGroup));
   assert.equal(await mapPage.locator('.gis-map-label-text').count(),0);
+  // Real Leaflet must retain disclosure state after its shared resize callback
+  // and after an asynchronous icon update refreshes the popup.
+  await mapPage.addScriptTag({path:path.join(setupPath,'setup_locate_symbols.js')});
+  await mapPage.evaluate(()=>{
+    const marker=L.marker(labelMap.getCenter()).addTo(labelMap);
+    window.popupMarker=marker;
+    msbReferenceSymbols.bindPopupAtIconTop(marker,'<details><summary>Test details</summary><p>Latest record remains visible</p></details>');
+    marker.openPopup();
+  });
+  await mapPage.getByText('Test details',{exact:true}).click();
+  assert.equal(await mapPage.locator('.leaflet-popup details').evaluate(n=>n.open),true);
+  await mapPage.evaluate(()=>popupMarker.getPopup().update());
+  assert.equal(await mapPage.locator('.leaflet-popup details').evaluate(n=>n.open),true);
+  assert.equal(await mapPage.getByText('Latest record remains visible',{exact:true}).isVisible(),true);
   await mapPage.close();
   assert.deepEqual(errors, []);
   console.log(

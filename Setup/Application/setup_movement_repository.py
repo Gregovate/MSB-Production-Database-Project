@@ -334,9 +334,21 @@ class SetupMovementRepository:
         """Read latest dated controller observations for the existing park map."""
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
-                SELECT e.*,c.controller_id, 'CTRL:' || c.controller_id::text AS name,
+                SELECT e.*,c.controller_id,
+                       coalesce(nullif(concat_ws(' · ', names.display_names,
+                         nullif(concat_ws(' / ', nullif(btrim(c.lor_network), ''),
+                           CASE WHEN c.lor_uid_start IS NOT NULL THEN
+                             upper(lpad(to_hex(c.lor_uid_start::integer),2,'0')) END), '')), ''),
+                         'Controller') AS name,
                        s.stage_key,s.stage_name
                 FROM ref.controller c
+                -- Assignment names identify the controller without multiplying
+                -- its latest observation when it serves multiple displays.
+                LEFT JOIN LATERAL (
+                    SELECT string_agg(DISTINCT d.display_name, ', ' ORDER BY d.display_name) AS display_names
+                    FROM ref.controller_display cd JOIN ref.display d USING(display_id)
+                    WHERE cd.controller_id=c.controller_id
+                ) names ON true
                 LEFT JOIN LATERAL (
                     SELECT me.* FROM ops.setup_movement_event me
                     WHERE me.controller_id=c.controller_id AND me.setup_session_id=%s

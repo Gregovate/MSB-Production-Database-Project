@@ -1,3 +1,11 @@
+## October 27 PR470 popup follow-up — CLEAN EXIT with defects
+
+Greg reports CLEAN EXIT and confirms Record details resets for independent displays too. This closes the running preview, not acceptance of its defects. All asset popups must show their latest record directly. Root cause: shared disclosure toggle calls Leaflet update(), which reparses string popup content and loses open state. Bind a persistent DOM content node so refresh/disclosure and asynchronous icon updates preserve state. Keep icon-top placement and existing latest-record selection.
+
+## October 27 PR470 open review — controller identification and latest record
+
+Review remains OPEN until Greg explicitly posts CLEAN EXIT. Show assigned display names and configured network/hex unit identification instead of a hardcoded CTRL ID; retain the permanent ID as secondary identification. Reuse ref.controller_display/ref.display and ref.controller fields, without inventing a new controller-name column. Show the existing latest dated controller observation directly, without a disclosure control; occurred_at then event ID remains the ordering, never offline arrival time. No history expansion, movement write, source import or migration change.
+
 ## October 27 PR470 sixth review — restore compact track labels
 
 Greg rejects the enlarged white-backed track labels and prefers the previous compact treatment. Restore the 977172b6 track-label font, halo, placement and collision dimensions; retain zoom gating, route alignment and the now operator-confirmed pole rendering. Preserve Display Anchor/Tower mappings and offline symbols. No source reconciliation or additional migration scope.

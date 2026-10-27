@@ -98,7 +98,11 @@
 
   function bindPopupAtIconTop(item, html, options = {}) {
     if (!item || typeof item.bindPopup !== 'function') return item;
-    item.bindPopup(html, {
+    // Preserve the actual disclosure DOM across Leaflet update() calls.
+    // String content is reparsed on update and loses its open state.
+    const content = typeof html === 'string' ? document.createElement('div') : html;
+    if (typeof html === 'string') content.innerHTML = html;
+    item.bindPopup(content, {
       ...options, offset: popupOffsetForMarker(item), autoPan: true
     });
     item.on('popupopen', function () {

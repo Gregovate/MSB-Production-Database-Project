@@ -114,7 +114,7 @@ def test_search_is_served_before_asset_overlay():
     client = app.test_client()
     page = client.get('/locate/').get_data(as_text=True)
     assert 'id="map-search"' in page
-    assert page.index('src="assets/setup_locate_search.js"') < page.index('src="assets/setup_locate_assets.js"')
+    assert page.index('src="assets/setup_locate_search.js"') < page.index('src="assets/setup_locate_assets.js?v=2026-10-27-controller-record"')
     assert client.get('/locate/assets/setup_locate_search.js').status_code == 200
 
 
