@@ -893,6 +893,22 @@ try {
   assert.doesNotMatch(await page.locator('.cable-comparison').textContent(),/SHA|UUID|10BASE|Source/);
   for(const id of ['breaker-context','breaker-reports','breaker-checklist'])assert.equal(await page.locator('#'+id).isVisible(),false);
 
+  // An unparseable short cable must still be findable by its actual FLW names.
+  await db.exec(`INSERT INTO ops.linkiq_test VALUES
+    ('33333333-3333-4333-8333-333333333333',NULL,NULL,1,'UNMATCHED','flw-source','1000BASE-T',5,'BENCH-007');
+    INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal) VALUES
+    ('flw-source','33333333-3333-4333-8333-333333333333','{"display_label":"Cable 5 ft <shop>","endpoint_candidates":[],"reasons":["NAME_REQUIRES_REVIEW"]}');`);
+  await page.reload();await page.getByText(/Revision \d+/).waitFor();
+  await page.locator('[data-filter="source-id"]').fill('bench-007');
+  assert.equal(await page.locator('.cable-results tbody tr').count(),1);
+  assert.match(await page.locator('.cable-results tbody').innerText(),/Cable ID: Cable 5 ft <shop>.*Test ID: BENCH-007/s);
+  await page.getByRole('button',{name:'Compare tests (1)',exact:true}).click();
+  assert.match(await page.locator('.cable-comparison').innerText(),/Cable 5 ft <shop>.*BENCH-007/s);
+  assert.equal(await page.locator('.cable-comparison shop').count(),0);
+  await page.locator('[data-filter="source-id"]').fill('Cable 5 ft');
+  assert.equal(await page.locator('.cable-results tbody tr').count(),1);
+  await page.locator('[data-filter="source-id"]').fill('');
+
   // Save Panel 15 as FE-00's supply even when it has no recorded breakers.
   await page.goto(base);await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
   for(const name of ["Panel 15","Panel FE-00"]) {

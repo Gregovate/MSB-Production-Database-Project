@@ -52,3 +52,11 @@ assert.equal(reverse[0].key,reverse[1].key,'reverse direction/different cable ID
 assert.notEqual(reverse[0].key,reverse[2].key,'same cable ID must not combine networks');
 assert.notEqual(reverse[0].key,reverse[3].key,'missing network cannot establish the same segment');
 console.log('Original FLW anchors and direction-independent network segment history PASS');
+
+// Preserve source identifiers even when nothing can be matched to a waypoint.
+const raw={test_uuid:'opaque-database-uuid',original_name:'BENCH-007',source_pair:{display_label:'Cable 5 ft <shop>'}};
+assert.deepEqual(JSON.parse(JSON.stringify(api.sourceIds(raw))),{cableId:'Cable 5 ft <shop>',testId:'BENCH-007'});
+assert.match(api.sourceLabel(raw),/Cable 5 ft <shop>.*BENCH-007/);
+assert.doesNotMatch(api.sourceLabel(raw),/opaque-database-uuid/);
+assert.equal(api.sourceIds({original_name:'Tester only'}).cableId,'');
+console.log('FLW Cable ID and Test ID preserved for unresolved records; no invented cable identity PASS');

@@ -455,7 +455,7 @@ report directory. Do not rerun the completed release for documentation.
 
 ## October 27 panel supplies, breaker outlets and FLW map correction
 
-Candidate versions: Setup `V0.3.93-map-details`, FieldWiring `V0.4.33-breaker-outlets`.
+Candidate versions: Setup `V0.3.94-map-navigation`, FieldWiring `V0.4.34-test-identifiers`.
 The first PR470 preview ended CLEAN EXIT with changes required. The replacement
 uses the existing breaker: Breaker settings → Supplies outlets at this panel → Yes.
 Existing Bottom/Top Panel Outlets notes remain; there is no Add panel receptacle.
@@ -467,8 +467,10 @@ Apply this revised candidate only to a fresh current-Production clone; never lay
 it onto the old PR470 device-parent migration. PR463 migrations remain installed.
 Preserve current GIS imports and circuit assignments; no GPX/FLW reimport.
 
-Review 42-03S's power circuits and FLW networks/test pairs; Show details must open
-and scroll to plain-language details. At Panel42-00, retain Bottom Panel Outlets
+Review 42-03S's power circuits and FLW networks/test pairs; Open panel must navigate directly to the selected/supplying panel. Cable details
+retains the short map disclosure. Verify FLW Cable ID/Test ID on unmatched cable
+records and search both IDs. Verify Back to FieldWiring / Back to Setup beside
+Collapse for each entry path. At Panel42-00, retain Bottom Panel Outlets
 (1/3) and Top Panel Outlets (2/4), designate their existing breakers, save/reload,
 then clear a designation and confirm notes/circuits remain. No extra devices or
 waypoints. End with CLEAN EXIT and retain the report. Production deployment and

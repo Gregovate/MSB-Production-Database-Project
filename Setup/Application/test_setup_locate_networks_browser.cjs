@@ -142,14 +142,21 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   const page = fs.readFileSync(path.join(__dirname, 'locate_preview.html'), 'utf8');
   const controls = {};
   let focused;
-  for (const id of ['map-controls', 'map-controls-open', 'map-controls-close']) {
+  for (const id of ['map-controls', 'map-controls-open', 'map-controls-close', 'map-return']) {
     controls[id] = { hidden: id === 'map-controls-open', attributes: {}, handlers: {},
       setAttribute(name, value) { this.attributes[name] = value; },
       addEventListener(name, handler) { this.handlers[name] = handler; },
       focus() { focused = id; } };
   }
   const source = page.match(/<script id="map-controls-script">([\s\S]*?)<\/script>/)[1];
-  vm.runInNewContext(source, { document: { getElementById: id => controls[id] } });
+  vm.runInNewContext(source, { document: { getElementById: id => controls[id] }, URLSearchParams, location:{search:''} });
+  assert.equal(controls['map-return'].href,'/setup/');
+  assert.equal(controls['map-return'].textContent,'Back to Setup');
+  for(const [query,href,label] of [['?view=fieldwiring','/fieldwiring/','Back to FieldWiring'],['?return=https://example.invalid','/setup/','Back to Setup']]){
+    vm.runInNewContext(source,{document:{getElementById:id=>controls[id]},URLSearchParams,location:{search:query}});
+    assert.equal(controls['map-return'].href,href);assert.equal(controls['map-return'].textContent,label);
+  }
+  assert(page.indexOf('id="map-return"')<page.indexOf('id="map-controls-close"'));
   controls['map-controls-close'].handlers.click();
   assert.equal(controls['map-controls'].hidden, true);
   assert.equal(controls['map-controls-open'].hidden, false);

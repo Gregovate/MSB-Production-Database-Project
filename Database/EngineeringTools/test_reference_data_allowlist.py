@@ -142,9 +142,9 @@ def test_existing_map_uses_protected_live_references_before_static_fallback():
     search = (app / "setup_locate_search.js").read_text(encoding="utf-8")
     client = (app / "setup_site_reference.js").read_text(encoding="utf-8")
     api = (app / "setup_site_reference_api.py").read_text(encoding="utf-8")
-    assert html.count('src="assets/setup_site_reference.js?v=2026-10-27-map-details"') == 1
+    assert html.count('src="assets/setup_site_reference.js?v=2026-10-27-map-navigation"') == 1
     assert html.index('src="assets/setup_locate_search.js"') < html.index(
-        'src="assets/setup_site_reference.js?v=2026-10-27-map-details"') < html.index(
+        'src="assets/setup_site_reference.js?v=2026-10-27-map-navigation"') < html.index(
         'src="assets/setup_locate_networks.js')
     assert "app.register_blueprint(site_reference_api)" in backend
     assert '"setup_site_reference.js"' in backend
@@ -167,7 +167,7 @@ def test_setup_map_is_reference_consumer_not_reference_editor():
     """#171/#230: Setup map must never expose engineering mutation forms."""
     viewer = (ROOT / "Setup" / "Application" / "setup_site_reference.js").read_text(
         encoding="utf-8")
-    assert "btn.textContent = 'Show details'" in viewer
+    assert "btn.textContent = 'Cable details'" in viewer
     assert "if (false && (current.permissions.identity || current.permissions.operations))" in viewer
     assert "renderDb(snapshot);" in viewer
     assert "renderNetworks(snapshot);" in viewer

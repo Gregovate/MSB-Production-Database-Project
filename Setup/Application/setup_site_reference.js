@@ -174,8 +174,17 @@
         line(display, 'Circuit ' + c.circuit_code + ': ' + circuitDescription(c));
     }
     line(display, 'Cable tests: ' + waypointTests(point.id).length);
+    // Navigate directly by panel identity, not by the waypoint-detail route.
+    const panelIds = panel ? [panel.site_panel_id] : [...new Set(circuits.map(c => c.site_panel_id).filter(Boolean))];
+    for (const panelId of panelIds) {
+      const link = document.createElement('a');
+      link.href = '/fieldwiring/circuits?panel=' + encodeURIComponent(panelId);
+      link.className = 'map-panel-link';
+      link.textContent = panelIds.length > 1 ? 'Open ' + (byId(current.panels, panelId, 'site_panel_id')?.panel_name || 'panel ' + panelId) : 'Open panel';
+      append(display, link);
+    }
     const btn = document.createElement('button');
-    btn.type = 'button'; btn.textContent = 'Show details';
+    btn.type = 'button'; btn.textContent = 'Cable details';
     btn.addEventListener('click', () => showWaypoint(point.id));
     append(display, btn);
     return display;

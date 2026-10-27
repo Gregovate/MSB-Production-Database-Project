@@ -1,3 +1,11 @@
+## October 27 third PR470 candidate — source IDs and direct navigation
+
+Greg confirms breaker-outlet display is much better; preserve it. d9587b54 preview returned CLEAN EXIT, with remaining changes: unmatched FLW records need source Cable ID/Test ID, popup must lead directly to the panel, and map header needs an origin-aware return button. No Production acceptance/deployment yet.
+
+Expose existing source_pair.display_label (Records.CableId) and original_name (BinRec metadata.testId) in cable list/comparison and add case-insensitive ID search. No UUID/database ID substitution or inferred endpoint association. Open panel links use explicit panel IDs, including supplying panels of remote points; retain Cable details separately. Back to FieldWiring or Back to Setup sits left of Collapse and uses the existing view flag with fixed local destinations. Preserve accepted breaker designation/migration without additional SQL changes or source imports.
+
+Versions: FieldWiring V0.4.34-test-identifiers; Setup V0.3.94-map-navigation. Local 906 Setup +10 reference contracts, 232 FieldWiring and JS map/navigation/source-ID checks PASS. Full CI/browser and new operator review pending. Reuse the same PR/branch, preview worktree, runner and8898. Apply only existing pending 171_panel_receptacles.sql to a fresh current-Production clone and its read-only validator; no migration replay on Production. Previous CLEAN EXIT is recorded.
+
 ## October 27 PR470 browser findings — revised candidate, Production unchanged
 
 Greg returned CLEAN EXIT for e25f3fd913bb5363e88f40b43cee3431d473eb58. Supplying circuits now appear, but the candidate is not accepted: map network names/tests were hidden, details were overly technical, existing 1/3 and 2/4 panel-outlet notes were replaced by unknown destinations, and the separate receptacle-creation workflow duplicated existing breakers.
