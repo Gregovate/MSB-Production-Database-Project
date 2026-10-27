@@ -1160,6 +1160,34 @@ try {
   await mapPage.evaluate(()=>popupMarker.getPopup().update());
   assert.equal(await mapPage.locator('.leaflet-popup details').evaluate(n=>n.open),true);
   assert.equal(await mapPage.getByText('Latest record remains visible',{exact:true}).isVisible(),true);
+  const assetSource=await readFile(path.join(setupPath,'setup_locate_assets.js'),'utf8');
+  await mapPage.addScriptTag({content:assetSource.slice(assetSource.indexOf('  function evidence('),assetSource.indexOf('  function render(items, container)'))});
+  await mapPage.evaluate(()=>{
+    window.esc=v=>String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    const asset={name:'Independent display',position_mode:'DETACHED',position:[43,-87],
+      observation:{occurred_at:'2026-10-27T14:00:00Z',setup_movement_event_id:42,event_type:'PLACED',destination_location_note:'WW-13'}};
+    msbReferenceSymbols.bindPopupAtIconTop(popupMarker,popup(asset,false),{maxHeight:360});
+    popupMarker.openPopup();
+  });
+  assert.equal(await mapPage.locator('.leaflet-popup').getByText('Latest record',{exact:true}).isVisible(),true);
+  assert.equal(await mapPage.locator('.leaflet-popup details').count(),0);
+  await mapPage.evaluate(()=>popupMarker.getPopup().update());
+  assert.match(await mapPage.locator('.leaflet-popup').innerText(),/Event: 42/);
+  assert.match(await mapPage.locator('.leaflet-popup').innerText(),/Recorded destination: WW-13/);
+  // Exercise the actual waypoint action renderer for linked and unlinked points.
+  await mapPage.addScriptTag({content:mapSource.slice(mapSource.indexOf('  function waypointPopup('),mapSource.indexOf('  function showWaypoint('))});
+  const actions=await mapPage.evaluate(()=>{
+    window.current={panels:[],circuits:[]};
+    window.byId=(rows,id,key='id')=>(rows||[]).find(r=>r[key]===id);
+    window.append=(p,n)=>p.appendChild(n);
+    window.heading=(p,t)=>{const n=document.createElement('b');n.textContent=t;p.append(n);};
+    window.line=(p,t)=>{const n=document.createElement('p');n.textContent=t;p.append(n);};
+    window.matchingCircuits=id=>id===13?[{site_panel_id:8,panel_waypoint_id:80,circuit_code:'8'}]:[];
+    window.networkNames=()=>['REG'];window.waypointTests=()=>[];window.lookupLabel=()=> 'PANEL 08';
+    return [10,13].map(id=>Array.from(waypointPopup({id,label:'Point '+id,type:'OUT-Combo'}).querySelectorAll('a')).map(a=>[a.textContent,a.getAttribute('href')]));
+  });
+  assert.deepEqual(actions[0],[['Find panel','/fieldwiring/circuits'],['Cable details','/fieldwiring/cable-tests?waypoint=10']]);
+  assert.deepEqual(actions[1],[['Open panel','/fieldwiring/circuits?panel=8'],['Cable details','/fieldwiring/cable-tests?waypoint=13']]);
   await mapPage.close();
   assert.deepEqual(errors, []);
   console.log(

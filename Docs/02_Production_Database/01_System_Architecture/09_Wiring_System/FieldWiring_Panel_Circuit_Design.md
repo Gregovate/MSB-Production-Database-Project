@@ -1,3 +1,7 @@
+## October 27 PR470 navigation review remains open
+
+Greg reports Cable details appears inert and unassociated WW waypoints lack panel access; PO with a recorded association works. Make Cable details a direct link to existing waypoint-filtered cable history. Preserve exact-panel links and add Find panel to the existing panel browser when no association exists; never infer a supply. Video still shows the old Record details control, absent from the corrected source. Add actual asset-popup browser coverage for visible latest records, not only the generic disclosure helper. No CLEAN EXIT yet for this review.
+
 ## October 27 PR470 combo-box network regression
 
 Greg reports previously visible combo-box networks missing. The popup depended exclusively on membership-to-catalog lookup although memberships already supply network_code and FLW tests supply resolved waypoint endpoints/network_key. Preserve membership names directly and include the current FLW endpoint networks independently of physical cable inventory, deduplicated. Do not infer from track geometry, rename SPARE designations, or associate unresolved endpoints. Exact failing live payload is unavailable; operator preview must confirm affected combo boxes.

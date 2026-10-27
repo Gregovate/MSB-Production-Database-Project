@@ -190,9 +190,19 @@
       link.textContent = panelIds.length > 1 ? 'Open ' + (byId(current.panels, panelId, 'site_panel_id')?.panel_name || 'panel ' + panelId) : 'Open panel';
       append(display, link);
     }
-    const btn = document.createElement('button');
-    btn.type = 'button'; btn.textContent = 'Cable details';
-    btn.addEventListener('click', () => showWaypoint(point.id));
+    if (!panelIds.length) {
+      // No recorded supply means no particular panel can be claimed here.
+      // Keep the existing panel browser accessible for finding the real source.
+      const link = document.createElement('a');
+      link.href = '/fieldwiring/circuits';
+      link.className = 'map-panel-link';
+      link.textContent = 'Find panel';
+      append(display, link);
+    }
+    // Navigate to the existing waypoint-filtered history, not a hidden sidebar.
+    const btn = document.createElement('a');
+    btn.className = 'map-panel-link'; btn.textContent = 'Cable details';
+    btn.href = '/fieldwiring/cable-tests?waypoint=' + encodeURIComponent(point.id);
     append(display, btn);
     return display;
   }
