@@ -381,7 +381,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(rendered[0].options.icon.html.textContent,'FE-02B');
   assert.ok(rendered.some(r=>r.options.icon.html.textContent==='NET <safe>'));
   const track=rendered.find(r=>r.options.icon.html.textContent==='NET <safe>');
-  assert.equal(track.xy[1],382,'horizontal label is offset 18px above track');
+  assert.equal(track.xy[1],400,'compact label follows the track');
   assert.match(track.options.icon.html.className,/gis-track-name/);
   assert.ok(rendered.every(r=>r.options.interactive===false&&r.options.keyboard===false));
   for(const r of rendered){const angle=Number(r.options.icon.html.style.transform.match(/rotate\(([-\d.]+)deg/)[1]);assert.ok(angle>=-90&&angle<=90);}

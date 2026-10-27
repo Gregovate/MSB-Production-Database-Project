@@ -1134,8 +1134,8 @@ try {
   assert.equal(await mapPage.locator('.gis-map-label-text').first().innerText(),'FE-02B <test>');
   assert.equal(await mapPage.locator('.gis-map-label-text test').count(),0);
   assert.equal(await mapPage.locator('.gis-track-name').count(),1);
-  assert.equal(await mapPage.locator('.gis-track-name').evaluate(n=>getComputedStyle(n).fontSize),'14px');
-  assert.equal(await mapPage.locator('.gis-track-name').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(255, 255, 255, 0.9)');
+  assert.equal(await mapPage.locator('.gis-track-name').evaluate(n=>getComputedStyle(n).fontSize),'12px');
+  assert.equal(await mapPage.locator('.gis-track-name').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0)');
   assert.match(await mapPage.locator('.gis-map-label-text').last().getAttribute('style'),/rotate\(26\./);
   assert.ok(await mapPage.locator('.gis-map-label-text').evaluateAll(nodes=>{
     const [a,b]=nodes.map(n=>n.getBoundingClientRect());return a.right<b.left||b.right<a.left||a.bottom<b.top||b.bottom<a.top;

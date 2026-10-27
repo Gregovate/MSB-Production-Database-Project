@@ -1,3 +1,7 @@
+## October 27 PR470 sixth review — restore compact track labels
+
+Greg rejects the enlarged white-backed track labels and prefers the previous compact treatment. Restore the 977172b6 track-label font, halo, placement and collision dimensions; retain zoom gating, route alignment and the now operator-confirmed pole rendering. Preserve Display Anchor/Tower mappings and offline symbols. No source reconciliation or additional migration scope.
+
 ## October 27 PR470 fifth review — track contrast and missing symbols
 
 Greg reports CLEAN EXIT for 977172b6. Preserve accepted zoom/alignment behavior; track text must sit off the colored line with a light backing, larger type and a thin halo. Collision rectangles include the backing and offset. Restore documented Display Anchor → pole-yellow.svg and Tower → antenna-r.svg mappings from GIS_Symbol_Management.md (October12 source/registry evidence), preserving native aspect ratio. No name-based icon guessing or source-type rewriting. Include both symbols in the existing explicit offline package.

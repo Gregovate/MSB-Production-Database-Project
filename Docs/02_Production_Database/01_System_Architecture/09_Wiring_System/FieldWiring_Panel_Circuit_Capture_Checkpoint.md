@@ -1,3 +1,7 @@
+## October 27 PR470 sixth candidate — compact labels restored
+
+Greg confirms poles render in the 99f40923 preview but rejects the larger white track-label boxes. Restore the previous compact 12px haloed track labels and centered alignment, keeping the symbol fixes and zoom-dependent labels. No additional SQL or source-import changes. Production unchanged; exact candidate validation pending.
+
 ## October 27 PR470 fifth candidate — review corrections
 
 CLEAN EXIT confirmed for 977172b66a50cfb796b4eec3eb5c5396b3bfa04a. Restore documented Display Anchor and Tower symbol mappings, include symbols in offline package, offset/larger track text with light backing. Presentation-only versions retained; exact SHA/cache identities change. Main unchanged00284c290ca30dbaaba7cc240b6db2fe81ad0fd6. Validation and operator acceptance pending; no Production write. WW-10 master correction to OUT-Combo remains pending source reconciliation, alongside erroneous0625 deletion and ingest controls. Never disguise these as renderer fixes.
