@@ -196,7 +196,24 @@
         const target=circuit(Number(query.get("circuit")));
         if(target) {panelId=target.site_panel_id;render();if(data.access.can_edit) openAssignments(target);$("panel-detail").dataset.linkOpened="1";}
       }
+      // Resolve map navigation from power feeds, never from cable-test endpoints.
+      const powerWaypoint=Number(query.get("power_waypoint"));
+      let supplyingPanels=null;
+      if(mode==="panels" && query.has("power_waypoint") && !restoredPanelView) {
+        const ids=new Set((data.waypoint_power_sources || [])
+          .filter(x=>Number(x.site_waypoint_id)===powerWaypoint)
+          .map(x=>circuit(x.site_power_circuit_id))
+          .filter(c=>c && c.active).map(c=>c.site_panel_id));
+        supplyingPanels=data.panels.filter(p=>p.active && (ids.has(p.site_panel_id) || Number(p.site_waypoint_id)===powerWaypoint));
+        panelId=supplyingPanels.length===1 ? supplyingPanels[0].site_panel_id : null;
+        $("find").value="";
+      }
       render();
+      if(supplyingPanels && supplyingPanels.length!==1) {
+        const target=$("panel-detail");target.replaceChildren();
+        el("p",supplyingPanels.length ? `Panels supplying ${waypointName(powerWaypoint)}` : `No power-panel association recorded for ${waypointName(powerWaypoint)}.`,target);
+        for(const p of supplyingPanels) button(p.panel_name,()=>selectPanel(p.site_panel_id),target);
+      }
       if(mode==="panels" && !restoredPanelView) {
         restoredPanelView=true;
         if(previous?.panelId===panelId && !query.get("circuit")) {
@@ -318,6 +335,7 @@
           .sort((a,b)=>a.breaker_pole-b.breaker_pole);
         circuits.forEach(c => {
           const names=[...new Set(paths(c.site_power_circuit_id).map(x=>x.waypoint?.name || "Unknown waypoint"))];
+          if (b.panel_outlets) names.unshift("Outlets at panel");
           const leg=button(`Circuit ${c.circuit_code} — ${names.join(", ") || "Waypoints (optional)"}`,()=>openAssignments(c),row,true);
           if (c.description) el("p", c.description, row).className="power-circuit-notes";
           const load=(data.circuit_loads || []).find(x=>x.site_power_circuit_id===c.site_power_circuit_id);
@@ -1294,6 +1312,8 @@
     field(select("rated_amps","Breaker rating (A)",ratingOptions()),row.rated_amps);
     const poles=field(select("pole_count","Poles",options([1,2,3].map(x=>[x,String(x)])),true),row.pole_count || (role==="MAIN"?2:1));
     field(text("source_evidence","Breaker notes / correction reason (optional)"),row.source_evidence);
+    // Designation belongs to the existing breaker; notes and circuit IDs stay intact.
+    if (role!=="MAIN") field(select("panel_outlets","Supplies outlets at this panel",options([["false","No"],["true","Yes"]]),true),String(Boolean(row.panel_outlets)));
     const states=options(["UNKNOWN","ON","OFF"].map(v=>[v,v]));
     field(select("show_desired_state","Season ON / OFF",states,true),row.show_desired_state || "UNKNOWN");
     field(select("restoration_desired_state","Non-season ON / OFF",states,true),row.restoration_desired_state || "UNKNOWN");
@@ -1315,6 +1335,7 @@
       if(slots && slots.length!==count) throw new Error("Positions must match the number of circuit legs.");
       return {
         breaker:{site_panel_id:row.site_panel_id,breaker_role:role,
+          panel_outlets:role!=="MAIN" && form.elements.panel_outlets.value==="true",
           breaker_name:form.elements.breaker_name.value.trim() || (role==="MAIN"?"Main":slots?.join("/")),
           panel_positions:slots,pole_count:count,rated_amps:form.elements.rated_amps.value?Number(form.elements.rated_amps.value):null,
           source_evidence:form.elements.source_evidence.value.trim() || null,

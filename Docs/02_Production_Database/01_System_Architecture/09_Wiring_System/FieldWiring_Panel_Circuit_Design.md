@@ -1,3 +1,57 @@
+## October 27 PR470 map-return and recorded-by review
+
+Greg reports CLEAN EXIT, accepts panel/cable navigation, and requests recording actor plus return-position/layer preservation. Use captured_operator_person_id for the name with recorded email fallback; never infer Rich or substitute the viewing/sync user. Persist only map center/zoom and layer booleans per browser tab, restore both actual Leaflet membership and checkboxes after full reload/history return, and refresh live asset observations after browser-cache restoration. Controller visibility is independent of Containers. Greg clarified that cable navigation passes but the power-panel action does not select the associated panel. Trace that association through power records only; FLW cable endpoints must not supply the power-panel link. The generic panel-list fallback is not acceptance of associated-panel navigation. Carry power_waypoint in the fallback URL, resolve it against FieldWiring waypoint_power_sources and active circuits/panels, automatically open one supplying panel, offer each if multiple, and clearly report no recorded association if none. Never choose a panel from FLW endpoints. No Production write or additional migration.
+
+## October 27 PR470 navigation review remains open
+
+Greg reports Cable details appears inert and unassociated WW waypoints lack panel access; PO with a recorded association works. Make Cable details a direct link to existing waypoint-filtered cable history. Preserve exact-panel links and add Find panel to the existing panel browser when no association exists; never infer a supply. Video still shows the old Record details control, absent from the corrected source. Add actual asset-popup browser coverage for visible latest records, not only the generic disclosure helper. No CLEAN EXIT yet for this review.
+
+## October 27 PR470 combo-box network regression
+
+Greg reports previously visible combo-box networks missing. The popup depended exclusively on membership-to-catalog lookup although memberships already supply network_code and FLW tests supply resolved waypoint endpoints/network_key. Preserve membership names directly and include the current FLW endpoint networks independently of physical cable inventory, deduplicated. Do not infer from track geometry, rename SPARE designations, or associate unresolved endpoints. Exact failing live payload is unavailable; operator preview must confirm affected combo boxes.
+
+## October 27 PR470 popup follow-up — CLEAN EXIT with defects
+
+Greg reports CLEAN EXIT and confirms Record details resets for independent displays too. This closes the running preview, not acceptance of its defects. All asset popups must show their latest record directly. Root cause: shared disclosure toggle calls Leaflet update(), which reparses string popup content and loses open state. Bind a persistent DOM content node so refresh/disclosure and asynchronous icon updates preserve state. Keep icon-top placement and existing latest-record selection.
+
+## October 27 PR470 open review — controller identification and latest record
+
+Review remains OPEN until Greg explicitly posts CLEAN EXIT. Show assigned display names and configured network/hex unit identification instead of a hardcoded CTRL ID; retain the permanent ID as secondary identification. Reuse ref.controller_display/ref.display and ref.controller fields, without inventing a new controller-name column. Show the existing latest dated controller observation directly, without a disclosure control; occurred_at then event ID remains the ordering, never offline arrival time. No history expansion, movement write, source import or migration change.
+
+## October 27 PR470 sixth review — restore compact track labels
+
+Greg rejects the enlarged white-backed track labels and prefers the previous compact treatment. Restore the 977172b6 track-label font, halo, placement and collision dimensions; retain zoom gating, route alignment and the now operator-confirmed pole rendering. Preserve Display Anchor/Tower mappings and offline symbols. No source reconciliation or additional migration scope.
+
+## October 27 PR470 fifth review — track contrast and missing symbols
+
+Greg reports CLEAN EXIT for 977172b6. Preserve accepted zoom/alignment behavior; track text must sit off the colored line with a light backing, larger type and a thin halo. Collision rectangles include the backing and offset. Restore documented Display Anchor → pole-yellow.svg and Tower → antenna-r.svg mappings from GIS_Symbol_Management.md (October12 source/registry evidence), preserving native aspect ratio. No name-based icon guessing or source-type rewriting. Include both symbols in the existing explicit offline package.
+
+WW-10 is operator-confirmed OUT-Combo in the current master, but the older bundled reference says Outlet Power. This candidate must not conceal stale database classification with a label-specific icon override. Current master/database reconciliation remains open with stray0625 and the ingest-workflow gap. No Production mutation or inferred source acceptance. Existing uninstalled migration only; test then operator review before release.
+
+## October 27 PR470 release review — readable map labels and cable history
+
+Add these presentation corrections to the existing release/migration candidate before disposable review. At zoom 19 and above show horizontal waypoint names next to symbols and upright track names aligned with a sufficiently straight visible section. Hide labels below zoom 19, retain all geometry/icons/popups, and suppress overlapping labels with waypoint priority. Recompute on zoom, pan, layer visibility and snapshot replacement; never alter source geometry to place text. Labels are inert text, not HTML and not additional selectable map features. Preserve live/offline/reference search behavior.
+
+Compact cable history: identical Cable ID and Test ID appear once with a combined label; differing identifiers remain explicit and searchable. Use compact sortable headings and readable History controls, no mid-word wrapping. Unmatched network cells identify the source designation independently of matched endpoints; do not silently map SPARE-01 to SPARE-1. No database migration change is needed for this presentation work. Same visible versions are permitted by the presentation-only exception; exact SHA and cache pins change and Updated date remains October 27.
+
+Source integrity follow-up remains open under #171/#230: existing engineering source comparison is not a complete FLW/ExpertGPS operator workflow. Require source staging, per-field differences and explicit acceptance, source Cable ID/Test ID, confirmed name mappings, and linked-record checks. Greg identifies 0625 as an erroneous stray deleted from the current master: delete erroneous records, not retire real assets; preserve audit evidence. Do not hide this name in rendering, automatically delete missing source records, or pretend this display release provides the missing ingest workflow. Current master and database dependency evidence are required before preparing its deletion. No source import or Production mutation in this candidate.
+
+## October 27 second PR470 review — FLW identifiers and navigation
+
+Operator CLEAN EXIT on d9587b54; breaker-level panel outlets are accepted feedback and must be preserved. Remaining corrections: cable history must expose original FLW Cable ID (intake proposal display_label, sourced from Records.CableId) and Test ID (tester_original_name, sourced from BinRec metadata.testId), including unresolved endpoints/networks. Display both in list and comparison rows and allow searching those IDs. Do not substitute UUID or physical database cable ID; do not guess missing endpoint associations. Existing API already exposes these source fields, so no additional schema or source reimport.
+
+The popup must provide a direct Open panel link using the panel ID; for downstream points link to their explicitly recorded supplying panel(s), retaining a separate Cable details disclosure. No arbitrary choice if more than one panel supplies a point. Put Back to FieldWiring / Back to Setup immediately left of Collapse, chosen by existing view=fieldwiring flag; only fixed same-origin paths are allowed. No history.back dependency, new tab assumptions or arbitrary return URLs. Preserve all accepted breaker/FLW/circuit behavior. Verify actual links, both entry contexts, ID search, comparison history and unresolved records.
+
+## October 27 operator correction — breaker outlets and FLW map details
+
+The first PR470 disposable preview ended CLEAN EXIT but requires changes. The separate Add panel receptacle workflow was rejected: existing breakers 1/3 (Bottom Panel Outlets) and 2/4 (Top Panel Outlets) already describe these outlets. Replace the uninstalled device-parent design with an explicit boolean `panel_outlets` on the existing breaker. Expose it in Breaker settings and save through the existing atomic breaker_schedule command. Preserve breaker/circuit IDs, notes, positions, ON/OFF observations and remote destinations; no new devices, feeds, waypoints or outlet inventory. It indicates local outlets and may coexist with explicitly recorded remote destinations. Do not infer it from missing waypoints or note text. MAIN breakers cannot carry this branch designation. Existing notes remain visible even before designation so recorded descriptions are not replaced by “unknown destinations.”
+
+The supplying-circuit lookup correction is retained. Network membership is already derived from FLW via site_flw_cable_test and site_network_availability; correct the map's network primary-key lookup. Present resolved FLW test endpoints/results even without a separately reviewed physical cable ID, using the existing authoritative view. Conflicting/unresolved endpoint or network evidence must not be guessed. GPX routes do not define networks. The new bounded read helper returns breaker fields and existing resolved FLW test evidence; it must not invoke the expensive full power/controller snapshot.
+
+Map popup uses plain Networks and Cable tests labels. Rename its disclosure action Show details and scroll/focus the opened Waypoint details section. Detail screen shows concise supplying circuits, panel outlet descriptions, FLW network/test point pairs, result, date and length, with a direct Cable test history link. Remove database revision, UUID/hash, review/provenance jargon and unrelated panel ownership for non-panels from the normal view. Preserve a short “Verify power is off before working” instruction, with detailed engineering/field evidence in FieldWiring. No change to saved test results, network assignments, original FLW/GPX, controller placement or electrical state.
+
+Only the revised uninstalled 171_panel_receptacles.sql applies to a fresh current-Production clone. The earlier candidate migration must not be layered onto an existing disposable clone; CLEAN EXIT is confirmed. Test persisted designation/clear through the actual dialog, existing notes/state/destinations, authorization/retry/rollback, both circuit legs, FLW-only test evidence, deduplicated networks, clear labels and disclosure navigation. Production approval remains after operator acceptance.
+
 # Panel circuit definition and field capture
 
 ## October 26 urgent controller location extension — #88/#171 under #122

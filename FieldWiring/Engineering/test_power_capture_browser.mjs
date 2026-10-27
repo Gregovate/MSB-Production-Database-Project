@@ -20,7 +20,7 @@ const app = path.resolve(
 );
 async function openEngineering(){const detail=page.locator('#waypoint-engineering');if(await detail.count()&&await detail.isVisible()&&await detail.getAttribute('open')===null)await detail.locator(':scope > summary').click();}
 const db = await createFixtureDatabase();
-for(const migration of ['171_power_snapshot_performance.sql','171_equipment_lifecycle.sql','171_equipment_catalog.sql'])await db.exec(await readFile(path.join(app,'../../Database/EngineeringTools/sql',migration),'utf8'));
+for(const migration of ['171_power_snapshot_performance.sql','171_equipment_lifecycle.sql','171_equipment_catalog.sql','171_panel_receptacles.sql'])await db.exec(await readFile(path.join(app,'../../Database/EngineeringTools/sql',migration),'utf8'));
 let user = "crew@example.test",
   failNext = false;
 const server = createServer(async (req, res) => {
@@ -868,7 +868,10 @@ try {
     VALUES ('flw-source','11111111-1111-4111-8111-111111111111','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"AUX-E","display_label":"FE-02B TO FE-02 AUX-E"}'),
     ('flw-source','22222222-2222-4222-8222-222222222222','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"SPARE-01","display_label":"FE-02B TO FE-02 SPARE-01"}');`);
   await page.reload();await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+  await page.locator('[data-filter="network"]').selectOption('Unresolved');
+  assert.match(await page.locator('.cable-results').innerText(),/Not matched: SPARE-01/);
   await page.locator('[data-filter="network"]').selectOption("AUX-E");
+  assert.match(await page.locator('.cable-results tbody').innerText(),/Cable \/ Test ID: FE-02B TO FE-02 AUX-E/);
   assert.equal(await page.locator('[data-filter="waypoint"] option[value="11"]').count(),0);
   await page.locator('[data-filter="search"]').fill('fe-02');
   const lowerMatches=await page.locator('[data-filter="waypoint"] option').allTextContents();
@@ -892,6 +895,22 @@ try {
   assert.match(await page.locator('#test-history').textContent(),/Speed \(Mbps\)/);
   assert.doesNotMatch(await page.locator('.cable-comparison').textContent(),/SHA|UUID|10BASE|Source/);
   for(const id of ['breaker-context','breaker-reports','breaker-checklist'])assert.equal(await page.locator('#'+id).isVisible(),false);
+
+  // An unparseable short cable must still be findable by its actual FLW names.
+  await db.exec(`INSERT INTO ops.linkiq_test VALUES
+    ('33333333-3333-4333-8333-333333333333',NULL,NULL,1,'UNMATCHED','flw-source','1000BASE-T',5,'BENCH-007');
+    INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal) VALUES
+    ('flw-source','33333333-3333-4333-8333-333333333333','{"display_label":"Cable 5 ft <shop>","endpoint_candidates":[],"reasons":["NAME_REQUIRES_REVIEW"]}');`);
+  await page.reload();await page.getByText(/Revision \d+/).waitFor();
+  await page.locator('[data-filter="source-id"]').fill('bench-007');
+  assert.equal(await page.locator('.cable-results tbody tr').count(),1);
+  assert.match(await page.locator('.cable-results tbody').innerText(),/Cable ID: Cable 5 ft <shop>.*Test ID: BENCH-007/s);
+  await page.getByRole('button',{name:'Compare tests (1)',exact:true}).click();
+  assert.match(await page.locator('.cable-comparison').innerText(),/Cable 5 ft <shop>.*BENCH-007/s);
+  assert.equal(await page.locator('.cable-comparison shop').count(),0);
+  await page.locator('[data-filter="source-id"]').fill('Cable 5 ft');
+  assert.equal(await page.locator('.cable-results tbody tr').count(),1);
+  await page.locator('[data-filter="source-id"]').fill('');
 
   // Save Panel 15 as FE-00's supply even when it has no recorded breakers.
   await page.goto(base);await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
@@ -1060,6 +1079,20 @@ try {
   await page.locator('#panels').getByRole('button',{name:'FE-00 eight-slot fixture',exact:true}).click();
   await page.getByRole('button',{name:'Position 2 · Add breaker',exact:true}).click();
   await save();
+  // Designate the existing breaker; never add duplicate physical receptacles.
+  assert.equal(await page.getByRole('button',{name:'Add panel receptacle',exact:true}).count(),0);
+  await page.locator('.power-breaker').getByRole('button',{name:'Breaker settings',exact:true}).first().click();
+  await dialog.locator('[name=source_evidence]').fill('Bottom Panel Outlets');
+  await dialog.locator('[name=panel_outlets]').selectOption('true');
+  await save();
+  assert.match(await page.locator('#panel-detail').innerText(),/Circuit 2 — Outlets at panel/);
+  await page.reload();
+  await page.locator('#panels').getByRole('button',{name:'FE-00 eight-slot fixture',exact:true}).click();
+  await page.locator('.power-breaker').getByRole('button',{name:'Breaker settings',exact:true}).first().click();
+  assert.equal(await dialog.locator('[name=panel_outlets]').inputValue(),'true');
+  assert.equal(await dialog.locator('[name=source_evidence]').inputValue(),'Bottom Panel Outlets');
+  await dialog.locator('[name=panel_outlets]').selectOption('false');await save();
+  assert.match(await page.locator('#panel-detail').innerText(),/Bottom Panel Outlets/);
   user = "volunteer@example.test";
   await page.reload();
   await page.getByText("Read only", { exact: false }).waitFor();
@@ -1076,6 +1109,127 @@ try {
   await page.locator("#deployment-network").waitFor();
   assert.equal(await page.locator("#deployment-save").isDisabled(),true);
   assert.equal(await page.locator("#deployment-network").isDisabled(),true);
+  // Exercise the shipped map label helper with real Leaflet and browser layout.
+  const mapPage=await browser.newPage({viewport:{width:1100,height:760}});
+  await mapPage.setContent('<div id="label-map" style="width:1000px;height:700px"></div>');
+  const setupPath=path.join(app,'../../Setup/Application');
+  await mapPage.addStyleTag({path:path.join(setupPath,'locate_leaflet_1_9_4.css')});
+  const mapHtml=await readFile(path.join(setupPath,'locate_preview.html'),'utf8');
+  await mapPage.addStyleTag({content:mapHtml.match(/<style>([\s\S]*?)<\/style>/)[1]});
+  await mapPage.addScriptTag({path:path.join(setupPath,'locate_leaflet_1_9_4.min.js')});
+  const mapSource=await readFile(path.join(setupPath,'setup_site_reference.js'),'utf8');
+  const labelHelper=mapSource.slice(mapSource.indexOf('  function createMapLabels('),mapSource.indexOf('  const mapLabels ='));
+  await mapPage.addScriptTag({content:labelHelper});
+  await mapPage.evaluate(()=>{
+    const map=L.map('label-map',{zoomAnimation:false}).setView([43.7787,-87.7412],19);
+    const group=L.layerGroup().addTo(map);
+    const xy=(x,y)=>{const p=map.containerPointToLatLng([x,y]);return [p.lng,p.lat];};
+    for(const [name,type,coords] of [['FE-02B <test>','Point',xy(180,150)],['overlap','Point',xy(180,150)],['NET diagonal','LineString',[xy(300,400),xy(600,550)]]]){
+      const marker=type==='Point'?L.marker([coords[1],coords[0]]):L.polyline(coords.map(p=>[p[1],p[0]]));
+      marker._searchFeature={properties:{name},geometry:{type,coordinates:coords}};marker.addTo(group);
+    }
+    window.labelMap=map;window.labelGroup=group;window.labelManager=createMapLabels(map,{refs:group});
+  });
+  assert.equal(await mapPage.locator('.gis-map-label-text').count(),2);
+  assert.equal(await mapPage.locator('.gis-map-label-text').first().innerText(),'FE-02B <test>');
+  assert.equal(await mapPage.locator('.gis-map-label-text test').count(),0);
+  assert.equal(await mapPage.locator('.gis-track-name').count(),1);
+  assert.equal(await mapPage.locator('.gis-track-name').evaluate(n=>getComputedStyle(n).fontSize),'12px');
+  assert.equal(await mapPage.locator('.gis-track-name').evaluate(n=>getComputedStyle(n).backgroundColor),'rgba(0, 0, 0, 0)');
+  assert.match(await mapPage.locator('.gis-map-label-text').last().getAttribute('style'),/rotate\(26\./);
+  assert.ok(await mapPage.locator('.gis-map-label-text').evaluateAll(nodes=>{
+    const [a,b]=nodes.map(n=>n.getBoundingClientRect());return a.right<b.left||b.right<a.left||a.bottom<b.top||b.bottom<a.top;
+  }));
+  await mapPage.evaluate(()=>labelMap.setZoom(18));
+  assert.equal(await mapPage.locator('.gis-map-label-text').count(),0);
+  await mapPage.evaluate(()=>labelMap.setZoom(19));
+  assert.equal(await mapPage.locator('.gis-map-label-text').count(),2);
+  await mapPage.evaluate(()=>labelMap.removeLayer(labelGroup));
+  assert.equal(await mapPage.locator('.gis-map-label-text').count(),0);
+  // Real Leaflet must retain disclosure state after its shared resize callback
+  // and after an asynchronous icon update refreshes the popup.
+  await mapPage.addScriptTag({path:path.join(setupPath,'setup_locate_symbols.js')});
+  await mapPage.evaluate(()=>{
+    const marker=L.marker(labelMap.getCenter()).addTo(labelMap);
+    window.popupMarker=marker;
+    msbReferenceSymbols.bindPopupAtIconTop(marker,'<details><summary>Test details</summary><p>Latest record remains visible</p></details>');
+    marker.openPopup();
+  });
+  await mapPage.getByText('Test details',{exact:true}).click();
+  assert.equal(await mapPage.locator('.leaflet-popup details').evaluate(n=>n.open),true);
+  await mapPage.evaluate(()=>popupMarker.getPopup().update());
+  assert.equal(await mapPage.locator('.leaflet-popup details').evaluate(n=>n.open),true);
+  assert.equal(await mapPage.getByText('Latest record remains visible',{exact:true}).isVisible(),true);
+  await mapPage.evaluate(()=>popupMarker.closePopup());
+  await mapPage.locator('.leaflet-popup').waitFor({state:'detached'});
+  const assetSource=await readFile(path.join(setupPath,'setup_locate_assets.js'),'utf8');
+  await mapPage.addScriptTag({content:assetSource.slice(assetSource.indexOf('  function evidence('),assetSource.indexOf('  function render(items, container)'))});
+  await mapPage.evaluate(()=>{
+    window.esc=v=>String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    const asset={name:'Independent display',position_mode:'DETACHED',position:[43,-87],
+      observation:{occurred_at:'2026-10-27T14:00:00Z',setup_movement_event_id:42,event_type:'PLACED',destination_location_note:'WW-13'}};
+    msbReferenceSymbols.bindPopupAtIconTop(popupMarker,popup(asset,false),{maxHeight:360});
+    popupMarker.openPopup();
+  });
+  assert.equal(await mapPage.locator('.leaflet-popup').getByText('Latest record',{exact:true}).isVisible(),true);
+  assert.equal(await mapPage.locator('.leaflet-popup details').count(),0);
+  await mapPage.evaluate(()=>popupMarker.getPopup().update());
+  assert.match(await mapPage.locator('.leaflet-popup').innerText(),/Event: 42/);
+  assert.match(await mapPage.locator('.leaflet-popup').innerText(),/Recorded destination: WW-13/);
+  // The map fallback must resolve the power table and select the actual panel.
+  const supply=(await db.query("SELECT s.site_waypoint_id,s.site_panel_id,p.panel_name FROM ref.site_waypoint_power_sources s JOIN ref.site_panel p USING(site_panel_id) JOIN ref.site_power_circuit c USING(site_power_circuit_id) WHERE p.active AND c.active LIMIT 1")).rows[0];
+  assert.ok(supply);
+  await page.goto(`${base}?power_waypoint=${supply.site_waypoint_id}`);
+  await page.getByText(/Revision \d+/).waitFor();
+  assert.ok((await page.locator('#panel-detail').innerText()).includes(supply.panel_name));
+  await page.goto(`${base}?power_waypoint=987654`);
+  await page.getByText(/No power-panel association recorded/).waitFor();
+  // Exercise the actual waypoint action renderer for linked and unlinked points.
+  await mapPage.addScriptTag({content:mapSource.slice(mapSource.indexOf('  function waypointPopup('),mapSource.indexOf('  function showWaypoint('))});
+  const actions=await mapPage.evaluate(()=>{
+    window.current={panels:[],circuits:[]};
+    window.byId=(rows,id,key='id')=>(rows||[]).find(r=>r[key]===id);
+    window.append=(p,n)=>p.appendChild(n);
+    window.heading=(p,t)=>{const n=document.createElement('b');n.textContent=t;p.append(n);};
+    window.line=(p,t)=>{const n=document.createElement('p');n.textContent=t;p.append(n);};
+    window.matchingCircuits=id=>id===13?[{site_panel_id:8,panel_waypoint_id:80,circuit_code:'8'}]:[];
+    window.networkNames=()=>['REG'];window.waypointTests=()=>[];window.lookupLabel=()=> 'PANEL 08';
+    return [10,13].map(id=>Array.from(waypointPopup({id,label:'Point '+id,type:'OUT-Combo'}).querySelectorAll('a')).map(a=>[a.textContent,a.getAttribute('href')]));
+  });
+  assert.deepEqual(actions[0],[['Find panel','/fieldwiring/circuits?power_waypoint=10'],['Cable details','/fieldwiring/cable-tests?waypoint=10']]);
+  assert.deepEqual(actions[1],[['Open panel','/fieldwiring/circuits?panel=8'],['Cable details','/fieldwiring/cable-tests?waypoint=13']]);
+  // Navigate away/back and reload a real map. Persist view/layer choices only.
+  const leaflet=await readFile(path.join(setupPath,'locate_leaflet_1_9_4.min.js'),'utf8');
+  const leafletCss=await readFile(path.join(setupPath,'locate_leaflet_1_9_4.css'),'utf8');
+  const returnHelper=assetSource.slice(0,assetSource.indexOf('/* #171 consumes'));
+  const returnPage=`<style>${leafletCss}</style><div id="m" style="width:800px;height:600px"></div>
+    <input type="checkbox" data-layer="controllers"><input type="checkbox" data-layer="containers"><a href="/away">Details</a>
+    <script>${leaflet}</script><script>${returnHelper}</script><script>
+    window.testMap=L.map('m',{zoomAnimation:false}).setView([43.7787,-87.7412],17);
+    window.testLayers={controllers:L.layerGroup(),containers:L.layerGroup().addTo(testMap)};
+    L.marker([43.78,-87.74]).addTo(testLayers.controllers);
+    document.querySelectorAll('[data-layer]').forEach(c=>c.onchange=()=>c.checked?testLayers[c.dataset.layer].addTo(testMap):testMap.removeLayer(testLayers[c.dataset.layer]));
+    installMapReturnState(testMap,testLayers,document,window,sessionStorage);
+    window.mapReady=true;</script>`;
+  await mapPage.route('http://map-return.test/**',route=>route.fulfill({contentType:'text/html',body:new URL(route.request().url()).pathname==='/away'?'<p>Panel or cable details</p>':returnPage}));
+  await mapPage.goto('http://map-return.test/view');
+  await mapPage.waitForFunction(()=>window.mapReady);
+  await mapPage.locator('[data-layer="controllers"]').check();
+  await mapPage.locator('[data-layer="containers"]').uncheck();
+  await mapPage.evaluate(()=>testMap.setView([43.78,-87.74],21,{animate:false}));
+  await mapPage.getByText('Details',{exact:true}).click();
+  await mapPage.goBack();
+  await mapPage.waitForFunction(()=>window.mapReady);
+  for(let i=0;i<2;i++){
+    assert.equal(await mapPage.locator('[data-layer="controllers"]').isChecked(),true);
+    assert.equal(await mapPage.locator('[data-layer="containers"]').isChecked(),false);
+    const restored=await mapPage.evaluate(()=>({zoom:testMap.getZoom(),center:[testMap.getCenter().lat,testMap.getCenter().lng],controllers:testMap.hasLayer(testLayers.controllers),containers:testMap.hasLayer(testLayers.containers)}));
+    assert.equal(restored.zoom,21);assert.equal(restored.controllers,true);assert.equal(restored.containers,false);
+    assert.ok(Math.abs(restored.center[0]-43.78)<0.00001&&Math.abs(restored.center[1]+87.74)<0.00001);
+    assert.equal(await mapPage.locator('.leaflet-marker-icon').count(),1);
+    if(i===0){await mapPage.reload();await mapPage.waitForFunction(()=>window.mapReady);}
+  }
+  await mapPage.close();
   assert.deepEqual(errors, []);
   console.log(
     "PASS: focused panel/waypoint/equipment/history routes, shared Controller placement and power moves, retained history, exact batch retry, stale denial, network-only eligibility, retests, mobile width and read-only user.",

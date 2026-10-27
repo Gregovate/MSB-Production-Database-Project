@@ -1,3 +1,65 @@
+## October 27 PR470 map-return correction
+
+Greg reports CLEAN EXIT for 822a96a2; panel/cable browsing PASS. Remaining corrections: actual recorded-by name/email, tab-local center/zoom/layer restoration and independent controller visibility. Correction: cable navigation passes; associated power-panel navigation fails. Removed the proposed FLW-derived panel shortcut. Investigate the power association and panel selection separately, using power records only. Setup V0.3.95-map-return distinguishes the new navigation and audit display; FieldWiring V0.4.35-power-panel-link carries the waypoint into the existing power page. No additional migration or Production writes. Exact tests and new operator review pending.
+
+## October 27 PR470 navigation review remains open
+
+Greg reports Cable details appears inert and unassociated WW waypoints lack panel access; PO with a recorded association works. Make Cable details a direct link to existing waypoint-filtered cable history. Preserve exact-panel links and add Find panel to the existing panel browser when no association exists; never infer a supply. Video still shows the old Record details control, absent from the corrected source. Add actual asset-popup browser coverage for visible latest records, not only the generic disclosure helper. No CLEAN EXIT yet for this review.
+
+## October 27 PR470 combo-box network regression
+
+Greg reports previously visible combo-box networks missing. The popup depended exclusively on membership-to-catalog lookup although memberships already supply network_code and FLW tests supply resolved waypoint endpoints/network_key. Preserve membership names directly and include the current FLW endpoint networks independently of physical cable inventory, deduplicated. Do not infer from track geometry, rename SPARE designations, or associate unresolved endpoints. Exact failing live payload is unavailable; operator preview must confirm affected combo boxes.
+
+## October 27 PR470 popup follow-up — CLEAN EXIT with defects
+
+Greg reports CLEAN EXIT and confirms Record details resets for independent displays too. This closes the running preview, not acceptance of its defects. All asset popups must show their latest record directly. Root cause: shared disclosure toggle calls Leaflet update(), which reparses string popup content and loses open state. Bind a persistent DOM content node so refresh/disclosure and asynchronous icon updates preserve state. Keep icon-top placement and existing latest-record selection.
+
+## October 27 PR470 controller popup correction — review OPEN
+
+Greg requests controller names and visible latest record details. Use existing display assignments and configured network/unit ID for labels, keeping CTRL ID secondary. Preserve latest observation ordering and show that single record directly. Review is not complete until Greg posts CLEAN EXIT; no Production acceptance implied by screenshots or partial positive feedback.
+
+## October 27 PR470 sixth candidate — compact labels restored
+
+Greg confirms poles render in the 99f40923 preview but rejects the larger white track-label boxes. Restore the previous compact 12px haloed track labels and centered alignment, keeping the symbol fixes and zoom-dependent labels. No additional SQL or source-import changes. Production unchanged; exact candidate validation pending.
+
+## October 27 PR470 fifth candidate — review corrections
+
+CLEAN EXIT confirmed for 977172b66a50cfb796b4eec3eb5c5396b3bfa04a. Restore documented Display Anchor and Tower symbol mappings, include symbols in offline package, offset/larger track text with light backing. Presentation-only versions retained; exact SHA/cache identities change. Main unchanged00284c290ca30dbaaba7cc240b6db2fe81ad0fd6. Validation and operator acceptance pending; no Production write. WW-10 master correction to OUT-Combo remains pending source reconciliation, alongside erroneous0625 deletion and ingest controls. Never disguise these as renderer fixes.
+
+## October 27 PR470 fourth candidate — map label review
+
+Operator reports CLEAN EXIT for f79b62e30c6213c258dd74e80dcb9359075c310d. Incorporate zoom-dependent waypoint/track labels, upright route alignment and overlap suppression; compact duplicate FLW identifiers, plain sort headings and responsive history rows. Unmatched networks identify the source designation without changing matching rules. Same presentation-only versions V0.4.34-test-identifiers / V0.3.94-map-navigation; exact SHA/cache pins change. Existing uninstalled migration and validation only, fresh current-Production clone. Current main refreshed: 00284c290ca30dbaaba7cc240b6db2fe81ad0fd6. Local 916 Setup/reference contracts, 232 FieldWiring tests and JavaScript label/history checks PASS. Exact CI/browser and next operator review pending. No Production writes.
+
+Source integrity is an open separate workflow gap, not solved by this release: source comparison intentionally retains unmapped existing records (`UNMAPPED_EXISTING_RETAINED`); database network normalization only normalizes AUX separators, so SPARE-01 does not equal SPARE-1. Greg confirms stray0625 must be deleted as erroneous, not retired. No supplied current master/database dependency proof here; no hardcoded map suppression or blind deletion. Owning design records required ingest review/deletion behavior.
+
+## October 27 third PR470 candidate — source IDs and direct navigation
+
+Greg confirms breaker-outlet display is much better; preserve it. d9587b54 preview returned CLEAN EXIT, with remaining changes: unmatched FLW records need source Cable ID/Test ID, popup must lead directly to the panel, and map header needs an origin-aware return button. No Production acceptance/deployment yet.
+
+Expose existing source_pair.display_label (Records.CableId) and original_name (BinRec metadata.testId) in cable list/comparison and add case-insensitive ID search. No UUID/database ID substitution or inferred endpoint association. Open panel links use explicit panel IDs, including supplying panels of remote points; retain Cable details separately. Back to FieldWiring or Back to Setup sits left of Collapse and uses the existing view flag with fixed local destinations. Preserve accepted breaker designation/migration without additional SQL changes or source imports.
+
+Versions: FieldWiring V0.4.34-test-identifiers; Setup V0.3.94-map-navigation. Local 906 Setup +10 reference contracts, 232 FieldWiring and JS map/navigation/source-ID checks PASS. Full CI/browser and new operator review pending. Reuse the same PR/branch, preview worktree, runner and8898. Apply only existing pending 171_panel_receptacles.sql to a fresh current-Production clone and its read-only validator; no migration replay on Production. Previous CLEAN EXIT is recorded.
+
+## October 27 PR470 browser findings — revised candidate, Production unchanged
+
+Greg returned CLEAN EXIT for e25f3fd913bb5363e88f40b43cee3431d473eb58. Supplying circuits now appear, but the candidate is not accepted: map network names/tests were hidden, details were overly technical, existing 1/3 and 2/4 panel-outlet notes were replaced by unknown destinations, and the separate receptacle-creation workflow duplicated existing breakers.
+
+Revised design removes the uninstalled device/feed model entirely. One boolean designation on the existing branch breaker is saved through Breaker settings and the existing breaker_schedule command. Bottom/Top Panel Outlets notes, identities, circuit legs, observations and remote assignments remain. Map shows notes even before designation; does not infer the designation or create records. MAIN designation is rejected. Fresh disposable clone only; do not apply an earlier PR470 migration first.
+
+Networks already derive from FLW through site_network_availability. Correct the network lookup to site_network_id, deduplicate names, and expose existing resolved site_flw_cable_test rows without requiring physical cable binding. Map Show details opens/focuses/scrolls to concise power/network/test information and links to panel circuits/test history. No raw UUIDs, DB revision, hashes or source-review jargon in the normal waypoint view.
+
+Revised versions: FieldWiring V0.4.33-breaker-outlets; Setup V0.3.93-map-details. Local 906 Setup + 10 reference contracts and 232 FieldWiring checks PASS; actual map rendering/navigation and SQL auth/retry/rollback/preservation/FLW-only evidence regressions PASS. Exact CI/browser and fresh current-clone review pending. Prior CI/browser results below apply only to the rejected old candidate. Same PR470, same existing preview runner/8898, revised 171_panel_receptacles.sql and read-only validation; no completed Production migrations replayed. Live Scan acceptance remains deferred.
+
+## October 27 post-install correction — candidate, not deployed
+
+Greg's field evidence shows Panel 42-00 circuits 8/10 supplying 42-03S while the destination map popup reports no circuits. Root cause: matchingCircuits used the default `id` key against circuit records keyed by `site_power_circuit_id`. Fix the lookup without rewriting existing assignments. Separately, named OUTLET devices can now belong directly to a panel with nullable `site_panel_id`, inheriting its location and retaining individual circuit feeds; no overlapping synthetic waypoints. Creation, rename, source reassignment and retirement use the existing authorized revision/idempotency/audit command. Guards protect all generic mutation paths as well.
+
+Candidate versions: FieldWiring V0.4.32-panel-receptacles and Setup V0.3.92-panel-supplies. Existing equipment, controller and remote waypoint records are preserved. Local regressions: 906 Setup tests, 232 FieldWiring tests, actual map JavaScript and isolated SQL acceptance PASS, including six outlets on two distinct breakers, authorization, retry/conflict, atomic rollback and retained retirement history. Browser download is unavailable in this workspace; the existing CI browser workflow includes create/reload/rename/remove coverage. CI and current-clone operator acceptance must finish before any readiness claim.
+
+Reuse `Setup/Acceptance/run_setup_disposable_browser_preview.ps1` with port 8898, exact correction SHA/ref and expected Setup version. Apply ONLY `Database/EngineeringTools/sql/171_panel_receptacles.sql`; validate with `Database/Acceptance/171_panel_receptacles_validation.sql`. The existing reference-data allowlist includes these exact files. PR463 migrations are already installed and must not replay. No GPX/FLW reimport, new infrastructure, Scan installation or Production changes. Authority: Server Management Pre_Production_Browser_Review_Runbook, PostgreSQL_Disposable_Acceptance_Standard and Application_and_Test_Port_Register, reread October 27.
+
+Operator review: 42-03S popup shows panel 42-00 circuits 8 and 10; existing panel destinations remain. Add named panel receptacles on different supplying circuits, reload, rename/reassign/remove in the disposable clone, verify their labels under the existing panel marker and absence of new map points. Unrecorded relationships remain unknown. Retain the runner report and CLEAN EXIT before requesting Production approval. Live Scan acceptance remains a separate deferred field gate.
+
 ## October 26 PR463 Production server PASS — browser/Scan acceptance pending
 
 Operator-returned receipt `PR463-Equipment-Location-20261026T155409Z` confirms accepted `820b154cd664f0cac0d1d8dfd38e47b4fe19df9c` installed in FieldWiring and Setup, all four pending migrations committed/validated, preserved business data, return ONLINE and matching Scan installation gates PASS. Full report, rollback snapshot/hash, tooling identities and the corrected Windows archive failure are recorded newest-first in `System_Documentation/Production_Deployment_Change_Log.md`. Do not replay this release. Protected browser and physical live Scan acceptance remain pending; earlier preparation/pending-deployment notes below are historical.

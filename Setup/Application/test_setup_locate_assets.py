@@ -114,7 +114,7 @@ def test_search_is_served_before_asset_overlay():
     client = app.test_client()
     page = client.get('/locate/').get_data(as_text=True)
     assert 'id="map-search"' in page
-    assert page.index('src="assets/setup_locate_search.js"') < page.index('src="assets/setup_locate_assets.js"')
+    assert page.index('src="assets/setup_locate_search.js"') < page.index('src="assets/setup_locate_assets.js?v=2026-10-27-recorded-by"')
     assert client.get('/locate/assets/setup_locate_search.js').status_code == 200
 
 
@@ -178,3 +178,13 @@ def test_controller_map_uses_observed_gps_only_and_existing_symbol():
     from pathlib import Path
     source=Path(__file__).with_name('setup_locate_assets.js').read_text()
     assert "msbReferenceSymbols.marker(a.position,'Controller')" in source
+
+
+def test_recorded_actor_is_preserved_not_inferred_from_viewer():
+    picture=dict(generated_at=None,through_event_id=715,effect_rows=[],containers=[],displays=[],
+        controller_observations=[dict(controller_id=1053,name='WW-WhoPanel-04',
+            setup_movement_event_id=715,recorded_by_name='Recorded Person',
+            captured_operator_email='recorded@example.test')])
+    record=locate_assets(picture)['controllers'][0]['observation']
+    assert record['recorded_by_name']=='Recorded Person'
+    assert record['captured_operator_email']=='recorded@example.test'

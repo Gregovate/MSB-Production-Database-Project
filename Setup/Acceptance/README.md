@@ -1,3 +1,7 @@
+## PR470 October 27 map-label review
+
+Prior f79b62e preview CLEAN EXIT confirmed. Next exact candidate must pass CI before launching the existing reusable preview on 8898 with the unchanged 171_panel_receptacles migration/validation. At park overview zoom, route and waypoint labels disappear; at zoom19+ waypoint names appear and track names align with their lines, with overlapping text suppressed. Check panning, layer toggles and popup clicks. Verify compact Cable ID/Test ID rows and explicit unmatched network names. No FLW/GPX import, source deletion or Production write is included. Operator acceptance and CLEAN EXIT remain required before Production release.
+
 # Setup Acceptance Tooling
 
 October 26 PR463 first attempt stopped ONLINE at isolated Scan artifact verification: Windows Git archive produced CRLF bytes (`3e899a6a...`) instead of accepted LF bytes (`f9b82250...`). Report `PR463-Equipment-Location-20261026T154830Z` proves live Scan and Directus state unchanged, validation root/TAR removed, no maintenance entry or migration. Transport now uses command-local Git EOL overrides and verifies archived src/dist against exact Git blobs before SCP. Regression reproduces the original failure with `core.autocrlf=true` and `core.eol=crlf`, on Linux and Windows. Accepted application and server helpers unchanged; corrected deployment completed with server PASS in `PR463-Equipment-Location-20261026T155409Z`; protected browser/live Scan acceptance remains pending.
@@ -452,3 +456,26 @@ report directory. Do not rerun the completed release for documentation.
 ### PR464 accepted breaker correction release
 
 [Authorized release and pinned identities](Setup_171_Breaker_Correction_Release.md): existing maintenance runner, incremental unassigned-breaker command/index migration, FieldWiring-only promotion. PR463 equipment work excluded; PR464 server deployment PASS, protected Production browser check pending.
+
+## October 27 panel supplies, breaker outlets and FLW map correction
+
+Candidate versions: Setup `V0.3.94-map-navigation`, FieldWiring `V0.4.34-test-identifiers`.
+The first PR470 preview ended CLEAN EXIT with changes required. The replacement
+uses the existing breaker: Breaker settings → Supplies outlets at this panel → Yes.
+Existing Bottom/Top Panel Outlets notes remain; there is no Add panel receptacle.
+
+Use the existing reusable browser runner on 8898, exact candidate SHA/ref,
+`-MigrationPaths @('Database/EngineeringTools/sql/171_panel_receptacles.sql')`
+and `-ValidationPaths @('Database/Acceptance/171_panel_receptacles_validation.sql')`.
+Apply this revised candidate only to a fresh current-Production clone; never layer
+it onto the old PR470 device-parent migration. PR463 migrations remain installed.
+Preserve current GIS imports and circuit assignments; no GPX/FLW reimport.
+
+Review 42-03S's power circuits and FLW networks/test pairs; Open panel must navigate directly to the selected/supplying panel. Cable details
+retains the short map disclosure. Verify FLW Cable ID/Test ID on unmatched cable
+records and search both IDs. Verify Back to FieldWiring / Back to Setup beside
+Collapse for each entry path. At Panel42-00, retain Bottom Panel Outlets
+(1/3) and Top Panel Outlets (2/4), designate their existing breakers, save/reload,
+then clear a designation and confirm notes/circuits remain. No extra devices or
+waypoints. End with CLEAN EXIT and retain the report. Production deployment and
+live Scan acceptance remain separate gates.

@@ -27,7 +27,8 @@ def locate_assets(picture):
     fields = ("setup_movement_event_id", "event_type", "occurred_at", "received_at",
               "gps_latitude", "gps_longitude", "gps_accuracy_m", "gps_quality",
               "gps_fix_age_ms", "capture_method", "offline_captured",
-              "destination_location_note", "stage_key", "stage_name")
+              "destination_location_note", "stage_key", "stage_name",
+              "recorded_by_name", "captured_operator_email")
 
     def observation(event):
         return {k: event.get(k) for k in fields}

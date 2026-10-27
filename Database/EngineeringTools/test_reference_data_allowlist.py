@@ -91,6 +91,7 @@ def test_site_reference_sql_and_editor_paths_are_exact_and_ordered():
 
         "Database/EngineeringTools/sql/171_equipment_lifecycle.sql",
         "Database/EngineeringTools/sql/171_equipment_catalog.sql",
+        "Database/EngineeringTools/sql/171_panel_receptacles.sql",
     ]
     assert policy["approved_validation_paths"] == [
         "Database/Acceptance/171_site_infrastructure_disposable_validation.sql",
@@ -103,6 +104,7 @@ def test_site_reference_sql_and_editor_paths_are_exact_and_ordered():
         "Database/Acceptance/171_equipment_lifecycle_validation.sql",
         "Database/Acceptance/171_equipment_catalog_validation.sql",
         "Database/Acceptance/171_cable_result_evidence.sql",
+        "Database/Acceptance/171_panel_receptacles_validation.sql",
     ]
     editor = json.loads((ACCEPTANCE / "reference_data_manager_table_allowlist.json").read_text(
         encoding="utf-8"))
@@ -140,9 +142,9 @@ def test_existing_map_uses_protected_live_references_before_static_fallback():
     search = (app / "setup_locate_search.js").read_text(encoding="utf-8")
     client = (app / "setup_site_reference.js").read_text(encoding="utf-8")
     api = (app / "setup_site_reference_api.py").read_text(encoding="utf-8")
-    assert html.count('src="assets/setup_site_reference.js"') == 1
+    assert html.count('src="assets/setup_site_reference.js?v=2026-10-27-map-return"') == 1
     assert html.index('src="assets/setup_locate_search.js"') < html.index(
-        'src="assets/setup_site_reference.js"') < html.index(
+        'src="assets/setup_site_reference.js?v=2026-10-27-map-return"') < html.index(
         'src="assets/setup_locate_networks.js')
     assert "app.register_blueprint(site_reference_api)" in backend
     assert '"setup_site_reference.js"' in backend
@@ -165,7 +167,7 @@ def test_setup_map_is_reference_consumer_not_reference_editor():
     """#171/#230: Setup map must never expose engineering mutation forms."""
     viewer = (ROOT / "Setup" / "Application" / "setup_site_reference.js").read_text(
         encoding="utf-8")
-    assert "btn.textContent = 'View circuits and tests'" in viewer
+    assert "btn.textContent = 'Cable details'" in viewer
     assert "if (false && (current.permissions.identity || current.permissions.operations))" in viewer
     assert "renderDb(snapshot);" in viewer
     assert "renderNetworks(snapshot);" in viewer

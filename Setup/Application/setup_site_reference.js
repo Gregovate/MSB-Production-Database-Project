@@ -16,7 +16,7 @@
   inspection.id = 'site-reference-inspection';
   inspection.className = 'control-group';
   const summary = document.createElement('summary');
-  summary.textContent = 'Selected infrastructure / maintenance';
+  summary.textContent = 'Waypoint details';
   inspection.appendChild(summary);
   const body = document.createElement('div');
   body.id = 'site-reference-body';
@@ -58,12 +58,40 @@
   const lookupLabel = id => byId(current?.waypoints, id)?.label || 'Unknown waypoint #' + id;
   const matchingCircuits = id => (current?.destinations || [])
     .filter(d => Number(d.site_waypoint_id) === Number(id))
-    .map(d => byId(current.circuits, d.site_power_circuit_id)).filter(Boolean);
+    .map(d => byId(current.circuits, d.site_power_circuit_id, 'site_power_circuit_id')).filter(Boolean);
+  const breakerFor = c => byId(current?.breakers, c.site_power_breaker_id, 'site_power_breaker_id');
+  const destinationLabels = c => {
+    const labels = [...new Set((current.destinations || [])
+      .filter(d => Number(d.site_power_circuit_id) === Number(c.site_power_circuit_id))
+      .map(d => lookupLabel(d.site_waypoint_id)))];
+    const breaker = breakerFor(c);
+    if (breaker?.panel_outlets) labels.unshift('Outlets at panel');
+    return labels;
+  };
+  const circuitDescription = c => {
+    const destinations = destinationLabels(c), note = breakerFor(c)?.source_evidence || c.circuit_label;
+    // Existing field notes remain visible even before the new designation is saved.
+    return (destinations.join(', ') || (note ? '' : 'Location not recorded'))
+      + (note ? (destinations.length ? ' — ' : '') + note : '');
+  };
   const inspectedCables = id => (current?.cables || []).filter(c =>
     Number(c.endpoint_a) === Number(id) || Number(c.endpoint_b) === Number(id));
-  const networkNames = id => (current?.memberships || [])
-    .filter(m => Number(m.site_waypoint_id) === Number(id))
-    .map(m => byId(current.networks, m.site_network_id)?.network_code).filter(Boolean);
+  // Membership rows already carry the FLW-resolved network name. Keep that
+  // evidence visible even when a separate network catalog lookup is unavailable.
+  // Also include resolved FLW endpoints directly; physical-cable inventory is
+  // not a prerequisite for showing a tested network at a combo box.
+  const networkNames = id => [...new Set([
+    ...(current?.memberships || [])
+      .filter(m => Number(m.site_waypoint_id) === Number(id))
+      .map(m => m.network_code || byId(current.networks, m.site_network_id, 'site_network_id')?.network_code),
+    ...waypointTests(id).filter(t => t.network_key).map(testNetwork)
+  ].filter(Boolean))];
+  // The database FLW view resolves test-point pairs independently of cable inventory.
+  const waypointTests = id => (current?.flw_tests || []).filter(t =>
+    Number(t.endpoint_a) === Number(id) || Number(t.endpoint_b) === Number(id));
+  const testNetwork = t => (current?.networks || []).find(n =>
+    String(n.network_code).trim().toUpperCase().replace(/^AUX[ -]+([A-Z])$/, 'AUX-$1') === t.network_key)?.network_code || t.network_key || 'Network not recorded';
+  const testResult = t => ({1:'PASS',6:'FAIL',8:'INFO'}[t.test_status_code] || 'Result not recorded');
 
   function field(form, labelText, name, value = '', type = 'text') {
     const label = document.createElement('label');
@@ -141,40 +169,40 @@
     const display = document.createElement('div');
     heading(display, point.label);
     line(display, point.type || 'Waypoint');
-    line(display, 'Source year: ' + sourceYear(point.source_time));
-    const p = byId(current?.panels, point.id, 'site_waypoint_id');
-    const circuits = matchingCircuits(point.id);
-    const net = networkNames(point.id);
-    line(display, 'Supplying circuit(s): ' + (circuits.length ? circuits.map(c =>
-      lookupLabel(c.panel_waypoint_id) + ' / ' + c.circuit_code).join('; ') : 'Not recorded / unreviewed'));
-    line(display, 'Actual network(s): ' + (net.length ? net.join(', ') : 'Not recorded / unreviewed'));
-    if (p || /panel/i.test(point.type || '')) {
-      line(display, 'Panel owner: ' + (p?.owner_code || 'UNKNOWN') + ' · Meter ID: ' + textValue(p?.meter_identifier));
-      const own = (current.circuits || []).filter(c => Number(c.panel_waypoint_id) === Number(point.id));
-      line(display, 'Breaker / circuit numbers: ' + (own.length ? own.map(c => c.circuit_code +
-        ' (' + c.owner_code + ')').join(', ') : 'Not recorded / unreviewed'));
-      for (const c of own) {
-        const destinations = current.destinations.filter(d => Number(d.site_power_circuit_id) === Number(c.site_power_circuit_id));
-        line(display, c.circuit_code + ' supplies ' + (destinations.length ?
-          destinations.map(d => lookupLabel(d.site_waypoint_id)).join(', ') : 'unknown destinations'));
-        for (const i of current.instructions.filter(i => Number(i.site_power_circuit_id) === Number(c.site_power_circuit_id))) {
-          line(display, i.season_year + ' planned ON: ' + textValue(i.turn_on_instruction)
-            + '; planned OFF: ' + textValue(i.turn_off_instruction) + ' (not observed state)');
-        }
-      }
+    const panel = byId(current?.panels, point.id, 'site_waypoint_id');
+    const circuits = matchingCircuits(point.id), net = networkNames(point.id);
+    if (circuits.length) line(display, 'Power: ' + circuits.map(c =>
+      lookupLabel(c.panel_waypoint_id) + ' / ' + c.circuit_code).join('; '));
+    else if (!panel) line(display, 'Power: Not recorded');
+    line(display, 'Networks: ' + (net.length ? net.join(', ') : 'Not recorded'));
+    if (panel) {
+      line(display, (panel.owner_code || 'Owner not recorded') + ' · Meter: ' + (panel.meter_identifier || 'Not recorded'));
+      for (const c of (current.circuits || []).filter(c => Number(c.panel_waypoint_id) === Number(point.id)))
+        line(display, 'Circuit ' + c.circuit_code + ': ' + circuitDescription(c));
     }
-    const linked = inspectedCables(point.id);
-    line(display, 'Reviewed cable identities: ' + linked.length);
-    for (const c of linked) {
-      const latest = c.tests?.[0];
-      line(display, 'Cable #' + c.id + ' · ' + (byId(current.networks, c.network_id, 'site_network_id')?.network_code ||
-        c.spare || 'network unreviewed') + ' · LinkIQ raw result ' +
-        textValue(latest?.test_status_code) + ' · ' + textValue(latest?.tested_at_local) +
-        ' · measured speed not established');
+    line(display, 'Cable tests: ' + waypointTests(point.id).length);
+    // Navigate directly by panel identity, not by the waypoint-detail route.
+    const panelIds = panel ? [panel.site_panel_id] : [...new Set(circuits.map(c => c.site_panel_id).filter(Boolean))];
+    for (const panelId of panelIds) {
+      const link = document.createElement('a');
+      link.href = '/fieldwiring/circuits?panel=' + encodeURIComponent(panelId);
+      link.className = 'map-panel-link';
+      link.textContent = panelIds.length > 1 ? 'Open ' + (byId(current.panels, panelId, 'site_panel_id')?.panel_name || 'panel ' + panelId) : 'Open panel';
+      append(display, link);
     }
-    const btn = document.createElement('button');
-    btn.type = 'button'; btn.textContent = 'View circuits and tests';
-    btn.addEventListener('click', () => showWaypoint(point.id));
+    if (!panelIds.length) {
+      // No recorded supply means no particular panel can be claimed here.
+      // Keep the existing panel browser accessible for finding the real source.
+      const link = document.createElement('a');
+      link.href = '/fieldwiring/circuits?power_waypoint=' + encodeURIComponent(point.id);
+      link.className = 'map-panel-link';
+      link.textContent = 'Find panel';
+      append(display, link);
+    }
+    // Navigate to the existing waypoint-filtered history, not a hidden sidebar.
+    const btn = document.createElement('a');
+    btn.className = 'map-panel-link'; btn.textContent = 'Cable details';
+    btn.href = '/fieldwiring/cable-tests?waypoint=' + encodeURIComponent(point.id);
     append(display, btn);
     return display;
   }
@@ -191,69 +219,37 @@
     const panel = byId(current.panels, id, 'site_waypoint_id');
     const powerLink = append(body, document.createElement('a'));
     powerLink.href = '/fieldwiring/circuits?waypoint=' + encodeURIComponent(id);
-    powerLink.textContent = 'View or maintain panel circuits in FieldWiring';
-
+    powerLink.textContent = 'Open panel circuits';
+    powerLink.style.display = 'block';
     const ownCircuits = (current.circuits || []).filter(c => Number(c.panel_waypoint_id) === Number(id));
     const supplies = matchingCircuits(id);
-    line(body, 'Recorded panel owner: ' + (panel?.owner_code || 'UNKNOWN — unreviewed'));
-    if (panel || /panel/i.test(w.type || '')) line(body, 'Meter ID: ' + textValue(panel?.meter_identifier));
-    const aliases = (current.aliases || []).filter(a => Number(a.waypoint_id) === Number(id));
-    line(body, 'Reviewed names / aliases: ' + (aliases.length ?
-      aliases.map(a => a.label).join('; ') : 'No alternate names reviewed'));
-    heading(body, 'Power and switching');
-    if(panel) line(body,'Panel supply plan: show '+panel.show_desired_state+'; off-season '+panel.restoration_desired_state);
-    line(body,'Recorded sources may be incomplete. Planned OFF does not prove absence of voltage. Open FieldWiring for upstream isolation and dated field/utility evidence.');
-
-    if (ownCircuits.length) for (const c of ownCircuits) {
-      const dests = current.destinations.filter(d => Number(d.site_power_circuit_id) === Number(c.site_power_circuit_id));
-      line(body, 'Circuit ' + c.circuit_code + (c.circuit_label ? ' (' + c.circuit_label + ')' : '')
-        + ' · owner ' + c.owner_code + ' · breaker '
-        + textValue(c.breaker_rating_amps) + ' A → '
-        + (dests.length ? dests.map(d => lookupLabel(d.site_waypoint_id)).join(', ') : 'Destinations unreviewed'));
-      for (const i of current.instructions.filter(i => Number(i.site_power_circuit_id) === Number(c.site_power_circuit_id))) {
-        line(body, i.season_year + ' planned ON: ' + textValue(i.turn_on_instruction)
-          + ' | planned OFF: ' + textValue(i.turn_off_instruction) + ' (not observed state)');
-      }
-    }
-    if (supplies.length) for (const c of supplies)
-      line(body, 'Supplied by ' + lookupLabel(c.panel_waypoint_id)
-        + ' / circuit ' + c.circuit_code + ' · ownership ' + c.owner_code);
-    if (!ownCircuits.length && !supplies.length)
-      line(body, 'Panel, breaker and supplying circuit: Not recorded / unreviewed');
-    heading(body, 'Networks confirmed by reviewed physical routes');
+    if (panel) line(body, (panel.owner_code || 'Owner not recorded') + ' · Meter: ' + (panel.meter_identifier || 'Not recorded'));
+    heading(body, 'Power');
+    for (const c of ownCircuits) line(body, 'Circuit ' + c.circuit_code + ': ' + circuitDescription(c));
+    for (const c of supplies) line(body, 'Supplied by ' + lookupLabel(c.panel_waypoint_id) + ' / circuit ' + c.circuit_code);
+    if (!ownCircuits.length && !supplies.length) line(body, 'Power source not recorded');
+    line(body, 'Verify power is off before working.');
+    heading(body, 'Networks');
     const net = networkNames(id);
-    line(body, net.length ? net.join(', ') : 'Not recorded / unreviewed (GPX track name is not assignment)');
-    heading(body, 'Physical cables and LinkIQ tests');
-    const cables = inspectedCables(id);
-    if (!cables.length) line(body, 'No reviewed physical cable identity associated with this waypoint');
-    for (const c of cables) {
-      const network = byId(current.networks, c.network_id, 'site_network_id');
-      line(body, 'Cable #' + c.id + ': ' + lookupLabel(c.endpoint_a) + ' → '
-        + lookupLabel(c.endpoint_b) + ' · ' + (network?.network_code || c.spare || 'network not assigned')
-        + ' · status ' + c.lifecycle);
-      if (!c.tests.length) line(body, 'LinkIQ test: Not associated / unreviewed');
-      for (const test of c.tests) {
-        line(body, 'Test ' + test.uuid + ' · ' + textValue(test.tested_at_local)
-          + ' · length ' + textValue(test.length_ft) + ' ft · raw result code '
-          + textValue(test.test_status_code) + ' · standard ' + textValue(test.test_standard)
-          + ' · measured speed NOT ESTABLISHED');
-      }
+    line(body, net.length ? net.join(', ') : 'No network recorded in cable tests');
+    heading(body, 'Cable tests');
+    const tests = waypointTests(id);
+    if (!tests.length) line(body, 'No cable tests matched to this point');
+    for (const t of [...tests].sort((a,b) => String(b.reliable_test_time || '').localeCompare(String(a.reliable_test_time || '')))) {
+      line(body, testNetwork(t) + ': ' + lookupLabel(t.endpoint_a) + ' ↔ ' + lookupLabel(t.endpoint_b));
+      line(body, testResult(t) + ' · ' + (t.reliable_test_time ? String(t.reliable_test_time).replace('T',' ') : 'Date not recorded')
+        + (t.length_ft == null ? '' : ' · ' + t.length_ft + ' ft'));
     }
-    const provenance = append(body, document.createElement('details'));
-    const provSummary = append(provenance, document.createElement('summary'));
-    provSummary.textContent = 'Original source metadata / provenance';
-    line(provenance, 'GPX label: ' + textValue(w.source_label) + ' · source year: ' + sourceYear(w.source_time));
-    line(provenance, 'Source time: ' + textValue(w.source_time)
-      + ' · last reviewed: ' + textValue(w.verified_at));
-    line(provenance, 'Description: ' + textValue(w.source_description));
-    line(provenance, 'Comment: ' + textValue(w.source_comment));
-    line(provenance, 'Accepted GPX SHA256: ' + (current.sources?.gpx?.sha256 || 'not accepted'));
-    line(provenance, 'Latest staged GPX SHA256: ' + (current.sources?.gpx_latest_staged?.sha256 || 'not staged'));
-    line(provenance, 'LinkIQ evidence SHA256: ' + (current.sources?.flw?.sha256 || 'not recorded'));
-    line(provenance, 'Unreconciled LinkIQ test UUIDs: ' + current.unresolved_linkiq_tests);
-    line(body, 'Reference DB revision ' + current.revision
-      + ' · operational instructions are NOT proof of electrical state.');
+    const testLink = append(body, document.createElement('a'));
+    testLink.href = '/fieldwiring/cable-tests?waypoint=' + encodeURIComponent(id);
+    testLink.textContent = 'Open cable test history';
+    testLink.style.display = 'block';
+    // Bring the opened disclosure into view instead of appearing to do nothing.
+    inspection.tabIndex = -1;
+    inspection.focus({preventScroll:true});
+    inspection.scrollIntoView({block:'start',behavior:'smooth'});
     if (false && (current.permissions.identity || current.permissions.operations)) {
+      const cables = inspectedCables(id);
       // This map is a consumer. Never expose protected reference mutation here.
       // Keep the legacy forms uncalled until moved to #230's dedicated editor.
       const edits = append(body, document.createElement('div'));
@@ -459,6 +455,92 @@
     }
   }
 
+  // Labels are disposable presentation layers. Source geometry and search markers
+  // remain authoritative; removing a label never hides a feature or its popup.
+  function createMapLabels(map, layers) {
+    const labels = L.layerGroup().addTo(map);
+    const MIN_ZOOM = 19;
+    const measure = document.createElement('canvas').getContext('2d');
+    measure.font = 'bold 12px sans-serif';
+    function placement(coords, width) {
+      const points = coords.map(c => map.latLngToContainerPoint([c[1], c[0]]));
+      const size = map.getSize();
+      let best = null;
+      // Join consecutive nearly straight source segments; dense GPX vertices
+      // must not prevent a label fitting along an otherwise straight track.
+      for (let i=0; i<points.length-1; i++) {
+        for (let j=i+1; j<points.length; j++) {
+          const a=points[i], b=points[j], dx=b.x-a.x, dy=b.y-a.y;
+          const length=Math.hypot(dx,dy);
+          if (!length) continue;
+          let straight=true;
+          for (let k=i+1; k<j; k++) {
+            const x=points[k].x-a.x, y=points[k].y-a.y;
+            const along=(x*dx+y*dy)/length;
+            if (Math.abs(x*dy-y*dx)/length>6 || along<0 || along>length) {straight=false;break;}
+          }
+          if (!straight) break;
+          const x=(a.x+b.x)/2, y=(a.y+b.y)/2;
+          if (length<width+16 || x<width/2 || x>size.x-width/2 || y<20 || y>size.y-20) continue;
+          let angle=Math.atan2(dy,dx)*180/Math.PI;
+          if (angle>90) angle-=180;
+          if (angle< -90) angle+=180;
+          if (!best || length>best.length) best={x,y,angle,length};
+          break;
+        }
+      }
+      return best;
+    }
+    function refresh() {
+      labels.clearLayers();
+      if (map.getZoom()<MIN_ZOOM) return;
+      const candidates=[], occupied=[];
+      for (const group of Object.values(layers)) {
+        if (!map.hasLayer(group)) continue;
+        group.eachLayer(marker => {
+          const feature=marker._searchFeature, name=feature?.properties?.name;
+          if (!name || !feature.geometry) return;
+          if (feature.geometry.type==='Point') candidates.push({name,point:feature.geometry.coordinates});
+          else if (feature.geometry.type==='LineString') candidates.push({name,coords:feature.geometry.coordinates});
+          else if (feature.geometry.type==='MultiLineString') {
+            // Each marker already represents one segment in a multi-part track.
+            const latlngs=marker.getLatLngs?.();
+            if (latlngs?.length && !Array.isArray(latlngs[0])) candidates.push({name,coords:latlngs.map(p=>[p.lng,p.lat])});
+          }
+        });
+      }
+      // Waypoint names have priority over route labels in crowded areas.
+      candidates.sort((a,b)=>Number(!!b.point)-Number(!!a.point));
+      const size=map.getSize();
+      for (const candidate of candidates) {
+        const width=measure.measureText(candidate.name).width+8;
+        const p=candidate.point ? map.latLngToContainerPoint([candidate.point[1],candidate.point[0]]) : placement(candidate.coords,width);
+        if (!p) continue;
+        const angle=p.angle||0, radians=angle*Math.PI/180;
+        const w=candidate.point?width:Math.abs(width*Math.cos(radians))+Math.abs(18*Math.sin(radians));
+        const h=candidate.point?18:Math.abs(width*Math.sin(radians))+Math.abs(18*Math.cos(radians));
+        const x=candidate.point?p.x+24+width/2:p.x, y=p.y;
+        const rect={left:x-w/2-3,right:x+w/2+3,top:y-h/2-3,bottom:y+h/2+3};
+        if (rect.left<0 || rect.top<0 || rect.right>size.x || rect.bottom>size.y) continue;
+        if (occupied.some(r=>rect.left<r.right && rect.right>r.left && rect.top<r.bottom && rect.bottom>r.top)) continue;
+        occupied.push(rect);
+        const text=document.createElement('span');
+        text.className='gis-map-label-text'+(candidate.point?'':' gis-track-name');
+        text.textContent=candidate.name;
+        text.style.transform=`translate(-50%, -50%) rotate(${angle}deg)`;
+        L.marker(map.containerPointToLatLng([x,y]),{
+          icon:L.divIcon({html:text,className:'gis-map-label',iconSize:[0,0],iconAnchor:[0,0]}),
+          interactive:false,keyboard:false,zIndexOffset:500
+        }).addTo(labels);
+      }
+    }
+    map.on('zoomend moveend',refresh);
+    map.on('layeradd layerremove',event=>{if(Object.values(layers).includes(event.layer)) refresh();});
+    refresh();
+    return {refresh,placement};
+  }
+  const mapLabels = createMapLabels(map, layers);
+
   function markerFeature(feature, layerName, marker) {
     marker._searchFeature = feature;
     marker._networkLayer = layerName;
@@ -520,9 +602,6 @@
         markerFeature(feature,cls,marker);
         const popup = document.createElement('div');
         heading(popup,t.label);
-        // textContent keeps imported labels from being interpreted as HTML.
-        const label = document.createElement('span'); label.textContent = t.label;
-        marker.bindTooltip(label,{permanent:true,direction:'center',className:'gis-track-label'});
         line(popup, 'GPX source track · ' + t.type + ' · lifecycle ' + t.lifecycle);
         line(popup, 'Original GPS name: ' + textValue(t.source_label));
         line(popup, 'Source description (unverified): ' + textValue(t.description));
@@ -558,6 +637,7 @@
       }
       marker.bindPopup(p);
     }
+    mapLabels.refresh();
     mapSearch.reindexMapReferences();
     document.getElementById('counts').textContent =
       snapshot.waypoints.length + ' maintained waypoints · ' + snapshot.tracks.length

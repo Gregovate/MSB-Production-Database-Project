@@ -228,7 +228,7 @@ body[data-power-screen="equipment"] #equipment > section {border-top:1px solid #
 .cable-test-table th, .cable-test-table td { padding: .45rem; text-align: left; white-space: normal; overflow-wrap: anywhere; }
 .cable-test-table th button, .cable-test-table td button { min-width: 0; max-width: 100%; width: auto; margin: 0; padding: .35rem; white-space: normal; font: inherit; }
 .cable-test-table th button { font-weight: 600; }
-.cable-results .cable-test-table th:nth-child(7) { width: 19%; }
+.cable-results .cable-test-table th:nth-child(8) { width: 19%; }
 .cable-comparison .cable-test-table th:first-child { width: 40%; }
 @media (max-width: 600px) { .cable-test-table { font-size: .8rem; } .cable-test-table th, .cable-test-table td { padding: .2rem; } }
 .cable-comparison { margin-top: 1rem; }
@@ -253,4 +253,30 @@ dialog form > button,
 #manage-equipment-models {
   margin-inline-end: .5rem;
   margin-block-end: .5rem;
+}
+
+/* Keep source IDs readable after adding the FLW lookup column. */
+.cable-results .cable-test-table th:first-child { width: 22%; }
+
+/* Dense history keeps source evidence readable without giant sort buttons. */
+.cable-results .cable-test-table {font-size:.85rem;}
+.cable-test-table th, .cable-test-table td {overflow-wrap:break-word;word-break:normal;}
+.cable-test-table th button {background:transparent;color:inherit;border:0;padding:.2rem 0;min-height:44px;text-align:left;}
+.cable-results .cable-test-table th:first-child {width:25%;}
+.cable-results .cable-test-table th:nth-child(2) {width:9%;}
+.cable-results .cable-test-table th:nth-child(3),.cable-results .cable-test-table th:nth-child(4) {width:8%;}
+.cable-results .cable-test-table th:nth-child(5),.cable-results .cable-test-table th:nth-child(7) {width:6%;}
+.cable-results .cable-test-table th:nth-child(6) {width:7%;}
+.cable-results .cable-test-table th:nth-child(8) {width:19%;}
+.cable-results .cable-test-table th:nth-child(9) {width:12%;}
+@media(max-width:900px) {
+  /* At tablet portrait/phone widths, retain every value in compact row cards. */
+  .cable-results .cable-test-table,.cable-results .cable-test-table thead,.cable-results .cable-test-table tbody {display:block;}
+  .cable-results .cable-test-table thead tr {display:flex;flex-wrap:wrap;gap:.2rem;}
+  .cable-results .cable-test-table thead th {width:auto!important;border:0;}
+  .cable-results .cable-test-table thead th:last-child {display:none;}
+  .cable-results .cable-test-table tbody tr {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border:1px solid #8894a5;margin:.5rem 0;}
+  .cable-results .cable-test-table td {border:0;padding:.3rem;}
+  .cable-results .cable-test-table td:first-child {grid-column:1/-1;}
+  .cable-results .cable-test-table td:not(:first-child)::before {content:attr(data-label);display:block;font-size:.75rem;font-weight:bold;}
 }
