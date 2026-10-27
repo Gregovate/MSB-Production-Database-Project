@@ -595,7 +595,41 @@ should remain **Not Configured** unless a deliberate update-source policy is lat
 
 ---
 
-## 10. Remaining Setup Steps
+## 10. Light-O-Rama Local Data Path
+
+The production Light-O-Rama filesystem location is a **fixed compatibility requirement**:
+
+```text
+C:\LOR
+```
+
+Do not relocate the working show files to another root such as `C:\MSB`, a user-profile folder, Google Drive, or another drive letter. Existing LOR sequences, media references, scripts, and supporting tools may contain absolute paths that depend on `C:\LOR`.
+
+### Synchronization rule
+
+Google Drive is a synchronization/source location only. The running show must use the local `C:\LOR` tree.
+
+The replacement for the former Allway Sync workflow must therefore preserve this contract:
+
+```text
+Google Drive source
+        ↓
+one-way / controlled synchronization
+        ↓
+C:\LOR
+        ↓
+Light-O-Rama production runtime
+```
+
+Before the 2026 show is built, synchronize the approved 2025 LOR data into `C:\LOR` while preserving the existing directory structure exactly.
+
+Do not create a different top-level show-data directory.
+
+The exact 2025-to-2026 folder/version transition inside `C:\LOR` must be based on the existing production directory structure and should not be invented during PC setup.
+
+---
+
+## 11. Remaining Setup Steps
 
 The following items still need to be performed and verified on the new Show PC before they become part of the confirmed procedure:
 
@@ -607,7 +641,7 @@ The following items still need to be performed and verified on the new Show PC b
 - configure both show monitors;
 - verify recovery after loss of AC power;
 - configure automatic startup of the required show applications;
-- configure Google Drive and required drive mapping;
+- configure the Google Drive-to-`C:\\LOR` synchronization workflow;
 - verify USB/serial controller interfaces and COM-port assignments;
 - perform a complete reboot-to-ready test;
 - perform an actual show-load test;
