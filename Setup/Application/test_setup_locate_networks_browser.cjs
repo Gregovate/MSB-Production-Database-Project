@@ -356,3 +356,36 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
  assert.match(elements['map-search-status'].textContent,/not available/);
  console.log('PASS: checklist panel link focuses maintained waypoint and handles missing location');
 }
+
+// Run the shipped label manager: zoom gate, dense straight tracks, upright text,
+// layer visibility, collision priority and escaped source names.
+{
+  const code=read('setup_site_reference.js');
+  const helper=code.slice(code.indexOf('  function createMapLabels('),code.indexOf('  const mapLabels ='));
+  let zoom=18;const handlers={};const rendered=[];
+  const group={visible:true,items:[],eachLayer(fn){this.items.forEach(fn);}};
+  const map={getZoom:()=>zoom,getSize:()=>({x:1000,y:700}),hasLayer:g=>g.visible,
+    on(events,fn){for(const event of events.split(' '))handlers[event]=fn;},
+    latLngToContainerPoint:xy=>({x:xy[1],y:xy[0]}),containerPointToLatLng:xy=>xy};
+  const L={layerGroup:()=>({addTo(){return this;},clearLayers(){rendered.length=0;}}),divIcon:options=>options,
+    marker:(xy,options)=>({addTo(){rendered.push({xy,options});}})};
+  const document={createElement:tag=>tag==='canvas'?{getContext:()=>({measureText:t=>({width:t.length*7})})}:{style:{}}};
+  const ctx={L,map,layers:{refs:group},document};vm.createContext(ctx);
+  vm.runInContext(helper+'globalThis.manager=createMapLabels(map,layers);',ctx);
+  const feature=(name,type,coordinates)=>({_searchFeature:{properties:{name},geometry:{type,coordinates}}});
+  group.items=[feature('FE-02B','Point',[200,200]),feature('overlap','Point',[200,200]),
+    feature('NET <safe>','LineString',[[100,400],[150,400],[200,400],[250,400],[300,400]]),
+    feature('reverse','LineString',[[800,600],[500,450]])];
+  ctx.manager.refresh();assert.equal(rendered.length,0,'overview has no labels');
+  zoom=19;handlers.zoomend();assert.equal(rendered.length,3,'overlapping waypoint suppressed');
+  assert.equal(rendered[0].options.icon.html.textContent,'FE-02B');
+  assert.ok(rendered.some(r=>r.options.icon.html.textContent==='NET <safe>'));
+  assert.ok(rendered.every(r=>r.options.interactive===false&&r.options.keyboard===false));
+  for(const r of rendered){const angle=Number(r.options.icon.html.style.transform.match(/rotate\(([-\d.]+)deg/)[1]);assert.ok(angle>=-90&&angle<=90);}
+  group.visible=false;handlers.layerremove({layer:group});assert.equal(rendered.length,0);
+  group.visible=true;handlers.layeradd({layer:group});assert.equal(rendered.length,3);
+  group.items=[];ctx.manager.refresh();assert.equal(rendered.length,0,'snapshot replacement clears stale names');
+  zoom=17;handlers.zoomend();assert.equal(rendered.length,0);
+  assert.equal(ctx.manager.placement([[100,100],[102,102]],100),null,'short track has no forced label');
+  console.log('PASS: zoom-aware waypoint/track labels, alignment, collision, source text and layer cleanup');
+}

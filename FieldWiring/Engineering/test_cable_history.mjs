@@ -60,3 +60,6 @@ assert.match(api.sourceLabel(raw),/Cable 5 ft <shop>.*BENCH-007/);
 assert.doesNotMatch(api.sourceLabel(raw),/opaque-database-uuid/);
 assert.equal(api.sourceIds({original_name:'Tester only'}).cableId,'');
 console.log('FLW Cable ID and Test ID preserved for unresolved records; no invented cable identity PASS');
+assert.equal(api.sourceLabel({original_name:'FE-02 SPARE-01',source_pair:{display_label:'FE-02 SPARE-01'}}),'Cable / Test ID: FE-02 SPARE-01');
+assert.equal(api.networkLabel({network:'Unresolved',designation:'SPARE-01'}),'Not matched: SPARE-01');
+assert.equal(api.networkLabel({network:'AUX-E',designation:'AUX-E'}),'AUX-E');

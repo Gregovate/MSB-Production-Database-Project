@@ -1,3 +1,9 @@
+## October 27 PR470 fourth candidate — map label review
+
+Operator reports CLEAN EXIT for f79b62e30c6213c258dd74e80dcb9359075c310d. Incorporate zoom-dependent waypoint/track labels, upright route alignment and overlap suppression; compact duplicate FLW identifiers, plain sort headings and responsive history rows. Unmatched networks identify the source designation without changing matching rules. Same presentation-only versions V0.4.34-test-identifiers / V0.3.94-map-navigation; exact SHA/cache pins change. Existing uninstalled migration and validation only, fresh current-Production clone. Current main refreshed: 00284c290ca30dbaaba7cc240b6db2fe81ad0fd6. Local 916 Setup/reference contracts, 232 FieldWiring tests and JavaScript label/history checks PASS. Exact CI/browser and next operator review pending. No Production writes.
+
+Source integrity is an open separate workflow gap, not solved by this release: source comparison intentionally retains unmapped existing records (`UNMAPPED_EXISTING_RETAINED`); database network normalization only normalizes AUX separators, so SPARE-01 does not equal SPARE-1. Greg confirms stray0625 must be deleted as erroneous, not retired. No supplied current master/database dependency proof here; no hardcoded map suppression or blind deletion. Owning design records required ingest review/deletion behavior.
+
 ## October 27 third PR470 candidate — source IDs and direct navigation
 
 Greg confirms breaker-outlet display is much better; preserve it. d9587b54 preview returned CLEAN EXIT, with remaining changes: unmatched FLW records need source Cable ID/Test ID, popup must lead directly to the panel, and map header needs an origin-aware return button. No Production acceptance/deployment yet.

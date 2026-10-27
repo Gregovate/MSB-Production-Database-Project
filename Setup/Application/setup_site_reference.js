@@ -438,6 +438,92 @@
     }
   }
 
+  // Labels are disposable presentation layers. Source geometry and search markers
+  // remain authoritative; removing a label never hides a feature or its popup.
+  function createMapLabels(map, layers) {
+    const labels = L.layerGroup().addTo(map);
+    const MIN_ZOOM = 19;
+    const measure = document.createElement('canvas').getContext('2d');
+    measure.font = 'bold 12px sans-serif';
+    function placement(coords, width) {
+      const points = coords.map(c => map.latLngToContainerPoint([c[1], c[0]]));
+      const size = map.getSize();
+      let best = null;
+      // Join consecutive nearly straight source segments; dense GPX vertices
+      // must not prevent a label fitting along an otherwise straight track.
+      for (let i=0; i<points.length-1; i++) {
+        for (let j=i+1; j<points.length; j++) {
+          const a=points[i], b=points[j], dx=b.x-a.x, dy=b.y-a.y;
+          const length=Math.hypot(dx,dy);
+          if (!length) continue;
+          let straight=true;
+          for (let k=i+1; k<j; k++) {
+            const x=points[k].x-a.x, y=points[k].y-a.y;
+            const along=(x*dx+y*dy)/length;
+            if (Math.abs(x*dy-y*dx)/length>6 || along<0 || along>length) {straight=false;break;}
+          }
+          if (!straight) break;
+          const x=(a.x+b.x)/2, y=(a.y+b.y)/2;
+          if (length<width+16 || x<width/2 || x>size.x-width/2 || y<20 || y>size.y-20) continue;
+          let angle=Math.atan2(dy,dx)*180/Math.PI;
+          if (angle>90) angle-=180;
+          if (angle< -90) angle+=180;
+          if (!best || length>best.length) best={x,y,angle,length};
+          break;
+        }
+      }
+      return best;
+    }
+    function refresh() {
+      labels.clearLayers();
+      if (map.getZoom()<MIN_ZOOM) return;
+      const candidates=[], occupied=[];
+      for (const group of Object.values(layers)) {
+        if (!map.hasLayer(group)) continue;
+        group.eachLayer(marker => {
+          const feature=marker._searchFeature, name=feature?.properties?.name;
+          if (!name || !feature.geometry) return;
+          if (feature.geometry.type==='Point') candidates.push({name,point:feature.geometry.coordinates});
+          else if (feature.geometry.type==='LineString') candidates.push({name,coords:feature.geometry.coordinates});
+          else if (feature.geometry.type==='MultiLineString') {
+            // Each marker already represents one segment in a multi-part track.
+            const latlngs=marker.getLatLngs?.();
+            if (latlngs?.length && !Array.isArray(latlngs[0])) candidates.push({name,coords:latlngs.map(p=>[p.lng,p.lat])});
+          }
+        });
+      }
+      // Waypoint names have priority over route labels in crowded areas.
+      candidates.sort((a,b)=>Number(!!b.point)-Number(!!a.point));
+      const size=map.getSize();
+      for (const candidate of candidates) {
+        const width=measure.measureText(candidate.name).width+8;
+        const p=candidate.point ? map.latLngToContainerPoint([candidate.point[1],candidate.point[0]]) : placement(candidate.coords,width);
+        if (!p) continue;
+        const angle=p.angle||0, radians=angle*Math.PI/180;
+        const w=candidate.point?width:Math.abs(width*Math.cos(radians))+Math.abs(18*Math.sin(radians));
+        const h=candidate.point?18:Math.abs(width*Math.sin(radians))+Math.abs(18*Math.cos(radians));
+        const x=candidate.point?p.x+24+width/2:p.x, y=p.y;
+        const rect={left:x-w/2-3,right:x+w/2+3,top:y-h/2-3,bottom:y+h/2+3};
+        if (rect.left<0 || rect.top<0 || rect.right>size.x || rect.bottom>size.y) continue;
+        if (occupied.some(r=>rect.left<r.right && rect.right>r.left && rect.top<r.bottom && rect.bottom>r.top)) continue;
+        occupied.push(rect);
+        const text=document.createElement('span');
+        text.className='gis-map-label-text';
+        text.textContent=candidate.name;
+        text.style.transform=`translate(-50%, -50%) rotate(${angle}deg)`;
+        L.marker(map.containerPointToLatLng([x,y]),{
+          icon:L.divIcon({html:text,className:'gis-map-label',iconSize:[0,0],iconAnchor:[0,0]}),
+          interactive:false,keyboard:false,zIndexOffset:500
+        }).addTo(labels);
+      }
+    }
+    map.on('zoomend moveend',refresh);
+    map.on('layeradd layerremove',event=>{if(Object.values(layers).includes(event.layer)) refresh();});
+    refresh();
+    return {refresh,placement};
+  }
+  const mapLabels = createMapLabels(map, layers);
+
   function markerFeature(feature, layerName, marker) {
     marker._searchFeature = feature;
     marker._networkLayer = layerName;
@@ -499,9 +585,6 @@
         markerFeature(feature,cls,marker);
         const popup = document.createElement('div');
         heading(popup,t.label);
-        // textContent keeps imported labels from being interpreted as HTML.
-        const label = document.createElement('span'); label.textContent = t.label;
-        marker.bindTooltip(label,{permanent:true,direction:'center',className:'gis-track-label'});
         line(popup, 'GPX source track · ' + t.type + ' · lifecycle ' + t.lifecycle);
         line(popup, 'Original GPS name: ' + textValue(t.source_label));
         line(popup, 'Source description (unverified): ' + textValue(t.description));
@@ -537,6 +620,7 @@
       }
       marker.bindPopup(p);
     }
+    mapLabels.refresh();
     mapSearch.reindexMapReferences();
     document.getElementById('counts').textContent =
       snapshot.waypoints.length + ' maintained waypoints · ' + snapshot.tracks.length

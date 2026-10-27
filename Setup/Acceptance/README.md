@@ -1,3 +1,7 @@
+## PR470 October 27 map-label review
+
+Prior f79b62e preview CLEAN EXIT confirmed. Next exact candidate must pass CI before launching the existing reusable preview on 8898 with the unchanged 171_panel_receptacles migration/validation. At park overview zoom, route and waypoint labels disappear; at zoom19+ waypoint names appear and track names align with their lines, with overlapping text suppressed. Check panning, layer toggles and popup clicks. Verify compact Cable ID/Test ID rows and explicit unmatched network names. No FLW/GPX import, source deletion or Production write is included. Operator acceptance and CLEAN EXIT remain required before Production release.
+
 # Setup Acceptance Tooling
 
 October 26 PR463 first attempt stopped ONLINE at isolated Scan artifact verification: Windows Git archive produced CRLF bytes (`3e899a6a...`) instead of accepted LF bytes (`f9b82250...`). Report `PR463-Equipment-Location-20261026T154830Z` proves live Scan and Directus state unchanged, validation root/TAR removed, no maintenance entry or migration. Transport now uses command-local Git EOL overrides and verifies archived src/dist against exact Git blobs before SCP. Regression reproduces the original failure with `core.autocrlf=true` and `core.eol=crlf`, on Linux and Windows. Accepted application and server helpers unchanged; corrected deployment completed with server PASS in `PR463-Equipment-Location-20261026T155409Z`; protected browser/live Scan acceptance remains pending.

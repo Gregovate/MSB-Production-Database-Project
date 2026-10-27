@@ -868,7 +868,10 @@ try {
     VALUES ('flw-source','11111111-1111-4111-8111-111111111111','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"AUX-E","display_label":"FE-02B TO FE-02 AUX-E"}'),
     ('flw-source','22222222-2222-4222-8222-222222222222','{"endpoint_labels":["FE-02B","FE-02"],"endpoint_candidates":[[],[]],"designation":"SPARE-01","display_label":"FE-02B TO FE-02 SPARE-01"}');`);
   await page.reload();await page.getByText(/Revision \d+/).waitFor(); await openEngineering();
+  await page.locator('[data-filter="network"]').selectOption('Unresolved');
+  assert.match(await page.locator('.cable-results').innerText(),/Not matched: SPARE-01/);
   await page.locator('[data-filter="network"]').selectOption("AUX-E");
+  assert.match(await page.locator('.cable-results tbody').innerText(),/Cable \/ Test ID: FE-02B TO FE-02 AUX-E/);
   assert.equal(await page.locator('[data-filter="waypoint"] option[value="11"]').count(),0);
   await page.locator('[data-filter="search"]').fill('fe-02');
   const lowerMatches=await page.locator('[data-filter="waypoint"] option').allTextContents();
@@ -1106,6 +1109,41 @@ try {
   await page.locator("#deployment-network").waitFor();
   assert.equal(await page.locator("#deployment-save").isDisabled(),true);
   assert.equal(await page.locator("#deployment-network").isDisabled(),true);
+  // Exercise the shipped map label helper with real Leaflet and browser layout.
+  const mapPage=await browser.newPage({viewport:{width:1100,height:760}});
+  await mapPage.setContent('<div id="label-map" style="width:1000px;height:700px"></div>');
+  const setupPath=path.join(app,'../../Setup/Application');
+  await mapPage.addStyleTag({path:path.join(setupPath,'locate_leaflet_1_9_4.css')});
+  const mapHtml=await readFile(path.join(setupPath,'locate_preview.html'),'utf8');
+  await mapPage.addStyleTag({content:mapHtml.match(/<style>([\s\S]*?)<\/style>/)[1]});
+  await mapPage.addScriptTag({path:path.join(setupPath,'locate_leaflet_1_9_4.min.js')});
+  const mapSource=await readFile(path.join(setupPath,'setup_site_reference.js'),'utf8');
+  const labelHelper=mapSource.slice(mapSource.indexOf('  function createMapLabels('),mapSource.indexOf('  const mapLabels ='));
+  await mapPage.addScriptTag({content:labelHelper});
+  await mapPage.evaluate(()=>{
+    const map=L.map('label-map',{zoomAnimation:false}).setView([43.7787,-87.7412],19);
+    const group=L.layerGroup().addTo(map);
+    const xy=(x,y)=>{const p=map.containerPointToLatLng([x,y]);return [p.lng,p.lat];};
+    for(const [name,type,coords] of [['FE-02B <test>','Point',xy(180,150)],['overlap','Point',xy(180,150)],['NET diagonal','LineString',[xy(300,400),xy(600,550)]]]){
+      const marker=type==='Point'?L.marker([coords[1],coords[0]]):L.polyline(coords.map(p=>[p[1],p[0]]));
+      marker._searchFeature={properties:{name},geometry:{type,coordinates:coords}};marker.addTo(group);
+    }
+    window.labelMap=map;window.labelGroup=group;window.labelManager=createMapLabels(map,{refs:group});
+  });
+  assert.equal(await mapPage.locator('.gis-map-label-text').count(),2);
+  assert.equal(await mapPage.locator('.gis-map-label-text').first().innerText(),'FE-02B <test>');
+  assert.equal(await mapPage.locator('.gis-map-label-text test').count(),0);
+  assert.match(await mapPage.locator('.gis-map-label-text').last().getAttribute('style'),/rotate\(26\./);
+  assert.ok(await mapPage.locator('.gis-map-label-text').evaluateAll(nodes=>{
+    const [a,b]=nodes.map(n=>n.getBoundingClientRect());return a.right<b.left||b.right<a.left||a.bottom<b.top||b.bottom<a.top;
+  }));
+  await mapPage.evaluate(()=>labelMap.setZoom(18));
+  assert.equal(await mapPage.locator('.gis-map-label-text').count(),0);
+  await mapPage.evaluate(()=>labelMap.setZoom(19));
+  assert.equal(await mapPage.locator('.gis-map-label-text').count(),2);
+  await mapPage.evaluate(()=>labelMap.removeLayer(labelGroup));
+  assert.equal(await mapPage.locator('.gis-map-label-text').count(),0);
+  await mapPage.close();
   assert.deepEqual(errors, []);
   console.log(
     "PASS: focused panel/waypoint/equipment/history routes, shared Controller placement and power moves, retained history, exact batch retry, stale denial, network-only eligibility, retests, mobile width and read-only user.",
