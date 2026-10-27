@@ -1176,6 +1176,14 @@ try {
   await mapPage.evaluate(()=>popupMarker.getPopup().update());
   assert.match(await mapPage.locator('.leaflet-popup').innerText(),/Event: 42/);
   assert.match(await mapPage.locator('.leaflet-popup').innerText(),/Recorded destination: WW-13/);
+  // The map fallback must resolve the power table and select the actual panel.
+  const supply=(await db.query("SELECT s.site_waypoint_id,s.site_panel_id,p.panel_name FROM ref.site_waypoint_power_sources s JOIN ref.site_panel p USING(site_panel_id) JOIN ref.site_power_circuit c USING(site_power_circuit_id) WHERE p.active AND c.active LIMIT 1")).rows[0];
+  assert.ok(supply);
+  await page.goto(`${base}?power_waypoint=${supply.site_waypoint_id}`);
+  await page.getByText(/Revision \d+/).waitFor();
+  assert.ok((await page.locator('#panel-detail').innerText()).includes(supply.panel_name));
+  await page.goto(`${base}?power_waypoint=987654`);
+  await page.getByText(/No power-panel association recorded/).waitFor();
   // Exercise the actual waypoint action renderer for linked and unlinked points.
   await mapPage.addScriptTag({content:mapSource.slice(mapSource.indexOf('  function waypointPopup('),mapSource.indexOf('  function showWaypoint('))});
   const actions=await mapPage.evaluate(()=>{
@@ -1188,8 +1196,39 @@ try {
     window.networkNames=()=>['REG'];window.waypointTests=()=>[];window.lookupLabel=()=> 'PANEL 08';
     return [10,13].map(id=>Array.from(waypointPopup({id,label:'Point '+id,type:'OUT-Combo'}).querySelectorAll('a')).map(a=>[a.textContent,a.getAttribute('href')]));
   });
-  assert.deepEqual(actions[0],[['Find panel','/fieldwiring/circuits'],['Cable details','/fieldwiring/cable-tests?waypoint=10']]);
+  assert.deepEqual(actions[0],[['Find panel','/fieldwiring/circuits?power_waypoint=10'],['Cable details','/fieldwiring/cable-tests?waypoint=10']]);
   assert.deepEqual(actions[1],[['Open panel','/fieldwiring/circuits?panel=8'],['Cable details','/fieldwiring/cable-tests?waypoint=13']]);
+  // Navigate away/back and reload a real map. Persist view/layer choices only.
+  const leaflet=await readFile(path.join(setupPath,'locate_leaflet_1_9_4.min.js'),'utf8');
+  const leafletCss=await readFile(path.join(setupPath,'locate_leaflet_1_9_4.css'),'utf8');
+  const returnHelper=assetSource.slice(0,assetSource.indexOf('/* #171 consumes'));
+  const returnPage=`<style>${leafletCss}</style><div id="m" style="width:800px;height:600px"></div>
+    <input type="checkbox" data-layer="controllers"><input type="checkbox" data-layer="containers"><a href="/away">Details</a>
+    <script>${leaflet}</script><script>${returnHelper}</script><script>
+    window.testMap=L.map('m',{zoomAnimation:false}).setView([43.7787,-87.7412],17);
+    window.testLayers={controllers:L.layerGroup(),containers:L.layerGroup().addTo(testMap)};
+    L.marker([43.78,-87.74]).addTo(testLayers.controllers);
+    document.querySelectorAll('[data-layer]').forEach(c=>c.onchange=()=>c.checked?testLayers[c.dataset.layer].addTo(testMap):testMap.removeLayer(testLayers[c.dataset.layer]));
+    installMapReturnState(testMap,testLayers,document,window,sessionStorage);
+    window.mapReady=true;</script>`;
+  await mapPage.route('http://map-return.test/**',route=>route.fulfill({contentType:'text/html',body:new URL(route.request().url()).pathname==='/away'?'<p>Panel or cable details</p>':returnPage}));
+  await mapPage.goto('http://map-return.test/view');
+  await mapPage.waitForFunction(()=>window.mapReady);
+  await mapPage.locator('[data-layer="controllers"]').check();
+  await mapPage.locator('[data-layer="containers"]').uncheck();
+  await mapPage.evaluate(()=>testMap.setView([43.78,-87.74],21,{animate:false}));
+  await mapPage.getByText('Details',{exact:true}).click();
+  await mapPage.goBack();
+  await mapPage.waitForFunction(()=>window.mapReady);
+  for(let i=0;i<2;i++){
+    assert.equal(await mapPage.locator('[data-layer="controllers"]').isChecked(),true);
+    assert.equal(await mapPage.locator('[data-layer="containers"]').isChecked(),false);
+    const restored=await mapPage.evaluate(()=>({zoom:testMap.getZoom(),center:[testMap.getCenter().lat,testMap.getCenter().lng],controllers:testMap.hasLayer(testLayers.controllers),containers:testMap.hasLayer(testLayers.containers)}));
+    assert.equal(restored.zoom,21);assert.equal(restored.controllers,true);assert.equal(restored.containers,false);
+    assert.ok(Math.abs(restored.center[0]-43.78)<0.00001&&Math.abs(restored.center[1]+87.74)<0.00001);
+    assert.equal(await mapPage.locator('.leaflet-marker-icon').count(),1);
+    if(i===0){await mapPage.reload();await mapPage.waitForFunction(()=>window.mapReady);}
+  }
   await mapPage.close();
   assert.deepEqual(errors, []);
   console.log(

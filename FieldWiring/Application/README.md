@@ -6,7 +6,7 @@ Status: **PRODUCTION-OPERATIONAL — CONTROLLER INVENTORY INTEGRATION ACTIVE**
 
 This folder contains the browser-based FieldWiring application and the read-side Controller Inventory browser experience.
 
-## Current Part 2 candidate — V0.4.34-test-identifiers
+## Current Part 2 candidate — V0.4.35-power-panel-link
 
 FieldWiring temporarily maintains shared additional-equipment type/model references and the existing physical inventory while #230 management remains incomplete. Install Equipment directly records units at the chosen waypoint from model, quantity(default1) and one optional note; no spare-stock prerequisite. Model rename/delete supports cleanup before use. Model seeds and purchase totals create no physical units. Cameras follow the same model/inventory/history workflow. Controllers retain their existing CTRL inventory. Catalog creation uses the existing authorization/revision/audit command contract.
 

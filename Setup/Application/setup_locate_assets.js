@@ -1,3 +1,42 @@
+/* Tab-local navigation state, never a saved copy of live movement records. */
+function installMapReturnState(map, layers, doc, win, storage) {
+  const key='msb.park-map.view.v1';
+  let restoring=false;
+  function controls() {
+    for (const input of doc.querySelectorAll('[data-layer]'))
+      if (layers[input.dataset.layer]) input.checked=map.hasLayer(layers[input.dataset.layer]);
+  }
+  function restore() {
+    restoring=true;
+    try {
+      const saved=JSON.parse(storage.getItem(key) || 'null');
+      if (saved && Array.isArray(saved.center) && saved.center.length===2 &&
+          saved.center.every(Number.isFinite) && Math.abs(saved.center[0])<=90 && Math.abs(saved.center[1])<=180 &&
+          Number.isFinite(saved.zoom) && saved.zoom>=14 && saved.zoom<=24) {
+        map.setView(saved.center,saved.zoom,{animate:false});
+        for (const [name,group] of Object.entries(layers)) {
+          if (saved.layers?.[name]===true) group.addTo(map);
+          else if (saved.layers?.[name]===false) map.removeLayer(group);
+        }
+      }
+    } catch (_) { /* Storage may be unavailable or contain an obsolete value. */ }
+    finally {controls();restoring=false;}
+  }
+  function save() {
+    if(restoring) return;
+    const center=map.getCenter();
+    try {storage.setItem(key,JSON.stringify({center:[center.lat,center.lng],zoom:map.getZoom(),
+      layers:Object.fromEntries(Object.entries(layers).map(([n,g])=>[n,map.hasLayer(g)]))}));} catch (_) {}
+    controls();
+  }
+  restore();
+  map.on('moveend',save);
+  map.on('layeradd layerremove',event=>{if(Object.values(layers).includes(event.layer))save();});
+  win.addEventListener('pagehide',save);
+  // Browser history may restore form values after script initialization.
+  win.addEventListener('pageshow',restore);
+  return {save,restore};
+}
 /* #171 consumes #88 observations. Rendering never records movement. */
 (() => {
   const icons = {
@@ -16,6 +55,7 @@
   const requestedContainer = new URLSearchParams(window.location.search).get('container_id');
   function evidence(o = {}) {
     let text = `Observation: ${esc(o.occurred_at ? new Date(o.occurred_at).toLocaleString('en-US', {timeZone: 'America/Chicago'}) + ' (Chicago)' : 'not recorded')}`;
+    text += `<br>Recorded by: ${esc(o.recorded_by_name || o.captured_operator_email || 'Not recorded')}`;
     if (o.gps_latitude != null && o.gps_longitude != null) text += `<br>Recorded GPS: ${esc(o.gps_latitude)}, ${esc(o.gps_longitude)}`;
     if (o.gps_accuracy_m != null && Number(o.gps_accuracy_m) >= 0) text += `<br>Accuracy: ±${Math.round(Number(o.gps_accuracy_m) / 0.3048)} ft`;
     text += `<br>Event: ${esc(o.setup_movement_event_id ?? 'none')} · ${esc(o.event_type ?? '')}`;
@@ -109,7 +149,7 @@
   }
   // Reuse the approved Controller symbol and the same observed-location map.
   layers.controllers=L.layerGroup();
-  const controllerToggle=document.createElement('input');controllerToggle.type='checkbox';
+  const controllerToggle=document.createElement('input');controllerToggle.type='checkbox';controllerToggle.dataset.layer='controllers';
   controllerToggle.checked=map.hasLayer(layers.containers);
   const controllerLabel=document.createElement('label');controllerLabel.append(controllerToggle,document.createTextNode(' Controllers'));
   document.querySelector('[data-layer="containers"]').parentElement.after(controllerLabel);
@@ -155,5 +195,11 @@
     } finally { if (current === sequence) refresh.disabled = false; }
   }
   refresh.addEventListener('click', load);
+  // Keep the view only; live asset records are always fetched again.
+  if (typeof window.addEventListener === 'function') {
+    let storage; try { storage=window.sessionStorage; } catch (_) {}
+    if (storage) installMapReturnState(map,layers,document,window,storage);
+    window.addEventListener('pageshow',event=>{if(event.persisted) load();});
+  }
   load();
 })();

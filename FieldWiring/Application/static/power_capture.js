@@ -196,7 +196,24 @@
         const target=circuit(Number(query.get("circuit")));
         if(target) {panelId=target.site_panel_id;render();if(data.access.can_edit) openAssignments(target);$("panel-detail").dataset.linkOpened="1";}
       }
+      // Resolve map navigation from power feeds, never from cable-test endpoints.
+      const powerWaypoint=Number(query.get("power_waypoint"));
+      let supplyingPanels=null;
+      if(mode==="panels" && query.has("power_waypoint") && !restoredPanelView) {
+        const ids=new Set((data.waypoint_power_sources || [])
+          .filter(x=>Number(x.site_waypoint_id)===powerWaypoint)
+          .map(x=>circuit(x.site_power_circuit_id))
+          .filter(c=>c && c.active).map(c=>c.site_panel_id));
+        supplyingPanels=data.panels.filter(p=>p.active && (ids.has(p.site_panel_id) || Number(p.site_waypoint_id)===powerWaypoint));
+        panelId=supplyingPanels.length===1 ? supplyingPanels[0].site_panel_id : null;
+        $("find").value="";
+      }
       render();
+      if(supplyingPanels && supplyingPanels.length!==1) {
+        const target=$("panel-detail");target.replaceChildren();
+        el("p",supplyingPanels.length ? `Panels supplying ${waypointName(powerWaypoint)}` : `No power-panel association recorded for ${waypointName(powerWaypoint)}.`,target);
+        for(const p of supplyingPanels) button(p.panel_name,()=>selectPanel(p.site_panel_id),target);
+      }
       if(mode==="panels" && !restoredPanelView) {
         restoredPanelView=true;
         if(previous?.panelId===panelId && !query.get("circuit")) {

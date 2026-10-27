@@ -227,7 +227,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
 (async () => {
   const controls = Object.fromEntries(['asset-year','asset-status','asset-unlocated','asset-refresh'].map(id => [id,element()]));
   let clears = 0, calls = 0;
-  const ctx = {document:{getElementById:id=>controls[id],createElement:()=>({append(){}}),createTextNode:t=>t,querySelector:()=>({parentElement:{after(){}}})}, URLSearchParams,
+  const ctx = {document:{getElementById:id=>controls[id],createElement:()=>({dataset:{},append(){}}),createTextNode:t=>t,querySelector:()=>({parentElement:{after(){}}})}, URLSearchParams,
     L:{layerGroup:()=>({clearLayers(){clears++;},addTo(){}})},map:{hasLayer:()=>false},
     window:{location:{search:''}},
     layers:{containers:{clearLayers(){clears++;}},displays:{clearLayers(){clears++;}}},
@@ -403,12 +403,13 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   vm.runInContext(source.slice(source.indexOf('  function evidence('),source.indexOf('  function popup(')),ctx);
   vm.runInContext(source.slice(source.indexOf('  function renderControllers('),source.indexOf('  async function load(')),ctx);
   ctx.renderControllers([{controller_id:1057,name:'Tree <West> · AUX-A / 0A',position:[43,-87],
-    observation:{event_type:'CONTROLLER_MOVE',setup_movement_event_id:42,occurred_at:'2026-10-27T14:00:00Z',destination_location_note:'Panel 42'}}]);
+    observation:{recorded_by_name:'Recorded Person',event_type:'CONTROLLER_MOVE',setup_movement_event_id:42,occurred_at:'2026-10-27T14:00:00Z',destination_location_note:'Panel 42'}}]);
   assert.match(popups[0],/Tree &lt;West&gt;/);
   assert.match(popups[0],/CTRL:1057/);
   assert.match(popups[0],/Controller location recorded/);
   assert.match(popups[0],/Latest record/);
   assert.match(popups[0],/Event: 42/);
+  assert.match(popups[0],/Recorded by: Recorded Person/);
   assert.match(popups[0],/Panel 42/);
   assert.doesNotMatch(popups[0],/<details>|<summary>/);
   ctx.renderControllers([{controller_id:1,name:'Controller',position:[43,-87]}]);

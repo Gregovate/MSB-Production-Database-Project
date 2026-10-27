@@ -66,8 +66,10 @@ def movement_picture(repository, session_id: int, *, include_unobserved: bool = 
                        e.gps_accuracy_m, e.gps_quality, e.gps_fix_age_ms,
                        e.capture_method, e.offline_captured,
                        e.captured_operator_email, e.notes,
+                       nullif(btrim(concat_ws(' ',p.first_name,p.last_name)), '') AS recorded_by_name,
                        med.display_id, d.display_name, med.movement_effect
                 FROM ops.setup_movement_event e
+                LEFT JOIN ref.person p ON p.person_id=e.captured_operator_person_id
                 LEFT JOIN ref.container c ON c.container_id=e.container_id
                 LEFT JOIN ref.stage s ON s.stage_id=e.destination_stage_id
                 LEFT JOIN ops.setup_movement_event_display med USING (setup_movement_event_id)

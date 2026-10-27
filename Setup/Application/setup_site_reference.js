@@ -194,7 +194,7 @@
       // No recorded supply means no particular panel can be claimed here.
       // Keep the existing panel browser accessible for finding the real source.
       const link = document.createElement('a');
-      link.href = '/fieldwiring/circuits';
+      link.href = '/fieldwiring/circuits?power_waypoint=' + encodeURIComponent(point.id);
       link.className = 'map-panel-link';
       link.textContent = 'Find panel';
       append(display, link);

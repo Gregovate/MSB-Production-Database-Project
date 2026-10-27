@@ -1,3 +1,7 @@
+## October 27 PR470 map-return correction
+
+Greg reports CLEAN EXIT for 822a96a2; panel/cable browsing PASS. Remaining corrections: actual recorded-by name/email, tab-local center/zoom/layer restoration and independent controller visibility. Correction: cable navigation passes; associated power-panel navigation fails. Removed the proposed FLW-derived panel shortcut. Investigate the power association and panel selection separately, using power records only. Setup V0.3.95-map-return distinguishes the new navigation and audit display; FieldWiring V0.4.35-power-panel-link carries the waypoint into the existing power page. No additional migration or Production writes. Exact tests and new operator review pending.
+
 ## October 27 PR470 navigation review remains open
 
 Greg reports Cable details appears inert and unassociated WW waypoints lack panel access; PO with a recorded association works. Make Cable details a direct link to existing waypoint-filtered cable history. Preserve exact-panel links and add Find panel to the existing panel browser when no association exists; never infer a supply. Video still shows the old Record details control, absent from the corrected source. Add actual asset-popup browser coverage for visible latest records, not only the generic disclosure helper. No CLEAN EXIT yet for this review.

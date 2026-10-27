@@ -35,5 +35,5 @@ assert.match(rendered,/Circuit 3: Outlets at panel — Bottom Panel Outlets/);
 assert.match(rendered,/Circuit 2: Top Panel Outlets/);assert.match(rendered,/Circuit 4: Top Panel Outlets/);
 assert.match(rendered,/Circuit 8: 42-03S/);assert.doesNotMatch(rendered,/unknown destinations/);
 assert.match(text(vm.runInContext('waypointPopup(current.waypoints[2])',context)),/Power: Not recorded/);
-assert.ok(vm.runInContext('waypointPopup(current.waypoints[2])',context).children.some(x=>x.textContent==='Find panel'&&x.href==='/fieldwiring/circuits'));
+assert.ok(vm.runInContext('waypointPopup(current.waypoints[2])',context).children.some(x=>x.textContent==='Find panel'&&x.href==='/fieldwiring/circuits?power_waypoint='+context.current.waypoints[2].id));
 console.log('PASS: saved supplies, breaker outlets/notes, FLW networks/tests without physical cable, plain details and focus/scroll.');

@@ -340,7 +340,8 @@ class SetupMovementRepository:
                            CASE WHEN c.lor_uid_start IS NOT NULL THEN
                              upper(lpad(to_hex(c.lor_uid_start::integer),2,'0')) END), '')), ''),
                          'Controller') AS name,
-                       s.stage_key,s.stage_name
+                       s.stage_key,s.stage_name,
+                       nullif(btrim(concat_ws(' ',p.first_name,p.last_name)), '') AS recorded_by_name
                 FROM ref.controller c
                 -- Assignment names identify the controller without multiplying
                 -- its latest observation when it serves multiple displays.
@@ -355,6 +356,7 @@ class SetupMovementRepository:
                     ORDER BY me.occurred_at DESC,me.setup_movement_event_id DESC LIMIT 1
                 ) e ON true
                 LEFT JOIN ref.stage s ON s.stage_id=e.destination_stage_id
+                LEFT JOIN ref.person p ON p.person_id=e.captured_operator_person_id
                 ORDER BY c.controller_id
             """, (setup_session_id,))
             return [dict(row) for row in cur.fetchall()]
