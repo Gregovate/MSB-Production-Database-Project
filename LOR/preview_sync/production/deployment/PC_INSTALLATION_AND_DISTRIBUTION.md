@@ -125,3 +125,13 @@ Server Management must publish only the exact committed static page/script/archi
 preserve rollback bytes and validate the download. Existing authentication must
 cover the download path; do not add a public bypass. Comparison-only safeguards
 remain enabled. Guided uninstall and signed-executable packaging remain unimplemented.
+
+## Candidate 1.0.4 package correction
+
+The programmer download now contains exactly Setup MSB PC Preview Updater.vbs
+and READ ME Instructions.txt. Setup embeds the technical runtime; no technical
+files or Support directory are exposed at the extracted package root. Extract
+both files and double-click Setup MSB PC Preview Updater.vbs. It installs under
+the same Windows user without elevation. Prior manual installer filenames are
+engineering/history only. The current candidate remains comparison-only and
+requires actual Windows setup/handoff review before distribution.

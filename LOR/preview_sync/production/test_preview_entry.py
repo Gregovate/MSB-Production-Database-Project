@@ -17,7 +17,7 @@ path=Path('LOR/preview_sync/production/preview_entry.py')
 spec=importlib.util.spec_from_file_location('lor2pc_test_preview',path)
 module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
 c=Client(module.application,Response)
-for path in ['/lor2db/','/lor2db/pc/','/lor2db/pc/handoff.js','/lor2db/pc/downloads/MSB-PC-Preview-Updater-1.0.3.zip','/lor2db/lor2db.js','/lor2db/preflight/api/health']:
+for path in ['/lor2db/','/lor2db/pc/','/lor2db/pc/handoff.js','/lor2db/pc/downloads/MSB-PC-Preview-Updater-1.0.4.zip','/lor2db/lor2db.js','/lor2db/preflight/api/health']:
     result=c.get(path,environ_overrides={'REMOTE_ADDR':'127.0.0.1'})
     assert result.status_code==200,(path,result.status_code)
     assert result.headers['X-MSB-Review']=='DISPOSABLE-NO-WRITES'

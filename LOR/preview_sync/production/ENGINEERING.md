@@ -299,3 +299,20 @@ This change is not deployed. Server Management owns the bounded static update
 and rollback. Exact-candidate browser review, authenticated download, Windows
 install/native handoff and Show PC master comparison remain operator gates.
 The prior server installation acceptance does not cover these new assets.
+
+## Candidate 1.0.4 — two-file programmer package
+
+Greg rejected the 1.0.3 download's exposed technical files during review. The
+replacement outer ZIP contains exactly Setup MSB PC Preview Updater.vbs and
+READ ME Instructions.txt. Setup embeds the complete immutable runtime archive,
+extracts only into a uniquely created temporary folder, verifies the embedded
+archive SHA-256 before expansion, runs the normal per-user installer, and removes
+only its temporary folder afterward. Installed application/log files remain in
+LocalAppData. No Support folder or technical files are exposed at package root.
+
+Tests unpack the outer ZIP, require exactly those two names, decode the embedded
+payload, verify its recorded digest and compare every hash-recorded runtime file
+with its source commit. Native VBScript execution remains Windows acceptance;
+Linux package/static checks do not establish a successful Windows installation.
+The required C:\LOR check and both comparison-only guards are preserved. The
+1.0.3 assets are historical; the new immutable filename is 1.0.4, not an overwrite.

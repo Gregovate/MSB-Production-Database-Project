@@ -7,7 +7,7 @@ Set-StrictMode -Version Latest
 # This read-only prerequisite runs before copying files or registering a handler.
 function Assert-MSBLocalLibrary {
     if (-not (Test-Path -LiteralPath 'C:\LOR\CommonData\LORPreviews.xml' -PathType Leaf)) {
-        throw 'MSB requires Light-O-Rama to use C:\LOR as its data folder. Open Light-O-Rama once with that data folder, then close it and run Install MSB PC Preview Updater.vbs again. Required file: C:\LOR\CommonData\LORPreviews.xml. No updater was installed.'
+        throw 'MSB requires Light-O-Rama to use C:\LOR as its data folder. Open Light-O-Rama once with that data folder, then close it and run Setup MSB PC Preview Updater.vbs again. Required file: C:\LOR\CommonData\LORPreviews.xml. No updater was installed.'
     }
 }
 try {
@@ -16,7 +16,7 @@ try {
     $metadata = Join-Path $PSScriptRoot 'DEPLOYMENT.json'
     if (-not (Test-Path $metadata)) { throw 'Missing committed-release deployment identity. Administrator preparation is required.' }
     $release = Get-Content $metadata -Raw | ConvertFrom-Json
-    if ($release.version -ne '1.0.3' -or $release.source_commit -notmatch '^[a-f0-9]{40}$' -or
+    if ($release.version -ne '1.0.4' -or $release.source_commit -notmatch '^[a-f0-9]{40}$' -or
         $release.files.'Update_MSB_Previews.ps1' -ine (Get-FileHash $source -Algorithm SHA256).Hash) { throw 'Updater release identity/hash mismatch.' }
     $destination = Join-Path $env:LOCALAPPDATA ('MSB\LOR2PC\' + $release.source_commit)
     New-Item -ItemType Directory -Path $destination -Force | Out-Null
