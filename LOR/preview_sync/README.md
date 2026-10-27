@@ -415,3 +415,41 @@ The production release must include a committed migration/deployment installer t
 7. removes only explicitly superseded root files after successful verification.
 
 Until that installer is accepted, leave the current shared folder contents in place.
+
+
+## Production root finalized for operator use
+
+The production programmer-facing root is finalized as:
+
+```text
+LOR2DB_2PC_Sync\
+    Update your PC Previews to LOR Master Files.lnk
+    READ ME - Update your PC Previews.txt
+    MSB Preview Sync Support\
+```
+
+The root instruction file is required. It contains the normal programmer SOP and explicitly states that programmers do not select a version folder and do not manually copy/import the complete preview library.
+
+A controlled administrator migration package is committed at:
+
+```text
+LOR/preview_sync/artifacts/MSB_Preview_Sync_PRODUCTION_LAYOUT_MIGRATION_2026-10-27.zip
+```
+
+Package SHA-256:
+
+```text
+e46af329941e0fd00c1a01c2a80bcb25067bde59dbde21296820f9c4adc76eef
+```
+
+The migration:
+- backs up the existing shared deployment before moving files;
+- blocks on unexpected root files;
+- moves known technical/runtime files beneath `MSB Preview Sync Support\`;
+- writes the programmer instructions into the root;
+- recreates the tree/star shortcut against the support path;
+- verifies the latest COMPLETED LOR2DB report still resolves an existing versioned master folder;
+- writes `PRODUCTION_LAYOUT.json` evidence;
+- does **not** modify the local LOR preview library.
+
+Do not manually reorganize the shared deployment. Use the committed migration package.
