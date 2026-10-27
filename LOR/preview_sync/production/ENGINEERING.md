@@ -160,3 +160,16 @@ LOR2PC still requires the established active Production Crew role/policy.
 Public/anonymous access has not been introduced. Live Cloudflare policy inspection
 and changes remain separate from source implementation. Backend V0.6.6; landing
 JS V0.6.3/cache key updated. No underlying preview-engine change from 1.0.2.
+
+
+## Read-only preflight transport correction
+
+Greg reported SSH authentication then immediate connection close with no preflight
+header. HOLD: no live checks were proven. Local harmless-shell reproduction shows
+that loss of the nested bash -c quotes can execute only the shebang as a comment,
+returning 0 with no output. The wrapper now uses the quote-free pipeline
+`printf %s BASE64 | base64 -d | bash`. Three local transport regressions PASS:
+original silent-zero reproduction, entire-script execution, failure propagation.
+Actual Windows SSH and live preflight remain pending. The original 1.0.2 ZIP's
+wrapper is superseded; its unchanged Inspect-LOR2PC-Production.sh can be invoked
+with the corrected transport without redownloading or modifying Production.

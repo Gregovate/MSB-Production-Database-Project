@@ -8,7 +8,8 @@ if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) { throw 'Missing I
 $bytes = [IO.File]::ReadAllBytes($scriptPath)
 $encoded = [Convert]::ToBase64String($bytes)
 # Only Base64 from the adjacent committed script enters the shell command.
-# Remote command is passed as one argument; no paths/credentials are interpolated.
-$command = 'bash -c "$(printf %s ' + $encoded + ' | base64 -d)"'
+# No nested quotes: Windows PowerShell 5.1 may strip quotes around bash -c,
+# causing a shebang-only command to return 0 without executing the preflight.
+$command = 'printf %s ' + $encoded + ' | base64 -d | bash'
 & ssh -tt 'msbadmin@192.168.5.9' $command
 if ($LASTEXITCODE -ne 0) { throw 'Read-only preflight HOLD. Retain output; do not mutate Production.' }
