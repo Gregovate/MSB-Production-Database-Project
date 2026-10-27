@@ -23,7 +23,12 @@ cleanup() {
         if [[ "$command" == *"$root/start.py"* ]]; then kill -- "-$pgid" 2>/dev/null || true
         else echo 'HOLD: preview PID ownership changed; not killed'; result=1; fi
     fi
-    if [[ $container == 1 ]]; then docker rm -f "$name" >/dev/null || result=1; fi
+    if [[ $container == 1 ]]; then
+        # Capture only runtime state and logs, never docker inspect Config.Env.
+        docker inspect "$name" --format '{{json .State}}' > "$root/container-state.json" 2>&1 || true
+        docker logs "$name" > "$root/container.log" 2>&1 || true
+        docker rm -f "$name" >/dev/null || result=1
+    fi
     if [[ $worktree == 1 ]]; then git -C "$repo" worktree remove --force "$root/source" || result=1; fi
     # Logs and snapshot remain private evidence, not a claimed validated rollback.
     echo "Review evidence retained: $root"
@@ -45,12 +50,24 @@ secret=$(python3 -c 'import secrets; print(secrets.token_hex(24))')
 docker run -d --name "$name" -e POSTGRES_USER=msbadmin -e "POSTGRES_PASSWORD=$secret" \
     -e POSTGRES_DB=lor2pc_disposable -p 127.0.0.1::5432 postgis/postgis:16-3.5 >/dev/null
 container=1
+# Consume Server Management's final post-init readiness contract, not the
+# temporary Unix-socket server used while PostGIS extensions initialize.
 ready=0
-for attempt in $(seq 1 40); do
-    if docker exec "$name" pg_isready -U msbadmin -d lor2pc_disposable >/dev/null 2>&1; then ready=1; break; fi
+pid1=''
+for attempt in $(seq 1 120); do
+    running=$(docker inspect "$name" --format '{{.State.Running}}' 2>/dev/null || true)
+    [[ "$running" == true ]] || break
+    pid1=$(docker exec "$name" sh -c 'cat /proc/1/comm' 2>/dev/null | tr -d '\r\n' || true)
+    if [[ "$pid1" == postgres ]] && docker exec "$name" pg_isready -U msbadmin -d lor2pc_disposable >/dev/null 2>&1; then
+        ready=1
+        break
+    fi
     sleep 1
 done
-[[ $ready == 1 ]] || { echo 'HOLD: disposable PostgreSQL not ready'; exit 2; }
+if [[ $ready != 1 ]]; then
+    echo "HOLD: disposable PostgreSQL did not reach final post-init ready state; PID 1: ${pid1:-unknown}"
+    exit 2
+fi
 docker exec -i "$name" pg_restore -U msbadmin -d lor2pc_disposable --no-owner --no-acl --exit-on-error < "$root/production-copy.dump"
 # Restore without ACL, then recreate only the reviewed application permissions.
 docker exec -i "$name" psql -X -U msbadmin -d lor2pc_disposable -v ON_ERROR_STOP=1 <<SQL

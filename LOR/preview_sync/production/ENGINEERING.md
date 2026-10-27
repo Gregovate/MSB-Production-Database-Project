@@ -212,3 +212,21 @@ protected-site acceptance gates after this screen/source review.
 VS Code is optional for inspecting the exact checkout or running the normal
 terminal; no VS Code extension, Python installation on the Show PC, or manual XML
 editing is required by the Windows one-click review launcher.
+
+## Disposable restore HOLD and readiness correction
+
+Greg's exact d571d0c4 review failed during pg_restore while creating
+ops.controller_label_batch_item, before browser readiness. Retained evidence path:
+`/tmp/msb-lor2pc-review.6plsgMPs`. The original trap attempted removal of the
+unique clone/worktree; its failure output is not proof of final resource cleanup.
+No clone/browser PASS or production deployment occurred.
+
+The launcher omitted the final-PID-1 readiness contract explicitly documented in
+Server Management PostgreSQL_Disposable_Acceptance_Standard.md. pg_isready alone
+can pass during PostGIS's temporary initialization server. This is a known matching
+failure mechanism, not a proven diagnosis for this specific container because its
+logs were not retained before removal. Correction now requires container running,
+PID 1 = postgres and pg_isready, bounded to 120 checks. Cleanup saves State-only
+Docker inspection and container logs before removal, without capturing Config.Env.
+Three local tests exercise the actual extracted gate and cleanup ordering; they
+are not an actual PostGIS restore or Windows/current-clone acceptance.
