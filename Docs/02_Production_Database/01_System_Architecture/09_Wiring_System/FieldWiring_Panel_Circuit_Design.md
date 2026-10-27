@@ -1,3 +1,9 @@
+## October 27 PR470 fifth review — track contrast and missing symbols
+
+Greg reports CLEAN EXIT for 977172b6. Preserve accepted zoom/alignment behavior; track text must sit off the colored line with a light backing, larger type and a thin halo. Collision rectangles include the backing and offset. Restore documented Display Anchor → pole-yellow.svg and Tower → antenna-r.svg mappings from GIS_Symbol_Management.md (October12 source/registry evidence), preserving native aspect ratio. No name-based icon guessing or source-type rewriting. Include both symbols in the existing explicit offline package.
+
+WW-10 is operator-confirmed OUT-Combo in the current master, but the older bundled reference says Outlet Power. This candidate must not conceal stale database classification with a label-specific icon override. Current master/database reconciliation remains open with stray0625 and the ingest-workflow gap. No Production mutation or inferred source acceptance. Existing uninstalled migration only; test then operator review before release.
+
 ## October 27 PR470 release review — readable map labels and cable history
 
 Add these presentation corrections to the existing release/migration candidate before disposable review. At zoom 19 and above show horizontal waypoint names next to symbols and upright track names aligned with a sufficiently straight visible section. Hide labels below zoom 19, retain all geometry/icons/popups, and suppress overlapping labels with waypoint priority. Recompute on zoom, pan, layer visibility and snapshot replacement; never alter source geometry to place text. Labels are inert text, not HTML and not additional selectable map features. Preserve live/offline/reference search behavior.

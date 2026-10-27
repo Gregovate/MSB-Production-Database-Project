@@ -4,7 +4,7 @@
  * No credentials, #88 live movement API, command POST, or edit permission cached.
  */
 'use strict';
-const VERSION = 'msb-park-map-offline-20261011-r1';
+const VERSION = 'msb-park-map-offline-20261027-r2';
 const PREFIX = 'msb-park-map-package-';
 const META = 'msb-park-map-metadata-v1';
 const ROOT = self.registration.scope;
@@ -37,7 +37,7 @@ const BOUNDS = [
 const SVG_NAMES = [
   'panel','outlet-combo','ip-camera','outlet-power','kit-box',
   'fire-hydrant','lp','lp-combo','lp-network','lp-outlet',
-  'manhole','t-post','transformer','stage','lor-controller'
+  'manhole','t-post','transformer','stage','lor-controller','pole-yellow','antenna-r'
 ];
 const SYMBOLS = SVG_NAMES.map(n => SYMBOL_BASE + n + '.svg');
 

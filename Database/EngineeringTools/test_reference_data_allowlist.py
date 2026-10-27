@@ -142,9 +142,9 @@ def test_existing_map_uses_protected_live_references_before_static_fallback():
     search = (app / "setup_locate_search.js").read_text(encoding="utf-8")
     client = (app / "setup_site_reference.js").read_text(encoding="utf-8")
     api = (app / "setup_site_reference_api.py").read_text(encoding="utf-8")
-    assert html.count('src="assets/setup_site_reference.js?v=2026-10-27-map-labels"') == 1
+    assert html.count('src="assets/setup_site_reference.js?v=2026-10-27-map-contrast"') == 1
     assert html.index('src="assets/setup_locate_search.js"') < html.index(
-        'src="assets/setup_site_reference.js?v=2026-10-27-map-labels"') < html.index(
+        'src="assets/setup_site_reference.js?v=2026-10-27-map-contrast"') < html.index(
         'src="assets/setup_locate_networks.js')
     assert "app.register_blueprint(site_reference_api)" in backend
     assert '"setup_site_reference.js"' in backend

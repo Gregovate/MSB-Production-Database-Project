@@ -83,8 +83,10 @@ const read = name => fs.readFileSync(path.join(__dirname, name), 'utf8');
     'GPX Flag/Display Anchor markers use the approved yellow pole icon');
   assert(feats.some(f => f.geometry.type === 'Point' && f.properties.type === 'Flag'),
     'Flag waypoint fixtures remain in accepted source');
-  assert.equal(window.msbReferenceSymbols.urlFor('Tower'),null,
-    'Unreviewed artwork must not be guessed');
+  assert.equal(window.msbReferenceSymbols.urlFor('Tower'),
+    'https://webassets.sheboyganlights.org/images/symbols/msb-svg/antenna-r.svg');
+  assert.equal(window.msbReferenceSymbols.urlFor('Display Anchor'),window.msbReferenceSymbols.urlFor('Flag'));
+  assert.equal(window.msbReferenceSymbols.urlFor('Undefined Type'),null,'No name-based guessing');
   const marker = window.msbReferenceSymbols.marker([43.778,-87.743],'Camera');
   assert.equal(marker.options.icon.kind,'placeholder');
   await new Promise(resolve => setImmediate(resolve));
@@ -118,6 +120,7 @@ const read = name => fs.readFileSync(path.join(__dirname, name), 'utf8');
     URL,Request,Response,Set,Math,Date,caches:{}
   });
   vm.runInContext(read('setup_locate_sw.js'),sw);
+  for(const url of window.msbReferenceSymbols.urls()) assert(vm.runInContext('SYMBOLS',sw).includes(url),'Offline package must include '+url);
   assert.equal(vm.runInContext('tiles(19).length',sw),484);
   assert.equal(vm.runInContext('tiles(20).length',sw),1699);
   assert.equal(vm.runInContext('tiles(21).length',sw),6426);

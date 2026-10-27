@@ -1,3 +1,7 @@
+## October 27 PR470 fifth candidate — review corrections
+
+CLEAN EXIT confirmed for 977172b66a50cfb796b4eec3eb5c5396b3bfa04a. Restore documented Display Anchor and Tower symbol mappings, include symbols in offline package, offset/larger track text with light backing. Presentation-only versions retained; exact SHA/cache identities change. Main unchanged00284c290ca30dbaaba7cc240b6db2fe81ad0fd6. Validation and operator acceptance pending; no Production write. WW-10 master correction to OUT-Combo remains pending source reconciliation, alongside erroneous0625 deletion and ingest controls. Never disguise these as renderer fixes.
+
 ## October 27 PR470 fourth candidate — map label review
 
 Operator reports CLEAN EXIT for f79b62e30c6213c258dd74e80dcb9359075c310d. Incorporate zoom-dependent waypoint/track labels, upright route alignment and overlap suppression; compact duplicate FLW identifiers, plain sort headings and responsive history rows. Unmatched networks identify the source designation without changing matching rules. Same presentation-only versions V0.4.34-test-identifiers / V0.3.94-map-navigation; exact SHA/cache pins change. Existing uninstalled migration and validation only, fresh current-Production clone. Current main refreshed: 00284c290ca30dbaaba7cc240b6db2fe81ad0fd6. Local 916 Setup/reference contracts, 232 FieldWiring tests and JavaScript label/history checks PASS. Exact CI/browser and next operator review pending. No Production writes.

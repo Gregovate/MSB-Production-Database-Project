@@ -496,19 +496,26 @@
       candidates.sort((a,b)=>Number(!!b.point)-Number(!!a.point));
       const size=map.getSize();
       for (const candidate of candidates) {
-        const width=measure.measureText(candidate.name).width+8;
+        // Measure the exact font and padded backing used for each label class.
+        measure.font=candidate.point?'bold 12px sans-serif':'600 14px sans-serif';
+        const height=candidate.point?18:22;
+        const width=measure.measureText(candidate.name).width+(candidate.point?8:12);
         const p=candidate.point ? map.latLngToContainerPoint([candidate.point[1],candidate.point[0]]) : placement(candidate.coords,width);
         if (!p) continue;
         const angle=p.angle||0, radians=angle*Math.PI/180;
-        const w=candidate.point?width:Math.abs(width*Math.cos(radians))+Math.abs(18*Math.sin(radians));
-        const h=candidate.point?18:Math.abs(width*Math.sin(radians))+Math.abs(18*Math.cos(radians));
-        const x=candidate.point?p.x+24+width/2:p.x, y=p.y;
+        const w=candidate.point?width:Math.abs(width*Math.cos(radians))+Math.abs(height*Math.sin(radians));
+        const h=candidate.point?18:Math.abs(width*Math.sin(radians))+Math.abs(height*Math.cos(radians));
+        // Keep the line visible beneath the label instead of cutting through
+        // the letters. Offset along the upright label's normal in screen pixels.
+        const offset=18;
+        const x=candidate.point?p.x+24+width/2:p.x+Math.sin(radians)*offset;
+        const y=candidate.point?p.y:p.y-Math.cos(radians)*offset;
         const rect={left:x-w/2-3,right:x+w/2+3,top:y-h/2-3,bottom:y+h/2+3};
         if (rect.left<0 || rect.top<0 || rect.right>size.x || rect.bottom>size.y) continue;
         if (occupied.some(r=>rect.left<r.right && rect.right>r.left && rect.top<r.bottom && rect.bottom>r.top)) continue;
         occupied.push(rect);
         const text=document.createElement('span');
-        text.className='gis-map-label-text';
+        text.className='gis-map-label-text'+(candidate.point?'':' gis-track-name');
         text.textContent=candidate.name;
         text.style.transform=`translate(-50%, -50%) rotate(${angle}deg)`;
         L.marker(map.containerPointToLatLng([x,y]),{

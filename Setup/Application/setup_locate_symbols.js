@@ -24,6 +24,9 @@
     'Transformer': 'transformer.svg',
     'Stage': 'stage.svg',
     'Flag': 'pole-yellow.svg',
+    // Documented GPX types (GIS_Symbol_Management), not waypoint-name guesses.
+    'Display Anchor': 'pole-yellow.svg',
+    'Tower': 'antenna-r.svg',
     'Controller': 'lor-controller.svg'
   });
   const sizes = new Map();
