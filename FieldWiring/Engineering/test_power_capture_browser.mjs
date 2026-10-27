@@ -1160,6 +1160,8 @@ try {
   await mapPage.evaluate(()=>popupMarker.getPopup().update());
   assert.equal(await mapPage.locator('.leaflet-popup details').evaluate(n=>n.open),true);
   assert.equal(await mapPage.getByText('Latest record remains visible',{exact:true}).isVisible(),true);
+  await mapPage.evaluate(()=>popupMarker.closePopup());
+  await mapPage.locator('.leaflet-popup').waitFor({state:'detached'});
   const assetSource=await readFile(path.join(setupPath,'setup_locate_assets.js'),'utf8');
   await mapPage.addScriptTag({content:assetSource.slice(assetSource.indexOf('  function evidence('),assetSource.indexOf('  function render(items, container)'))});
   await mapPage.evaluate(()=>{
