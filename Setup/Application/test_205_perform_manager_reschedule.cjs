@@ -64,6 +64,9 @@ vm.runInContext(
  section('function nextAssignmentReported(', 'function nextAssignmentReportedLabel('),
  ctx
 );
+// The extracted helpers declare nextSetupLocalDate; pin it after evaluation
+// so this fixture never expires when the real calendar passes October 26.
+ctx.nextSetupLocalDate=()=> '2026-10-15';
 assert.equal(ctx.nextAssignmentLate(assignment),true);
 assert.equal(ctx.nextCanRescheduleNoWork(assignment,task),true);
 async function submit(){

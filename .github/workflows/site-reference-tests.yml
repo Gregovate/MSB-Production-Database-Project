@@ -9,6 +9,8 @@ on:
       - 'Database/EngineeringTools/sql/171_power_snapshot_performance.sql'
       - 'Database/EngineeringTools/sql/171_equipment_lifecycle.sql'
       - 'Database/EngineeringTools/sql/171_equipment_catalog.sql'
+      - 'Database/EngineeringTools/sql/171_panel_receptacles.sql'
+      - 'Database/Acceptance/171_panel_receptacles_validation.sql'
       - 'Database/Acceptance/171_equipment_catalog_validation.sql'
       - 'Database/Acceptance/171_equipment_lifecycle_validation.sql'
       - 'Database/Acceptance/171_power_snapshot_performance_validation.sql'
@@ -116,6 +118,8 @@ jobs:
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_equipment_catalog.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_equipment_catalog_validation.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_site_reference_operations_disposable_validation.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_panel_receptacles.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_panel_receptacles_validation.sql
       - name: Initial release adapter through real container-local socket
         env:
           MSB_GIS_CI_CONTAINER: ${{ job.services.postgis.id }}
