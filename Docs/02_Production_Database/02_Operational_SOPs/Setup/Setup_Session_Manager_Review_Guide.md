@@ -7,7 +7,7 @@
 | Audience | Setup Managers and reviewers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-30 |
+| Last Reviewed | 2026-10-16 |
 | Keywords | Setup, 2026 Setup, Scheduling Board, Perform Work, Report Work, Report Correction, Pick List, Pick Delay, reusable task, Verification Queue, Copy Task, prerequisites, Display Ownership, Extra Materials, Kit Inventory |
 
 ## Purpose
@@ -21,6 +21,41 @@ It explains the normal, fastest way to do the work. You should not need engineer
 [**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
 For current annual work, use the live **2026 Setup Session** and open **Plan / Schedule**. Use **2025 — Historical Verification** only when you intentionally need historical/review evidence. **This is real Production data** and remains permanently year-bounded to the 2025 historical review; do not treat it as the current 2026 schedule.
+
+## October 16, 2026 — Scheduling and reporting changes now live
+
+The #205 scheduling and Perform Work improvements are installed in Production as **V0.3.84**. For detailed step-by-step field instructions, see [Perform and Report Setup Work](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Perform_and_Report_Setup_Work.md).
+
+### Scheduling Board: fast Manager workflow
+
+1. Choose **Plan / Schedule** and use **Find Scheduled Task**. While scrolling, confirm the **Setup Day number, weekday and date** shown beside the sticky search field.
+2. Select an unfinished task and drag to the intended **AM or PM** cell. When you need an additional crew on that day, use its **New Crew** drop zone: create-and-assign is one step. Check the resulting Crew/Captain/shift.
+3. Use the consistent Crew A–F colors to visually follow a crew across its day label and AM/PM columns. These colors do not indicate readiness or work status.
+4. Update the Captain or **planned** AM and PM volunteer counts in the crew row. These changes automatically save; inspect the resulting value to confirm. Mixed AM/PM headcounts are supported. Blank means not confirmed; it is not automatically zero.
+5. Keep the active board uncluttered by leaving **reported historical cards** hidden until you need them. Completed/reported history is available through the status/history controls; hiding it does not delete work.
+6. Use **Edit Planning Info** for the task's normal minimum/maximum crew, expected time and effort. The quick editor remains available; **Open Full Reusable Task** is for full Catalog maintenance. Correct minimum greater than maximum before saving.
+7. For **2026 reusable tasks**, estimate changes in the annual schedule and reusable Catalog now synchronize both directions. These are estimates, not actual volunteer/time/progress records. Future seasons are not governed by the temporary 2026 rule.
+
+### Correctly report work
+
+- **Perform Work** uses distinct calendar-like day groups and compact shift/crew warnings; a **Back to top** link assists on long screens.
+- Open the task and check the repeated **task name, scheduled date/day, shift and Crew** immediately above Report Work. Avoid reporting against a similarly named task on another day.
+- Fill **actual date worked, actual crew, Hours and Minutes, actual cumulative percent complete**, and notes of remaining work. Contextual **?** help explains fields.
+- The form no longer supplies a fictitious automatic **1%**. Report only what actually happened. The scheduled day-crew estimate does not determine actual attendance.
+- **Task Feedback** routes procedure/material/task issues to Manager review and is separate from recording work or directly editing underlying task data.
+
+### Reschedule when nothing was worked
+
+- In **Perform Work**, select the original assignment and **Reschedule · No work performed** to move a single unworked assignment to an eligible date and Crew. This creates a traceable schedule change, **not** a Work Report.
+- Use **Reschedule unworked AM/PM tasks** for an entire weather-affected or canceled shift if all selected work is genuinely unworked; the operation stops rather than rewriting any task with actual history.
+- If partial work happened, submit the real Report Work first and schedule a **new continuation** for the remainder. Do not relocate the worked occurrence or manufacture 1% to dismiss a warning.
+- Verify the new scheduled day/crew after the change. A successful no-work reschedule should not keep the original assignment falsely marked late.
+
+### Manager progress overview
+
+The compact task counts over Scheduling/Perform Work show **Total, Completed and Remaining** work; scheduling alone is not completion. A separate **Manager Action Center** provides detailed attention items, blocks/unschedulable tasks, actual completions vs the required task-based pace and projected completion relative to the Setup deadline. Labor estimates remain secondary where incomplete.
+
+---
 
 ## 1. Schedule 2026 Work
 

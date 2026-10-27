@@ -6,6 +6,7 @@ from typing import Any, Iterator
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from setup_location_evidence import nearest_recorded_reference
 
 
 class SetupNextRepositoryError(RuntimeError):
@@ -310,7 +311,30 @@ class SetupNextRepository:
                        current_stage.stage_key AS current_stage_key,
                        current_stage.stage_name AS current_stage_name,
                        CASE WHEN ds.position_mode = 'DETACHED' THEN ds.current_location_note
-                            ELSE cs.current_location_note END AS current_location_note,
+                            ELSE coalesce(cs.current_location_note, (
+                        SELECT n.destination_location_note FROM ops.setup_movement_event n
+                        WHERE n.setup_session_id=ss.setup_session_id AND n.container_id=c.container_id
+                          AND n.occurred_at<=me.occurred_at
+                          AND nullif(trim(n.destination_location_note), '') IS NOT NULL
+                          AND NOT EXISTS (SELECT 1 FROM ops.setup_movement_event r
+                            WHERE r.setup_session_id=n.setup_session_id AND r.container_id=n.container_id
+                              AND r.event_type='RETURNED' AND r.occurred_at>=n.occurred_at AND r.occurred_at<=me.occurred_at)
+                        ORDER BY n.occurred_at DESC,n.setup_movement_event_id DESC LIMIT 1
+                    )) END AS current_location_note,
+                       CASE WHEN ds.position_mode = 'DETACHED' THEN ds.movement_status
+                            ELSE cs.movement_status END AS current_movement_status,
+                       CASE WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+                            ELSE cs.last_movement_event_id END AS current_movement_event_id,
+                       me.occurred_at AS current_observed_at,
+                    me.setup_movement_event_id AS current_location_event_id,
+                    me.notes AS current_observation_notes,
+                    me.destination_location_note AS current_raw_location_note,
+                       me.gps_latitude AS current_gps_latitude,
+                       me.gps_longitude AS current_gps_longitude,
+                       me.gps_accuracy_m AS current_gps_accuracy_m,
+                       me.gps_fix_age_ms AS current_gps_fix_age_ms,
+                       me.gps_quality AS current_gps_quality,
+                       me.capture_method AS current_capture_method,
                        c.location_code AS home_location_code,
                        scope.relationship_type, scope.relationship_notes,
                        scope.relationship_source
@@ -322,30 +346,106 @@ class SetupNextRepository:
                   ON ds.setup_session_id = ss.setup_session_id AND ds.display_id = d.display_id
                 LEFT JOIN ops.setup_container_state cs
                   ON cs.setup_session_id = ss.setup_session_id AND cs.container_id = d.container_id
+                -- A detached Display retains its own event pointer, including a
+                -- shared Container-unload event; later Container moves must not follow it.
+                LEFT JOIN ops.setup_movement_event me
+                  ON me.setup_movement_event_id = CASE
+                      WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+                      ELSE coalesce((SELECT observed.setup_movement_event_id
+                         FROM ops.setup_movement_event observed
+                         JOIN ops.setup_movement_event anchor ON anchor.setup_movement_event_id=cs.last_movement_event_id
+                           AND anchor.setup_session_id=ss.setup_session_id
+                         WHERE observed.setup_session_id=ss.setup_session_id AND observed.container_id=c.container_id
+                           AND (observed.occurred_at,observed.setup_movement_event_id)<=(anchor.occurred_at,anchor.setup_movement_event_id)
+                           AND (observed.event_type='RETURNED' OR observed.gps_latitude IS NOT NULL
+                                OR observed.destination_stage_id IS NOT NULL
+                                OR nullif(trim(observed.destination_location_note),'') IS NOT NULL)
+                         ORDER BY observed.occurred_at DESC,observed.setup_movement_event_id DESC LIMIT 1),
+                         cs.last_movement_event_id) END
+                 AND me.setup_session_id = ss.setup_session_id
                 LEFT JOIN ref.stage current_stage
                   ON current_stage.stage_id = CASE
                       WHEN ds.position_mode = 'DETACHED' THEN ds.current_stage_id
                       ELSE cs.current_stage_id END
                 ORDER BY d.container_id NULLS LAST, d.display_name, d.display_id
             """, (task_id, season_year))
-            displays = [dict(r) for r in cur.fetchall()]
+            displays = [self._field_location(dict(r)) for r in cur.fetchall()]
             cur.execute("""
                 SELECT c.container_id, c.description AS container_description,
                        c.location_code AS home_location_code,
                        cs.current_stage_id, s.stage_key AS current_stage_key,
-                       s.stage_name AS current_stage_name, cs.current_location_note,
+                       s.stage_name AS current_stage_name, coalesce(cs.current_location_note, (
+                        SELECT n.destination_location_note FROM ops.setup_movement_event n
+                        WHERE n.setup_session_id=ss.setup_session_id AND n.container_id=c.container_id
+                          AND n.occurred_at<=me.occurred_at
+                          AND nullif(trim(n.destination_location_note), '') IS NOT NULL
+                          AND NOT EXISTS (SELECT 1 FROM ops.setup_movement_event r
+                            WHERE r.setup_session_id=n.setup_session_id AND r.container_id=n.container_id
+                              AND r.event_type='RETURNED' AND r.occurred_at>=n.occurred_at AND r.occurred_at<=me.occurred_at)
+                        ORDER BY n.occurred_at DESC,n.setup_movement_event_id DESC LIMIT 1
+                    )) AS current_location_note,
+                       cs.movement_status AS current_movement_status,
+                       cs.last_movement_event_id AS current_movement_event_id,
+                       me.occurred_at AS current_observed_at,
+                    me.setup_movement_event_id AS current_location_event_id,
+                    me.notes AS current_observation_notes,
+                    me.destination_location_note AS current_raw_location_note,
+                       me.gps_latitude AS current_gps_latitude,
+                       me.gps_longitude AS current_gps_longitude,
+                       me.gps_accuracy_m AS current_gps_accuracy_m,
+                       me.gps_fix_age_ms AS current_gps_fix_age_ms,
+                       me.gps_quality AS current_gps_quality,
+                       me.capture_method AS current_capture_method,
                        tc.relationship_type, tc.notes AS relationship_notes
                 FROM ref.setup_task_container_support tc
                 JOIN ref.container c ON c.container_id = tc.container_id
                 LEFT JOIN ops.setup_session ss ON ss.season_year = %s
                 LEFT JOIN ops.setup_container_state cs
                   ON cs.setup_session_id = ss.setup_session_id AND cs.container_id = c.container_id
+                LEFT JOIN ops.setup_movement_event me
+                  ON me.setup_movement_event_id = coalesce((SELECT observed.setup_movement_event_id
+                         FROM ops.setup_movement_event observed
+                         JOIN ops.setup_movement_event anchor ON anchor.setup_movement_event_id=cs.last_movement_event_id
+                           AND anchor.setup_session_id=ss.setup_session_id
+                         WHERE observed.setup_session_id=ss.setup_session_id AND observed.container_id=c.container_id
+                           AND (observed.occurred_at,observed.setup_movement_event_id)<=(anchor.occurred_at,anchor.setup_movement_event_id)
+                           AND (observed.event_type='RETURNED' OR observed.gps_latitude IS NOT NULL
+                                OR observed.destination_stage_id IS NOT NULL
+                                OR nullif(trim(observed.destination_location_note),'') IS NOT NULL)
+                         ORDER BY observed.occurred_at DESC,observed.setup_movement_event_id DESC LIMIT 1),
+                         cs.last_movement_event_id)
+                 AND me.setup_session_id = ss.setup_session_id
                 LEFT JOIN ref.stage s ON s.stage_id = cs.current_stage_id
                 WHERE tc.setup_task_id = %s
                 ORDER BY c.container_id
             """, (season_year, task_id))
-            containers = [dict(r) for r in cur.fetchall()]
+            containers = [self._field_location(dict(r)) for r in cur.fetchall()]
         return {"displays": displays, "support_containers": containers}
+
+    @staticmethod
+    def _field_location(item: dict[str, Any]) -> dict[str, Any]:
+        """Classify effective observation evidence; Home storage is reference only."""
+        if item.get("current_stage_key") or str(item.get("current_location_note") or "").strip():
+            kind = "NAMED"
+        elif item.get("current_gps_latitude") is not None and item.get("current_gps_longitude") is not None:
+            kind = "GPS"
+        elif (item.get("current_movement_event_id") is not None
+              or item.get("current_movement_status")
+              or item.get("current_stage_id") is not None):
+            kind = "UNRESOLVED_FIELD"
+        else:
+            kind = "NONE"
+        notes = str(item.get("current_observation_notes") or "")
+        item["current_location_inferred"] = notes.startswith("reconciliation_parent=")
+        item["current_named_context_inherited"] = bool(
+            item.get("current_location_note") and not item.get("current_raw_location_note")
+            and not item["current_location_inferred"] and item.get("current_movement_status") != "RETURNED")
+        if str(item.get("current_location_note") or "").startswith("Unload location unresolved"):
+            kind = "UNRESOLVED_FIELD"
+        item["current_location_kind"] = kind
+        item["current_nearest_reference"] = nearest_recorded_reference(
+            item.get("current_gps_latitude"), item.get("current_gps_longitude"))
+        return item
 
     def record_progress(self, *, email: str, session_task_id: int,
                         assignment_id: int | None, work_day_id: int | None,

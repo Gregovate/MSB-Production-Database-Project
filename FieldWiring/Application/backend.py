@@ -1,4 +1,4 @@
-"""MSB FieldWiring browser API and static application host — V0.4.0."""
+"""MSB FieldWiring browser API and static application host — V0.4.35-power-panel-link."""
 
 from __future__ import annotations
 
@@ -42,10 +42,14 @@ from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.4.0"
+APP_VERSION = "V0.4.35-power-panel-link"
 BASE_DIR = Path(__file__).resolve().parent
 CONTROLLER_COMMAND_HEADER = "X-MSB-Controller-Command"
-app = Flask(__name__)
+app = Flask(__name__, root_path=str(BASE_DIR))
+# Bind to this host: the disposable combined preview also imports Setup.backend.
+app.config["POWER_REPOSITORY_FACTORY"] = lambda: repository()
+from power_capture import power_api
+app.register_blueprint(power_api)
 
 
 def repository() -> Repository:
@@ -164,7 +168,10 @@ def operator_wiring_error(exc: WiringError) -> str:
 
 @app.get("/")
 def index() -> Response:
-    return send_from_directory(BASE_DIR, "index.html")
+    # Entry navigation must not remain stale after the GIS route is released.
+    response = send_from_directory(BASE_DIR, "index.html")
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @app.get("/fieldwiring.css")
@@ -175,6 +182,17 @@ def css() -> Response:
 @app.get("/fieldwiring.js")
 def js() -> Response:
     return send_from_directory(BASE_DIR, "fieldwiring.js")
+
+
+@app.get("/circuits")
+@app.get("/circuits.html")
+@app.get("/waypoints")
+@app.get("/equipment")
+@app.get("/cable-tests")
+def circuits_page() -> Response:
+    response = send_from_directory(BASE_DIR, "circuits.html")
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.get("/controllers")

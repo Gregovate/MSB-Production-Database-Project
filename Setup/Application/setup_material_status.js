@@ -93,11 +93,23 @@
 
   function currentLocation(item) {
     const observation = item.current_observation || {};
-    return [
+    const name = [
       observation.current_stage_key,
       observation.current_stage_name,
       observation.current_location_note
-    ].filter(Boolean).join(' — ') || 'No Setup observation';
+    ].filter(Boolean).join(' — ');
+    // GPS-only scans are real observations. A blank name is not missing evidence.
+    const hasGps = observation.gps_latitude != null && observation.gps_longitude != null;
+    if (hasGps) {
+      const accuracy = observation.gps_accuracy_m == null ? ''
+        : ` ±${Math.round(Number(observation.gps_accuracy_m) / 0.3048)} ft`;
+      const gps = `GPS ${Number(observation.gps_latitude).toFixed(6)}, ${Number(observation.gps_longitude).toFixed(6)}${accuracy}`;
+      const context = name ? `${name}${!observation.destination_location_note && !observation.destination_stage_id ? ' (prior named context)' : ''} · ` : '';
+      return `${context}${gps}`;
+    }
+    return name || (observation.last_movement_event_id
+      ? `${observation.last_event_type || 'Movement'} recorded; no location in latest event`
+      : 'No Setup observation');
   }
 
   function effectivePickBy(item) {
@@ -129,6 +141,7 @@
       item.home_location_code,
       item.status,
       item.demand_source,
+      currentLocation(item),
       effectivePickBy(item),
       effectiveNeededFor(item),
       ...(item.manager_overrides || []).flatMap(override => [
@@ -225,7 +238,16 @@
       ['Unscheduled / pickable', s.unscheduled_pickable || 0],
       ['Workshop', s.workshop || 0],
       ['Unresolved', s.unresolved || 0]
-    ].map(([label, value]) => `<div class="summary-card"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('');
+    ].map(([label, value]) => label === 'Unresolved'
+      ? `<button type="button" class="summary-card" id="show-unresolved"><span>${esc(label)} requirements</span><strong>${esc(value)}</strong></button>`
+      : `<div class="summary-card"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('');
+    document.getElementById('show-unresolved').addEventListener('click', () => {
+      searchFilter.value = ''; stageFilter.value = ''; sceneFilter.value = '';
+      statusFilter.value = 'UNRESOLVED';
+      populateScenes();
+      render();
+      unresolvedPanel.scrollIntoView({behavior: 'smooth', block: 'start'});
+    });
   }
 
   function renderContents(item) {
@@ -305,7 +327,7 @@
           <strong>Current</strong><div>${esc(currentLocation(item))}</div>
         </div>
         <div class="material-contents">
-          <strong class="contents-heading">Contents</strong>
+          <strong class="contents-heading">Expected material</strong>
           ${renderContents(item)}
         </div>
         <div class="actions">${actionHtml(item)}</div>
@@ -484,7 +506,7 @@
     populateFilters();
     render();
     statusLine.textContent = data.session
-      ? `Live ${data.session.season_year} annual material oversight. Movement truth overrides planning state.`
+      ? `Live ${data.session.season_year} annual material oversight. Recorded movement overrides planning; physical contents are unconfirmed.`
       : `No Setup Session exists for ${year}.`;
     generatedAt.textContent = `Generated ${new Date().toLocaleString()}`;
   }
@@ -526,6 +548,13 @@
   });
   document.getElementById('back-button').addEventListener('click', () => {
     location.href = `../?season_year=${encodeURIComponent(seasonSelect.value)}`;
+  });
+  document.getElementById('refresh-button').addEventListener('click', () => {
+    load().catch(showError);
+  });
+  document.getElementById('production-report-button').addEventListener('click', () => {
+    // Report covers the whole season, including unresolved rows hidden by filters.
+    window.open(`../api/setup/material-status/report?season_year=${encodeURIComponent(seasonSelect.value)}`, '_blank', 'noopener');
   });
 
   load().catch(showError);

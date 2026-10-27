@@ -154,8 +154,31 @@ def _source_displays(
                 current_stage.stage_name AS current_stage_name,
                 CASE
                     WHEN ds.position_mode = 'DETACHED' THEN ds.current_location_note
-                    ELSE cs.current_location_note
+                    ELSE coalesce(cs.current_location_note, (
+                        SELECT n.destination_location_note FROM ops.setup_movement_event n
+                        WHERE n.setup_session_id=ss.setup_session_id AND n.container_id=c.container_id
+                          AND n.occurred_at<=me.occurred_at
+                          AND nullif(trim(n.destination_location_note), '') IS NOT NULL
+                          AND NOT EXISTS (SELECT 1 FROM ops.setup_movement_event r
+                            WHERE r.setup_session_id=n.setup_session_id AND r.container_id=n.container_id
+                              AND r.event_type='RETURNED' AND r.occurred_at>=n.occurred_at AND r.occurred_at<=me.occurred_at)
+                        ORDER BY n.occurred_at DESC,n.setup_movement_event_id DESC LIMIT 1
+                    ))
                 END AS current_location_note,
+                CASE WHEN ds.position_mode = 'DETACHED' THEN ds.movement_status
+                     ELSE cs.movement_status END AS current_movement_status,
+                CASE WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+                     ELSE cs.last_movement_event_id END AS current_movement_event_id,
+                me.occurred_at AS current_observed_at,
+                    me.setup_movement_event_id AS current_location_event_id,
+                    me.notes AS current_observation_notes,
+                    me.destination_location_note AS current_raw_location_note,
+                me.gps_latitude AS current_gps_latitude,
+                me.gps_longitude AS current_gps_longitude,
+                me.gps_accuracy_m AS current_gps_accuracy_m,
+                me.gps_fix_age_ms AS current_gps_fix_age_ms,
+                me.gps_quality AS current_gps_quality,
+                me.capture_method AS current_capture_method,
                 c.location_code AS home_location_code
             FROM ref.display AS d
             JOIN ref.display_status AS status
@@ -170,6 +193,23 @@ def _source_displays(
             LEFT JOIN ops.setup_container_state AS cs
               ON cs.setup_session_id = ss.setup_session_id
              AND cs.container_id = d.container_id
+            -- This source set replaces the earlier resolver rows in Production;
+            -- preserve effective movement evidence through assignment filtering.
+            LEFT JOIN ops.setup_movement_event AS me
+              ON me.setup_movement_event_id = CASE
+                  WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+                  ELSE coalesce((SELECT observed.setup_movement_event_id
+                         FROM ops.setup_movement_event observed
+                         JOIN ops.setup_movement_event anchor ON anchor.setup_movement_event_id=cs.last_movement_event_id
+                           AND anchor.setup_session_id=ss.setup_session_id
+                         WHERE observed.setup_session_id=ss.setup_session_id AND observed.container_id=c.container_id
+                           AND (observed.occurred_at,observed.setup_movement_event_id)<=(anchor.occurred_at,anchor.setup_movement_event_id)
+                           AND (observed.event_type='RETURNED' OR observed.gps_latitude IS NOT NULL
+                                OR observed.destination_stage_id IS NOT NULL
+                                OR nullif(trim(observed.destination_location_note),'') IS NOT NULL)
+                         ORDER BY observed.occurred_at DESC,observed.setup_movement_event_id DESC LIMIT 1),
+                         cs.last_movement_event_id) END
+             AND me.setup_session_id = ss.setup_session_id
             LEFT JOIN ref.stage AS current_stage
               ON current_stage.stage_id = CASE
                   WHEN ds.position_mode = 'DETACHED' THEN ds.current_stage_id
@@ -181,7 +221,7 @@ def _source_displays(
             """,
             (season_year, display_ids),
         )
-        rows = [dict(row) for row in cur.fetchall()]
+        rows = [self._field_location(dict(row)) for row in cur.fetchall()]
 
     for row in rows:
         source = display_sources[int(row["display_id"])]

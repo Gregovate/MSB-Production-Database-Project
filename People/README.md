@@ -22,25 +22,22 @@ Production analytics verification               PASS
 Production index / intranet integration          NEXT — BACKBONE #16
 ```
 
-Accepted database/backend candidate:
+Current People/Identity Production release:
 
 ```text
-deaa9157282e59e8acd6a7da2a82fc9296e44f20
+visible version       V0.2.2
+accepted runtime      2c9a2937079f817dafd5119584aaffc77b51357d
+merged/deployed main  bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+migration             People/Database/005_reconcile_directus_person_identity.sql
 ```
 
-Final accepted browser presentation candidate:
+Current Production acceptance evidence:
 
 ```text
-4724185fe8cd8831a59c61ea40df61073abbb0c6
+People/Acceptance/People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md
 ```
 
-Production application target:
-
-```text
-54e1192309b96c9838676be51a0bfcdb3ac92e06
-```
-
-Production acceptance evidence:
+The original People Manager Production acceptance remains:
 
 ```text
 People/Acceptance/People_Manager_Production_Acceptance_2026-09-09.md
@@ -50,7 +47,7 @@ People/Acceptance/People_Manager_Production_Acceptance_2026-09-09.md
 
 ```text
 service             msb-people.service
-version             V0.2.0
+version             V0.2.2
 runtime account     fieldwiring
 working directory   /opt/fieldwiring/People/Application
 listener            192.168.5.9:8796
@@ -69,7 +66,7 @@ Server/runtime mechanics remain owned by `Gregovate/MSB-Server-Management`.
 - Manager/Administrator-authorized person search and detail;
 - create/edit contact information;
 - active/inactive lifecycle with reactivation of the same durable `person_id`;
-- collision-safe reserved `@sheboyganlights.org` identity candidates;
+- real `@sheboyganlights.org` Workspace identity only when an actual account exists;
 - strong duplicate review before create/identity-changing edits;
 - protected Directus/PostgreSQL identity fields;
 - dynamic visibility of current foreign-key relationships; and
@@ -131,7 +128,37 @@ Cloudflare Access authenticates the browser user. PostgreSQL then resolves the c
 
 People Manager maintenance is limited to current **Manager / Administrator** or equivalent accepted `admin_access` authority. Cloudflare authentication alone does not grant People management access.
 
-Human writes also require the authenticated Directus user to map to a durable `ref.person` actor.
+Human writes require the authenticated Directus user to resolve to a durable `ref.person` actor. Since V0.2.2, a missing UUID link may self-reconcile only when the active Google Directus user, external identifier, and active existing Person all match the same normalized Sheboygan Lights email and no UUID conflict exists. The reconciliation path never changes Directus role/policy authorization and rejects non-human tablet/device/service identities.
+
+## Current Human Onboarding Gap — #395
+
+A human can successfully authenticate to `my.sheboyganlights.org` through Cloudflare Access while still having no Directus identity. In that state, protected applications cannot authorize the user because Directus role/policy state does not yet exist.
+
+Live Production evidence on 2026-10-15 confirmed this with Don Martens:
+
+```text
+Person exists and is active
+real Sheboygan Lights email exists
+Cloudflare authentication succeeds
+directus_user_id = NULL
+matching Directus user = NONE
+Setup capability row = NONE
+```
+
+The current Directus **User Onboarding** Flow fires only on `directus_users.items.create`. Its default role is **MSB Browser** with **Read Only - MSB Core**.
+
+The required #395 direction is therefore an invisible first-login/bootstrap path that creates or initializes the supported Directus Google identity without requiring normal users to visit the Directus admin/login screen.
+
+First initialization must remain least privilege:
+
+```text
+new human Directus identity
+    -> MSB Browser
+```
+
+Role elevation remains an explicit administrator action after the Directus identity exists. Administrators can continue changing an existing user's role in Directus. Legacy Person flags such as `is_manager` and `is_team` are not authorization sources and must not automatically promote a Directus user.
+
+Shared tablet/device/service identities are intentionally non-human. They may have Directus identities while having no Person row, must remain MSB Browser-only where governed, and must not be reconciled into human Person actors.
 
 ## Browser / UI Contract
 
@@ -195,6 +222,7 @@ Acceptance evidence:
 People/Acceptance/People_Manager_Metadata_Disposable_Acceptance_Evidence_2026-09-09.md
 People/Acceptance/People_Manager_Browser_Review_Acceptance_2026-09-09.md
 People/Acceptance/People_Manager_Production_Acceptance_2026-09-09.md
+People/Acceptance/People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md
 ```
 
 ## Separate / Future Work

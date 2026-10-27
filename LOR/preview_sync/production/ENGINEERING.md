@@ -1,0 +1,113 @@
+# LOR2PC candidate engineering
+
+Filename: ENGINEERING.md · Revision 1 · 2026-10-27 · #299 / draft PR #300
+Status: DEVELOPMENT CANDIDATE 1.0.1 — NOT DEPLOYED OR PRODUCTION ACCEPTED
+
+## Repository reconciliation
+
+Work continues on `agent/issue-299-lor2db-2pc-sync-phase1`.
+Checkpoint `7a02b59eef80ae2dc02e2047257c7b3c395623c7` was read first.
+Remote main `43077980051ab40005ce66ecfd38ef38c6fdad35` was merged deliberately
+in `e2195abf`; the old branch was 2094 main commits behind.
+Draft PR #472 / branch `release/299-lor-preview-sync-v1.0.0` was reviewed.
+Its WIP updater was recovered as the starting point, not accepted as release
+quality. In particular its timestamp fallback and UNC archive discovery were
+removed. #300 remains the requested working PR; #472 has not been closed.
+Historical ZIPs remain unchanged. Current text source lives here.
+
+## Defect and authority
+
+Run 32 / ingest 74 COMPLETED/PASSED and Rotary-Trees Revision 57 are recorded
+operational evidence in the checkpoint, not independently verified live here.
+The deployed CSV requirement still fixes content to older extraction-era hashes.
+A later accepted run cannot advance that separate authority, causing the block.
+
+#81 owns `LOR2DB/Application/current_source.py` and GET `/current-source`.
+It reads the latest COMPLETED run (completion timestamp, run ID tie breaker)
+and its frozen source inventory in one SQL snapshot. Missing hash, validation,
+publication, inventory or exact version-folder evidence BLOCKS; it never falls
+back to an older completed run with more convenient evidence. REPORTING,
+CANCELLED and COMPLETED_WITH_EXCEPTIONS are not accepted sources.
+The source digest and SQLite digest are already frozen by migration 0031.
+No schema migration is introduced. A read-only function permission may be needed
+for the installed backend database role; inspect it before deployment, never
+substitute broad Directus-table grants.
+
+#299 consumes the contract, matches PreviewID/name/revision inventory and the
+whole-folder parser digest, and merges only controlled identities. Revision is
+metadata, never winner selection. Unmanaged XML fragments are preserved.
+Source identity, source bytes, local file and candidate are rechecked after review.
+Missing digest has no file-mtime fallback. Current digest implementation rejects
+non-ASCII source filenames until Unicode casefold ordering is cross-tested.
+
+## Browser authentication and PC handoff
+
+Crew access is checked through the existing active Directus role/policy resolver
+`ref.setup_browser_capabilities(email)`: Production Crew, Manager or Administrator.
+Volunteer/unknown/inactive users fail closed. Operator allowlisting is unchanged
+for parser, ingest, reconciliation and approval routes. The existing protected
+proxy remains responsible for the authenticated Cloudflare email header; do not
+expose this backend directly or accept client-supplied identity headers.
+
+The separate browser surface is `/lor2db/pc/`, linked from the landing page.
+The landing page's administrator-only status requests may still be denied to crew;
+crew can use `/lor2db/pc/` directly without granting administrator API access.
+Inspect the live Cloudflare application/path policies before opening this surface.
+No live access settings were read or changed in this workstream.
+
+A per-user registered `msb-lor2pc:update` protocol launches a fixed local updater.
+Protocol URI arguments are never interpolated into a command. The updater opens
+the default browser to the protected PC page with a random loopback port and
+64-character nonce in the URL fragment. The page fetches the source contract
+using its own existing browser login and relays ASCII JSON to the PC listener.
+No login cookie, JWT, database credential or administrator token is transferred.
+The listener binds only 127.0.0.1, validates exact Host/Origin/path, restricts
+method/body size, times out and closes after one document. Review completion opens
+a fresh browser handoff to check that accepted evidence is still current.
+
+Windows browser Local Network Access/private-network permission, custom-protocol
+confirmation, proxy route behavior and authentication redirects REQUIRE real PC
+acceptance. Do not disable browser protections to make the handoff work.
+The updater blocks if authentication or handoff fails. Native TCP/HTTP handling
+has not yet had real-browser integration acceptance. Keep release blocked.
+
+## Source-only preparation and installation boundary
+
+`Prepare-LOR2PC-Candidate.py OUTPUT_DIRECTORY` runs only on a clean committed
+checkout, prepares named runtime files and writes exact SHA/version/hash metadata.
+It does not deploy, register a protocol or touch any preview library.
+`Install MSB PC Preview Updater.vbs` invokes `Install-LOR2PC-Launcher.ps1`, which
+checks identity, installs under the user's LocalAppData and registers HKCU only.
+Installation requires explicit operator authorization and Windows validation.
+No shared-folder files are reorganized by this candidate. Existing shared layout
+remains authoritative; rollout/rollback integration is still required before release.
+
+## Verification recorded here
+
+- 10 Python contract/authorization tests: PASS, disposable mocked database.
+- 34 existing backend safety tests: PASS.
+- 15 engine checks: PASS on Linux PowerShell 7.4.6, functions-only, synthetic XML.
+  Includes parser digest compatibility, stale CSV isolation, missing/wrong digest,
+  identity mismatch, post-run edit, clean add, preservation, stale local/candidate,
+  exact backup, repeat no-op, revision-only, replacement and conflict rejection.
+- Node browser-logic checks: PASS; mocked fetch/DOM, no browser or actual listener.
+- Windows PowerShell 5.1, installer/registry, loopback handoff, copied real inputs,
+  UI responsiveness, LOR reopen and live PC acceptance: NOT RUN.
+
+## First Show PC step — disposable engine only
+
+Use this exact committed checkout; do not overwrite G: with these source files.
+
+1. On the Show PC, open `LOR\preview_sync\production` in that checkout.
+2. Double-click `Validate MSB PC Updater - Disposable.vbs`.
+3. Require all 15 PASS lines, no red exception. Retain the printed temporary
+   evidence path and copy the output for the engineering acceptance record.
+4. Close the validation window. It never executes updater startup, opens the
+   browser, registers a launcher, contacts Production or reads/writes the real
+   `C:\lor\CommonData\LORPreviews.xml`.
+
+Only after Windows/hand-off/deployment preparation and explicit approval:
+verify accepted source (currently expected 34), first clean Show PC ADD 34 /
+REPLACE 0, preserve default/store previews, approve apply, retain backup/audit,
+reopen LOR and verify usability, close it and require ADD 0 / REPLACE 0.
+Do not mark #300 ready or #299 closed before that evidence exists.

@@ -73,6 +73,8 @@ def controller_management_options(repo: Repository, email: str) -> dict[str, Any
                 FROM lor_snap.preview_wiring_fieldlead_v6 AS fw
                 WHERE nullif(btrim(fw.network), '') IS NOT NULL
                   AND btrim(fw.controller) ~* '^[0-9a-f]{1,2}$'
+                  -- DMX compatibility-view controller values are not LOR Unit IDs.
+                  AND upper(btrim(coalesce(fw.device_type, ''))) <> 'DMX'
                 ORDER BY
                     lower(btrim(fw.network)),
                     ('x' || btrim(fw.controller))::bit(32)::int,
@@ -157,6 +159,8 @@ def controller_management_options(repo: Repository, email: str) -> dict[str, Any
                 )
                   AND nullif(btrim(fw.network), '') IS NOT NULL
                   AND btrim(fw.controller) ~* '^[0-9a-f]{1,2}$'
+                  -- DMX compatibility-view controller values are not LOR Unit IDs.
+                  AND upper(btrim(coalesce(fw.device_type, ''))) <> 'DMX'
                 ORDER BY
                     st.park_order,
                     st.sub_order,

@@ -154,3 +154,7 @@ button,select{font:inherit;padding:.55rem .7rem}
   .pick-qr{width:68px;height:68px;padding:2px}
   .pick-qr canvas,.pick-qr img,.pick-qr svg{width:64px!important;height:64px!important;max-width:64px!important;max-height:64px!important}
 }
+
+/* Keep the authenticated picker visible beside Back to Setup, including the
+   compact active-scanner header. This is passive information, not a control. */
+.pick-user-identity{font-weight:700;overflow-wrap:anywhere;max-width:100%}

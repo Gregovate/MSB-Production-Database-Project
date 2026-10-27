@@ -132,6 +132,41 @@ def api_setup_scheduling_board_crew_add(
     return jsonify(crew=result), 201
 
 
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>/crews/with-tasks")
+def api_setup_scheduling_board_crew_with_tasks(
+    setup_work_day_id: int,
+) -> tuple[Response, int]:
+    """Atomic day-level task drop: make one crew and place one selected group."""
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    items = payload.get("items")
+    if not isinstance(items, list) or not (1 <= len(items) <= 25):
+        raise SetupCommandError("Choose one to 25 tasks to place in the new crew")
+    normalized = []
+    used_ids = set()
+    for item in items:
+        if not isinstance(item, dict) or item.get("kind") not in ("task", "assignment"):
+            raise SetupCommandError("Each dropped item must be a task or an existing assignment")
+        number = required_int(item.get("id"), "id")
+        if number <= 0 or (item["kind"], number) in used_ids:
+            raise SetupCommandError("Dropped task IDs must be positive and distinct")
+        used_ids.add((item["kind"], number))
+        shift = item.get("shift")
+        if item["kind"] == "task" and shift not in ("MORNING", "AFTERNOON"):
+            raise SetupCommandError("Choose AM or PM for a new task")
+        normalized.append({
+            "kind": item["kind"], "id": number,
+            # Existing assignment shifts are read authoritatively by the server.
+            "shift": shift if item["kind"] == "task" else None,
+        })
+    result = repo().add_crew_with_tasks(
+        email=email, work_day_id=setup_work_day_id, items=normalized,
+        captain_person_id=nullable_int(payload.get("captain_person_id"), "captain_person_id"),
+    )
+    return jsonify(result), 201
+
+
 @setup_scheduling_board_api.patch("/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>")
 def api_setup_scheduling_board_crew_update(
     setup_work_day_crew_id: int,
@@ -210,6 +245,27 @@ def api_setup_scheduling_board_assignment_update(
         sort_order=nullable_int(payload.get("sort_order"), "sort_order") or 100,
     )
     return jsonify(assignment=result)
+
+
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/assignments/bulk-reschedule")
+def api_setup_scheduling_board_bulk_reschedule() -> Response:
+    """Manager confirms no work for each selected occurrence; move atomically."""
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    body = json_body()
+    assignment_ids = body.get("assignment_ids")
+    if not isinstance(assignment_ids, list) or not (1 <= len(assignment_ids) <= 25):
+        raise SetupCommandError("Select one to 25 original assignments")
+    ids = [required_int(value, "assignment_id") for value in assignment_ids]
+    if any(value <= 0 for value in ids) or len(ids) != len(set(ids)):
+        raise SetupCommandError("Assignment IDs must be positive and distinct")
+    work_day_id = required_int(body.get("setup_work_day_id"), "setup_work_day_id")
+    crew_id = required_int(body.get("setup_work_day_crew_id"), "setup_work_day_crew_id")
+    result = repo().bulk_reschedule_unworked(
+        email=email,work_day_id=work_day_id,crew_id=crew_id,
+        assignment_ids=ids,
+    )
+    return jsonify(assignments=result)
 
 
 @setup_scheduling_board_api.delete(

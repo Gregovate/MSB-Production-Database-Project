@@ -1,5 +1,9 @@
 # Project Rules
 
+## Shared email-system boundary
+
+[Email System Integration](../../Docs/02_Production_Database/01_System_Architecture/Email_System_Integration.md) records the single Server Management email owner. Changes to shared sender/relay/queue/retry/recovery mechanisms must follow [the canonical email authority](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/MSB_Email_System_Engineering.md) under [Server #97](https://github.com/Gregovate/MSB-Server-Management/issues/97); application issues retain business events, recipients and content. Do not introduce another independent mail platform.
+
 This folder contains documentation and governance rules that are specific to the MSB Production Database Project.
 
 When Greg says **read the project instructions**, read this README and every linked rule relevant to the requested work before proposing changes.
@@ -17,7 +21,7 @@ Reusable rules that should apply across multiple repositories belong under [`../
 ## Current Project Rules
 
 - [Runbook-First Production Rule](Runbook_First_Production_Rule.md) — requires retrieving and reading the governing repository-owned runbook before any Production mutation command, classifies database-changing vs source-only deployments, requires the Server Management #37 maintenance switch around Production PostgreSQL mutation windows while preserving normal live development/source-only deployment, requires stating the authority/procedure/current step, stops after failures, and requires `RUNBOOK GAP FOUND` rather than improvising when documentation is incomplete.
-- [Repository Change Workflow](Repository_Change_Workflow.md) — requires refreshing current remote `main`, reviewing the latest affected files, and resolving stale-branch/concurrent-work issues before changing code, schema, configuration, or controlled documentation.
+- [Repository Change Workflow](Repository_Change_Workflow.md) — requires refreshing current remote `main`, reviewing the latest affected files, and resolving stale-branch/concurrent-work issues before changes; records Greg's desktop/laptop checkout paths and mandates prompt-aware command handoffs, task cleanup, and return to updated primary `main`.
 - [Release Identity and Versioning Rule](Release_Identity_and_Versioning_Rule.md) — requires every materially distinct Production release candidate to have a distinct visible version before final acceptance/deployment, keeps client/server build identity synchronized, ties version + exact SHA + migrations + issue/PR + merged-main/deployed identity together, and requires every Production deployment to be recorded newest-first in [Production Deployment Change Log](../Production_Deployment_Change_Log.md).
 - [Issue Management and Closeout Rule](Issue_Management_and_Closeout_Rule.md) — defines the conversation-finding -> owning-issue default, when a separate GitHub issue is actually warranted, how multiple PRs may implement one issue, requires durable discoveries to be promoted into controlled documentation rather than left only in issues/chat, and makes issue review/closure part of project and sub-project closeout.
 - [Internal Web Analytics Rule](Internal_Web_Analytics_Rule.md) — requires GA4 usage analytics for `my.sheboyganlights.org` applications, defines the shared Measurement ID and privacy boundary, preserves per-project ownership, and makes analytics verification part of production acceptance.

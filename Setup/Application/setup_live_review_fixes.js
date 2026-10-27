@@ -74,6 +74,9 @@
 
   function normalizeCurrentSetupOrganization() {
     if (typeof setupNextState === 'undefined') return;
+    // Organization can finish before the separate Stage bootstrap request.
+    // Missing Stage metadata is not evidence that every Scene is invalid.
+    if (!(appState.stages || []).length) return;
     setupNextState.scenes = (setupNextState.scenes || []).filter(isTrueSetupScene);
     setupNextState.taskScopes = new Map(
       [...(setupNextState.taskScopes || new Map()).entries()].map(([taskId, scope]) => [
@@ -86,8 +89,8 @@
 
   if (typeof loadNextOrganization === 'function') {
     const priorLoadNextOrganization = loadNextOrganization;
-    loadNextOrganization = async function loadNextOrganizationWithTrueScenes(render = true) {
-      const result = await priorLoadNextOrganization(false);
+    loadNextOrganization = async function loadNextOrganizationWithTrueScenes(render = true, options = {}) {
+      const result = await priorLoadNextOrganization(false, options);
       normalizeCurrentSetupOrganization();
       if (render && appState.tasks?.length) renderLibrary();
       return result;

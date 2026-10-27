@@ -38,6 +38,14 @@ The People Manager provides controlled maintenance for:
 
 Plain-English operator procedures are under [Operational SOPs — People](../../02_Operational_SOPs/People/README.md).
 
+## Application / Directus Boundary
+
+Normal MSB users work from `my.sheboyganlights.org`, which is the authenticated application and task-navigation surface.
+
+Directus at `db.sheboyganlights.org` remains the authentication/authorization backend and administrator-facing Directus surface. It is not the normal UI for Setup, Field Wiring, People, Procedures, or other task-focused applications. MSB deliberately migrated normal operational UI away from Directus because its Data Studio UI/UX did not meet operator workflow needs.
+
+The remaining first-login dependency on Directus is a known #395 defect, not a reason to restore a visible Database/Directus button for ordinary users.
+
 ## Identity and Onboarding Contract
 
 The current Production Directus **User Onboarding** flow matches an existing `ref.person` by MSB email when `directus_user_id` is null or already matches the triggering Directus user. If no person matches, the flow creates a new active person from the Directus user's name, email, and Directus ID.

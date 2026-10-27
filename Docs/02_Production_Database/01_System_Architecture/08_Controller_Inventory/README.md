@@ -2,14 +2,14 @@
 
 | Document control | Value |
 |---|---|
-| Status | PRODUCTION V0.4.0 DEPLOYED — CORE PLANNING / MAINTENANCE ACCEPTED |
+| Status | PRODUCTION V0.4.2 DEPLOYED — CONTROLLER NETWORK UID EXPLORER / V0.4.0 MANAGEMENT CORE |
 | Issue | #110 |
 | Merged PR | #111 |
 | Permanent identity | `ref.controller.controller_id` |
 | Permanent database | Installed on `msb-prod-db` |
-| Current production checkout | `72f5b7164f31753a33e5c2a9d83d9a7a6909a417` |
-| Immediate application rollback | `63be47f40be78f608416935ed0583287da9d90e6` |
-| FieldWiring production | `V0.4.0 / postgres / healthy` |
+| Current production checkout | `17c522c4f8ec06549bf7a6d9e8530c61276203f7` (operator-reported October 16) |
+| Immediate application rollback | `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e` (pre-#406 live checkout) |
+| FieldWiring production | `V0.4.2-controller-uid-explorer / postgres / healthy` (operator-reported) |
 | Procedures production | `V0.1.0 / postgres / healthy` |
 | Production deployment acceptance | [Controller V0.4.0 Production Deployment Acceptance — 2026-09-03](Controller_V0.4.0_Production_Deployment_Acceptance_2026-09-03.md) |
 | Controller Scan acceptance | [Controller Scan Production Deployment Acceptance — 2026-09-03](../07_Labeling_and_Scanning/Controller_Scan_Production_Deployment_Acceptance_2026-09-03.md) |
@@ -20,6 +20,14 @@
 | Label printing integration | [Controller Label Print-Service Integration — 2026-09-03](Controller_Label_Print_Service_Integration_2026-09-03.md) |
 
 Controller Inventory owns permanent physical Controller identity, current Controller-to-Display relationships, physical Controller facts, and the physical Controller's recorded current programmed configuration. LOR/V7 remains authoritative for current show wiring topology and what the show currently requires.
+
+## October 16, 2026 — Controller Planner Production Release
+
+Controller Network UID Explorer PR #406 (merge `b3acf960c9db5ee493f5b14759459315db79be8a`) and test-contract closeout PR #407 (merge `17c522c4f8ec06549bf7a6d9e8530c61276203f7`) are installed in the shared FieldWiring source checkout per operator report. FieldWiring health returns `V0.4.2-controller-uid-explorer`; Procedures health remains `V0.1.0`. Pre-install checkout `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e` is the source rollback reference.
+
+The Controller capacity planner now provides LOR Network scoped UID availability, separately reported physical Controller programmed addresses, DMX/E1.31 universe exclusion from traditional LOR UID use, and optional model-width contiguous UID candidates. Current-release acceptance: operator browser check, disposable CLEAN EXIT with fingerprint unchanged, and 263 combined FieldWiring/Procedures regression checks PASS. The merged source-only installation returned healthy runtime checks. No migration was applied; maintenance mode was not required. Post-install protected-browser smoke and negative-path authorization results are not yet supplied.
+
+Earlier V0.4.0 production snapshots, checkpoint SHAs and acceptance evidence below are **historical** and must not be treated as the currently deployed source. See [Production Deployment Change Log](../../../../System_Documentation/Production_Deployment_Change_Log.md) for current installation evidence. Future PixCon16 LOR/E1.31 IP/universe capacity planning remains deferred until after the 2026 season.
 
 ## Current Production State
 
@@ -217,6 +225,29 @@ Do not resume the Directus Controller relationship workspace experiment. It caus
 
 Directus remains useful as authorization data and optional simple reference maintenance. It is not the Controller operational editor.
 
+## October 16, 2026 — Controller Planner Draft Correction
+
+The currently deployed V0.4.0 planning screen remains the Production baseline.
+A **separate, unaccepted** #110/#111 follow-up under #122 is in draft branch
+`fix/controller-network-uid-explorer-20261016`, based on remote `main`
+`b2d5f8c2f202b228a180bd950187718937c41019`. It makes the complete
+Network-scoped UID inventory searchable without selecting a model, treats
+`Regular`/`regular` as one Network identity, and reserves model selection
+for contiguous UID-block width only. It is **not merged, browser-accepted,
+or deployed**. Run executable regression and disposable acceptance against
+the exact candidate, reconcile newer `main`, and obtain operator approval
+before any merge/deployment. The existing Controller disposable browser wrapper/runner has been corrected on this isolated branch for explicit exact-candidate SHA, registered port 8898, detached server worktree, current-production disposable clone, no migration replay, narrow command grants, foreground SSH and browser-ready handoff. It has **not yet been executed on the server**; ownership/preflight, regression, clone/browser health and CLEAN EXIT remain unverified. [Authoritative planning contract](Controller_Capacity_and_UID_Planning_Contract_2026-09-02.md).
+
+## Deferred Post-2026 Controller Capacity Planning
+
+PixCon16 supports either traditional LOR Network addressing or E1.31/IP
+addressing; model alone does not determine its active mode. Future Controller
+planning must account for physical Controller IP addresses and consumed DMX
+universes, including potential three additional E1.31 addresses. This is
+**deferred until after the 2026 season** and is not a blocker to PR #406's
+current LOR UID planner correction. See
+[Controller Capacity and UID Planning Contract](Controller_Capacity_and_UID_Planning_Contract_2026-09-02.md#post-2026-season--pixcon16-dual-addressing--e131-capacity-deferred).
+
 ## Remaining Work After V0.4.0
 
 The core Controller planning/maintenance system is deployed. Remaining work is narrower:
@@ -253,3 +284,43 @@ For current work, read in this order:
 8. Server Management `docs/server/Production_Database_Change_Deployment_Runbook.md` before any future production mutation.
 
 Older bootstrap and Pre-DDL material remains historical evidence. Current production and active management/authentication documents control when older material conflicts.
+
+## 2026-10-16 — Controller preview false CLEAN EXIT repair
+
+Previous candidate browser wrapper printed CLEAN EXIT, but PID 3675872
+(`fieldwiring` runtime, isolated Controller preview) remained listening on
+127.0.0.1:8898. Operator explicitly terminated only that verified orphan;
+the port was released, with no Controller disposable containers or server
+worktrees remaining. This is a preview cleanup defect, not a Production
+service failure.
+
+Draft PR #406 now guards cleanup with exact executable/user PID validation,
+targeted TERM/KILL only when identity matches, port-listener absence,
+disposable container absence, detached worktree absence, temporary bundle/dump
+absence and Controller fingerprint comparison. Any failed proof returns
+nonzero/CLEANUP FAILED rather than misleading CLEAN EXIT. The scripts and
+regression contract have been committed; **remote replay and CLEAN EXIT
+verification remain pending**. Do not confuse source-only implementation with
+server acceptance. The present Controller preview shares registered port 8898
+sequentially with Setup/People reviews; preflight refuses occupied listeners.
+
+## October 16, 2026 — #406 Release Gate
+
+Current branch candidate has distinct visible FieldWiring release identity
+`V0.4.2-controller-uid-explorer`, with refreshed browser asset pins.
+`main` was verified at `b2d5f8c2f202b228a180bd950187718937c41019`
+with no incoming commits at this checkpoint. The #406 comparison contains no
+migration/SQL/Production data mutation; deployment classification is
+**SOURCE-ONLY / NON-MIGRATION** under current Server Management #37 rules.
+The database-wide maintenance switch is therefore **not required** for this
+release. Do not replay Controller migrations 023/024.
+
+Prior operator browser findings established correct Regular/39 DMX separation
+and useful model-specific UID ranges. These are accepted behavior evidence,
+not acceptance of a later release-version SHA. Before merging, run the
+current exact candidate's applicable regressions and a bounded browser
+identity/smoke gate under the existing disposable runbook. Then merge through
+the protected PR and install the merged exact SHA through the existing
+FieldWiring source-only release procedure, confirming the actual live checkout
+and healthy shared FieldWiring/Procedures services. Close out with Production
+change-log and #122/owning-issue receipts; never treat GitHub merge as deployment.

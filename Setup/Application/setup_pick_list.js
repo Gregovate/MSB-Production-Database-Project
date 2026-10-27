@@ -825,6 +825,13 @@
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     access = data.access || {};
+    const identity = document.getElementById('pick-user-identity');
+    if (identity) {
+      // Display only the existing server-authenticated identity; textContent
+      // keeps names/emails as text and never trusts URL or scanner input.
+      const user = access.display_name || access.authenticated_email;
+      identity.textContent = user ? `Signed in: ${user}` : 'Signed-in user unavailable';
+    }
     applyAccess();
     await Promise.all([loadContainerCatalog(), loadDestinationStages()]);
   }
@@ -871,6 +878,10 @@
   });
 
   function showError(error) {
+    if (!access) {
+      const identity = document.getElementById('pick-user-identity');
+      if (identity) identity.textContent = 'Unable to verify signed-in user';
+    }
     statusLine.textContent = `Pick List unavailable: ${error.message || error}`;
     pickList.innerHTML = '';
   }

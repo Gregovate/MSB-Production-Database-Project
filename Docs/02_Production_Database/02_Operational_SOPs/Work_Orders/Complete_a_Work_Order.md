@@ -1,58 +1,51 @@
 # Complete a Work Order
 
-[← Previous: Work an Assigned Work Order](Work_an_Assigned_Work_Order.md) | [↑ Work Orders Home](README.md) | [Next: Urgency and Target Year Reference →](Urgency_and_Target_Year_Reference.md)
+[← Previous: Work an Assigned Work Order](Work_an_Assigned_Work_Order.md) | [↑ Work Orders Home](README.md)
 
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
 | System | Production Database — Work Orders |
-| Task | Complete a Work Order |
-| Audience | Volunteers / Managers |
+| Task | Complete finished Work Order work |
+| Audience | Assigned Production Crew / Managers |
 | Status | CURRENT |
 | Owner | Production Database Manager |
-| Last Reviewed | 2026-08-09 |
-| Keywords | work order, complete, completion notes, repair complete, test session |
+| Last Reviewed | 2026-10-21 |
+| Keywords | complete, completion notes, testing repair, reporter outcome, email |
 
 ## Purpose
 
-Use this procedure when the work described by a Work Order has been finished.
+Use **Complete Work Order** only after the described work was actually performed and is complete.
 
-## Before You Start
-
-Confirm the work is actually complete and the result has been checked when appropriate.
-
-If the Work Order was created automatically by a container Test Session, remember that the related container Test Session cannot be closed until this Work Order is completed.
+**Cancel / No Action is separate.** Never use completion to mean no work was performed.
 
 ## Procedure
 
-1. Open the Work Order.
-2. Scroll to the completion information.
-3. Enter **Completion Notes** describing what was done. Completion Notes are required.
-4. Mark the Work Order **Complete**.
-5. Save the Work Order.
+1. Open the Work Order in [Work Orders](https://my.sheboyganlights.org/workorder/).
+2. Review the original problem and activity.
+3. Choose **Complete Work Order**.
+4. Enter substantive Completion Notes describing what was actually done.
+5. Submit once.
+6. Confirm the completed state and saved notes.
 
-## Expected Result
+The application records the authenticated actor and completion time.
 
-The Work Order is recorded as complete.
+## Reporter Outcome Email
 
-The system records the completion date/time and the person completing the work.
+Reporter outcome notification is part of the live Phase 2 mail workflow where an eligible original reporter/contact exists.
 
-For repair Work Orders created by display testing, completion also feeds the repair result back to the linked testing record and preserves the repair notes with testing history.
+Managers can review delivery state. Missing recipient, failed, queued, or uncertain/in-progress delivery is not successful delivery.
 
-Once all Test Session-generated Work Orders and other unresolved testing items for the container are completed, the container Test Session can be finished according to the Test Session procedure.
+Do not repeat the completion action to resend email.
 
-## If Something Is Wrong
+## Testing Repairs
 
-If the work is not actually finished, do not mark the Work Order complete. Record useful progress notes and leave the Work Order open.
+Test Session-generated repair Work Orders retain their governed Testing integration. If Work Order completion and the related Testing state disagree, report the mismatch to a Manager. Do not manually rewrite Testing history as a workaround.
 
-If a testing-related Work Order is completed but the linked test record does not update as expected, ask a manager for help rather than editing testing history manually.
+## Partial Work
 
-## Related Documents
-
-- [Work an Assigned Work Order](Work_an_Assigned_Work_Order.md)
-- [Test Session Operational SOPs](../Test_Sessions/README.md)
-- [Finish a Container Test Session](../Test_Sessions/Finish_a_Container_Test_Session.md)
+If work remains, use **Add Work Note** and leave the Work Order open.
 
 ---
 
-[← Previous: Work an Assigned Work Order](Work_an_Assigned_Work_Order.md) | [↑ Work Orders Home](README.md) | [Next: Urgency and Target Year Reference →](Urgency_and_Target_Year_Reference.md)
+[← Previous: Work an Assigned Work Order](Work_an_Assigned_Work_Order.md) | [↑ Work Orders Home](README.md)

@@ -1,5 +1,13 @@
 # Setup #88 — Pick Mode and Movement Capture Design — 2026-09-29
 
+## October 26 urgent controller location extension — #88/#171 under #122
+
+Controller QR identification already works: Scan CTRL routes to the permanent Controller Inventory. Add a Record Location action there; preserve the existing route and labels. Setup Record Location must accept compact CTRL:id and full /scan/CTRL/id URLs via HID, camera, manual entry and deep link. Reuse its authenticated movement API, explicit location confirmation, GPS/named evidence, training write prohibition, offline queue and client-event retry identity.
+
+Extend the existing ops.setup_movement_event audit with a nullable controller FK and CONTROLLER_MOVE. Keep existing Display/Container commands and histories unchanged; dispatch controller observations to a narrowly scoped authorized SQL command with the same transport contract. No new controller inventory or inferred power/network placement. Latest controller state is derived by observation time then event ID, so delayed offline replay never replaces newer evidence. Exact retries return the original event; changed payload reuse is rejected. Add search/state reads and a type-qualified offline context key to prevent CTRL/DISP numeric-ID collisions. Preserve permanent inventory location fields and accepted controller chains.
+
+Only pending migration 077_add_setup_controller_location.sql applies alongside pending equipment lifecycle/catalog in the existing disposable runner. No completed migrations replayed. Current-clone validation is read-only; fixture writes remain isolated. Test authorization, unknown identities, cross-asset requests, missing/invalid location, exact/conflicting retries, out-of-order capture, training/offline behavior, and existing Display/Container regression before operator acceptance and Production release.
+
 | Document Control | Value |
 |---|---|
 | Status | ACTIVE IMPLEMENTATION DESIGN — V0.3.29 pick-clarity successor |
@@ -8,6 +16,19 @@
 | Baseline main | `ff6cc0b6f7c65fe736f85ce12297dbc141a69267` |
 | Production Setup runtime | `6f53d7f0c4b15f7175e773a2069595eef3f0e698` / `V0.3.22-pick-list-delay` |
 | Owner | Setup movement / Labeling and Scanning integration |
+
+## 2026-10-07 contents reconciliation successor — candidate
+
+The DBG-2026-007/009/010 physical decision model adds missed-unload reconciliation
+alongside the accepted “What came off here?” Stage-group unload controls. The
+first reconciliation candidate incorrectly removed those controls; V0.3.44
+restores current-location group unloading without mixing it with prior-location
+inference. See the
+[current candidate and review contract](../../../../../Setup/Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).
+Every selected Container now has Empty / Not Empty / Not Sure decisions;
+partial reconciliation asks which Display Names remain. Inference uses prior
+last-known evidence; Return Empty uses canonical Home without Workshop GPS.
+No schema additions or historical repairs. Production/operator acceptance is pending.
 
 ## Purpose
 
@@ -766,3 +787,290 @@ The fallback free-text control is intentionally framed as **Location not listed?
 Engineering GPS/device quality work remains owned by the read-only `/scan/field-test` harness under #219.
 
 The failed V0.3.36 browser review does not carry acceptance forward. V0.3.37 must restart exact-candidate regression, reusable disposable acceptance, and browser review.
+
+
+### V0.3.45 compact contents interaction — 2026-10-08
+
+The restored group unload exposed every Display Name by default, making a large
+Container span many screens. Greg rejected that interaction because checked
+groups and final controls were separated by excessive paging. Stage rows now
+show Stage/count, with names in a separate disclosure. A fixed summary/action
+dock shows selected Stage names, unloading/staying counts and location basis.
+Missed-unload contents checking occupies a separate view; view changes reset the
+other operation. Remaining Display IDs are held in asset-local state so name
+filtering never drops hidden checked rows. A focused modal review shows affected
+Stage/counts and HERE/PRIOR basis, with names expandable. Back/Escape cancels,
+preserves selection and writes nothing; an open review blocks repeated commands
+and asset replacement. Movement/event payloads and migration 070 are unchanged.
+Browser/tablet acceptance of this candidate is still required.
+
+
+### Container drop and physical Display removal — operator meaning, 2026-10-07
+
+Greg reports that an operator interpreted "unload Container" as removing the
+loaded Container from its vehicle at park staging. Many scans therefore combined
+a Container location observation with Display detachment even though Displays
+stayed physically loaded. C216 Production event 48 detached only Peace on Earth
+correctly; later event 122 detached seven Mt. Crumpit panels and WhoMatrix. The
+panels are confirmed still loaded. This establishes a wider workflow meaning
+problem; it does not prove all unload events are wrong or confirm WhoMatrix's
+physical contents. See the controlled candidate handoff for evidence and the
+broader SELECT-only audit.
+
+The next interaction must separate Container drop (contents stay attached),
+Displays physically removed (explicit Stage-group selection and here-location
+review), and current physical contents checking (Empty / Not Empty / Not Sure;
+prior evidence for missed removal). Generic "unload" or "came off" cannot supply
+operator intent. Park arrival/Stage suggestion cannot select removal. Retain the
+quick grouped method, compact rows, expandable names and persistent summary.
+Label historical derived contents as last recorded contents rather than physical
+confirmation. V0.3.45's labels and review did not resolve the reported meaning problem.
+V0.3.46 implements these explicit intent views; disposable/browser acceptance
+remains pending.
+No new schema/event model is justified. Historical correction is separate from
+preventing new mistaken commands: audit all relevant grouped-unload events,
+confirm actual contents, preserve subsequent valid work and original history,
+and prove a guarded corrective event/projection before Production authorization.
+
+
+### Wider Production audit supplied — 2026-10-07
+
+The operator supplied the read-only audit summary and event detail: database msb,
+Session 2 / PLANNING, October 5–6 Chicago observations, 19 Container scans across
+18 distinct Containers and 152 UNLOADED Display effects. All 152 still match the
+current DETACHED state's last movement event at the query snapshot. The tshircel
+account has 13 October 6 scans/127 effects and two October 5 scans/two effects.
+Five Wrap Containers account for 80 effects within 2m15s; these are physical-review
+candidates, not automatically proven mistakes. C177/C178/C199 currently have
+Standalone Display type and seven effects, exposing the type-contract cases.
+C216 event 48 remains the valid Peace on Earth removal; seven panels from event
+122 are physically confirmed loaded and WhoMatrix remains unconfirmed. Event 122
+has GPS with 13-foot accuracy despite its blank named destination. Event 99's
+EC-Scaffold has no current permanent Container, so permanent assignment alone is
+not a recovery membership proof. Full event table and recovery boundaries are in
+the linked candidate handoff. Aggregate Display-name cells in the supplied paste
+are truncated; they cannot serve as a complete Display recovery manifest.
+
+Missed-removal reconciliation cannot restore Displays already incorrectly detached.
+Historical correction needs a separately proved, guarded, auditable attachment
+operation; the existing movement command does not accept DISPLAY_REATTACH despite
+that enum being present. No correction command is ready and no Production repair
+has been performed. Keep physical confirmation, exact membership/current-state
+proof, disposable recovery validation and Production authorization separate from
+preventing future mistakes in the explicit-intent operator workflow.
+
+
+### V0.3.46 explicit Container intent — 2026-10-07
+
+New scans default to Container drop: existing CONTAINER_MOVE, empty removal IDs,
+no reconciliation claim, and container_drop_contents_unchanged=true in existing
+notes. Physical Display removal explicitly opens compact Stage-group selection;
+physical contents checking explicitly opens Empty / Not Empty / Not Sure. Switching
+intents clears hidden selections and cannot change an open review. Return Empty is
+shown only during contents checking and requires explicit Empty. Historical derived
+counts, including zero, say physical contents are unconfirmed. No schema, API or SQL
+change was necessary. Full Setup regression 753 passed, targeted movement/location
+46 passed, no-Node Windows application simulation 708 passed / two skipped. Real
+browser/current-Production-clone acceptance remains pending; no historical repair.
+
+
+### Scan-at-stop clarification — 2026-10-07
+
+Greg restated the already intended physical workflow: scans normally occur when
+Containers stop; pick is not required. Ordinary loads need a guided Empty / Not
+Empty / Not Sure check at the stop, including an all-still-here shortcut and
+remaining Display Names when contents changed. Missing contents use the previous
+scanned Container location before the new location is recorded. V0.3.46 instead
+makes contents checking optional behind three intent views; this does not yet
+satisfy the instructional workflow and final browser acceptance is paused.
+
+Preserve the accepted trailer scan -> Location/GPS -> Stage-group physical removal
+-> move -> repeat method. Independent Display placement can detach only that Display
+without a Container move or prior pick. Standalone Displays never detach. Helpers
+without accounts need not have recorded earlier removal; an authorized operator
+can report later physical contents, without claiming to be the earlier remover.
+January Container-based testing remains separately undesigned and is not a
+Standalone exception. Workshop-only Empty/Home return is recommended when prior
+field evidence is trustworthy; a compulsory park-departure scan remains an open
+choice. Full scenario table and acceptance boundary are in the candidate handoff's
+Scan-at-stop design authority section. No application change in this clarification.
+
+
+Repeated interim stops can retain the entire load: Workshop -> temporary staging
+-> another temporary stop -> Display staging does not imply removal at any point.
+Advance Container/attached-Display location after each unchanged-load confirmation;
+use the latest prior stop for inferred missing contents only if a subsequent scan
+actually reports a contents change. Fewer/empty are conditional branches, not an
+expected next-stop state. Add consecutive unchanged loaded stops to acceptance,
+with quick confirmation and no per-Display re-entry. Road-work staging and network
+repairs make low-attention, offline-capable operation a launch requirement. This
+clarification changes no application source and requests no further browser test.
+
+
+### Delayed Not Sure review — required completion gap, 2026-10-07
+
+Greg asks about desk review two/three days later with nobody near the Container.
+Current source writes contents_review_required=true in notes; no UI consumer or
+resolution command exists. Not Sure payloads have no frozen expected contents or
+pinned prior event, and Container-only event-display rows do not preserve the full
+attached scope. A fresh scan/latest-stop reconciliation is not historical review.
+
+#88 needs a Manager contents-review queue retaining the original uncertain stop,
+known snapshot/prior anchor, subsequent movement evidence and unresolved scope.
+Desk actions must capture documented evidence, actual observation versus recording
+time and guarded audited corrections linked to the original event, preserving
+later valid work. Confirmed-now facts cannot automatically resolve earlier unknown
+physical history. Partial/no-evidence cases remain unresolved; derived Display
+location must show uncertainty. Reporting helpers need not have accounts. No new
+model/schema is justified without first proving use of existing event/notes scope.
+Full proposed tool and acceptance cases are in the candidate handoff's Delayed
+contents review section. This capability is unimplemented and required before the
+Not Sure workflow can be considered complete; no runtime or Production change.
+
+
+Greg proposes using existing Display scans to double-check location instead of
+expecting a full-Display scan inventory. Offer a one-Display check with recorded
+location/provenance and explicit actual-location confirmation. The candidate already
+supports attached independent placement with confirmed Stage; still loaded at the
+Container's location must not be interpreted as detachment. Standalone remains
+attached. Fresh verification helps only the established Display scope/current
+facts; it cannot prove older unknown contents or close the whole Container review.
+Linking this evidence into the delayed Manager queue and detached-Display checks
+remains proposed/unimplemented; no implicit movement on unrelated scan intents.
+
+
+### Takedown reverse flow — proposed requirement, 2026-10-07
+
+Greg asks about loading Containers during takedown. Explicit confirmed Display
+loading must attach only the selected Display Names/groups to the actual Container
+so they follow later moves; uncollected Displays remain independent in the park.
+Provide partial/all-confirmed loading without requiring individual Display scans.
+Loaded Home return must be distinct from Return Empty. Standalone never detaches.
+DISPLAY_REATTACH/REATTACHED exist in constraints but current command/API/UI does
+not implement them. Current projection uses permanent ref.display.container_id
+plus annual attachment mode; alternate temporary carrier support is unproven.
+Whether alternate Containers can carry Displays is an open operational question;
+prove representation within current objects before any schema proposal. Preserve
+permanent assignments, event history and reason/source for historical corrections.
+Detailed reverse-flow requirements and acceptance are in the candidate handoff.
+This is not an implemented takedown feature or a new Production change.
+
+### Field visibility before further operator testing — 2026-10-08
+
+Greg needs a current operational picture and a short crew briefing. The supplied
+October 5–6 audit does not describe October 7. A reusable read-only report now lives
+at `Setup/Acceptance/setup_88_daily_field_picture_readonly.sql`; the candidate
+handoff documents its four result sets, query-time state, validation and limits.
+No Production results are claimed. Live Today activity, Container picture and
+Manager review/resolution tools remain required, unimplemented work. Confirmed
+physical Load/Remove uses All / None / Select while ordinary stops lead with the
+Empty question; takedown reattachment remains proposed. Preserve the accepted
+trailer shortcut. No runtime/schema change or additional operator test requested.
+
+### V0.3.47 field report candidate — 2026-10-07 Chicago
+
+The visibility gap above now has an implemented source candidate, not a deployed
+report. Exact application SHA `321e4cfc10f98b276d82654787455520f7255886` adds Manager
+Material Status -> Production Report, printable Container/Display event trails,
+full names/effects, current recorded assignments, historical review flags, all
+unresolved material-authority reasons, receipt comparison after event 123 and
+GPS accuracy in feet. GPS-only evidence no longer renders as No Setup observation.
+The Material Status expected-demand list is labelled Expected material.
+
+The screenshot's 15 unresolved are authority requirement rows; no movement repair
+is justified by their count. Review individual reasons in Material Audit. Report
+queries reuse existing events/state/assignments in a read-only repeatable-read
+snapshot; planning reuses the existing resolver separately. No new schema or write.
+No all-edit/daily-history reconstruction, unsynced/unrecorded physical knowledge,
+historical repair or resolved-review claim. Candidate handoff owns detailed
+validation and remaining gates: 761 full Setup, 62 targeted, read-only SQL execution
+and synthetic browser/print/tablet checks PASS; actual Production clone/operator
+acceptance and guided-stop/Not Sure correction/takedown capabilities remain pending.
+
+### V0.3.48 nearest-reference report extension — 2026-10-08 Chicago
+
+Greg's laptop report feedback asks for nearest Stage names from GPS. Exact source
+`9719a4e65f05d022821e6d2cc9bb2f19e0482029` reuses the existing location-evidence helper
+and versioned `2026-stage-reference-20261003.1` points. GPS-only report headings use
+Near [reference] — GPS estimate, with feet to the point and GPS accuracy/quality
+retained. C216 event 122 is nearest Whoville (61 ft), C095 event 33 Church Parking
+Lot (44 ft), C049 event 112 Santa's Workshop (88 ft). Detached Displays use their
+own last event; named observations and raw evidence stay unchanged. This is
+presentation inference, not Stage assignment, Stage boundary containment or
+physical-contents repair. Missing coordinates/references retain fallback labels.
+
+766 full Setup and 40 targeted tests, synthetic browser/print/tablet and UI date
+gate PASS. Source version V0.3.48-nearest-stage-report, footer October 8. SQL reads
+and schema unchanged. Existing running previews retain their exact source until
+clean exit/relaunch; current-clone/operator acceptance for V0.3.48, guided-stop
+alignment, delayed Not Sure resolution and takedown remain pending. No Production
+change. The candidate handoff owns exact preview instructions and evidence.
+
+Greg clarified the provenance labels: both saved and calculated location must be
+visible together. Current presentation correction source
+`b47f51089c2d5066ff05c243a8d24e0493bb8953` pairs Recorded destination / Recorded GPS
+with Calculated nearest Stage reference (from recorded GPS) on current cards and
+history. GPS-only events say no Stage/name recorded; prior context stays separate.
+V0.3.48/date retained under the presentation-only version exception. 766 full,
+40 targeted and synthetic browser checks rerun PASS. Existing preview wording
+persists until clean exit/relaunch. Laptop relaunch handoff is in the candidate
+record; no Production change or operator acceptance implied.
+
+The same correction names the report/button/browser title Container Movement,
+per Greg's request. Production Report was misleading for this operational trail.
+Route and permissions unchanged; the final exact source above includes the rename.
+Browser checks proved the visible button, report heading and tab title, alongside
+766 full and 40 targeted tests. Current preview retains its earlier source until
+clean exit/relaunch. No report-name-specific migration or new release version.
+
+
+### V0.3.49 required guided Container stops — 2026-10-08 Chicago
+
+Exact source `fe801e18f58acc58c0d4d6798d9ab6c334648b2e` replaces optional default Drop with mandatory
+Empty / Not Empty / Not Sure at every ordinary stop. Not Empty explicitly offers
+All last recorded Displays still here, searchable remaining Display Names, or
+unidentified contents for review. Repeated interim stops can keep the full load
+without paging a list. Selected missing complements use prior observation;
+compact physically removed HERE Stage-group selection remains available and
+retains current observed location/GPS. Standalone/singular Display-Pallet has
+no Empty/removal controls. Return Empty canonical Home needs no GPS. Independent
+Display actual-setup-location confirmation remains unchanged.
+
+Uncertain commands freeze captured Display IDs/Names and prior-observation fields
+in existing reconciliation notes for later evidence; no prior notes recursion,
+new schema or migration 070 change. These snapshots do not resolve review or
+make historical attachments verified. Delayed Manager resolve/correct tools,
+guarded erroneous-detach recovery and takedown loading remain open. No Production
+mutation/deployment. Keep #88 and draft #309 open.
+
+Validation: 766 full Setup tests; 59 targeted; no-Node simulation 720 application
+passed / 3 engineering-only skipped. Actual migration and exact disposable SQL
+execute on synthetic PostgreSQL/WASM; repeated unchanged stops detach zero and
+retain uncertainty snapshots. Real Chromium app-route/JS checks with synthetic
+repo/API command captures cover mandatory choices, quick full load, filtered
+names, cancel, compact HERE groups, Not Sure, Return without GPS, protected scans,
+training no writes and tablet layout; inspected screenshots and report/print
+regression PASS. Diff/JS/exact source UI date gate PASS. This does not substitute
+for current-Production-clone/audit/privilege/operator/tablet acceptance. Reusable
+8898 exact-candidate handoff is in the acceptance record.
+
+## 2026-10-15 launch debug intake — Container Locate operator workflow
+
+**Owner directive:** Greg spoke with Tom and reports additional problems using Container Locate / Record Location / Container Empty. This must be managed as a **separate #122 launch debug**, implemented and tested under existing **#88**, not absorbed into #205 KPI/Manager-email PR #394. The specific problems Tom found are **not yet described**; do not speculate, assume the current candidate is installed, or change movement data or business rules until observations and current Production identity are verified.
+
+**Next reconnaissance:** capture Tom's actual screen/scan sequence, the expected versus observed result, affected Containers, empty/partial/uncertain choices, connectivity/device and displayed app version where available. Compare installed Record Location behavior with existing #88 engineering/acceptance sources and the controlled movement/event model. Retain original events, source identities and operator audit. Derive an isolated debug correction and browser/tablet acceptance under #122; no Production changes authorized by this intake note.
+
+
+## 2026-10-26 launch addition — empty container return pickup
+
+Under #88/#171 and commanding #122, Scan's Container card gains “Setup Complete Return to Shop”. This opens an explicit confirmation in Setup; scanning alone does not write. The operator confirms the container is ready and empty, selects its physical Stage and supplies a short pickup location. This is a collection request, not task completion, inventory reconciliation, or evidence of arrival at the shop. Existing Display attachments are not altered or used to repair the #88 workflow. Takedown remains deferred.
+
+An append-only, season-scoped pickup event ledger records REQUEST/CANCEL with authenticated movement operator, server time, exact-retry UUID and confirmed location. Read access follows Setup; command access follows existing movement authorization and same-origin command guard. Training cannot submit. The printable pickup report has Container, Stage and simple pickup location, sorted by Stage key then Container. New movement evidence after a request supersedes its recorded location when it carries an explicit Stage/location. An actual RETURNED movement after the request closes it; merely viewing/scanning or marking ready never closes it. Cancellation removes an accidental request without changing physical location. Operators record actual shop arrival using existing Record Location / Returned to Home Location. No additional container inventory, outbound pick demand, contents edits or broad #88 redesign is introduced.
+
+Setup navigation exposes **Pickup List** immediately after **Pick List**, before **Record Location**. It opens the existing container pickup report and preserves the selected season; opening the report records no movement or pickup request.
+
+Validation required: exact/conflicting replay, authorization, season isolation, Stage ordering, cancellation, return closure and re-request after return. Pending migration 078 is disposable-only until candidate acceptance and governed release. Scan source and deployed dist must match; include Scan deployment in the final release manifest.
+
+### Display placement invariant retained for launch
+
+Recording an attached Display at its confirmed park Stage creates a Display movement and sets annual operational `position_mode=DETACHED`, with its own Stage/location/GPS evidence. Returning its former Container must not relocate that Display. The reusable `ref.display.container_id` remains the assigned storage association; current physical association is the annual Setup state. A QR lookup alone records nothing. Existing Standalone / singular Display-Pallet objects stay integral and are moved through their Container. The actual SQL regression now explicitly records direct Display placement followed by the former Container's shop return and asserts the original Display movement, Stage and park location remain unchanged.

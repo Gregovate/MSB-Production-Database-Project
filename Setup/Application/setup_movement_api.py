@@ -130,8 +130,8 @@ def normalize_gps_quality(value: object) -> str:
 
 def normalize_asset_type(value: object) -> str:
     asset_type = str(value or "").strip().upper()
-    if asset_type not in {"CONTAINER", "DISPLAY"}:
-        raise SetupCommandError("asset_type must be CONTAINER or DISPLAY")
+    if asset_type not in {"CONTAINER", "DISPLAY", "CONTROLLER"}:
+        raise SetupCommandError("asset_type must be CONTAINER, DISPLAY or CONTROLLER")
     return asset_type
 
 
@@ -149,6 +149,7 @@ def normalize_action(value: object) -> str:
         "RETURNED",
         "CONTAINER_MOVE",
         "DISPLAY_MOVE",
+        "CONTROLLER_MOVE",
     }:
         raise SetupCommandError("Unsupported Setup movement action")
     return action
@@ -187,6 +188,26 @@ def _validate_live_pick_demand(
         raise SetupMovementConflictError(
             "Asset already has Setup movement evidence and is not an active home pick."
         )
+
+
+@setup_movement_api.get("/api/setup/locate/assets")
+def api_setup_locate_assets() -> Response:
+    """Read #88 state only; never repair missing geographic continuity here."""
+    base_repo, _email, _access = require_reader()
+    raw_year = request.args.get("season_year", "").strip()
+    if not raw_year.isdigit() or len(raw_year) != 4:
+        raise SetupCommandError("A four-digit season_year is required")
+    session = base_repo.movement_summary(int(raw_year))
+    if session.get("setup_session_id") is None:
+        return jsonify(error="No Setup Session exists for this year"), 404
+    from setup_production_report import movement_picture
+    from setup_locate_assets import locate_assets
+    movement_repo = repo()
+    picture = movement_picture(movement_repo, session["setup_session_id"], include_unobserved=True)
+    picture["controller_observations"] = movement_repo.controller_observations(session["setup_session_id"])
+    response = jsonify(locate_assets(picture))
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
 
 
 @setup_movement_api.get("/api/setup/movements/search")
@@ -245,6 +266,8 @@ def api_setup_movement_record() -> tuple[Response, int] | Response:
     asset_id = positive_int(payload.get("asset_id"), "asset_id")
     movement_action = normalize_action(payload.get("movement_action"))
     offline_captured = bool(payload.get("offline_captured", False))
+    if (asset_type == "CONTROLLER") != (movement_action == "CONTROLLER_MOVE"):
+        raise SetupCommandError("Controller location requires CONTROLLER_MOVE")
 
     # Online PICKED is checked against the current authoritative Pick List.
     # Offline replay preserves the original field observation even if the live
@@ -256,6 +279,31 @@ def api_setup_movement_record() -> tuple[Response, int] | Response:
             asset_type=asset_type,
             asset_id=asset_id,
         )
+
+    placement = payload.get("display_placement")
+    if placement is not None:
+        if asset_type != "DISPLAY" or movement_action != "DISPLAY_MOVE" or placement != "YES":
+            raise SetupCommandError("Only confirmed Display placement can detach a Display")
+        if not optional_positive_int(payload.get("destination_stage_id"), "destination_stage_id"):
+            raise SetupCommandError("Confirm the actual Stage for this Display placement")
+
+    reconciliation = payload.get("reconciliation")
+    if reconciliation is not None:
+        if not isinstance(reconciliation, dict) or reconciliation.get("decision") not in {"EMPTY", "NOT_EMPTY", "NOT_SURE"}:
+            raise SetupCommandError("Choose Empty, Not Empty, or Not Sure")
+        if asset_type != "CONTAINER" or movement_action not in {"CONTAINER_MOVE", "RETURNED"}:
+            raise SetupCommandError("Contents reconciliation requires a Container location or return")
+        if payload.get("unloaded_display_ids"):
+            raise SetupCommandError("Use remaining Display Names for reconciliation")
+        for key in ("expected_display_ids", "remaining_display_ids"):
+            if key in reconciliation:
+                reconciliation[key] = optional_positive_int_list(reconciliation[key], key)
+        if "prior_event_id" in reconciliation:
+            reconciliation["prior_event_id"] = optional_positive_int(reconciliation["prior_event_id"], "prior_event_id")
+        if reconciliation.get("prior_client_event_id"):
+            reconciliation["prior_client_event_id"] = str(required_uuid(reconciliation["prior_client_event_id"], "prior_client_event_id"))
+        if "identify_remaining" in reconciliation and not isinstance(reconciliation["identify_remaining"], bool):
+            raise SetupCommandError("identify_remaining must be true or false")
 
     result = repo().record_event(
         email=email,
@@ -299,6 +347,7 @@ def api_setup_movement_record() -> tuple[Response, int] | Response:
         ),
         gps_quality=normalize_gps_quality(payload.get("gps_quality")),
         gps_quality_note=optional_text(payload.get("gps_quality_note")),
+        reconciliation=reconciliation,
     )
     status = 200 if result.get("duplicate_event") else 201
     return jsonify(movement=result), status
@@ -354,3 +403,37 @@ def movement_database_error(exc: psycopg2.Error) -> tuple[Response, int]:
         or "Setup movement database command failed"
     ).strip()
     return jsonify(error=message, engineering_error=str(exc)), status
+
+
+@setup_movement_api.get("/api/setup/container-pickups")
+def api_setup_container_pickups():
+    require_reader()
+    response = jsonify(repo().pickup_list(positive_int(request.args.get("season_year"), "season_year")))
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@setup_movement_api.post("/api/setup/container-pickups")
+def api_setup_container_pickup_record():
+    require_setup_command()
+    _, email, _ = require_movement_operator()
+    payload = json_body()
+    if payload.get("training"):
+        raise SetupCommandError("Training cannot record pickup requests")
+    action = str(payload.get("action") or "").upper()
+    if action not in {"REQUEST", "CANCEL"}:
+        raise SetupCommandError("Unsupported pickup action")
+    try:
+        event_id = repo().record_pickup(
+            email=email, season_year=positive_int(payload.get("season_year"), "season_year"),
+            client_event_id=required_uuid(payload.get("client_event_id"), "client_event_id"),
+            container_id=positive_int(payload.get("container_id"), "container_id"), action=action,
+            stage_id=optional_positive_int(payload.get("stage_id"), "stage_id"),
+            location_note=optional_text(payload.get("location_note")), empty_confirmed=payload.get("empty_confirmed") is True)
+    except psycopg2.Error as exc:
+        if exc.pgcode in {"22023", "23503", "23514", "P0002", "P0003"}:
+            raise SetupCommandError("Check container, active season, Stage, pickup location and empty confirmation") from exc
+        if exc.pgcode == "23505":
+            return jsonify(error="Pickup retry has different data; reload before submitting"), 409
+        raise
+    return jsonify(pickup_event_id=event_id), 201

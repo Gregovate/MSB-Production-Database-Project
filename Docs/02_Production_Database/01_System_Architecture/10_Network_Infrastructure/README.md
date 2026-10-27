@@ -8,7 +8,13 @@ Network engineering information currently exists across Draw.io schematics, Cabl
 
 ## Design Intent
 
-Preserve specialized tools where they remain useful while moving durable identity, relationships, and history into PostgreSQL.
+The database-backed application is the required reference editor under unfinished
+#230, with #171 owning GIS/infrastructure reconciliation. Maintain physical cable,
+waypoint, network and device reference identities/relationships in governed ref
+tables; preserve tests and observations as separate evidence/history.
+Follow the [required editing-authority rule](../11_Site_Infrastructure_GIS/README.md#required-reference-data-editing-authority--171--230).
+External tools remain collection/interchange/presentation tools after accepted
+cutover, not competing editable masters.
 
 ## Current Responsibilities
 
@@ -39,6 +45,14 @@ Both original test evidence and ingestible exports should be preserved where ava
 - [Wiring System](../09_Wiring_System/README.md)
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
 - [Work Orders](../06_Work_Orders/README.md)
+
+## October 9 engineering resume point
+
+[Current source reconciliation](../11_Site_Infrastructure_GIS/engineering/Network_Source_Reconciliation_2026-10-09.md)
+preserves the supplied draw.io and SQL hashes, legacy-edge gaps, endpoint conflicts,
+confirmed ownership/alias rules and the candidate map cross-reference boundary.
+PR #318 provides read-only network search; draft PR #319 owns CableIQ validation.
+Neither implements the physical inventory database or editable Wiring integration.
 
 ## Resume Development
 

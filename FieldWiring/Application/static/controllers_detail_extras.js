@@ -133,10 +133,8 @@
     section.innerHTML = '<div class="section-title"><h3>Controller Label</h3></div><div class="muted" style="margin-top:8px">Loading label state…</div>';
 
     try {
-      await accessPromise;
-      const response = await fetch(`api/controllers/${controllerId}`, {headers:{Accept:'application/json'}});
-      const payload = await responseJson(response);
-      if (!response.ok) throw new Error(payload.error || 'Controller label state could not be loaded.');
+      // Start alongside the main detail read, before awaiting role metadata.
+      const [payload] = await Promise.all([getControllerDetail(controllerId),accessPromise]);
       if (lastRenderedControllerId !== controllerId) return;
       const c = payload.controller || {};
       section.innerHTML = `

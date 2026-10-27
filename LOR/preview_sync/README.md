@@ -14,6 +14,16 @@ G:\Shared drives\MSB Database\UserPreviewStaging\LOR2DB_2PC_Sync
 
 Do not treat files manually overwritten in that shared folder as authoritative engineering source.
 
+## Active development — 2026-10-27
+
+Candidate 1.0.1 text source and the current engineering/acceptance boundary are
+in [production/ENGINEERING.md](production/ENGINEERING.md). This supersedes the
+historical CSV/report authority described below. #81 owns the read-only current
+source contract; #299 owns browser handoff and PC merge. Production Crew is the
+intended read/sync audience; administrator mutation routes remain restricted.
+Nothing has been deployed from this candidate. Windows and live LOR acceptance
+remain pending. Historical archives and prior evidence below are preserved.
+
 ## Current checkpoint
 
 Current test candidate: **v0.2.7 (2026-10-04)**; laptop live installation passed; LOR reopen/repeat acceptance pending; shared deployment remains unverified.

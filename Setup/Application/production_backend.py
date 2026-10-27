@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import gzip
 import logging
+import re
 import os
 import threading
 import time
 import uuid
 
-from flask import Flask, abort, g, jsonify, request, send_from_directory
+from flask import Flask, Response, abort, g, jsonify, redirect, request, send_from_directory
 
 from backend import BASE_DIR
 from setup_api import setup_api
@@ -34,12 +35,13 @@ from setup_scheduling_board_api import setup_scheduling_board_api
 from setup_work_order_intake_api import setup_work_order_intake_api
 from setup_material_readiness_api import setup_material_readiness_api
 from setup_movement_api import setup_movement_api
+from setup_site_reference_api import site_reference_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.38-setup-day-milestones"
+PRODUCTION_VERSION = "V0.3.95-map-return"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -109,6 +111,7 @@ PRODUCTION_ASSETS = frozenset(
         "setup_display_ownership_large_scope_fix.js",
         "setup_kit_box_assignment.css",
         "setup_kit_box_assignment.js",
+        "setup_required_containers.js",
         "setup_extra_materials.css",
         "setup_extra_materials.js",
         "setup_task_extra_materials.js",
@@ -199,6 +202,7 @@ app.register_blueprint(setup_scheduling_board_api)
 app.register_blueprint(setup_work_order_intake_api)
 app.register_blueprint(setup_material_readiness_api)
 app.register_blueprint(setup_movement_api)
+app.register_blueprint(site_reference_api)
 
 
 def _setup_perf_is_traced_request() -> bool:
@@ -532,6 +536,38 @@ def pick_list_asset(name: str):
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
 
 
+
+
+# Issue #171 — read-only park GIS reference and operational observation layers.
+@app.get("/locate")
+@app.get("/locate/")
+def locate_preview():
+    """Serve the current reviewed GIS reference snapshot inside the protected Setup app."""
+    if not request.path.endswith("/"):
+        return redirect(request.path + "/", code=308)
+    required = os.environ.get("MSB_GIS_REQUIRED_SOURCE_SHA", "")
+    if required:
+        if not re.fullmatch(r"[0-9a-f]{64}", required):
+            raise RuntimeError("Invalid required GIS source fingerprint")
+        # Exact-source review must never draw the older embedded GPX, even when
+        # JavaScript or the API fails. Offline/static behavior outside this gate
+        # remains governed by the existing explicit offline package workflow.
+        html = (BASE_DIR / "locate_preview.html").read_text(encoding="utf-8")
+        html, count = re.subn(r'const data=\{.*?\};data.features.push\(\);',
+            'window.MSBRequiredGpxSha="'+required+'";const data={"type":"FeatureCollection","features":[]};data.features.push();',
+            html, count=1, flags=re.DOTALL)
+        if count != 1:
+            raise RuntimeError("GIS bootstrap source boundary changed; review required")
+        html = re.sub(r'(<p[^>]*id="gis-source-identity"[^>]*>).*?(</p>)',
+            r'\g<1>Awaiting required GPX SHA256 '+required+r'\g<2>', html, count=1)
+        return _no_store(Response(html, mimetype="text/html"))
+    return _no_store(send_from_directory(BASE_DIR, "locate_preview.html"))
+
+@app.get("/container-pickups/")
+def container_pickups():
+    return _no_store(send_from_directory(BASE_DIR, "container_pickups.html"))
+
+
 @app.get("/record-location")
 @app.get("/record-location/")
 def record_location():
@@ -568,3 +604,27 @@ def record_location_asset(name: str):
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
 
+
+
+@app.get("/locate/service-worker.js")
+def locate_offline_service_worker():
+    """Dedicated offline-only scope for Park Map; no live API caching."""
+    response = _no_store(send_from_directory(
+        BASE_DIR, "setup_locate_sw.js", mimetype="application/javascript",
+    ))
+    # Browser scope is /setup/locate/ under the external proxy prefix.
+    # Default script-directory scope is correct; do not advertise /locate/.
+    return response
+
+
+@app.get("/locate/assets/<name>")
+def locate_asset(name: str):
+    allowed = {"locate_leaflet_1_9_4.min.js", "locate_leaflet_1_9_4.css",
+               "setup_locate_symbols.js", "setup_locate_offline.js",
+               "setup_locate_assets.js", "setup_locate_search.js",
+               "setup_locate_networks.js", "setup_locate_networks.json",
+               "setup_site_reference.js", "container-loaded.svg", "container-partial.svg",
+               "container-empty.svg", "container-unknown.svg"}
+    if name not in allowed:
+        abort(404)
+    return _no_store(send_from_directory(BASE_DIR, name))

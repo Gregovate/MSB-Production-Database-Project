@@ -2,6 +2,17 @@
 
 This subsystem documents how MSB presents, enriches, and operationally uses wiring information derived from LOR-authoritative show topology.
 
+## Panel circuit capture — October 24
+
+The urgent #171/#230 capture workflow has a source candidate under #122.
+[Panel circuit checkpoint](FieldWiring_Panel_Circuit_Capture_Checkpoint.md) records
+the live catalog evidence, GIS dependencies and remaining acceptance gates.
+[Panel Circuit Design](FieldWiring_Panel_Circuit_Design.md) controls the candidate.
+V0.4.10-integrated-power adds LOR/GIS-gated placement, per-pole recorded Display load, separate panel plans and waypoint safety evidence. It retains same-side spanning breaker blocks and circuit-click
+waypoint assignment, with panel meter/remote supply. Existing controller IDs link
+independently to outlet circuit connections and OUT-Combo network-box installations.
+The editor is not deployed or operator accepted.
+
 ## Current State
 
 **FieldWiring and Controller Inventory V0.4.0 are production-operational.**
@@ -113,6 +124,9 @@ Cloudflare Access authenticated email
 ```
 
 Directus is **not** the Controller operational editor and no Directus login/session bridge is required.
+
+**MSB Browser read-only contract (2026-10-15):** an active Google-backed MSB Browser user may view Field Wiring's Display, Stage, wiring and Controller Inventory information after Cloudflare authentication. Browser **must not** be able to add/edit Controllers, change assignments or request printing merely because viewing succeeds. Current `FieldWiring/Application/backend.py` separates normal read-only GET routes (`/api/displays`, `/api/stages`, `/api/wiring`, `/api/controllers`) from Controller command endpoints that require explicit command authorization. Preserve this split; verify Browser read-only UX and the absence of write authority before claiming final acceptance. This does not authorize new Controller grants or loosening existing command security.
+
 
 The deployed Manager/Administrator workflow is:
 
@@ -381,3 +395,8 @@ Every deployed change affecting FieldWiring or shared resolver code must preserv
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
 - [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management)
 - [System Boundary and Repository Ownership Standard](../../../../System_Documentation/Standards/System_Boundary_and_Repository_Ownership_Standard.md)
+
+## Circuit capture operator procedure
+
+[FieldWiring operator procedures](operatorSOP/README.md) includes the candidate
+panel/circuit workflow; it is not a claim that the release is installed.

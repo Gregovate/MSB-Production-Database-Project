@@ -88,7 +88,7 @@ def test_record_location_preserves_many_identity_entry_options_and_scan_handoff(
     assert "BarcodeDetector" in ui
     assert "/api/setup/movements/search" in ui
     assert "pageParams.get('asset')" in ui
-    assert "/scan\\/(CONT|DISP)\\/(\\d+)" in ui
+    assert "/scan\\/(CONT|DISP|CTRL)\\/(\\d+)" in ui
     assert 'id="movement-camera-toggle"' in html
     assert 'id="movement-search-input"' in html
 
@@ -188,7 +188,12 @@ def test_reference_locations_are_refreshable_versioned_and_not_hardcoded_in_js()
     data = json.loads(read("setup_location_references.json"))
 
     assert "REFERENCE_POINTS" not in ui
-    assert "location-references.json" in ui
+    # #171 current GIS/PostGIS is the live picker source; the old October 3
+    # file remains historical reference/report evidence, never the dropdown.
+    assert "fetch('../api/setup/locate/references'" in ui
+    assert "fetch('location-references.json'" not in ui
+    assert "normalizeSiteReference(snapshot)" in ui
+    assert "accepted_gpx_sha256" in ui
     assert "REFERENCE_CACHE_KEY" in ui
     assert "referenceSet.version" in ui
     assert "location_reference_set=" in ui
@@ -227,7 +232,7 @@ def test_record_location_offline_queue_is_durable_and_mixed_unload_fails_conserv
     assert "offline_captured" in ui
     assert "syncQueue()" in ui
     assert "OBSERVATION QUEUED OFFLINE" in ui
-    assert "Container contents unavailable." in ui
+    assert "Contents context unavailable." in ui
     assert "unloaded_display_ids" in ui
     assert "/api/setup/movements/container-contents" not in sw
     assert "/api/setup/movements/state" not in sw
@@ -248,8 +253,8 @@ def test_mixed_container_ui_records_only_selected_display_groups_as_unloaded():
     repository = read("setup_movement_repository.py")
     sql = migration()
 
-    assert "What came off here?" in ui
-    assert "Anything not selected stays WITH_CONTAINER" in ui
+    assert "Which Display Names are STILL on this Container?" in ui
+    assert "Checked names stay with it." in ui
     assert "unloaded_display_ids" in ui
     assert "container_contents" in repository
     assert "coalesce(ds.position_mode, 'WITH_CONTAINER')" in repository
@@ -303,7 +308,8 @@ def test_online_workshop_pick_is_still_checked_against_authoritative_pick_list()
         "def _container_endpoint_policy(", 1
     )[0]
     assert "field_context(" not in focused
-    assert "material_readiness(" not in focused
+    assert 'if status.get("demanded")' in focused
+    assert "self.material_readiness(season_year)" in focused
     assert "ref.setup_task_display" in readiness_repo
     assert "ref.lor_scene_display" in readiness_repo
     assert "ref.setup_task_container_support" in readiness_repo
@@ -424,20 +430,20 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.38-setup-day-milestones"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.38-setup-day-milestones';" in guard
-    assert "msb-setup-pick-mode-v16" in pick_sw
+    assert 'PRODUCTION_VERSION = "V0.3.95-map-return"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.95-map-return';" in guard
+    assert "msb-setup-pick-mode-v18" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
-    assert "setup_pick_list.js?v=2026-10-01.4" in pick_sw
-    assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
-    assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
-    assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
-    assert "msb-setup-record-location-v13" in location_sw
-    assert "setup_record_location.css?v=2026-10-03.3" in location_sw
-    assert "setup_record_location.css?v=2026-10-03.3" in location_html
-    assert "setup_record_location.js?v=2026-10-03.4" in location_sw
-    assert "setup_record_location.js?v=2026-10-03.4" in location_html
+    assert "setup_pick_list.js?v=2026-10-05.1" in pick_sw
+    assert "setup_pick_list.js?v=2026-10-05.1" in pick_html
+    assert "setup_pick_mode.js?v=2026-10-06.1" in pick_sw
+    assert "setup_pick_mode.js?v=2026-10-06.1" in pick_html
+    assert "msb-setup-record-location-v23-controller" in location_sw
+    assert "setup_record_location.css?v=2026-10-10.62" in location_sw
+    assert "setup_record_location.css?v=2026-10-10.62" in location_html
+    assert "setup_record_location.js?v=ctrl077-2026-10-10.62" in location_sw
+    assert "setup_record_location.js?v=ctrl077-2026-10-10.62" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
@@ -503,7 +509,7 @@ def test_record_location_requires_visible_location_review_before_record_action()
     ui = read("setup_record_location.js")
     css = read("setup_record_location.css")
 
-    assert "3 · Review and record" in html
+    assert "3 · Contents, review and record" in html
     assert 'id="movement-review-location"' in html
     assert 'id="movement-record-here" type="button" class="primary" disabled' in html
     assert 'id="movement-compact-status"' in html

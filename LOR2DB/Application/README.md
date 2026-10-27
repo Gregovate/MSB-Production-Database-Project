@@ -535,3 +535,18 @@ required for the service account:
 2. **Advanced Share Permissions:** `web_maintainers` must also have **Read/Write**.
 
 If either layer is read-only, the Linux mount may succeed but report publication will fail with a permission error.
+
+
+## #81 current-source / #299 LOR2PC candidate — 2026-10-27
+
+Backend V0.6.4 adds read-only `GET /current-source` under the existing protected
+`/lor2db/preflight/api/` prefix. Latest clean COMPLETED frozen evidence, not a
+historical CSV, supplies source authority. The Production Crew role/policy check
+uses the existing `ref.setup_browser_capabilities(text)` resolver; installed
+backend EXECUTE privilege must be inspected before deployment. Administrator
+operator routes retain their existing allowlist. No live policy changes occurred.
+
+`landing/pc/` is the separate crew browser surface and authenticated handoff.
+See [the current engineering authority](../../LOR/preview_sync/production/ENGINEERING.md)
+for ownership, source contract, deployment prerequisites and unpassed Windows,
+browser and LOR gates. This is source-only candidate work, not a production claim.

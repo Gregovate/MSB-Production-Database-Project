@@ -16,6 +16,12 @@ MODE="${2:-start}"
 
 [[ -s "$MANIFEST" ]] || { echo "FAIL: preview manifest is missing: $MANIFEST"; exit 2; }
 
+GIS_GPX_SHA=""
+GIS_FLW_SHA=""
+GIS_ACTOR=""
+GIS_CACHE_LOCKED=0
+GIS_CACHE_LOCK_FD=""
+GIS_CACHE_ACCEPTED=0
 TARGET_SHA=""
 TARGET_REF=""
 PREVIEW_PORT=""
@@ -36,6 +42,9 @@ while IFS=$'\t' read -r kind value extra; do
         preview_email) PREVIEW_EMAIL="$value" ;;
         expected_version) EXPECTED_VERSION="$value" ;;
         allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;
+        gis_gpx_sha) GIS_GPX_SHA="$value" ;;
+        gis_flw_sha) GIS_FLW_SHA="$value" ;;
+        gis_actor) GIS_ACTOR="$value" ;;
         migration) MIGRATIONS+=("$value") ;;
         validation) VALIDATIONS+=("$value") ;;
         *) echo "FAIL: unsupported manifest key: $kind"; exit 3 ;;
@@ -269,6 +278,14 @@ cleanup() {
     sudo rm -rf "$PYCACHE" >/dev/null 2>&1 || true
     rm -f "$STATE_FILE" >/dev/null 2>&1 || true
     rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
+
+    # The original GPX/FLW always remain on the operator's Shared Drive.
+    # Content-addressed server copies are staging only, not retained evidence.
+    # Retire superseded versions ONLY after a clean finished browser review,
+    # after its upload bundle is gone, while holding the exclusive cache lock.
+    if [[ "$status" -eq 0 && "$GIS_CACHE_ACCEPTED" -eq 1 ]]; then
+        prune_gis_source_cache || echo "WARN: GIS source cache retention was not completed; no Production or source changes"
+    fi
 
     echo "--- Production after-check ---"
     if [[ -n "$PROD_BEFORE" ]]; then
@@ -519,11 +536,151 @@ for rel in "${MIGRATIONS[@]}" "${VALIDATIONS[@]}"; do
 done
 
 echo
+
+
+# A cache file is a disposable verified transport copy, NOT a second source
+# master. Keep only the active accepted SHA for each source type after a clean
+# review. Do not delete a cache another preview could be using.
+prune_gis_source_cache() {
+    local source_cache="$HOME/setup-source-cache"
+    local preview_root="/tmp"
+    local source_ext expected current current_actual candidate candidate_sha links size
+    local total_bytes=0 removed=0 state bundle
+    if [[ "$GIS_CACHE_LOCKED" != "1" ]]; then
+        echo "CACHE RETENTION SKIP: no exclusive GIS source-cache lock"
+        return 0
+    fi
+    # Validate each selected source before pruning; leave unselected FLW untouched.
+    for source_ext in gpx flw; do
+        if [[ "$source_ext" == gpx ]]; then expected="$GIS_GPX_SHA"
+        else expected="$GIS_FLW_SHA"; fi
+        [[ "$source_ext" == flw && -z "$expected" ]] && continue
+        [[ "$expected" =~ ^[a-f0-9]{64}$ ]] || {
+            echo "CACHE RETENTION SKIP: unverified $source_ext source identity"
+            return 0
+        }
+        current="$source_cache/$expected.$source_ext"
+        [[ -f "$current" && ! -L "$current" ]] || {
+            echo "CACHE RETENTION SKIP: current $source_ext source absent"
+            return 0
+        }
+        current_actual="$(sha256sum "$current" | cut -d' ' -f1)"
+        [[ "$current_actual" == "$expected" ]] || {
+            echo "CACHE RETENTION SKIP: current $source_ext SHA mismatch"
+            return 0
+        }
+    done
+
+    # Existing/future preview versions might not know this cache lock.
+    # Conservatively retain everything if ANOTHER review is prepared or live.
+    for state in "$preview_root"/msb-setup-browser-preview-state-*.env; do
+        [[ -f "$state" ]] || continue
+        if [[ "$state" != "$STATE_FILE" ]]; then
+            echo "CACHE RETENTION SKIP: another browser preview state exists"
+            return 0
+        fi
+    done
+    for bundle in "$preview_root"/msb-setup-disposable-browser-preview-*; do
+        [[ -d "$bundle" && -s "$bundle/preview_manifest.tsv" ]] || continue
+        if [[ "$bundle" != "$SCRIPT_DIR" ]]; then
+            echo "CACHE RETENTION SKIP: another source review bundle exists"
+            return 0
+        fi
+    done
+
+    for source_ext in gpx flw; do
+        if [[ "$source_ext" == gpx ]]; then expected="$GIS_GPX_SHA"
+        else expected="$GIS_FLW_SHA"; fi
+        [[ "$source_ext" == flw && -z "$expected" ]] && continue
+        for candidate in "$source_cache"/*."$source_ext"; do
+            [[ -e "$candidate" ]] || continue
+            [[ -f "$candidate" && ! -L "$candidate" ]] || continue
+            candidate_sha="$(basename -- "$candidate" ".$source_ext")"
+            [[ "$candidate_sha" =~ ^[a-f0-9]{64}$ ]] || continue
+            [[ "$candidate_sha" == "$expected" ]] && continue
+            # Never delete a file still hardlinked to an in-flight bundle.
+            links="$(stat -c '%h' -- "$candidate")" || return 1
+            [[ "$links" == "1" ]] || continue
+            size="$(stat -c '%s' -- "$candidate")" || return 1
+            if rm -f -- "$candidate"; then
+                removed=$((removed+1))
+                total_bytes=$((total_bytes+size))
+            else
+                echo "WARN: could not remove superseded $source_ext cache file" >&2
+                return 1
+            fi
+        done
+    done
+    echo "CACHE RETENTION PASS: kept selected current sources; removed $removed superseded verified-name cached files ($total_bytes bytes)"
+}
+
+# Content-addressed transport copies are retained only while useful.
+# The exclusive lock is held through the current browser review; a newer
+# preview cannot replace/prune a file used by this accepted run.
+resolve_gis_source() {
+    local source_sha="$1" source_ext="$2" uploaded="$3"
+    local source_cache="$HOME/setup-source-cache"
+    local cached="$source_cache/$source_sha.$source_ext"
+    mkdir -p "$source_cache"
+    chmod 700 "$source_cache"
+    if [[ ! -f "$cached" ]]; then
+        [[ -f "$uploaded" ]] || { echo "FAIL: missing GIS source $source_sha.$source_ext" >&2; return 16; }
+        [[ "$(sha256sum "$uploaded" | cut -d' ' -f1)" == "$source_sha" ]] || { echo "FAIL: GIS upload hash differs" >&2; return 16; }
+        local staged_dir staged
+        staged_dir="$(mktemp -d "$source_cache/.incoming-XXXXXXXX")" || return 16
+        staged="$staged_dir/payload"
+        # Uploaded bundle and server cache normally use the same filesystem.
+        # Hardlink the already-verified bytes rather than copying another
+        # growing FLW onto disk; fall back to cp only across mount boundaries.
+        if ! ln -- "$uploaded" "$staged" 2>/dev/null; then
+            if ! cp -- "$uploaded" "$staged"; then
+                rm -rf -- "$staged_dir"
+                return 16
+            fi
+        fi
+        chmod 400 "$staged"
+        # Never overwrite a canonical hash path; keep immutable identity.
+        ln "$staged" "$cached" 2>/dev/null || true
+        rm -f -- "$staged"
+        rmdir -- "$staged_dir"
+    fi
+    [[ -f "$cached" && "$(sha256sum "$cached" | cut -d' ' -f1)" == "$source_sha" ]] || { echo "FAIL: cached GIS source hash differs" >&2; return 16; }
+    printf '%s\n' "$cached"
+}
+
+if [[ -n "$GIS_GPX_SHA$GIS_FLW_SHA$GIS_ACTOR" ]]; then
+    [[ "$GIS_GPX_SHA" =~ ^[a-f0-9]{64}$ && ( -z "$GIS_FLW_SHA" || "$GIS_FLW_SHA" =~ ^[a-f0-9]{64}$ ) && -n "$GIS_ACTOR" ]] || { echo "FAIL: incomplete GIS source manifest"; exit 16; }
+    [[ " ${MIGRATIONS[*]} " == *" Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql "* && " ${VALIDATIONS[*]} " == *" Database/Acceptance/171_site_infrastructure_disposable_validation.sql "* ]] || { echo "FAIL: GIS schema and validation required"; exit 16; }
+    mkdir -p "$HOME/setup-source-cache"
+    chmod 700 "$HOME/setup-source-cache"
+    exec {GIS_CACHE_LOCK_FD}>"$HOME/setup-source-cache/.preview-source.lock"
+    if ! flock -n "$GIS_CACHE_LOCK_FD"; then
+        echo "FAIL: another GIS browser review holds the source cache; reuse/finish that review before retrying"
+        exit 16
+    fi
+    GIS_CACHE_LOCKED=1
+    echo "Exclusive GIS source cache lock: acquired"
+    GIS_GPX_SOURCE="$(resolve_gis_source "$GIS_GPX_SHA" gpx "$SCRIPT_DIR/source.gpx")"
+    GIS_FLW_ARGS=()
+    if [[ -n "$GIS_FLW_SHA" ]]; then
+        GIS_FLW_SOURCE="$(resolve_gis_source "$GIS_FLW_SHA" flw "$SCRIPT_DIR/source.flw")"
+        GIS_FLW_ARGS=(--flw "$GIS_FLW_SOURCE" --flw-sha "$GIS_FLW_SHA")
+    fi
+    echo "Verified persistent GIS sources: $GIS_GPX_SHA / $GIS_FLW_SHA"
+    sudo "$PYTHON" -c 'import psycopg2'
+fi
+
+# SHA-verify and cache sources BEFORE regression. An early test failure then
+# cleans the upload bundle but retains verified source bytes for the next test;
+# the single read-only Production dump is still strictly AFTER regression.
+echo
 echo "--- Exact candidate regression ---"
 sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" bash -c "
+    set -e
     cd '$CANDIDATE_WORKTREE'
     '$PYTHON' -m py_compile Setup/Application/production_backend.py Setup/Acceptance/setup_session_browser_preview_entry.py
-    '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application
+    '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance/test_setup_gis_preview.py
+    '$PYTHON' -m pytest -q -p no:cacheprovider FieldWiring/Application
 "
 echo "PASS: exact candidate Setup/Application regression"
 
@@ -749,17 +906,55 @@ if [[ "$MANAGE_OK" != "t" ]]; then
     exit 20
 fi
 
+# Combined GIS/power review uses existing Directus roles; never provision a second grant store.
+GIS_EDITOR_PREVIEW=0
+for rel in "${MIGRATIONS[@]}"; do
+    if [[ "$rel" == "Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql" ]]; then
+        GIS_EDITOR_PREVIEW=1
+    fi
+done
+if [[ "$GIS_EDITOR_PREVIEW" == "1" ]]; then
+    [[ -n "$GIS_GPX_SHA" ]] || {
+        echo "FAIL: GIS editor browser review requires exact approved GPX intake on this clone"
+        exit 20
+    }
+    GIS_GRANT_VERIFIED="$(psql_test -qAt -F '|' -v preview_email="$PREVIEW_EMAIL" <<'SQL'
+SELECT (ref.site_reference_permissions(:'preview_email')->>'identity')::boolean,
+       (ref.site_power_access(:'preview_email')->>'can_edit')::boolean;
+SQL
+)"
+    if [[ "$GIS_GRANT_VERIFIED" != 't|t' ]]; then
+        echo "FAIL: Directus GIS/power permissions did not verify"
+        exit 20
+    fi
+    echo "PASS: clone-only GIS editor rights for selected preview Manager; Production grants unchanged"
+fi
+
 TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
 if [[ -z "$TEST_IP" ]]; then
     echo "FAIL: could not resolve disposable PostgreSQL container IP"
     exit 21
 fi
+if [[ -n "$GIS_GPX_SHA" ]]; then
+    echo "--- Actual GPX and optional read-only FLW import, replay, and exports ---"
+    TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
+    [[ -n "$TEST_IP" ]] || { echo "FAIL: no disposable container address"; exit 17; }
+    sudo env PGHOST="$TEST_IP" PGPORT=5432 PGDATABASE="$TEST_DB" PGUSER="$DB_ACTOR" PGPASSWORD="$TEST_PASSWORD" \
+        PYTHONPYCACHEPREFIX="$PYCACHE" "$PYTHON" \
+        "$CANDIDATE_WORKTREE/Database/EngineeringTools/accept_site_sources.py" \
+        --gpx "$GIS_GPX_SOURCE" "${GIS_FLW_ARGS[@]}" \
+        --gpx-sha "$GIS_GPX_SHA" --actor "$GIS_ACTOR" --operator-email "$PREVIEW_EMAIL" \
+        --output "$REPORT_DIR/GIS_Source_Acceptance_${STAMP}"
+    GIS_CACHE_ACCEPTED=1
+fi
+
 DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=fieldwiring_app password=$APP_PASSWORD"
 APP_DIR="$CANDIDATE_WORKTREE/Setup/Application"
 
 echo
 echo "--- Start exact candidate on temporary preview port ---"
 PREVIEW_PGID="$(sudo -u fieldwiring -H env \
+    MSB_GIS_REQUIRED_SOURCE_SHA="$GIS_GPX_SHA" \
     SETUP_DATABASE_DSN="$DSN" \
     FIELDWIRING_DATABASE_DSN="$DSN" \
     PROCEDURE_DATABASE_DSN="$DSN" \
@@ -808,6 +1003,52 @@ if [[ -n "$EXPECTED_VERSION" ]]; then
 fi
 curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/access" >/dev/null
 echo "Preview authorization: PASS"
+if [[ "$GIS_EDITOR_PREVIEW" == "1" ]]; then
+    echo "--- Verify real-source PostGIS reference map and editor HTTP boundary ---"
+    GIS_HTTP_CHECK="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/locate/references" |
+        sudo -u fieldwiring -H "$PYTHON" -c '
+import json,sys
+snapshot=json.load(sys.stdin)
+assert snapshot.get("data_mode") == "postgres", "GIS read did not use PostgreSQL"
+assert snapshot.get("format_version") == 1, "Unsupported GIS snapshot version"
+assert len(snapshot.get("waypoints") or []) > 0, "No imported GPX waypoints"
+assert len(snapshot.get("tracks") or []) > 0, "No imported GPX tracks"
+assert snapshot.get("sources", {}).get("gpx", {}).get("sha256"), "No accepted GPX binding"
+assert snapshot.get("permissions", {}).get("identity") is True, "Manager cannot edit GIS reference"
+assert snapshot.get("power_editor_url") == "/fieldwiring/circuits", "Combined circuit reader unavailable"
+print("PASS: live PostGIS references: {} waypoints, {} tracks, revision {}; Directus GIS authorization and shared circuit model".format(
+    len(snapshot["waypoints"]), len(snapshot["tracks"]), snapshot["revision"]))
+    ')"
+    echo "$GIS_HTTP_CHECK"
+fi
+# Review both real application entry points on the same isolated listener.
+curl -fsS "http://127.0.0.1:$PREVIEW_PORT/fieldwiring/" >/dev/null
+curl -fsS "http://127.0.0.1:$PREVIEW_PORT/fieldwiring/api/health"
+curl -fsS "http://127.0.0.1:$PREVIEW_PORT/setup/locate/" >/dev/null
+echo "Field Wiring / GIS navigation routes: PASS"
+
+# Prevent a browser review from declaring READY when its central Scheduling
+# Board endpoint fails against the actual disposable current-Production clone.
+# Source-only GET through the same isolated loopback listener, no write.
+echo "--- Scheduling Board disposable endpoint preflight ---"
+if ! curl -fsS --max-time 60 "http://127.0.0.1:$PREVIEW_PORT/api/setup/scheduling-board?season_year=2026" |
+    sudo -u fieldwiring -H "$PYTHON" -c '
+import json, sys
+payload = json.load(sys.stdin)
+board = payload.get("board")
+if not isinstance(board, dict) or not isinstance(board.get("session"), dict):
+    raise SystemExit("FAIL: Scheduling Board 2026 session missing from disposable clone")
+tasks = board.get("tasks")
+days = board.get("work_days")
+if not isinstance(tasks, list) or not isinstance(days, list):
+    raise SystemExit("FAIL: Scheduling Board is missing annual tasks/workdays")
+print("PASS: Scheduling Board 2026 disposable response, "
+      + str(len(tasks)) + " tasks and " + str(len(days)) + " workdays")
+' ; then
+    echo "FAIL: Scheduling Board disposable API failed before operator browser review"
+    tail -n 75 "$PREVIEW_LOG" || true
+    exit 25
+fi
 
 write_resume_state
 echo "Reconnect state: $STATE_FILE"
@@ -816,6 +1057,7 @@ cat <<CHECKLIST
 
 SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY
 Browser URL through SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/
+Field Wiring / GIS entry: http://127.0.0.1:$PREVIEW_PORT/fieldwiring/
 Candidate SHA: $TARGET_SHA
 Candidate ref: $TARGET_REF
 Preview identity: $PREVIEW_EMAIL

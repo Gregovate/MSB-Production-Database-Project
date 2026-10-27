@@ -1,0 +1,45 @@
+name: GIS Icon Library regression tests
+
+on:
+  pull_request:
+    paths:
+      - "Database/EngineeringTools/**gis**"
+      - "Database/EngineeringTools/icon_library_manager.pyw"
+      - "Database/EngineeringTools/Install-MSB-Icon-Library-Shortcut.cmd"
+      - "Database/EngineeringTools/assets/**"
+      - ".github/workflows/gis-icon-library-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Database/EngineeringTools/**gis**"
+      - "Database/EngineeringTools/icon_library_manager.pyw"
+      - "Database/EngineeringTools/Install-MSB-Icon-Library-Shortcut.cmd"
+      - "Database/EngineeringTools/assets/**"
+      - ".github/workflows/gis-icon-library-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-icons:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source-only candidate
+        uses: actions/checkout@v4
+      - name: Use Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate Python syntax, including desktop app
+        run: |
+          python -m py_compile \
+            Database/EngineeringTools/sync_gis_icons.py \
+            Database/EngineeringTools/publish_gis_svgs.py \
+            Database/EngineeringTools/distribute_gis_pngs.py \
+            Database/EngineeringTools/icon_library_manager.pyw
+      - name: Run isolated safety tests (no real G:/webassets/TopoGrafix)
+        run: |
+          python -m unittest discover -s Database/EngineeringTools -p 'test_sync_gis_icons.py' -v
+          python -m unittest discover -s Database/EngineeringTools -p 'test_publish_gis_svgs.py' -v
+          python -m unittest discover -s Database/EngineeringTools -p 'test_distribute_gis_pngs.py' -v

@@ -275,7 +275,18 @@ class SetupMaterialReadinessRepository:
                     cs.current_stage_id,
                     current_stage.stage_key AS current_stage_key,
                     current_stage.stage_name AS current_stage_name,
-                    cs.current_location_note,
+                    coalesce(cs.current_location_note, (
+                            SELECT n.destination_location_note FROM ops.setup_movement_event n
+                            JOIN ops.setup_movement_event anchor ON anchor.setup_movement_event_id=cs.last_movement_event_id
+                              AND anchor.setup_session_id=cs.setup_session_id
+                            WHERE n.setup_session_id=cs.setup_session_id AND n.container_id=cs.container_id
+                              AND (n.occurred_at,n.setup_movement_event_id)<=(anchor.occurred_at,anchor.setup_movement_event_id)
+                              AND nullif(trim(n.destination_location_note),'') IS NOT NULL
+                              AND NOT EXISTS (SELECT 1 FROM ops.setup_movement_event r WHERE r.setup_session_id=n.setup_session_id
+                                AND r.container_id=n.container_id AND r.event_type='RETURNED'
+                                AND r.occurred_at>=n.occurred_at AND r.occurred_at<=anchor.occurred_at)
+                            ORDER BY n.occurred_at DESC,n.setup_movement_event_id DESC LIMIT 1
+                        )) AS current_location_note,
                     cs.last_movement_event_id
                 FROM ref.setup_task_extra_material AS tm
                 JOIN ref.setup_extra_material AS m
@@ -523,12 +534,28 @@ class SetupMaterialReadinessRepository:
                         cs.current_stage_id,
                         s.stage_key AS current_stage_key,
                         s.stage_name AS current_stage_name,
-                        cs.current_location_note,
+                        coalesce(cs.current_location_note, (
+                            SELECT n.destination_location_note FROM ops.setup_movement_event n
+                            JOIN ops.setup_movement_event anchor ON anchor.setup_movement_event_id=cs.last_movement_event_id
+                              AND anchor.setup_session_id=cs.setup_session_id
+                            WHERE n.setup_session_id=cs.setup_session_id AND n.container_id=cs.container_id
+                              AND (n.occurred_at,n.setup_movement_event_id)<=(anchor.occurred_at,anchor.setup_movement_event_id)
+                              AND nullif(trim(n.destination_location_note),'') IS NOT NULL
+                              AND NOT EXISTS (SELECT 1 FROM ops.setup_movement_event r WHERE r.setup_session_id=n.setup_session_id
+                                AND r.container_id=n.container_id AND r.event_type='RETURNED'
+                                AND r.occurred_at>=n.occurred_at AND r.occurred_at<=anchor.occurred_at)
+                            ORDER BY n.occurred_at DESC,n.setup_movement_event_id DESC LIMIT 1
+                        )) AS current_location_note,
                         cs.movement_status,
                         cs.last_movement_at,
                         cs.last_movement_event_id,
                         me.event_type AS last_event_type,
                         me.occurred_at AS last_observed_at,
+                        me.gps_latitude,
+                        me.gps_longitude,
+                        me.gps_accuracy_m,
+                        me.gps_quality,
+                        me.gps_fix_age_ms,
                         me.destination_stage_id,
                         me.destination_location_note,
                         EXISTS (
@@ -571,6 +598,11 @@ class SetupMaterialReadinessRepository:
                         ds.last_movement_event_id,
                         me.event_type AS last_event_type,
                         me.occurred_at AS last_observed_at,
+                        me.gps_latitude,
+                        me.gps_longitude,
+                        me.gps_accuracy_m,
+                        me.gps_quality,
+                        me.gps_fix_age_ms,
                         me.destination_stage_id,
                         me.destination_location_note
                     FROM ref.display AS d
@@ -877,7 +909,7 @@ class SetupMaterialReadinessRepository:
         )
         observation = dict(state.get((normalized_type, int(asset_id))) or {})
 
-        return {
+        status = {
             "demanded": bool(origins),
             "pick_delayed": bool(
                 normalized_type == "CONTAINER"
@@ -886,6 +918,37 @@ class SetupMaterialReadinessRepository:
             ),
             "demand_origins": sorted(origins),
             "current_observation": observation or None,
+        }
+
+        # The focused mapping is an optimization, not an independent authority.
+        # Stage-level LOR membership and ownership can yield current demand that
+        # has no explicit task-display row. Confirm misses against the same live
+        # projection used by Pick List/Material Status before rejecting a scan.
+        return self._reconcile_pick_demand(
+            season_year=season_year, asset_type=normalized_type,
+            asset_id=asset_id, status=status,
+        )
+
+    def _reconcile_pick_demand(
+        self, *, season_year: int, asset_type: str, asset_id: int,
+        status: dict[str, Any],
+    ) -> dict[str, Any]:
+        if status.get("demanded"):
+            return status
+        readiness = self.material_readiness(season_year)
+        item = next((row for row in readiness.get("physical_items") or []
+                     if str(row.get("physical_type") or "").upper() == asset_type
+                     and int(row.get("physical_id") or 0) == int(asset_id)), None)
+        if item is None:
+            return status
+        return {
+            "demanded": True,
+            "pick_delayed": bool(item.get("pick_delayed")),
+            "demand_origins": sorted({
+                str(reason.get("demand_origin") or "DIRECT_SCHEDULE")
+                for reason in item.get("reasons") or []
+            }),
+            "current_observation": item.get("current_observation"),
         }
 
     def _container_endpoint_policy(
@@ -1046,7 +1109,18 @@ class SetupMaterialReadinessRepository:
                         current_stage.stage_name AS current_stage_name,
                         CASE
                             WHEN ds.position_mode = 'DETACHED' THEN ds.current_location_note
-                            ELSE cs.current_location_note
+                            ELSE coalesce(cs.current_location_note, (
+                            SELECT n.destination_location_note FROM ops.setup_movement_event n
+                            JOIN ops.setup_movement_event anchor ON anchor.setup_movement_event_id=cs.last_movement_event_id
+                              AND anchor.setup_session_id=cs.setup_session_id
+                            WHERE n.setup_session_id=cs.setup_session_id AND n.container_id=cs.container_id
+                              AND (n.occurred_at,n.setup_movement_event_id)<=(anchor.occurred_at,anchor.setup_movement_event_id)
+                              AND nullif(trim(n.destination_location_note),'') IS NOT NULL
+                              AND NOT EXISTS (SELECT 1 FROM ops.setup_movement_event r WHERE r.setup_session_id=n.setup_session_id
+                                AND r.container_id=n.container_id AND r.event_type='RETURNED'
+                                AND r.occurred_at>=n.occurred_at AND r.occurred_at<=anchor.occurred_at)
+                            ORDER BY n.occurred_at DESC,n.setup_movement_event_id DESC LIMIT 1
+                        ))
                         END AS current_location_note,
                         c.location_code AS home_location_code
                     FROM ref.display AS d
@@ -1093,7 +1167,18 @@ class SetupMaterialReadinessRepository:
                     cs.current_stage_id,
                     s.stage_key AS current_stage_key,
                     s.stage_name AS current_stage_name,
-                    cs.current_location_note,
+                    coalesce(cs.current_location_note, (
+                            SELECT n.destination_location_note FROM ops.setup_movement_event n
+                            JOIN ops.setup_movement_event anchor ON anchor.setup_movement_event_id=cs.last_movement_event_id
+                              AND anchor.setup_session_id=cs.setup_session_id
+                            WHERE n.setup_session_id=cs.setup_session_id AND n.container_id=cs.container_id
+                              AND (n.occurred_at,n.setup_movement_event_id)<=(anchor.occurred_at,anchor.setup_movement_event_id)
+                              AND nullif(trim(n.destination_location_note),'') IS NOT NULL
+                              AND NOT EXISTS (SELECT 1 FROM ops.setup_movement_event r WHERE r.setup_session_id=n.setup_session_id
+                                AND r.container_id=n.container_id AND r.event_type='RETURNED'
+                                AND r.occurred_at>=n.occurred_at AND r.occurred_at<=anchor.occurred_at)
+                            ORDER BY n.occurred_at DESC,n.setup_movement_event_id DESC LIMIT 1
+                        )) AS current_location_note,
                     tc.relationship_type,
                     tc.notes AS relationship_notes
                 FROM ref.setup_task_container_support AS tc

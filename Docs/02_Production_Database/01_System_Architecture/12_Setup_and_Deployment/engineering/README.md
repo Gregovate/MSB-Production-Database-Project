@@ -1,5 +1,21 @@
 # Setup and Deployment Engineering
 
+## Shared email ownership — 2026-10-22
+
+[Email System Integration](../../Email_System_Integration.md) links the single Server Management delivery authority, [#97](https://github.com/Gregovate/MSB-Server-Management/issues/97). #205 retains Setup digest/report meaning, audience rules and content; #122 coordinates Setup releases. The later Manager SMTP sender and [October22 recovery evidence](Setup_205_Manager_Mail_Recovery_2026-10-22.md) supersede the earlier paused Directus transport proposal as the recorded implementation. Do not revive that proposal or fork another sender. Runtime consolidation is pending; historical business requirements and acceptance remain preserved.
+
+## #205 Schedule performance and daily Manager accountability — engineering contract
+
+[Controlled Setup KPI/reporting/accountability contract](Setup_205_Schedule_Performance_and_Daily_Accountability_Contract_2026-10-15.md) governs #205 under #122. **Immediate application scope** is the non-mail V0.3.79 migration-bearing candidate to allow Manager changes to planned AM/PM counts independent of actual work, preserving Captain/history locks; it follows V0.3.71 unified Setup scheduling/report corrections whole-Setup KPIs, Manager Action Center, scheduling risk/links and Report Work corrections: [exact candidate, regression and 8898 browser checklist](../../../../../Setup/Acceptance/Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Directus Manager/Captain emails were **paused at Greg's direction**; preserved separately on `hold/205-directus-notifications-20261015`, not included in the application candidate. V0.3.79 sticky-day/search and six operator UI corrections and 2026 Catalog source regression passed including reported-work estimates; historical-actual-work synchronization boundary and disposable browser/operator acceptance remain pending; Production unchanged.
+
+
+## #88 guided contents reconciliation — candidate pending acceptance
+
+[Implementation, reconnaissance, verification and exact-candidate review handoff](../../../../../Setup/Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).
+V0.3.43 reuses existing movement/event tables with function-only migration 070.
+Current-clone/browser acceptance and Production deployment remain pending.
+
+
 | Document Control | Value |
 |---|---|
 | Document Type | Engineering Handoff Portal |
@@ -10,6 +26,15 @@
 | Last Reviewed | 2026-10-04 |
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
+
+## #175 Current Location launch defect — candidate pending acceptance
+
+DBG-2026-001 is the reopened Perform Work presentation defect reported on the
+installed C177/C178 steeples. The bounded V0.3.40 candidate separates effective
+#88 observation evidence from reference Home storage, with no schema/history changes.
+See [candidate, test evidence, and exact disposable review handoff](../../../../../Setup/Acceptance/Setup_175_Current_Location_Candidate.md)
+and [effective-location contract](Setup_Task_Supporting_Information_Contract_2026-09-11.md#effective-current-location--175--dbg-2026-001).
+Current-clone PostgreSQL and operator browser acceptance are still required; no deployment is claimed.
 
 Repository-wide Production deployment history is maintained newest-first in [`../../../../../System_Documentation/Production_Deployment_Change_Log.md`](../../../../../System_Documentation/Production_Deployment_Change_Log.md).
 

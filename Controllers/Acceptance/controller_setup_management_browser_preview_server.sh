@@ -7,11 +7,11 @@ DB_ACTOR="msbadmin"
 IMAGE="postgis/postgis:16-3.5"
 NETWORK="msb-stack_default"
 FIELDWIRING_ROOT="/opt/fieldwiring"
-TARGET_REF="agent/controller-inventory-ref-sandbox"
-TARGET_SHA="2fd2067958cc0a903260fe6f089f88ae63a857f1"
+TARGET_REF="${3:?TargetRef required}"
+TARGET_SHA="${4:?CandidateSha required}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_ENTRY="$SCRIPT_DIR/controller_setup_management_browser_preview_entry.py"
-PREVIEW_PORT="${1:-8793}"
+PREVIEW_PORT="${1:?PreviewPort required}"
 PREVIEW_EMAIL="${2:-gliebig@sheboyganlights.org}"
 STAMP="$(date +%Y%m%dT%H%M%S)"
 TEST_CONTAINER="msb-controller-browser-preview-${$}"
@@ -31,6 +31,7 @@ echo "========== CONTROLLER SETUP + MANAGEMENT BROWSER PREVIEW =========="
 echo "Report:         $REPORT"
 echo "Candidate SHA:  $TARGET_SHA"
 echo "Preview port:   $PREVIEW_PORT"
+echo "Candidate ref:  $TARGET_REF"
 echo "Preview user:   $PREVIEW_EMAIL"
 echo "Production DB:  pg_dump + SELECT only"
 echo "Preview writes: disposable PostgreSQL clone only"
@@ -56,54 +57,131 @@ prod_fingerprint() {
         "
 }
 
+# Flask runs as fieldwiring and is launched in its own setsid process group.
+# Never trust a successful kill invocation alone: verify process identity and
+# listener teardown before announcing a clean exit.
+preview_pid_matches() {
+    [[ "$PREVIEW_PGID" =~ ^[0-9]+$ ]] || return 1
+    local command
+    command="$(sudo ps -p "$PREVIEW_PGID" -o args= 2>/dev/null || true)"
+    [[ "$command" == *"$PREVIEW_ENTRY"* ]] &&
+        [[ "$(sudo ps -p "$PREVIEW_PGID" -o user= 2>/dev/null | xargs)" == "fieldwiring" ]]
+}
+preview_port_owned_by_pid() {
+    local listeners
+    listeners="$(sudo ss -ltnp "sport = :$PREVIEW_PORT" 2>/dev/null || true)"
+    [[ "$listeners" == *"pid=$PREVIEW_PGID,"* ]]
+}
+preview_port_listening() {
+    sudo ss -ltnH "sport = :$PREVIEW_PORT" 2>/dev/null | grep -q .
+}
 cleanup() {
-    status=$?
-    trap - EXIT INT TERM
+    local status=$? cleanup_failed=0 pid_owner=""
+    trap - EXIT INT TERM HUP
     set +e
 
     echo
     echo "--- Browser preview cleanup ---"
     if [[ -n "$PREVIEW_PGID" ]]; then
-        kill -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
-        sleep 1
-        kill -KILL -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
+        if preview_pid_matches; then
+            echo "Stopping verified Controller preview PID $PREVIEW_PGID"
+            sudo kill -TERM "$PREVIEW_PGID" || cleanup_failed=1
+            for _ in $(seq 1 20); do
+                if ! preview_pid_matches && ! preview_port_owned_by_pid; then break; fi
+                sleep 1
+            done
+            if preview_pid_matches || preview_port_owned_by_pid; then
+                if preview_pid_matches; then
+                    echo "Controller preview still active; sending KILL to exact verified PID $PREVIEW_PGID"
+                    sudo kill -KILL "$PREVIEW_PGID" || cleanup_failed=1
+                else
+                    echo "FAIL: listening PID identity drift; refusing unsafe kill"
+                    cleanup_failed=1
+                fi
+            fi
+        elif preview_port_owned_by_pid; then
+            echo "FAIL: port belongs to saved PID but executable identity is unverified"
+            cleanup_failed=1
+        fi
+    fi
+    if preview_port_listening; then
+        echo "FAIL: preview port $PREVIEW_PORT remains occupied"
+        sudo ss -ltnp "sport = :$PREVIEW_PORT" || true
+        cleanup_failed=1
+    else
+        echo "PASS: preview port $PREVIEW_PORT has no listener"
     fi
 
-    sudo docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
-
-    if sudo git -C "$FIELDWIRING_ROOT" worktree list --porcelain 2>/dev/null | grep -Fq "worktree $CANDIDATE_WORKTREE"; then
-        sudo git -C "$FIELDWIRING_ROOT" worktree remove --force "$CANDIDATE_WORKTREE" >/dev/null 2>&1 || true
+    if sudo docker inspect "$TEST_CONTAINER" >/dev/null 2>&1; then
+        sudo docker rm -f "$TEST_CONTAINER" >/dev/null || cleanup_failed=1
+    fi
+    if sudo docker inspect "$TEST_CONTAINER" >/dev/null 2>&1; then
+        echo "FAIL: preview database container still exists: $TEST_CONTAINER"
+        cleanup_failed=1
+    else
+        echo "PASS: preview database container absent"
     fi
 
-    rm -f "$DUMP_FILE" >/dev/null 2>&1 || true
-    rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
+    if sudo git -C "$FIELDWIRING_ROOT" worktree list --porcelain 2>/dev/null |
+       grep -Fxq "worktree $CANDIDATE_WORKTREE"; then
+        sudo git -C "$FIELDWIRING_ROOT" worktree remove "$CANDIDATE_WORKTREE" ||
+            cleanup_failed=1
+    fi
+    if sudo git -C "$FIELDWIRING_ROOT" worktree list --porcelain 2>/dev/null |
+       grep -Fxq "worktree $CANDIDATE_WORKTREE"; then
+        echo "FAIL: preview detached worktree remains: $CANDIDATE_WORKTREE"
+        cleanup_failed=1
+    else
+        echo "PASS: preview detached worktree absent"
+    fi
+
+    rm -f -- "$DUMP_FILE" || cleanup_failed=1
+    if [[ -e "$DUMP_FILE" ]]; then cleanup_failed=1; fi
+    if [[ -d "$SCRIPT_DIR" ]]; then
+        rm -rf -- "$SCRIPT_DIR" || cleanup_failed=1
+    fi
+    if [[ -e "$SCRIPT_DIR" ]]; then cleanup_failed=1; fi
 
     echo
     echo "--- Production Controller fingerprint after-check ---"
     if [[ -n "$PROD_BEFORE" ]]; then
-        PROD_AFTER="$(prod_fingerprint 2>/dev/null)"
+        local PROD_AFTER
+        PROD_AFTER="$(prod_fingerprint 2>/dev/null)" || cleanup_failed=1
         echo "Before: $PROD_BEFORE"
         echo "After:  $PROD_AFTER"
         if [[ "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
-            echo "FAIL: production Controller fingerprint changed during browser preview"
-            status=97
+            echo "FAIL: production Controller fingerprint mismatch"
+            cleanup_failed=1
         else
             echo "PASS: production Controller fingerprint unchanged"
         fi
+    else
+        echo "SKIP: no preflight fingerprint captured"
     fi
 
+    if (( cleanup_failed )); then
+        echo "CLEANUP FAILED: do not declare CLEAN EXIT"
+        [[ "$status" -ne 0 ]] || status=98
+    elif [[ "$status" -eq 0 ]]; then
+        echo "CLEAN EXIT: Controller preview owned resources verified absent"
+    fi
     echo "Preview Flask log retained at: $PREVIEW_LOG"
     echo "Preview report retained at:    $REPORT"
     echo "Exit status: $status"
     exit "$status"
 }
-trap cleanup EXIT INT TERM
+
+trap cleanup EXIT INT TERM HUP
 
 sudo -v
 
 if [[ ! "$PREVIEW_PORT" =~ ^[0-9]+$ ]] || (( PREVIEW_PORT < 1024 || PREVIEW_PORT > 65535 )); then
     echo "FAIL: preview port must be an integer from 1024 through 65535"
     exit 2
+fi
+if [[ "$PREVIEW_PORT" != "8898" ]]; then
+    echo "FAIL: registered shared Controller preview port is 8898"
+    exit 3
 fi
 if [[ "$PREVIEW_PORT" == "8790" || "$PREVIEW_PORT" == "8792" || "$PREVIEW_PORT" == "8055" ]]; then
     echo "FAIL: preview port conflicts with a governed production listener"
@@ -150,15 +228,15 @@ echo "--- Fetch exact accepted candidate ---"
 sudo git -C "$FIELDWIRING_ROOT" fetch origin "$TARGET_REF"
 sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$TARGET_SHA^{commit}"
 if ! sudo git -C "$FIELDWIRING_ROOT" merge-base --is-ancestor "$LIVE_HEAD" "$TARGET_SHA"; then
-    echo "FAIL: accepted candidate is not a forward descendant of the live checkout"
-    exit 11
+    echo "INFO: exact detached preview candidate need not descend from live checkout"
 fi
 sudo git -C "$FIELDWIRING_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
-MIGRATION_023="$CANDIDATE_WORKTREE/Controllers/Database/023_create_controller_management_commands.sql"
-MIGRATION_024="$CANDIDATE_WORKTREE/Controllers/Database/024_harden_controller_assignment_capability.sql"
-for f in "$MIGRATION_023" "$MIGRATION_024"; do
-    [[ -s "$f" ]] || { echo "FAIL: accepted candidate migration missing: $f"; exit 12; }
-done
+
+# Fail before pg_dump or disposable restore on malformed candidate Python.
+# Run under the documented FieldWiring service runtime and candidate worktree.
+sudo -u fieldwiring -H bash -c 'cd "$1" && /opt/fieldwiring/.venv/bin/python -B -c "import ast,pathlib; ast.parse(pathlib.Path(\"FieldWiring/Application/controller_management.py\").read_text(encoding=\"utf-8\"))" && PYTHONDONTWRITEBYTECODE=1 /opt/fieldwiring/.venv/bin/python -B -m pytest -q -p no:cacheprovider FieldWiring/Application/test_controller_capacity_planner_contract.py' -- "$CANDIDATE_WORKTREE"
+echo "PASS: Controller planner Python compile and focused contract before clone"
+
 
 echo
 echo "--- Capture current production into disposable clone ---"
@@ -176,31 +254,19 @@ sudo docker run -d \
     -e POSTGRES_DB=postgres \
     "$IMAGE" >/dev/null
 
-init_complete=0
-for _ in $(seq 1 120); do
-    if sudo docker logs "$TEST_CONTAINER" 2>&1 | grep -q "PostgreSQL init process complete; ready for start up"; then
-        init_complete=1
-        break
-    fi
-    sleep 1
-done
-if [[ "$init_complete" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL initialization did not complete"
-    sudo docker logs "$TEST_CONTAINER" || true
-    exit 13
-fi
-
+# The PostGIS entrypoint starts and stops a temporary PostgreSQL server.
+# Require final postgres PID 1 plus pg_isready before restore.
 ready=0
-for _ in $(seq 1 60); do
-    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+for _ in $(seq 1 120); do
+    pid1="$(sudo docker exec "$TEST_CONTAINER" cat /proc/1/comm 2>/dev/null | tr -d '\r\n' || true)"
+    if [[ "$pid1" == "postgres" ]] && sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
         ready=1
         break
     fi
     sleep 1
 done
 if [[ "$ready" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL final server did not become ready"
+    echo "FAIL: final disposable PostgreSQL startup not ready"
     exit 14
 fi
 
@@ -224,10 +290,18 @@ REVOKE ALL ON FUNCTION ref.controller_browser_capabilities(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ref.request_controller_label(text,bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ref.controller_browser_capabilities(text) TO fieldwiring_app;
 GRANT EXECUTE ON FUNCTION ref.request_controller_label(text,bigint) TO fieldwiring_app;
+-- Preserve the currently deployed narrow Controller management capabilities
+-- after a no-ACL restore; no broad Controller DML.
+GRANT EXECUTE ON FUNCTION ref.controller_management_options(text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.create_controller(text,integer,integer,text,integer,text,text,text,integer,text,boolean,text,text,boolean,text,integer,integer,text,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.update_controller(text,bigint,integer,integer,text,integer,text,text,text,integer,text,boolean,text,text,boolean,text,integer,integer,text,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.assign_controller_display(text,bigint,bigint,bigint,text,text,boolean) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.update_controller_display_assignment(text,bigint,bigint,bigint,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.reassign_controller_display(text,bigint,bigint,bigint,bigint,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.unassign_controller_display(text,bigint,bigint,boolean) TO fieldwiring_app;
 SQL
 
-psql_test < "$MIGRATION_023"
-psql_test < "$MIGRATION_024"
+echo "No migrations: source-only #406 candidate against current Production clone"
 
 echo
 echo "--- Validate disposable browser authorization/write boundary ---"
@@ -263,6 +337,10 @@ fi
 APP_DIR="$CANDIDATE_WORKTREE/FieldWiring/Application"
 DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=fieldwiring_app password=$APP_PASSWORD"
 
+echo
+echo "--- Exact candidate focused Controller regression ---"
+sudo -u fieldwiring -H bash -c 'cd "$1" && /opt/fieldwiring/.venv/bin/python -m pytest -q -p no:cacheprovider FieldWiring/Application/test_controller_capacity_planner_contract.py FieldWiring/Application/test_controller_programmed_configuration_contract.py' -- "$CANDIDATE_WORKTREE"
+echo "Targeted Controller regression: PASS"
 echo
 echo "--- Start exact accepted Flask candidate ---"
 # Keep sudo in the foreground so it retains the interactive SSH TTY. Once sudo

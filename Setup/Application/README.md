@@ -1,5 +1,26 @@
 # Setup Session Application
 
+## Pending final launch candidate: controller location and container pickup
+
+PR463 adds CTRL identity to Record Location and uses the existing Controller park-map symbol. Scan Controller still opens inventory, with an explicit Record Location action. The Container Scan card adds **Setup Complete Return to Shop**. Confirm an empty container, physical Stage and simple pickup location; the printable `/setup/container-pickups/` list is sorted by Stage. Record actual arrival with **Returned to Home Location** to close the request. Cancellation only cancels collection. No contents reconciliation or takedown redesign is included. Pending SQL 077/078 applies only in the disposable preview until release approval. Scan source and dist changes require the established Scan extension deployment in addition to Setup/FieldWiring. Protected browser acceptance is pending.
+
+
+## #88 guided contents reconciliation candidate
+
+[Implementation, reconnaissance, verification and exact-candidate review handoff](../Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).
+V0.3.46 reuses existing movement/event tables with function-only migration 070.
+Container drop records location only and keeps Display attachments unchanged.
+**Displays physically removed from this Container** retains Stage-group selection;
+**Check what is physically on this Container** opens prior-location reconciliation
+for missed removals. Each path names its location basis; recorded counts are not
+physical confirmation.
+Stage rows/counts stay compact; Display Names expand on demand. A persistent
+selection/action dock and focused review keep selected groups visible. Contents
+checking opens separately; Display Name filtering preserves remaining selections
+across hidden rows. Current-clone/browser acceptance and Production deployment
+remain pending.
+
+
 For a reviewed update or urgent fix, use [Install a reviewed Setup change](../operatorSOP/Install_a_Reviewed_Setup_Change.md). It explains the checks, maintenance window, STOP result and required documentation closeout.
 
 Status: **PRODUCTION RUNTIME OPERATIONAL — 2026 ANNUAL SETUP SESSION LIVE**
@@ -19,11 +40,19 @@ Setup/Application/production_backend.py
 Current reported version and Production application target:
 
 ```text
-V0.3.22-pick-list-delay
-6f53d7f0c4b15f7175e773a2069595eef3f0e698
+V0.3.50-container-movement-report
+1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e
 ```
 
-The visible Production version is `V0.3.22-pick-list-delay`. #206 adds the accepted bounded material frontier and transient Manager Pick Delay behavior on top of the #205 Scheduling Board release. Persisted physical PICKED/movement execution remains owned by #88.
+## 2026-10-09 — #205 scheduling corrections — Production PASS
+
+- Installed Setup target: `1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e` (PR #324/#325). Client **V0.3.50**, backend `V0.3.50-container-movement-report`, footer **Updated 2026-10-09**.
+- Greg approved both disposable previews with CLEAN EXIT and confirmed the protected Production screen PASS after installation.
+- Source-only runner PASS: `/home/msbadmin/setup-deployment-reports/PR325-20261010T033752Z`. Exact source, health, focused regression and unchanged pre/post data fingerprints passed per runner receipt. Numerical fingerprint is retained in `preflight.json` / `result.json`, not transcribed here.
+- Prior source/rollback SHA: `0b69a269b2a32d369ee4f25be6740e15d7c5a823`. Shared checkout remains `6dd05c4aa5ef8f50fe172145c3ae281cc245a101`. Tooling PR #326 merge: `291def5746ca0683cf9601cf7dc07753bd56ded4`; existing source-only runner retains its legacy 306 filename. Do not replay it.
+- No database migration or maintenance transition in this update; only Setup restarted under the Server Management source-only runbook. No rollback reported.
+- Changes: occurrence-based historical completion/collapse; prominent late work and Captain attribution; Captain TBD; AM/PM staffing/task summaries; required estimates for unstarted work; clearer rescheduling badges; Chicago day boundaries. Existing historical planning locks remain enforced.
+- #205 stays open: audited D9 Tom Shircel Crew B-to-A correction and removal of erroneous B, deferred Schedule Churn KPIs, and possible future staffing-model refinement are not completed by this release.
 
 ## Current Production Meaning
 
@@ -128,7 +157,7 @@ Permanent source checkout:
 /opt/msb-setup
 ```
 
-The current exact Production application target is `6f53d7f0c4b15f7175e773a2069595eef3f0e698`. The accepted Pick Delay migration `063_add_setup_pick_list_delay.sql` is installed in addition to migrations through 062. Later merge, deployment-tooling, or closeout-only commits do not redefine the deployed application target.
+The current exact Production application target is `6c44a082dd520b75881c50ad2ce78feb029ff87d`, V0.3.50. The previous Setup source was `cb0538022ed066ff90675e832daa1cd95488114a`; #88 server PASS installed narrow read migration 071. Its validated snapshot metadata remains in `Setup88Read-20261008T214153Z/snapshot.json`; path/hash transcription and protected browser closeout are pending. The accepted Pick Delay migration `063_add_setup_pick_list_delay.sql` is installed in addition to migrations through 062. Later merge, deployment-tooling, or closeout-only commits do not redefine the deployed application target.
 
 The #206 V0.3.22 validated rollback archive is `/home/msbadmin/backups/setup-206/msb-pre-setup-206-v0322-pick-list-delay-20260930T091257.dump` with SHA256 `1415868b93bca4b0ad073b65d741087f34851d134dd8ce18346cce45061154af`. The #172 rollback archive and older accepted rollback archives remain historical recovery evidence. Do not restore any database archive without reconciling legitimate post-deployment Production work.
 
@@ -159,3 +188,19 @@ Before changing the application:
 - `Setup/Acceptance/Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md`
 - `Setup/Acceptance/Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md`
 - `Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md`
+
+
+## Container Movement report — #88 source-only release
+
+Manager **Material Status → Container Movement** opens a fresh printable read-only
+report for the selected season. Recorded destination/GPS and calculated nearest
+Stage reference remain explicitly separate; GPS accuracy and distance are in feet.
+The full movement trail, Display Name/effect scope, attached/detached state, all
+unresolved reasons and historical contents-review flags are included. Compare
+after an event highlights newly received records, including late offline scans.
+Report evidence does not establish unrecorded physical work or resolve/correct
+contents. Refresh regenerates current evidence; Print/Save PDF preserves a snapshot.
+
+[Release and source-only deployment record](../Acceptance/Setup_88_Container_Movement_Report_Deployment.md)
+tracks V0.3.50; guided Container reconciliation is a separate draft and is not
+part of this report-only release. No schema or write-model change.

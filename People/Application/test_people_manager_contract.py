@@ -6,8 +6,11 @@ SQL_001 = (ROOT / "Database" / "001_create_people_manager_contract.sql").read_te
 SQL_002 = (ROOT / "Database" / "002_harden_people_search_phone_filter.sql").read_text(encoding="utf-8")
 SQL_003 = (ROOT / "Database" / "003_create_people_metadata_contract.sql").read_text(encoding="utf-8")
 SQL_004 = (ROOT / "Database" / "004_stop_automatic_msb_email_generation.sql").read_text(encoding="utf-8")
-SQL = SQL_001 + "\n" + SQL_002 + "\n" + SQL_003 + "\n" + SQL_004
+SQL_005 = (ROOT / "Database" / "005_reconcile_directus_person_identity.sql").read_text(encoding="utf-8")
+SQL_006 = (ROOT / "Database" / "006_create_silent_identity_bootstrap_contract.sql").read_text(encoding="utf-8")
+SQL = SQL_001 + "\n" + SQL_002 + "\n" + SQL_003 + "\n" + SQL_004 + "\n" + SQL_005 + "\n" + SQL_006
 BACKEND = (BASE_DIR / "backend.py").read_text(encoding="utf-8")
+BOOTSTRAP_CLIENT = (BASE_DIR / "directus_identity_bootstrap.py").read_text(encoding="utf-8")
 HTML = (BASE_DIR / "index.html").read_text(encoding="utf-8")
 CSS = (BASE_DIR / "people.css").read_text(encoding="utf-8")
 JS = (BASE_DIR / "people.js").read_text(encoding="utf-8")
@@ -267,3 +270,147 @@ def test_analytics_contract_blocks_people_pii() -> None:
         "pg_login_name",
     ):
         assert f"'{forbidden}'" in ANALYTICS
+
+
+def test_directus_person_identity_reconciliation_is_exact_email_fail_closed() -> None:
+    assert "CREATE OR REPLACE FUNCTION ref.reconcile_directus_person_identity" in SQL_005
+    assert "lower(u.email) = v_email" in SQL_005
+    assert "lower(coalesce(u.provider, '')) = 'google'" in SQL_005
+    assert "lower(coalesce(u.external_identifier, ''))," in SQL_005
+    assert "IF v_external_identifier <> v_email THEN" in SQL_005
+    assert "WHERE lower(p.email) = v_email" in SQL_005
+    assert "No MSB Person exists with the authenticated Sheboygan Lights email" in SQL_005
+    assert "The MSB Person matching the authenticated email is inactive" in SQL_005
+    assert "already linked to a different Directus identity" in SQL_005
+    assert "Directus identity is already linked to a different MSB Person" in SQL_005
+    assert "INSERT INTO ref.person" not in SQL_005
+    assert "UPDATE public.directus_users" not in SQL_005
+    assert "UPDATE public.directus_roles" not in SQL_005
+
+
+def test_directus_person_identity_reconciliation_preserves_audit_and_is_idempotent() -> None:
+    assert "CREATE OR REPLACE FUNCTION ref.resolve_actor()" in SQL_005
+    assert "p.directus_user_id IS NULL" in SQL_005
+    assert "app.identity_reconcile_email" in SQL_005
+    assert "v_reconcile_email IS NOT NULL" in SQL_005
+    assert "PERFORM pg_catalog.set_config(" in SQL_005
+    assert "UPDATE ref.person AS p" in SQL_005
+    assert "SET directus_user_id = v_directus_user_id" in SQL_005
+    assert "IF v_person_directus_user_id = v_directus_user_id THEN" in SQL_005
+    assert "link_reconciled boolean" in SQL_005
+
+
+def test_all_protected_actor_boundaries_use_shared_identity_reconciler() -> None:
+    for function_name in (
+        "setup_management_actor",
+        "setup_movement_actor",
+        "setup_execution_actor",
+        "setup_inventory_actor",
+        "people_management_actor",
+        "controller_management_actor",
+    ):
+        section = SQL_005.split(f"CREATE OR REPLACE FUNCTION ref.{function_name}", 1)[1]
+        section = section.split("CREATE OR REPLACE FUNCTION", 1)[0]
+        assert "ref.reconcile_directus_person_identity(v_email)" in section
+
+    label_section = SQL_005.split(
+        "CREATE OR REPLACE FUNCTION ref.request_controller_label", 1
+    )[1]
+    assert "ref.reconcile_directus_person_identity(v_email)" in label_section
+
+
+def test_identity_reconciliation_report_surfaces_safe_and_conflict_states() -> None:
+    assert "CREATE OR REPLACE FUNCTION ref.directus_person_identity_reconciliation_report()" in SQL_005
+    for disposition in (
+        "MULTIPLE_ACTIVE_DIRECTUS",
+        "PERSON_WITHOUT_DIRECTUS",
+        "DIRECTUS_WITHOUT_PERSON",
+        "DIRECTUS_INACTIVE",
+        "PROVIDER_CONFLICT",
+        "EXTERNAL_IDENTIFIER_CONFLICT",
+        "PERSON_INACTIVE",
+        "LINKED_OK",
+        "SAFE_EXACT_EMAIL_UNLINKED",
+        "PERSON_LINK_CONFLICT",
+        "DIRECTUS_UUID_CONFLICT",
+    ):
+        assert disposition in SQL_005
+
+
+def test_people_release_version_is_v023() -> None:
+    assert 'APP_VERSION = "V0.2.3"' in BACKEND
+
+
+def test_people_health_exposes_identity_reconciliation_contract() -> None:
+    assert "ref.reconcile_directus_person_identity(text)" in BACKEND
+    assert "ref.directus_person_identity_reconciliation_report()" in BACKEND
+    assert "identity_reconciliation_contract=bool(identity_reconcile_fn and identity_report_fn)" in BACKEND
+
+
+def test_identity_bootstrap_database_contract_is_exact_person_fail_closed() -> None:
+    assert SQL_006.count("CREATE OR REPLACE FUNCTION ref.people_identity_bootstrap_status") == 1
+    assert SQL_006.count("CREATE OR REPLACE FUNCTION ref.people_identity_bootstrap_reconcile") == 1
+    assert SQL_006.count("2026-10-15-silent-human-identity-bootstrap-v0.2.3-candidate") == 1
+    assert SQL_006.rstrip().endswith("current_user AS applied_by;")
+    assert "CREATE OR REPLACE FUNCTION ref.people_identity_bootstrap_status" in SQL_006
+    assert "CREATE OR REPLACE FUNCTION ref.people_identity_bootstrap_reconcile" in SQL_006
+    assert "lower(p.email) = v_email" in SQL_006
+    assert "'READY_CREATE'" in SQL_006
+    assert "'NO_PERSON'" in SQL_006
+    assert "'PERSON_INACTIVE'" in SQL_006
+    assert "'NONHUMAN_ACCOUNT'" in SQL_006
+    assert "'SAFE_EXISTING_LINK'" in SQL_006
+    assert "'EXISTING_OK'" in SQL_006
+    assert "ref.reconcile_directus_person_identity" in SQL_006
+    assert "INSERT INTO public.directus_users" not in SQL_006
+    assert "INSERT INTO ref.person" not in SQL_006
+
+
+def test_identity_bootstrap_keeps_people_app_off_directus_tables() -> None:
+    assert "REVOKE ALL ON TABLE public.directus_users FROM people_app" in SQL_006
+    assert "REVOKE ALL ON TABLE public.directus_roles FROM people_app" in SQL_006
+    assert "GRANT EXECUTE ON FUNCTION ref.people_identity_bootstrap_status(text) TO people_app" in SQL_006
+    assert "GRANT EXECUTE ON FUNCTION ref.people_identity_bootstrap_reconcile(text) TO people_app" in SQL_006
+
+
+def test_identity_bootstrap_api_is_server_side_and_browser_baseline_only() -> None:
+    assert 'PEOPLE_DIRECTUS_IDENTITY_TOKEN' in BOOTSTRAP_CLIENT
+    assert 'http://127.0.0.1:8055' in BOOTSTRAP_CLIENT
+    assert 'f"{self.base_url}/users"' in BOOTSTRAP_CLIENT
+    assert '"provider": "google"' in BOOTSTRAP_CLIENT
+    assert '"external_identifier": normalized_email' in BOOTSTRAP_CLIENT
+    assert '"role": normalized_role' in BOOTSTRAP_CLIENT
+    assert '"status": "active"' in BOOTSTRAP_CLIENT
+    client_section = BOOTSTRAP_CLIENT.split("class DirectusIdentityBootstrapClient", 1)[1]
+    assert "def create_google_browser_user" in client_section
+    assert 'method="POST"' in client_section
+    assert 'method="PATCH"' not in client_section
+    assert 'method="PUT"' not in client_section
+    assert 'method="DELETE"' not in client_section
+
+
+def test_identity_bootstrap_endpoint_requires_cloudflare_and_command_guard() -> None:
+    assert '@app.post("/api/identity/bootstrap")' in BACKEND
+    assert 'X-MSB-Identity-Bootstrap' in BACKEND
+    section = BACKEND.split('@app.post("/api/identity/bootstrap")', 1)[1].split('@app.get("/api/people")', 1)[0]
+    assert "require_identity_bootstrap_request()" in section
+    assert "cloudflare_operator_email()" in section
+    assert 'disposition != "READY_CREATE"' in section
+    assert 'str(final_status.get("role_name") or "") != "MSB Browser"' in section
+    assert "require_people_manager()" not in section
+
+
+def test_identity_bootstrap_existing_role_is_never_changed() -> None:
+    section = BACKEND.split('@app.post("/api/identity/bootstrap")', 1)[1].split('@app.get("/api/people")', 1)[0]
+    assert 'disposition == "EXISTING_OK"' in section
+    assert 'disposition == "SAFE_EXISTING_LINK"' in section
+    assert "create_google_browser_user" in section
+    assert "update" not in section.lower()
+
+
+def test_people_health_exposes_identity_bootstrap_contract_without_secret() -> None:
+    assert "ref.people_identity_bootstrap_status(text)" in BACKEND
+    assert "ref.people_identity_bootstrap_reconcile(text)" in BACKEND
+    assert "identity_bootstrap_contract=bool(" in BACKEND
+    assert "identity_bootstrap_configured=bool(" in BACKEND
+    assert "PEOPLE_DIRECTUS_IDENTITY_TOKEN" in BACKEND

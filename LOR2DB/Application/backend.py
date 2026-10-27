@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-09-17  V0.6.3
+Current Version : 2026-10-27  V0.6.4
 Author          : GAL / OpenAI
 
 Purpose:
@@ -84,7 +84,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.6.3"
+APP_VERSION = "V0.6.4"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 STAGE_AUTHORITY_ACTIONS = {
     "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",
@@ -897,6 +897,34 @@ def retry_run_report(run_id: int) -> Response:
         report_url=completed["report_url"],
         snapshot_retention_warning=retention_warning,
     )
+
+
+@app.get("/current-source")
+def current_source() -> Response:
+    """#81-owned live authority; never cached or selected from report files."""
+    from current_source import SourceUnavailable, load_current_source
+    email = request.headers.get("Cf-Access-Authenticated-User-Email", "").strip().lower()
+    if not email:
+        raise ApiError("Authenticated MSB login required", 401)
+    try:
+        with database() as conn:
+            # Reuse the existing active Directus role/policy resolver. This
+            # route grants read-only preview authority, never operator actions.
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT * FROM ref.setup_browser_capabilities(%s)", (email,))
+                access = cur.fetchone()
+            if not access or not (
+                access.get("role_name") in {"Production Crew", "Manager", "Administrator"}
+                or set(access.get("policy_names") or []) & {"Production Crew", "Manager", "Administrator"}
+                or access.get("can_admin_setup")
+            ):
+                raise ApiError("Production Crew access required for LOR2PC", 403)
+            document = load_current_source(conn, RealDictCursor)
+    except SourceUnavailable as exc:
+        raise ApiError(str(exc), 409) from exc
+    response = jsonify(document)
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
 
 
 if __name__ == "__main__":

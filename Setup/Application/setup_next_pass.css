@@ -1,5 +1,21 @@
 /* Setup V0.3 browser-review Site-wide/Stage/Scene, planning, crew-lane, and Captain surfaces. */
 
+/* Compact movement evidence; the GPS disclosure expands only on request. */
+.setup-location-details {
+  display: inline;
+}
+
+.setup-location-details > summary {
+  display: inline list-item;
+  margin-left: 0.4rem;
+  cursor: pointer;
+  color: var(--muted, #64748b);
+}
+
+.setup-location-details[open] > span {
+  display: block;
+}
+
 .next-library-tools {
   display: flex;
   flex-wrap: wrap;
@@ -642,4 +658,367 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+
+/* #132: field-report input visibility. No reporting persistence changes. */
+.next-report-work-form .next-report-work-grid .next-work-key-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-weight: 750;
+  padding: 0.65rem;
+  border: 2px solid var(--border, #aebbc9);
+  border-radius: 0.55rem;
+  background: var(--panel, #fff);
+  min-width: 0;
+}
+.next-report-work-form .next-report-work-grid .next-work-key-field input {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  border: 2px solid var(--accent, #14658b);
+  background: #fff;
+  color: #182936;
+  font-size: 1.12rem;
+  font-weight: 700;
+  padding: 0.55rem;
+}
+.next-report-work-form .next-report-work-grid .next-work-key-field small {
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.next-report-work-form .next-report-work-grid .next-work-minutes-field {
+  border-color: #a65a16;
+  background: #fff7e8;
+}
+.next-report-work-form .next-report-work-grid .next-work-minutes-field input {
+  border-color: #a65a16;
+}
+.next-report-work-form .next-report-work-grid .next-work-key-field input:focus-visible {
+  outline: 3px solid #1568a5;
+  outline-offset: 2px;
+}
+@media (max-width: 650px) {
+  .next-report-work-form .next-report-work-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* #132: protect actual work date from being overlooked during late reporting. */
+.next-report-work-form .next-report-work-grid .next-work-date-field {
+  border-color: #a65a16;
+  background: #fff7e8;
+}
+.next-report-work-form .next-report-work-grid .next-work-date-field input {
+  border-color: #a65a16;
+}
+
+/* #205: Manager-only correction to an unworked schedule, not a fake report.
+   Short dialog remains usable on laptop and tablet; no dependence on the
+   optional task field-context request, which may be unavailable. */
+.next-reschedule-no-work-dialog {
+  width: min(92vw, 35rem);
+  max-height: 85dvh;
+  overflow-y: auto;
+  padding: 1.1rem;
+  border: 2px solid var(--border, #aebbc9);
+  border-radius: 0.65rem;
+  background: var(--panel, #fff);
+  color: var(--text, #172033);
+}
+.next-reschedule-no-work-dialog::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+.next-reschedule-no-work-dialog form {
+  display: grid;
+  gap: 0.65rem;
+}
+.next-reschedule-no-work-dialog h3,
+.next-reschedule-no-work-dialog p { margin: 0; }
+.next-reschedule-no-work-dialog label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 700;
+}
+.next-reschedule-no-work-dialog select {
+  width: 100%;
+  min-height: 2.7rem;
+}
+.next-reschedule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+/* #205 unified operator rejection correction: Report Work fields use a
+   predictable TWO-column grid, not five unequal cramped inputs.
+   Date/Crew and Hours/Minutes must be readable at the real card width. */
+.next-report-work-form .next-report-work-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  align-items: stretch;
+  width: 100%;
+  max-width: 55rem;
+}
+.next-report-work-form .next-report-work-grid .next-work-key-field {
+  display: flex;
+  grid-column: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0.6rem;
+  gap: 0.25rem;
+  align-self: stretch;
+}
+.next-report-work-form .next-report-work-grid .next-work-key-field input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  font-size: 1.05rem;
+  padding: 0.45rem 0.55rem;
+  box-sizing: border-box;
+}
+.next-report-work-form .next-report-work-grid .next-duration-hours,
+.next-report-work-form .next-report-work-grid .next-duration-minutes {
+  min-height: 48px;
+  height: 48px;
+  font-size: 1.05rem;
+}
+.next-report-work-form .next-report-work-grid .next-work-minutes-field {
+  background: var(--panel, #fff);
+  border-color: var(--border, #aebbc9);
+}
+.next-report-work-form .next-report-work-grid .next-work-minutes-field input {
+  border-color: var(--accent, #14658b);
+}
+.next-report-work-form .next-report-work-grid .next-work-field-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+.next-report-work-form .next-report-help {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 0.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--accent, #14658b);
+  color: var(--accent, #14658b);
+  background: var(--panel, #fff);
+  font-weight: 850;
+  cursor: pointer;
+}
+.next-report-work-form .next-report-help-panel {
+  grid-column: 1 / -1;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--accent, #14658b);
+  border-radius: 0.4rem;
+  background: var(--soft, #f5f8fb);
+  line-height: 1.45;
+}
+.next-report-work-form .next-report-help-panel[hidden] { display: none; }
+@media (max-width: 680px) {
+  .next-report-work-form .next-report-work-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+  .next-report-work-form .next-report-work-grid .next-work-date-field,
+  .next-report-work-form .next-report-work-grid .next-work-crew-field,
+  .next-report-work-form .next-report-work-grid .next-work-percent-field {
+    grid-column: 1 / -1;
+  }
+  .next-report-work-form .next-report-work-grid .next-work-key-field { padding: 0.4rem; }
+}
+
+/* #205 operator rejection: actionable controls require visible semantic colors. */
+.next-perform-actions .next-reschedule-no-work,
+.next-reschedule-actions button[type="submit"] {
+  background: var(--accent, #08689c);
+  color: #fff;
+  border: 2px solid var(--accent, #08689c);
+  font-weight: 750;
+}
+.next-perform-actions .next-reschedule-no-work:hover,
+.next-reschedule-actions button[type="submit"]:hover {
+  filter: brightness(1.12);
+}
+.next-perform-actions .next-reschedule-no-work:focus-visible,
+.next-reschedule-actions button[type="submit"]:focus-visible {
+  outline: 3px solid var(--text, #172033);
+  outline-offset: 2px;
+}
+
+/* #205: Action Center is an action surface, not a list of text links.
+   Use theme variables so buttons remain visible in light and dark modes. */
+.setup205-action-center .setup205-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.25rem;
+  min-height: 2.5rem;
+  padding: 0.48rem 0.85rem;
+  border: 2px solid var(--accent, #14658b);
+  border-radius: 0.4rem;
+  background: var(--accent, #14658b);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+.setup205-action-center .setup205-action:hover { filter: brightness(1.12); }
+.setup205-action-center .setup205-action:focus-visible {
+  outline: 3px solid var(--text, #172033);
+  outline-offset: 2px;
+}
+html[data-theme="dark"] .setup205-action-center .setup205-action {
+  background: #2a7fb5;
+  border-color: #80bfeb;
+  color: #fff;
+}
+
+/* Distinct navigation action, not a plain-looking text tab. */
+button.tab[data-view="action-center"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6rem;
+  padding: 0.5rem 0.85rem;
+  background: var(--accent, #14658b);
+  color: #fff;
+  border: 2px solid var(--accent, #14658b);
+  border-radius: 0.5rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+html[data-theme="dark"] button.tab[data-view="action-center"] {
+  background: #2a7fb5;
+  border-color: #80bfeb;
+  color: #fff;
+}
+button.tab[data-view="action-center"]:focus-visible {
+  outline: 3px solid var(--text, #172033);
+  outline-offset: 2px;
+}
+
+/* #205 second browser review: style the actual KPI button, not only the tab. */
+.setup205-kpi-glance .setup205-open-action-center {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.7rem;
+  padding: 0.55rem 1rem;
+  background: var(--accent, #14658b);
+  border: 2px solid var(--accent, #14658b);
+  border-radius: 0.5rem;
+  color: #fff;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+html[data-theme="dark"] .setup205-kpi-glance .setup205-open-action-center {
+  background: #2a7fb5;
+  border-color: #80bfeb;
+  color: #fff;
+}
+.setup205-kpi-glance .setup205-open-action-center:focus-visible {
+  outline: 3px solid var(--text, #172033);
+  outline-offset: 2px;
+}
+/* Put controls below consistent task context, rather than inline within sentences. */
+.setup205-action-center .setup205-action-group li {
+  padding: 0.65rem 0.85rem;
+  margin: 0.35rem 0;
+  border: 1px solid var(--border, #c5d3df);
+  border-radius: 0.4rem;
+  background: var(--panel, #fff);
+  line-height: 1.55;
+}
+.setup205-action-center .setup205-action-group li .setup205-action {
+  display: flex;
+  width: fit-content;
+  margin: 0.45rem 0 0;
+}
+
+/* #205 operator rejection: Manager Action Center is active ONLY when selected.
+   The previous unqualified selector made two navigation tabs look active. */
+button.tab[data-view="action-center"]:not(.active) {
+  background: var(--card, #fff);
+  border-color: var(--border, #d9e0e8);
+  color: var(--text, #172033);
+}
+html[data-theme="dark"] button.tab[data-view="action-center"]:not(.active) {
+  background: var(--card, #1d2939);
+  border-color: var(--border, #64748b);
+  color: var(--text, #e8f2fb);
+}
+button.tab[data-view="action-center"].active {
+  background: var(--accent, #14658b);
+  border-color: var(--accent, #14658b);
+  color: #fff;
+}
+/* Perform Work scrolls as a document, not a trapped scheduling pane. */
+body:not(.setup-schedule-view) #perform-view,
+body:not(.setup-schedule-view) #next-perform-list {
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
+}
+#next-perform-back-to-top {
+  position: fixed;
+  right: 1rem;
+  bottom: 1.1rem;
+  z-index: 20;
+  margin-left: auto;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 18%);
+}
+@media (max-width: 680px) {
+  #next-perform-back-to-top {right: 0.5rem; bottom: 0.55rem;}
+}
+
+/* #205: Keep the specific assignment identifiable at the point of reporting. */
+.next-report-task-identity {
+  position: sticky;
+  top: 5.8rem;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.8rem;
+  padding: 0.55rem 0.7rem;
+  margin-bottom: 0.6rem;
+  border: 1px solid var(--border, #cbd5e1);
+  border-left: 4px solid var(--accent, #14658b);
+  background: var(--panel, #fff);
+  color: var(--text, #172033);
+}
+.next-report-task-identity span { font-size: 0.86rem; }
+@media (max-width: 680px) {
+  .next-report-task-identity { top: 0; }
+}
+
+
+/* #205: calendar-like day boundaries on Perform Work; no workflow changes. */
+.next-perform-day {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem 1rem;
+  border: 3px solid var(--border, #71869a);
+  border-radius: 0.75rem;
+  background: var(--panel, #fff);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 10%);
+}
+.next-perform-day:nth-of-type(odd) { border-left: 0.5rem solid #356a9a; }
+.next-perform-day:nth-of-type(even) { border-left: 0.5rem solid #a56929; }
+.next-perform-day-content { min-width: 0; }
+@media print {
+  .next-perform-day { box-shadow: none; break-inside: auto; }
 }

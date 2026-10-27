@@ -66,7 +66,7 @@ def test_perform_work_hides_completed_by_default_without_changing_global_captain
     assert 'id="next-perform-show-completed" type="checkbox" checked' not in ui
     assert "function nextPerformAssignmentStatus(assignment)" in ui
     assert "function nextPerformCaptainScopedAssignments(assignments)" in ui
-    assert "showCompleted || nextPerformAssignmentStatus(assignment) !== 'COMPLETE'" in ui
+    assert "showCompleted || !nextAssignmentReported(assignment)" in ui
     assert "const filter = setupNextState.performCaptainFilter || 'ALL';" in ui
     assert "if (filter === 'ALL') return true;" in ui
     assert "All scheduled work" in ui
@@ -163,9 +163,9 @@ def test_field_actions_use_report_correction_and_colored_print_task() -> None:
     ui = read_app("setup_next_pass.js")
     css = read_app("setup_next_pass.css")
 
-    assert ">Report Correction</button>" in ui
+    assert ">Task Feedback</button>" in ui
     assert "Report Correction handoff is owned by #172" not in ui
-    assert "Report Correction requires Production Crew or Manager access" in ui
+    assert "Task Feedback requires Production Crew or Manager access" in ui
     assert ">Report Problem</button>" not in ui
     assert ".next-perform-actions .next-print-task" in css
     assert "var(--accent-soft" in css
@@ -222,7 +222,9 @@ def test_print_task_is_bounded_cover_sheet_not_schedule_print() -> None:
 def test_procedure_failure_does_not_block_report_work() -> None:
     ui = read_app("setup_next_pass.js")
 
-    assert ".catch((error) => ({ payload: null, error }))" in ui
+    assert ".catch(error => ({payload:null,error}))" in ui
+    assert "contextError" in ui
+    assert "reusableTaskId" in ui
     assert "Procedure context unavailable." in ui
     assert "Report Work remains available." in ui
 
@@ -250,11 +252,11 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-10-04.2" in html
-    assert "setup_next_pass.js?v=2026-10-04.3" in html
+    assert "setup_next_pass.css?v=2026-10-21.87r3" in html
+    assert "setup_next_pass.js?v=2026-10-21.87r3" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
-    assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
-    assert "setup_scheduling_board.css?v=2026-10-04.4" in html
+    assert "setup_acceptance_fixes.js?v=2026-10-21.87r3" in html
+    assert "setup_scheduling_board.css?v=2026-10-21.87r3" in html
     assert "setup_stage_order.js?v=2026-09-25.1" in html
 
 
@@ -283,7 +285,10 @@ def test_schedule_and_perform_work_share_status_palette_and_labels() -> None:
     perform = read_app("setup_next_pass.js")
     board = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
-    assert "const status = nextSetupAssignmentStatus(task);" in board
+    assert "nextSetupAssignmentStatus(task);" in board
+    assert "nextAssignmentReportedLabel(item)" in board
+    assert "INCOMPLETE — Work Reported" in perform
+    assert "COMPLETE — Work Reported" in perform
     for ui in (perform, board):
         assert "setup-work-status" in ui
         assert 'data-work-status="${' in ui

@@ -298,8 +298,9 @@ def test_122_planning_screen_uses_compact_operational_kpis_and_stage_scoped_plac
     css = read_app("setup_scheduling_board.css")
 
     assert "function board205RenderKpis()" in ui
-    assert "scheduled · " in ui
-    assert "complete · " in ui
+    assert "tasks scheduled" in ui
+    assert "setup205DeadlineKpiHtml(board, appState.seasonYear)" in ui
+    assert 'class="setup205-kpi-glance"' in read_app("setup_next_pass.js")
     assert "setup-board205-primary-filters" in ui
     assert "setup-board205-scene-label" in ui
     assert "function board205PopulateSeasonPlacementOptions(" in ui
@@ -362,6 +363,12 @@ def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> No
     assert ".setup-board205-dispatch-controls .setup-board205-scheduled-search-results" in css
     assert "position: absolute;" in css
     assert "function board205CollapseScheduledSearchResults" in ui
+    assert "scheduledSearchOpen: false" in ui
+    assert "setupBoard205State.scheduledSearchOpen = false;" in ui
+    assert "if (!search || !setupBoard205State.scheduledSearchOpen)" in ui
+    assert "scheduledSearch?.addEventListener('input', openScheduledSearch)" in ui
+    assert "scheduledSearch?.addEventListener('click', openScheduledSearch)" in ui
+    assert "if (event.key === 'Escape')" in ui
 
 
 def test_205_empty_work_day_removal_is_fail_closed_end_to_end() -> None:
@@ -424,7 +431,7 @@ def test_205_schedulable_tasks_print_is_separate_blocking_on_report() -> None:
     assert "function board205SchedulableTasksForReport()" in ui
     assert "!board205HasHardBlock(task)" in ui
     assert "board205FinderStatusFamily(task) === 'READY'" in ui
-    assert "Number(task.unworked_assignment_count || 0) === 0" in ui
+    assert "Number(task.future_assignment_count || 0) === 0" in ui
     assert "String(task.task_action_type || '').toUpperCase() !== 'GATE'" in ui
     assert "board205FinderCompare(a, b, 'STAGE')" in ui
     assert "Hard prerequisite blockers excluded" in ui
@@ -453,14 +460,17 @@ def test_205_schedule_command_bar_preserves_board_height_and_controls() -> None:
     assert "setup-board205-dispatch-controls" in ui
     assert "+ Add Work Days" in ui
     assert "Find scheduled task" in ui
-    assert "> Unfinished</label>" in ui
-    assert "> Completed</label>" in ui
+    assert "> Days needing reports</label>" in ui
+    assert "> Fully reported days</label>" in ui
     assert "> Empty</label>" in ui
     assert "setup-board205-selection-count" in ui
     assert "Print Schedule" in ui
     assert "Open only when you need to add dates." not in ui
     assert "Each work day starts with Crew A." not in ui
-    assert "setup-board205-board-key" in ui
+    assert 'id="setup-board205-current-day"' in ui
+    assert "board205BindStickyDay()" in ui
+    assert "setup-board205-scheduled-search" in ui
+    assert "top: var(--setup-board205-sticky-heading-height, 5rem)" in css
     assert "grid-template-columns: auto auto minmax(16rem, 1fr) auto auto auto;" in css
     assert "max-height: min(22rem, 55vh);" in css
 
@@ -587,7 +597,10 @@ def test_122_schedule_board_compacts_crew_controls_and_prints_operational_board(
     assert ">AM Crew w/Captain <" in ui
     assert ">PM Crew w/Captain <" in ui
     assert "setup-board205-crew-title-row" in ui
-    assert '<button type="button" class="small setup-board205-save-crew">Save</button>' in ui
+    assert "setup-board205-save-crew" not in ui
+    assert "Saved automatically" in ui
+    assert "async function board205SaveCrew(crewId, crewNode)" in ui
+    assert "board205EnsureCrewSaved(crewId)" in ui
     assert "secondary setup-board205-save-crew" not in ui
     assert "setup-board205-print" in ui
     assert "Print Schedule" in ui
@@ -652,7 +665,8 @@ def test_122_b1a_pre2026_compact_editor_writes_reusable_catalog_only() -> None:
     assert "board205OpenPlanningInfoDialog(taskId || null, reusableTaskId || null)" in ui
     assert "const reusablePlanning = board205HistoricalReviewMode() && reusableTaskId;" in ui
     assert "api/setup/tasks/${reusableTaskId}" in ui
-    assert "api/setup/tasks/${reusableTaskId}/effort" in ui
+    assert "effort_level: draft.effort_level" in ui
+    assert "api/setup/tasks/${reusableTaskId}/effort" not in ui
     assert "Reusable planning information updated." in ui
     assert "setup-board205-open-full-reusable" in ui
     assert "Open Full Reusable Task" in ui
@@ -664,16 +678,18 @@ def test_122_b1a_pre2026_compact_editor_writes_reusable_catalog_only() -> None:
     assert "annual_" not in block
 
 
-def test_122_b1a_open_full_reusable_saves_compact_edits_first() -> None:
+def test_122_b1a_open_full_reusable_preserves_unsaved_draft_without_save() -> None:
     ui = read_app("setup_scheduling_board.js")
-
     assert "function board205PlanningInfoDirty()" in ui
     assert "async function board205PersistPlanningInfo(" in ui
-    assert "if (board205PlanningInfoDirty()) {" in ui
-    assert "board205PersistPlanningInfo({ closeDialog: false, announce: false })" in ui
-    assert "Planning edits saved before opening the full reusable task." in ui
-    assert "await reloadTasks(reusableTaskId);" in ui
-    assert "await setupNavigateToReusableTaskFromFinder(reusableTaskId);" in ui
+    opener = ui.split(
+        "document.getElementById('setup-board205-open-full-reusable')?.addEventListener",1
+    )[1].split("document.getElementById('setup-board205-season-form')",1)[0]
+    assert "board205PlanningInfoDirty() ? board205PlanningDraft() : null" in opener
+    assert "setupNavigateToReusableTaskFromFinder(reusableTaskId)" in opener
+    assert "edit-crew-min" in opener and "edit-crew-max" in opener
+    assert "board205PersistPlanningInfo(" not in opener
+    assert "Review the crew range, then Save Reusable Task" in opener
 
 
 def test_122_b1a_pre2026_finder_hides_deferred_and_filters_soft_readiness() -> None:
@@ -710,7 +726,7 @@ def test_205_browser_fixture_preserves_real_readiness_state() -> None:
 
 def test_205_scheduled_work_uses_scheduled_bucket_even_when_readiness_is_blocked() -> None:
     repo = read_app("setup_scheduling_board_repository.py")
-    scheduled = repo.index("coalesce(sched.unworked_assignment_count, 0) > 0")
+    scheduled = repo.index("coalesce(sched.future_assignment_count, 0) > 0")
     blocked_readiness = repo.index("st.annual_readiness_state = 'NOT_READY'")
     blocked_prereq = repo.index("coalesce(dep.prerequisites_complete, true) IS NOT TRUE")
     assert scheduled < blocked_readiness
@@ -723,15 +739,17 @@ def test_205_rolling_board_filters_days_by_operational_state() -> None:
     css = read_app("setup_scheduling_board.css")
 
     assert "function board205DayViewState(day)" in ui
-    assert "if (status === 'COMPLETE' || status === 'CANCELLED') return 'COMPLETED';" in ui
     assert "if (!assignments.length) return 'EMPTY';" in ui
-    assert "return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';" in ui
-    assert "> Completed</label>" in ui
+    assert "return assignments.every(nextAssignmentReported) ? 'COMPLETED' : 'UNFINISHED';" in ui
+    assert "> Fully reported days</label>" in ui
     assert "cancelled-day" in ui
     assert 'id="setup-board205-show-unfinished-days" type="checkbox" checked' in ui
-    assert 'id="setup-board205-show-completed-days" type="checkbox"' in ui
+    assert 'id="setup-board205-show-completed-days" type="checkbox">' in ui
+    assert 'id="setup-board205-show-reported-tasks" type="checkbox"' in ui
+    assert "function board205ActiveAssignmentsFor" in ui
+    assert "reported task cards" in ui
     assert 'id="setup-board205-show-empty-days" type="checkbox"' in ui
-    assert "> Unfinished</label>" in ui
+    assert "> Days needing reports</label>" in ui
     assert "if (showEmptyDays) showEmptyDays.checked = true;" in ui
     assert "setup-board205-show-history" not in ui
     assert "day-band-odd" in ui
@@ -757,7 +775,7 @@ def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() ->
     assert "grid-template-rows: auto minmax(0, 1fr)" in css
     assert "setup-board205-planning-header" in ui
     assert "margin: 0.2rem 0 0.55rem" in css
-    assert "max-height: min(30rem, 65vh)" in css
+    assert "max-height: none;" in css
 
 
 def test_205_captain_learning_cancel_wording_preserves_schedule_only() -> None:
@@ -799,7 +817,8 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "gate.disabled = !(isGate || isWork) || !workOrderSelected" in ui
     assert "finishing that Work Order also completes this Setup task and unblocks downstream work" in ui
     assert "Est. labor:" in ui
-    assert "planned labor hr" in ui
+    assert "Planned person-hours TBD" in ui
+    assert "known task-hours" in ui
     assert "board205LaborHours" in ui
     assert "board205AssignmentPlannedCrew" in ui
     assert "Locate Power & Network is Setup Work, not Support / Prep." in ui
@@ -1004,8 +1023,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-04.4" in html
-    assert "setup_scheduling_board.js?v=2026-10-04.2" in html
+    assert "setup_scheduling_board.css?v=2026-10-21.87r3" in html
+    assert "setup_scheduling_board.js?v=2026-10-21.87r3" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
@@ -1242,7 +1261,7 @@ def test_122_b1a_reusable_task_audit_is_visible() -> None:
     assert "<strong>Audit:</strong>" in ui
     assert "reusable-task-audit" in html
     assert "Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}" in production
-    assert "setup_production.js?v=2026-10-01.2" in html
+    assert "setup_production.js?v=2026-10-21.87r3" in html
 
 
 def test_122_b1a_historical_overlay_preserves_fresh_board_audit_after_write() -> None:
@@ -1676,7 +1695,24 @@ def test_historical_button_rule_does_not_split_shared_scroll_container_selector(
     assert not re.search(r"\.setup-board205-backlog,\s*#setup-board205-historical-day", css)
 
 
-def test_narrow_board_keeps_large_task_lists_in_scrollable_panels():
+def test_narrow_board_has_direct_panel_navigation_and_page_scroll():
     css = read_app("setup_scheduling_board.css")
-    assert "max-height: min(30rem, 65vh);" in css
-    assert "overflow-y: visible;" not in css
+    assert "overflow-y: visible;" in css
+    assert 'data-tablet-pane="board"' in css
+    assert 'data-tablet-pane="tasks"' in css
+    assert '.setup-board205-main:not(.finder-only)' in css
+    ui = read_app("setup_scheduling_board.js")
+    assert 'aria-controls="setup-board205-right"' in ui
+    assert 'aria-controls="setup-board205-backlog"' in ui
+    assert "board205SetTabletPane(setupBoard205State.tabletPane);" in ui
+
+
+def test_launch_quick_progress_filter_is_outside_collapsed_filters():
+    ui = read_app("setup_scheduling_board.js")
+    assert 'id="setup-board205-in-progress-only" type="checkbox"' not in ui
+    assert "inProgressOnly: checked('setup-board205-in-progress-only')" in ui
+    assert "setChecked('setup-board205-in-progress-only', state.inProgressOnly)" in ui
+    assert "if (task.execution_status !== 'IN_PROGRESS') return false;" in ui
+    assert "else if (!hardBlocked && !statuses.has(family)) return false;" in ui
+    css = read_app("setup_scheduling_board.css")
+    assert "body.setup-schedule-view .site-header { position: static; }" in css
