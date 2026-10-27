@@ -1,0 +1,24 @@
+MSB PC Preview Updater — first-time setup
+Revision 2026-10-27 — comparison-only pilot
+
+Use only the installer package supplied by the MSB administrator. This pilot
+checks previews but cannot install preview changes. It is not the general release.
+
+1. Sign into the Windows account you normally use for Light-O-Rama.
+2. Close Light-O-Rama.
+3. Download or copy the complete approved installer ZIP from the location the
+   MSB administrator provides. Installation does not need the G: drive.
+4. Extract all files to a folder on this PC.
+5. Double-click "Install MSB PC Preview Updater.vbs" in the extracted folder.
+6. Require the message "MSB PC Preview Updater launcher installed. No previews
+   were changed." If blocked or another error appears, contact the administrator.
+7. Open https://my.sheboyganlights.org/lor2db/ in your browser.
+8. Click "Update this PC's MSB Previews", then "Open PC Preview Updater".
+9. Allow the requested app launch and complete your normal MSB sign-in.
+10. Review the result and send it, including any error, to the MSB administrator.
+
+The check still needs access to the shared MSB master files. Your personal,
+imported and store previews must be preserved. Do not manually replace your
+preview library. Each Windows user needs their own first-time installation.
+
+If nothing opens, contact the MSB administrator for installation or repair.
