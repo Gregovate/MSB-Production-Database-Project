@@ -76,9 +76,16 @@
   };
   const inspectedCables = id => (current?.cables || []).filter(c =>
     Number(c.endpoint_a) === Number(id) || Number(c.endpoint_b) === Number(id));
-  const networkNames = id => [...new Set((current?.memberships || [])
-    .filter(m => Number(m.site_waypoint_id) === Number(id))
-    .map(m => byId(current.networks, m.site_network_id, 'site_network_id')?.network_code).filter(Boolean))];
+  // Membership rows already carry the FLW-resolved network name. Keep that
+  // evidence visible even when a separate network catalog lookup is unavailable.
+  // Also include resolved FLW endpoints directly; physical-cable inventory is
+  // not a prerequisite for showing a tested network at a combo box.
+  const networkNames = id => [...new Set([
+    ...(current?.memberships || [])
+      .filter(m => Number(m.site_waypoint_id) === Number(id))
+      .map(m => m.network_code || byId(current.networks, m.site_network_id, 'site_network_id')?.network_code),
+    ...waypointTests(id).filter(t => t.network_key).map(testNetwork)
+  ].filter(Boolean))];
   // The database FLW view resolves test-point pairs independently of cable inventory.
   const waypointTests = id => (current?.flw_tests || []).filter(t =>
     Number(t.endpoint_a) === Number(id) || Number(t.endpoint_b) === Number(id));

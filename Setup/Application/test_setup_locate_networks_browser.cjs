@@ -415,3 +415,18 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.match(popups[1],/Observation: not recorded/);
   console.log('PASS: controller names and latest record visible without disclosure');
 }
+
+// FLW networks remain visible without a physical-cable or catalog lookup.
+{
+ const source=read('setup_site_reference.js');
+ const ctx={current:{memberships:[{site_waypoint_id:7,site_network_id:2,network_code:'REG'}],
+   networks:[],flw_tests:[{endpoint_a:7,endpoint_b:8,network_key:'AUX-E'},
+     {endpoint_a:7,endpoint_b:8,network_key:'REG'},{endpoint_a:9,endpoint_b:10,network_key:'INET'}]},
+   byId:(rows,id,key)=>rows.find(r=>Number(r[key])===Number(id))};
+ vm.createContext(ctx);
+ vm.runInContext(source.slice(source.indexOf('  const networkNames ='),source.indexOf('  const testResult ='))+';globalThis.names=networkNames;',ctx);
+ assert.deepEqual(Array.from(ctx.names(7)),['REG','AUX-E']);
+ assert.deepEqual(Array.from(ctx.names(8)),['AUX-E','REG']);
+ assert.deepEqual(Array.from(ctx.names(99)),[]);
+ console.log('PASS: combo-box FLW network names survive missing catalog entries');
+}

@@ -1,3 +1,7 @@
+## October 27 PR470 combo-box network regression
+
+Greg reports previously visible combo-box networks missing. The popup depended exclusively on membership-to-catalog lookup although memberships already supply network_code and FLW tests supply resolved waypoint endpoints/network_key. Preserve membership names directly and include the current FLW endpoint networks independently of physical cable inventory, deduplicated. Do not infer from track geometry, rename SPARE designations, or associate unresolved endpoints. Exact failing live payload is unavailable; operator preview must confirm affected combo boxes.
+
 ## October 27 PR470 popup follow-up — CLEAN EXIT with defects
 
 Greg reports CLEAN EXIT and confirms Record details resets for independent displays too. This closes the running preview, not acceptance of its defects. All asset popups must show their latest record directly. Root cause: shared disclosure toggle calls Leaflet update(), which reparses string popup content and loses open state. Bind a persistent DOM content node so refresh/disclosure and asynchronous icon updates preserve state. Keep icon-top placement and existing latest-record selection.
