@@ -250,3 +250,24 @@ acceptance. After comparison, a separately approved live apply must preserve
 unmanaged previews, produce backup/audit evidence, survive LOR reopen/use/close,
 and produce ADD 0 / REPLACE 0 on the next run. The comparison-only installer and
 metadata guards are still enabled; this candidate cannot approve live application.
+
+## Production server installation — operator evidence
+
+Greg's deployment output reports SERVER DEPLOYMENT PASS for application
+30fabb49e6b4ec8c17e679e97743bb25a9cd3450 through the comparison-only wrapper
+232e26704bd20bb7368bbc5f66b46315f4091888 (Server PR #102). Normal writer sessions
+were zero while frozen; source/grant installation completed; controller returned
+ONLINE with database_fenced=false, READ_CONTINUITY=OFF and all configured services
+active, including Work Management. Health/negative identity checks passed.
+
+Report: /home/msbadmin/lor2pc-deployment-reports/539d2d0f75c4405fa3e567ea05387025
+Snapshot: /home/msbadmin/backups/lor2pc299/msb-pre-lor2pc-30fabb49-20261027T221430Z.dump
+Snapshot bytes: 149203658
+Snapshot SHA-256: 2edcff06c7a50cbe114ea66ac4eba7c23338002decccd256b39a3d7035323718
+
+This is server installation acceptance only. Real protected-site/crew access,
+Windows protocol installation and browser handoff, master validation, Show PC
+comparison, and live apply/reopen/repeat acceptance remain outstanding. The
+prepared Show PC runtime comes from clean exact 30fabb49; its deployment metadata
+sets apply_enabled=false and its registered handler uses -AuditOnly. Installing
+this per-user launcher does not authorize preview replacement.
