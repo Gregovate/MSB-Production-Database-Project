@@ -648,13 +648,19 @@ C:\LOR\Audio
 C:\LOR\Sequences
 ```
 
-The 2025 sequence source is the Google Shared Drive backup tree under:
+The Google Shared Drive contains a year-by-year Seasonal Files archive. Beginning with 2014, each show year maintains its own LOR tree under the pattern:
+
+```text
+G:\Shared drives\Seasonal Files\<YEAR>\LOR
+```
+
+Example:
 
 ```text
 G:\Shared drives\Seasonal Files\2025\LOR\Sequences
 ```
 
-The 2025 sequence folders have been copied to the new PC as the starting point for the 2026 show build.
+The 2025 sequence folders have been copied to the new PC as the immediate starting point for the 2026 show build, but the historical archive spans multiple years and must be treated as a catalog source rather than copied wholesale to the appliance.
 
 ### Do not carry historical audio forward blindly
 
@@ -662,13 +668,15 @@ Older sequence folders include material from many prior years. A sequence from a
 
 For the new PC:
 
-1. Treat the selected 2025 production sequences as the authoritative starting set.
-2. Determine which audio/media files those sequences actually reference.
-3. Produce a reviewable manifest before copying media.
-4. Copy only the required audio/media files into `C:\LOR\Audio`.
-5. Preserve the exact filenames expected by the LOR sequence files.
-6. Verify every selected sequence opens and resolves its media while the PC is offline.
-7. Build the 2026 show from the verified local 2025 baseline.
+1. Treat the selected 2025 production sequences as the immediate starting set for the 2026 build.
+2. Treat the yearly `Seasonal Files\<YEAR>\LOR` trees as the historical source archive.
+3. Inventory the annual LOR trees read-only so the catalog can reconstruct sequence, audio, and show-history relationships across years without copying the archive to the Show PC.
+4. Determine which audio/media files the selected 2025/2026 working sequences actually reference, regardless of which archived year currently contains the source copy.
+5. Produce a reviewable manifest before copying media.
+6. Copy only the required audio/media files into `C:\LOR\Audio`.
+7. Preserve the exact filenames expected by the LOR sequence files.
+8. Verify every selected sequence opens and resolves its media while the PC is offline.
+9. Build the 2026 show from the verified local baseline.
 
 ### Existing catalog project
 
@@ -688,7 +696,7 @@ As of this appliance migration, the repository is still largely a scaffold:
 
 Do not assume the existing catalog repository can currently perform the migration.
 
-The immediate engineering task is to add a read-only sequence/media inventory workflow that can identify the media dependencies of the selected 2025 sequence set and generate a copy manifest without modifying source files.
+The immediate engineering task is to add a read-only sequence/media inventory workflow that can scan the annual Seasonal Files LOR archives, identify the media dependencies of the selected working sequence set, and generate a copy manifest without modifying source files.
 
 ---
 
