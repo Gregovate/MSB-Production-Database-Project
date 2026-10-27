@@ -230,3 +230,23 @@ PID 1 = postgres and pg_isready, bounded to 120 checks. Cleanup saves State-only
 Docker inspection and container logs before removal, without capturing Config.Env.
 Three local tests exercise the actual extracted gate and cleanup ordering; they
 are not an actual PostGIS restore or Windows/current-clone acceptance.
+
+## Operator browser review and launcher feedback
+
+Greg tested r3 (source 351d5315748f621d5e1994e7faa8a9ea12e3e4d8): landing
+and PC entry rendered, the blue landing button navigated to the PC entry, and
+the harness reported CLEAN EXIT. The PC protocol button opened no updater; the
+Windows launcher was not installed as part of this browser-only review. This is
+not native launch, actual Cloudflare login, live comparison or production acceptance.
+
+The entry now reports the expected browser permission prompt and directs a user
+whose updater does not open to the MSB administrator. Browsers cannot reliably
+detect protocol registration; the message does not assert successful launch.
+The handler remains a fixed native URI and transfers no credentials.
+
+Distribution remains blocked on protected-site policy review, governed deployment
+of the #81 accepted-source endpoint/role permission, and Show PC comparison-only
+acceptance. After comparison, a separately approved live apply must preserve
+unmanaged previews, produce backup/audit evidence, survive LOR reopen/use/close,
+and produce ADD 0 / REPLACE 0 on the next run. The comparison-only installer and
+metadata guards are still enabled; this candidate cannot approve live application.

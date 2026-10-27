@@ -2,6 +2,11 @@
 (async function () {
   'use strict';
   const status = document.querySelector('#status');
+  // A browser cannot reliably detect a registered Windows protocol handler.
+  // Explain the expected prompt without claiming that launch succeeded.
+  document.querySelector('#open-updater').addEventListener('click', () => {
+    status.textContent = 'Your browser may ask permission to open MSB PC Preview Updater. Allow it only if you requested this update. If no updater window opens, contact the MSB administrator to install the PC launcher. No previews change from this button alone.';
+  });
   const args = new URLSearchParams(location.hash.slice(1));
   const port = args.get('port'), nonce = args.get('nonce');
   if (!port && !nonce) return;

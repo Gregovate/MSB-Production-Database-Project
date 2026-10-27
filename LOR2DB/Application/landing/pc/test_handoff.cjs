@@ -4,9 +4,9 @@ const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync(__dirname + '/handoff.js', 'utf8');
 async function run(hash, authorized) {
-  const status = {}, calls = [];
+  const status = {}, calls = [], handlers = {};
   await vm.runInNewContext(source, {
-    document: {querySelector: () => status},
+    document: {querySelector: selector => selector === '#status' ? status : {addEventListener: (event, handler) => { handlers[event] = handler; }}},
     URLSearchParams, location: {hash, pathname:'/lor2db/pc/'},
     history: {replaceState() {}}, AbortSignal,
     fetch: async (url, options) => {
@@ -15,9 +15,14 @@ async function run(hash, authorized) {
         headers: {get: () => 'application/json'}, json: async () => ({name:'MSB 🎄'})};
     }
   });
-  return {status, calls};
+  return {status, calls, handlers};
 }
 (async () => {
+  let idle = await run('', true);
+  assert.equal(idle.calls.length, 0);
+  idle.handlers.click();
+  assert.match(idle.status.textContent, /If no updater window opens/);
+  assert.match(idle.status.textContent, /No previews change/);
   let result = await run('#port=5555&nonce=' + 'a'.repeat(64), true);
   assert.equal(result.calls.length, 2);
   assert.equal(result.calls[0].options.credentials, 'same-origin');
