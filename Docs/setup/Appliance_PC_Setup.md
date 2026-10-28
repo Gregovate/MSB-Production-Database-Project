@@ -230,6 +230,38 @@ These applications are part of the normal Show PC setup.
 | ZeroTier | [ZeroTier Download](https://www.zerotier.com/download/) | Install the official Windows x86/x64 MSI and approve the ZeroTier network driver. Join only the approved MSB ZeroTier network(s). Record the assigned node/network identity outside this public setup document if it is sensitive. Verify ZeroTier reconnects automatically after reboot. |
 | FreeFileSync | [FreeFileSync Download](https://freefilesync.org/download.php) | Install the official Windows build. This PC uses FreeFileSync for controlled synchronization between maintained Google Drive content and the local Show PC. The exact sync jobs, directions, exclusions, and conflict policy belong in the Music/Sequence migration workstream and must be reviewed before unattended synchronization is enabled. |
 
+### Audacity Vamp plugins
+
+Audacity also requires the **Queen Mary Vamp plugin set** for the MSB timing-grid workflow.
+
+Official sources:
+
+- [Vamp Plugins Download](https://www.vamp-plugins.org/download.html)
+- [Queen Mary Vamp Plugins project](https://github.com/c4dm/qm-vamp-plugins)
+
+The Queen Mary set provides audio-analysis plugins including beat/bar tracking, tempo estimation, note onset detection, key estimation, chromagram/constant-Q analysis, segmentation, and related feature extraction.
+
+This is the plugin family referenced by the historical Nutcracker123 timing-grid instructions.
+
+For current Windows/Audacity installations, place Vamp plugins in:
+
+```text
+C:\Program Files\Vamp Plugins\
+```
+
+Audacity's current plugin documentation identifies that as the Windows Vamp plugin location.
+
+After installation:
+
+1. Restart Audacity.
+2. Open **Analyze** and verify the Queen Mary analysis plugins are available.
+3. Confirm at minimum that the beat/bar or onset-analysis plugin needed for timing-grid creation is visible.
+4. Do not install obsolete xLights/Nutcracker path-editing utilities merely to modify PATH unless current Audacity/Vamp loading actually requires it.
+
+The old Nutcracker123 instructions are historical reference only; use current Audacity/Vamp plugin paths and current Windows builds.
+
+---
+
 ### Standard application verification
 
 After installation, verify each application launches under the automatic-logon `Light-O-Rama` account.
