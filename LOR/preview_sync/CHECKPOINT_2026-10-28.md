@@ -87,3 +87,18 @@ Readiness failure now prints retained browser.log and records source-validation
 JSON with expected/observed/count/per-file hashes. Existing Windows PowerShell
 plus child process -ExecutionPolicy Bypass keeps errors visible without policy
 changes. Corrected operator browser/production/native acceptance remain pending.
+
+
+## Actual r2 registration / r3 UX follow-up
+
+Actual browser r2 baseline registration succeeded with unchanged Run32 digest
+c21e028797315d590457f16aa1a31ef91b5850970a5fa9e3fa8988d5cf8de692.
+The /review/ browser upload then showed Failed to fetch; cause unproven and
+publication not accepted. User requested initial picker C:\LOR\ImportExport
+and explicit source/destination confirmation. New review-r3 wrapper uses a
+native Windows picker before transfer; the page confirms hash-retained selected
+source and isolated destination, using normal form submission, no JS upload.
+Use the new immutable1.1.0-r3 review archive. Retain/clean up the active r2 review
+through its own original SSH Enter prompt before starting another8898 session.
+Normal Production publishing still reads Greg's directly exported master; it
+will not require this disposable engineering file-copy UI.

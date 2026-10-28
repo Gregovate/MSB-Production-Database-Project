@@ -3,10 +3,11 @@
 Production DB access is performed by the parent clone launcher only for pg_dump.
 This process uses clone SELECTs and isolated local evidence/export files only.
 """
-import io
 import json
+import hashlib
+import html
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import secrets
 import sys
 import threading
@@ -36,12 +37,19 @@ def configure(archive, workspace, accepted=None):
     # actual captured-byte digest; it must match the copied files exactly.
     folder=workspace/('Database Previews V'+accepted['lor_version'])
     folder.mkdir()
+    proposed_raw=None; source_info=None
     with zipfile.ZipFile(archive) as source:
-        if len(source.infolist())>500 or sum(i.file_size for i in source.infolist())>512*1024*1024:
+        if len(source.infolist())>502 or sum(i.file_size for i in source.infolist())>512*1024*1024:
             raise RuntimeError('Copied master archive exceeds review bounds')
         seen=set()
         for entry in source.infolist():
             name=entry.filename
+            if name=='__review_input/proposed.lorprev':
+                if proposed_raw is not None or entry.file_size>16*1024*1024: raise RuntimeError('Invalid proposed export entry')
+                proposed_raw=source.read(entry);continue
+            if name=='__review_input/source.json':
+                if source_info is not None or entry.file_size>65536: raise RuntimeError('Invalid source metadata entry')
+                source_info=json.loads(source.read(entry));continue
             if ('/' in name or '\\' in name or not name.lower().endswith('.lorprev')
                     or name.casefold() in seen or entry.file_size>16*1024*1024):
                 raise RuntimeError('Only flat unique preview exports are allowed in review archive')
@@ -61,6 +69,13 @@ def configure(archive, workspace, accepted=None):
     if observed!=expected:
         raise RuntimeError('Copied source validation failed: expected '+expected+'; observed '+observed+
                            '; files '+str(len(files))+'. Retained source-validation.json; no review started.')
+    if (proposed_raw is None)!=(source_info is None):
+        raise RuntimeError('Proposed export and source metadata must both be present')
+    if proposed_raw is not None:
+        if not isinstance(source_info,dict) or source_info.get('sha256')!=hashlib.sha256(proposed_raw).hexdigest():
+            raise RuntimeError('Selected export bytes do not match launcher evidence')
+        (workspace/'selected-export.lorprev').write_bytes(proposed_raw)
+        (workspace/'selected-source.json').write_text(json.dumps(source_info,indent=2),encoding='utf-8')
     original_loader=current_source.load_current_source
     current_source.load_current_source=lambda conn, factory:dict(doc)
     token=secrets.token_hex(32)
@@ -76,40 +91,66 @@ def configure(archive, workspace, accepted=None):
 
     def catalog_landing():
         html=(base.ROOT/'LOR2DB/Application/landing/index.html').read_text(encoding='utf-8')
-        banner='<aside style="padding:16px;background:#fff3cd;font-weight:bold">DISPOSABLE CATALOG REVIEW — copied inputs only. <a href="/review/">Simulate exporting your changed preview</a></aside>'
+        banner='<aside style="padding:16px;background:#fff3cd;font-weight:bold">DISPOSABLE CATALOG REVIEW r3 — copied inputs only. <a href="/review/">Simulate exporting your changed preview</a></aside>'
         return Response(html.replace('<body>','<body>'+banner,1),mimetype='text/html')
     base.static.view_functions['landing']=catalog_landing
 
+    def page(title,body,status=200):
+        return Response('<!doctype html><meta charset="utf-8"><title>'+html.escape(title)+
+            '</title><link rel="stylesheet" href="/lor2db/lor2db.css"><style>.review-copy-approval{display:flex;gap:10px;align-items:flex-start}.review-copy-approval input{width:auto;flex:none;margin-top:6px}dd,code{overflow-wrap:anywhere}</style><main class="shell"><section class="card">'+
+            '<p class="eyebrow">DISPOSABLE COPY ONLY · review r3</p><h1>'+html.escape(title)+'</h1>'+body+
+            '<p><a href="/review/">Source / destination confirmation</a> · <a href="/lor2db/">Return to catalog review</a></p></section></main>',
+            status=status,mimetype='text/html')
+
+    def target_for(raw):
+        if not raw or len(raw)>16*1024*1024 or b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():
+            raise ValueError('Invalid review export size or XML declarations')
+        root=ET.fromstring(raw)
+        match=[p for p in doc['previews'] if p['preview_id']==root.get('id')]
+        if root.tag!='PreviewClass' or len(match)!=1:
+            raise ValueError('Export must have one existing controlled PreviewID')
+        return root,match[0]
+
+    def confirmation(root,target):
+        source_path=source_info.get('source_path','Selected export (path unavailable)') if source_info else 'Request body (diagnostic fixture)'
+        reference=accepted['source_folder'].rstrip('\\')+'\\'+target['filename']
+        return '<dl><dt>Source file</dt><dd><code>'+html.escape(source_path)+            '</code></dd><dt>Destination for this review</dt><dd><strong>DISPOSABLE COPY of</strong> <code>'+html.escape(reference)+            '</code></dd><dt>Preview</dt><dd>'+html.escape(root.get('Name',''))+' — Revision '+html.escape(root.get('Revision',''))+            '</dd></dl><details><summary>Exact disposable destination</summary><code>'+html.escape(str(folder/target['filename']))+            '</code></details><p>The real master folder is not written. Keep the review PowerShell window open.</p>'
+
     @base.static.get('/review/')
     def copied_export_form():
-        return '''<!doctype html><title>Disposable export simulation</title>
-        <h1>DISPOSABLE COPY ONLY</h1><p>First review the unchanged catalog on the LOR2DB page.
-        Then upload your changed local .lorprev below to simulate exporting into the master folder.
-        This replaces only the disposable copy. G: and Production are never written.</p>
-        <input id="file" type="file" accept=".lorprev"><button id="upload">Copy export into disposable master</button>
-        <pre id="status"></pre><a href="/lor2db/">Return to catalog review</a>
-        <script>document.getElementById('upload').onclick=async()=>{const f=document.getElementById('file').files[0];if(!f)return;
-        try{const r=await fetch('/review/export',{method:'POST',headers:{'Content-Type':'application/xml'},body:await f.text()});
-        document.getElementById('status').textContent=await r.text();}catch(e){document.getElementById('status').textContent=e.message}};</script>'''
+        if proposed_raw is None:
+            return page('Select the local export in the Windows launcher','<p>No export was selected. Use the revised launcher; its native picker opens C:\\LOR\\ImportExport.</p>',409)
+        try: root,target=target_for(proposed_raw)
+        except (ValueError,ET.ParseError) as error: return page('Invalid selected export','<p>'+html.escape(str(error))+'</p>',400)
+        return page('Confirm source and destination',confirmation(root,target)+
+            '<form action="/review/export" method="post"><label class="review-copy-approval"><input type="checkbox" name="confirm_copy" value="yes" required> I confirm this source and disposable destination.</label>'+
+            '<button class="primary" type="submit">Copy selected export into disposable master</button></form>')
 
     @base.static.post('/review/export')
     def copied_export():
-        raw=request.get_data(cache=False)
-        if not raw or len(raw)>16*1024*1024 or b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():
-            return 'Invalid review export',400
-        try: root=ET.fromstring(raw)
-        except ET.ParseError: return 'Invalid XML',400
-        match=[p for p in doc['previews'] if p['preview_id']==root.get('id')]
-        if root.tag!='PreviewClass' or len(match)!=1:
-            return 'Export must have exactly one existing controlled PreviewID',400
-        # Do not simulate editing before registering known accepted source.
+        native_form=request.mimetype=='application/x-www-form-urlencoded'
+        if native_form:
+            if request.form.get('confirm_copy')!='yes' or proposed_raw is None:
+                return page('Copy not approved','<p>Confirm the source and destination first.</p>',400)
+            raw=proposed_raw
+        else:
+            # Diagnostic fixture path only; normal UI submits the preselected
+            # copied bytes with a native form, never JavaScript fetch/upload.
+            raw=request.get_data(cache=False)
+        try: root,target=target_for(raw)
+        except (ValueError,ET.ParseError) as error: return page('Invalid export','<p>'+html.escape(str(error))+'</p>',400)
         if not (evidence/doc['evidence_id']/'baseline.json').is_file():
-            return 'Review the unchanged catalog once before simulating the new export.',409
+            return page('Register the unchanged baseline first','<p>Return to LOR2DB and review the unchanged catalog once.</p>',409)
         if not runner.operation_lock.acquire(blocking=False):
-            return 'A catalog operation is already running',409
-        try: (folder/match[0]['filename']).write_bytes(raw)
+            return page('Catalog operation busy','<p>Another catalog operation is running. Nothing copied.</p>',409)
+        try:
+            temporary=workspace/'export-copy.writing'
+            temporary.write_bytes(raw)
+            os.replace(temporary,folder/target['filename'])
+            (workspace/'export-copy.json').write_text(json.dumps(dict(filename=target['filename'],sha256=hashlib.sha256(raw).hexdigest(),source=source_info),indent=2),encoding='utf-8')
         finally: runner.operation_lock.release()
-        return 'Copied export changed the DISPOSABLE master only. Return to LOR2DB and review/publish the catalog.'
+        return page('Copied into disposable master',confirmation(root,target)+
+            '<p><strong>Copy complete.</strong> Return to LOR2DB and click <strong>Review and Update Official Catalog</strong> again. Publication has not occurred.</p>')
 
     def application(environ,start_response):
         method,path=environ.get('REQUEST_METHOD'),environ.get('PATH_INFO','')

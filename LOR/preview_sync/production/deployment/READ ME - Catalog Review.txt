@@ -1,5 +1,5 @@
 LOR2PC OFFICIAL CATALOG — DISPOSABLE ENGINEERING REVIEW
-2026-10-28 / candidate1.1.0 / review r2
+2026-10-28 / candidate1.1.0 / review r3
 
 This tests the real candidate API and catalog runner using copied preview
 exports and a disposable current-Production database clone. It does not update
@@ -11,7 +11,7 @@ Production, G:, the live Windows runner, or your PC preview library.
 3. Open this extracted folder in File Explorer. Type powershell in its address
    bar and press Enter. In that PowerShell window run exactly:
 
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Review-LOR2PC-Catalog.ps1"
+   powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File ".\Review-LOR2PC-Catalog.ps1"
 
 4. Enter your existing MSB login email. For Greg this is:
    gliebig@sheboyganlights.org
@@ -19,14 +19,17 @@ Production, G:, the live Windows runner, or your PC preview library.
    G:\Shared drives\MSB Database\Database Previews V6.6.12
    This is the current test input, not a version hard-coded into the app.
    The wrapper reads only .lorprev files and uploads a temporary ZIP of copies.
-6. Respond to the SCP, SSH and sudo prompts. Wait for BROWSER REVIEW READY.
-   If HOLD occurs, retain the output; do not switch ports or restart blindly.
+6. A native file picker opens C:\LOR\ImportExport. Select the new local
+   Rotary-Trees Revision58 export. This only stages a copy; it does not alter
+   the master. Respond to the SCP, SSH and sudo prompts.
+   Wait for BROWSER REVIEW READY. Keep this PowerShell window open.
 7. Open http://127.0.0.1:8898/lor2db/ manually. Confirm the yellow DISPOSABLE
    CATALOG REVIEW banner. Select Review and Update Official Catalog once.
    Expect unchanged-source registration. Do not publish yet.
-8. Open http://127.0.0.1:8898/review/ . Select your new locally exported
-   MSB-Rotary-Trees .lorprev and click Copy export into disposable master.
-   This writes ONLY the copied folder inside this temporary review.
+8. Open http://127.0.0.1:8898/review/ . Check the actual selected local source
+   path and the DISPOSABLE destination. Check the confirmation and select
+   Copy selected export into disposable master. Expect a Copy complete page.
+   This is a normal form submission, not a JavaScript file upload.
 9. Return to the LOR2DB tab and select Review and Update Official Catalog again.
    Inspect the changed file and eight MasterDimmable True -> False entries.
    If any other unexpected contract change blocks publication, retain the

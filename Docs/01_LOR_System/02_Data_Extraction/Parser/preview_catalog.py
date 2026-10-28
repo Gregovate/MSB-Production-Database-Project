@@ -178,7 +178,7 @@ class Catalog:
                         database_contract_review_required=bool(protected), reviewed_by=actor)
         proposal_id = digest(proposal)
         self.write(directory / 'reviews' / (proposal_id + '.json'), proposal)
-        return dict(review_id=proposal_id, changes=changes, database_contract_review_required=bool(protected),
+        return dict(review_id=proposal_id, changes=changes, source_folder=str(self.folder), catalog_evidence_folder=str(self.root), database_contract_review_required=bool(protected),
                     can_publish=not protected, master_digest=proposal['source_manifest_sha256'],
                     baseline_run_id=accepted['run_id'], parent_publication_id=parent)
 

@@ -630,3 +630,33 @@ browser log in the same foreground SSH output; expected startup connection
 retries are quiet. Existing PowerShell window should be used with process-only
 -ExecutionPolicy Bypass, not an unsigned direct invocation. r2 review archive is
 new and immutable; do not overwrite the first artifact.
+
+
+## Review r3 — native source selection and explicit copy confirmation
+
+Greg's actual r2 browser registered unchanged Run32 master digest c21e0287...
+successfully. The browser-only export simulation then reported Failed to fetch;
+that message alone does not establish connection/tunnel/CORS/server root cause.
+No catalog publication acceptance is claimed. Do not diagnose a master edit.
+
+Browser APIs cannot force arbitrary C:\LOR\ImportExport as their first folder.
+The engineering wrapper now uses native Windows OpenFileDialog with that initial
+directory, stages selected bytes plus full source path/hash as two reserved ZIP
+entries, and verifies captured bytes against the selected local file. It does
+not write the local export or G:. Existing approved master copy remains separate
+and must still match accepted parser digest. Native dialog actual Windows
+acceptance remains pending; wrapper ZIP/evidence tests use an explicit fixture
+path and fake SCP/SSH, not a real Windows GUI.
+
+The disposable page shows the actual source, reference master destination and
+exact isolated copy path, with an explicit acknowledgement. It submits a plain
+HTML form (no JS fetch/file upload), uses the preselected hash-verified bytes,
+and returns styled success/HTTP error pages. Copy is atomic under the existing
+runner operation lock. Baseline registration and protected catalog review gates
+remain. This removes the opaque fetch interaction, not a proven fix for the
+unknown original transport failure. Keep the SSH review window open throughout.
+
+Publisher review includes source/evidence destination folders. Approval checkbox
+uses existing flex confirmation style. No change to real direct-to-master export
+workflow: this picker/copy UI is engineering review only, not a required upload
+for Production publishing. Production source/DB/master/PC remain unchanged.

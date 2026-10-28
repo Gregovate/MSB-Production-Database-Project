@@ -40,6 +40,7 @@ cleanup() {
     exit "$result"
 }
 trap cleanup EXIT HUP INT TERM
+echo "Review evidence directory: $root"
 chmod 700 "$root"
 umask 077
 git -C "$repo" worktree add --detach "$root/source" "$sha" >/dev/null
@@ -158,8 +159,8 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$port/lo
 echo 'BROWSER REVIEW READY: http://127.0.0.1:8898/lor2db/'
 echo 'Disposable clone only. Actual Cloudflare/PC handoff is not accepted by this review.'
 if [[ -n "$input_zip" ]]; then
-    echo 'CATALOG REVIEW: unchanged accepted master copies + disposable DB/evidence only.'
-    echo 'Review unchanged catalog first; then http://127.0.0.1:8898/review/ to upload your changed local export.'
+    echo 'CATALOG REVIEW r3: unchanged accepted master copies + disposable DB/evidence only.'
+    echo 'Review unchanged catalog first; then http://127.0.0.1:8898/review/ to confirm/copy your preselected local export.'
     echo 'Return to LOR2DB to review/publish the disposable catalog. Do not install/launch the PC updater.'
 else
     echo 'Inspect shared landing/status and the PC entry. Do not install/launch the PC updater.'

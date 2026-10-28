@@ -26,7 +26,11 @@ with tempfile.TemporaryDirectory() as temp:
         source_manifest_sha256=hashlib.sha256(json.dumps([{'filename':'Test.lorprev','sha256':hashlib.sha256((original/'Test.lorprev').read_bytes()).hexdigest()}],ensure_ascii=False,separators=(',',':')).encode('utf-8')).hexdigest(),previews=[{k:files[0][k] for k in ('filename','preview_id','name','revision')}],
         run_id=32,import_run_id=74,preview_count=1,source_sqlite_sha256='b'*64,report_sha256='c'*64,report_url='report')
     archive=root/'master.zip'
-    with zipfile.ZipFile(archive,'w') as out:out.write(original/'Test.lorprev','Test.lorprev')
+    changed=raw.replace('MasterDimmable="True"','MasterDimmable="False"').replace('Revision="57"','Revision="58"')
+    with zipfile.ZipFile(archive,'w') as out:
+        out.write(original/'Test.lorprev','Test.lorprev')
+        out.writestr('__review_input/proposed.lorprev',changed.encode())
+        out.writestr('__review_input/source.json',json.dumps({'source_path':r'C:\LOR\ImportExport\Test.lorprev','filename':'Test.lorprev','sha256':hashlib.sha256(changed.encode()).hexdigest()}))
     workspace=root/'workspace';workspace.mkdir()
     app,service=preview.configure(archive,workspace,accepted)
     conn=MagicMock();conn.cursor.return_value.__enter__.return_value.fetchone.return_value={'role_name':'Production Crew'}
@@ -37,7 +41,12 @@ with tempfile.TemporaryDirectory() as temp:
     def post(path,**kwargs):return client.post(path,headers=origin,environ_overrides=local,**kwargs)
     try:
         assert client.get('/lor2db/catalog.js',environ_overrides=local).status_code==200
-        assert client.get('/review/',environ_overrides=local).status_code==200
+        confirmation=client.get('/review/',environ_overrides=local)
+        assert confirmation.status_code==200
+        assert r'C:\LOR\ImportExport\Test.lorprev' in confirmation.text
+        assert 'DISPOSABLE COPY of' in confirmation.text and str(workspace) in confirmation.text
+        assert 'fetch(' not in confirmation.text
+        assert post('/review/export',data={}).status_code==400
         assert post('/lor2db/preflight/api/parser/run',json={}).status_code==403
         assert post('/lor2db/preflight/api/runs/32/finish',json={}).status_code==403
         assert client.post('/lor2db/preflight/api/catalog/review',json={},environ_overrides=local).status_code==403
@@ -46,8 +55,9 @@ with tempfile.TemporaryDirectory() as temp:
         first=post('/lor2db/preflight/api/catalog/review',json={})
         assert first.status_code==200,first.text
         assert first.json['can_publish']
-        changed=raw.replace('MasterDimmable="True"','MasterDimmable="False"').replace('Revision="57"','Revision="58"')
-        assert post('/review/export',data=changed,content_type='application/xml').status_code==200
+        copied=post('/review/export',data={'confirm_copy':'yes'})
+        assert copied.status_code==200,copied.text
+        assert 'Copy complete.' in copied.text and r'C:\LOR\ImportExport\Test.lorprev' in copied.text
         stale=post('/lor2db/preflight/api/catalog/publish',json={'review_id':first.json['review_id'],'confirm_publish':True})
         assert stale.status_code==409,stale.text
         second=post('/lor2db/preflight/api/catalog/review',json={})

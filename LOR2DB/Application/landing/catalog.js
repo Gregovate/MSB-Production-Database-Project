@@ -31,7 +31,7 @@
       status.textContent = proposal.can_publish
         ? 'Review ready. Publication updates preview distribution evidence only; no database ingest.'
         : 'STOP: changes outside the permitted preview metadata require database-contract review. Nothing published.';
-      const lines = ['Database baseline: Run ' + proposal.baseline_run_id, 'Reviewed master digest: ' + proposal.master_digest];
+      const lines = ['Source master folder: ' + (proposal.source_folder || 'Not reported'), 'Catalog evidence destination: ' + (proposal.catalog_evidence_folder || 'Not reported'), '', 'Database baseline: Run ' + proposal.baseline_run_id, 'Reviewed master digest: ' + proposal.master_digest];
       for (const change of proposal.changes) {
         lines.push('', change.filename, change.database_contract_review_required ? 'Database-contract review required' : 'Preview metadata / presentation change');
         for (const item of change.metadata_changes) lines.push(item.prop_id + ' · ' + item.field + ': ' + JSON.stringify(item.before) + ' → ' + JSON.stringify(item.after));

@@ -1,6 +1,6 @@
 # Engineering-only disposable review. Copies existing master exports; never writes G:.
 [CmdletBinding()]
-param([string]$MasterFolder='')
+param([string]$MasterFolder='', [string]$ProposedExport='')
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $meta=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'SOURCE.json') -Raw | ConvertFrom-Json
@@ -15,6 +15,29 @@ $folder=Get-Item -LiteralPath $MasterFolder
 if (-not $folder.PSIsContainer -or $folder.Name -notmatch '^Database Previews V[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Expected the exact accepted versioned master folder' }
 $probe=New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback,8898)
 try { $probe.Start() } catch { throw 'HOLD: local review port 8898 is in use' } finally { $probe.Stop() }
+if (-not $ProposedExport) {
+    # Browsers cannot force an arbitrary Windows picker path. Use the existing
+    # engineering launcher's native picker so the actual source path is known.
+    if (-not (Test-Path -LiteralPath 'C:\LOR\ImportExport' -PathType Container)) { throw 'Required local export folder C:\LOR\ImportExport is missing' }
+    if ([Threading.Thread]::CurrentThread.GetApartmentState() -ne [Threading.ApartmentState]::STA) { throw 'Use powershell.exe -STA for the native file picker' }
+    Add-Type -AssemblyName System.Windows.Forms
+    $picker=New-Object System.Windows.Forms.OpenFileDialog
+    $picker.InitialDirectory='C:\LOR\ImportExport'
+    $picker.Title='Select your new preview for DISPOSABLE catalog review'
+    $picker.Filter='Light-O-Rama preview (*.lorprev)|*.lorprev'
+    $picker.CheckFileExists=$true; $picker.Multiselect=$false; $picker.RestoreDirectory=$true
+    try {
+        if ($picker.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { throw 'Review cancelled before transfer' }
+        $ProposedExport=$picker.FileName
+    } finally { $picker.Dispose() }
+}
+$proposed=Get-Item -LiteralPath $ProposedExport
+if ($proposed.PSIsContainer -or $proposed.Extension -ine '.lorprev' -or $proposed.Length -gt 16777216) { throw 'Select one .lorprev export no larger than 16 MB' }
+$proposedBytes=[IO.File]::ReadAllBytes($proposed.FullName)
+$hasher=[Security.Cryptography.SHA256]::Create()
+try { $proposedHash=([BitConverter]::ToString($hasher.ComputeHash($proposedBytes))).Replace('-','').ToLowerInvariant() } finally { $hasher.Dispose() }
+if ((Get-FileHash -LiteralPath $proposed.FullName -Algorithm SHA256).Hash -ine $proposedHash) { throw 'Selected export changed while being copied' }
+$sourceMetadata=@{source_path=$proposed.FullName;filename=$proposed.Name;sha256=$proposedHash} | ConvertTo-Json
 Add-Type -AssemblyName System.IO.Compression
 $token=[guid]::NewGuid().ToString('N')
 $zip=Join-Path ([IO.Path]::GetTempPath()) ("msb299-catalog-$token.zip")
@@ -31,6 +54,12 @@ try {
             $entry=$archive.CreateEntry($file.Name,[IO.Compression.CompressionLevel]::Optimal)
             $output=$entry.Open()
             try { $bytes=[IO.File]::ReadAllBytes($file.FullName); $output.Write($bytes,0,$bytes.Length) } finally { $output.Dispose() }
+        }
+        $selected=@{'__review_input/proposed.lorprev'=$proposedBytes;'__review_input/source.json'=[Text.Encoding]::UTF8.GetBytes($sourceMetadata)}
+        foreach ($name in $selected.Keys) {
+            $entry=$archive.CreateEntry($name,[IO.Compression.CompressionLevel]::Optimal)
+            $output=$entry.Open()
+            try { $data=[byte[]]$selected[$name]; $output.Write($data,0,$data.Length) } finally { $output.Dispose() }
         }
     } finally { $archive.Dispose(); $stream.Dispose() }
     # One transfer then one foreground SSH session. No interactive output pipeline.

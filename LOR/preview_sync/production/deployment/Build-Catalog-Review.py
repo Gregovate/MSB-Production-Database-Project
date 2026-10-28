@@ -12,7 +12,7 @@ if subprocess.check_output(['git','status','--porcelain'],cwd=ROOT).strip():
 commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
 files={name:(SOURCE/name).read_bytes() for name in ('Review-LOR2PC-Catalog.ps1','review_clone.sh','READ ME - Catalog Review.txt')}
 files['SOURCE.json']=(json.dumps(dict(source_commit=commit,files={name:hashlib.sha256(raw).hexdigest() for name,raw in files.items()}),indent=2)+'\n').encode()
-output=ROOT/'LOR/preview_sync/artifacts/LOR2PC-Catalog-Review-1.1.0-r2.zip'
+output=ROOT/'LOR/preview_sync/artifacts/LOR2PC-Catalog-Review-1.1.0-r3.zip'
 if output.exists(): raise SystemExit('BLOCK: do not overwrite immutable review archive')
 with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as archive:
     for name,raw in sorted(files.items()):
