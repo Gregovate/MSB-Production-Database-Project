@@ -754,6 +754,8 @@ The prior Windows 10 Show PC used a discrete NVIDIA GeForce GT 710 and did not e
 
 The integrated graphics configuration is **not accepted for the production Show PC**.
 
+A subsequent large-sequence test escalated from lag to an operational hang: Light-O-Rama playback could not be stopped and the Windows UI stopped responding for minutes. This is a **failed performance/operability acceptance condition**. Do not use the large production sequence on integrated Intel graphics again except for controlled comparison testing after recovery.
+
 A discrete GPU is required before final Show PC acceptance. The permanent GPU must:
 
 - be supported on Windows 11;
