@@ -766,6 +766,39 @@ The old GeForce GT 710 may be useful only as a temporary comparison/test device.
 
 After installing the permanent GPU, repeat the same large-sequence performance test and record GPU utilization and operator acceptance.
 
+### PCIe slot plan for the current hardware
+
+The P2 Tower Gen 2 provides:
+
+```text
+Slot 1: PCIe x16, full-height, double-width, 75 W
+Slot 2: PCIe x1, full-height, half-length, 25 W
+Slot 3: PCIe x16 physical / x4 electrical, full-height, half-length, 25 W
+Slot 4: PCIe x1, full-height, half-length, 25 W
+```
+
+For the planned/installed Show PC cards, use:
+
+```text
+Slot 1: MSI GeForce RTX 3050 LP 6G OC
+        - dual-slot card; physically occupies Slot 1 + Slot 2 space
+        - 70 W, no auxiliary PCIe power required
+
+Slot 3: Intel I350-T4 quad-port Ethernet adapter
+        - PCIe x4
+        - single-slot
+        - dedicated E1.31 expansion
+
+Slot 4: Creative Sound BlasterX AE-5 Plus
+        - PCIe x1
+        - single-slot
+        - dedicated broadcast audio
+```
+
+If the sound card is currently installed in Slot 2, move it to Slot 4 before installing the RTX 3050, because the GPU's dual-slot cooler/bracket uses the Slot 2 physical space.
+
+This arrangement leaves all three required expansion functions installed simultaneously: discrete graphics, quad-port E1.31 networking, and dedicated audio.
+
 ---
 
 ## 13. Remaining Setup Steps
