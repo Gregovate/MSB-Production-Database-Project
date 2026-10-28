@@ -486,3 +486,45 @@ preview libraries remain untouched; next operator gate is review then Cancel.
 Startup and review window captions display application version and release date;
 review heading repeats both. Logs record release date separately from run time.
 This identifies the installed PC runtime independently of the website version.
+
+
+## Candidate 1.0.9 — preserve local presentation preferences
+
+Greg's controlled exported-file experiment confirms root PreviewClass.Brightness
+7 -> 0 is the ONLY structural difference after adjusting background-image
+brightness; Revision58, props, scenes and MasterDimmable flags remain identical.
+The official LOR background-image brightness help also documents changes from
+the Playback Window. LastSelectedSceneId is local scene selection, distinct
+from scene definition/membership. These local preferences must not block PC
+preview distribution or force a publication/ingest.
+
+PC substantive hashing and explanatory diff now exclude only unqualified root
+Brightness and LastSelectedSceneId (plus existing root Revision metadata).
+Accepted-source captured-byte folder digest, identity, inventory and evidence
+checks are unchanged; changing those values in MASTER still invalidates the
+accepted master digest. No #81/source digest algorithm change is involved.
+CSV Presentation_Details records local/master differences independently of
+controlled diff, including attribute absence. NOOP retains the exact local
+fragment. Substantive replacement merges only these two local root preferences
+into accepted content, verifies identity and accepted PC semantic hash, and
+preserves unmanaged fragments. Revision alignment operates on local content and
+therefore also retains preferences. Missing local preference attributes remain
+absent. ADD uses the accepted preview because no local preference exists.
+
+Descendant brightness, MasterDimmable, dimming curves, channel names, wiring,
+identity, scenes and membership remain controlled PC-distribution content.
+This does not mean every such change requires DB ingest: database-contract
+impact and preview publication remain separate #81 work. Greg's later eight
+HW-Flood MasterDimmable=False edits are deliberate playback changes and still
+compare against accepted True flags. Do not apply that reversal without explicit
+review. No preview-only publication implementation or automatic app update check
+is claimed in 1.0.9.
+
+Evidence: actual laptop 1.0.8 APPLIED (2 replace/0 add/unmanaged8, installed hash
+matches reviewed candidate) followed by nonzero repeat due preferences. Native
+1.0.9 retest remains pending. Tests cover exact-byte NOOP, separate preference
+report, real dimming replacement plus preference preservation, unchanged
+unmanaged bytes, zero repeat, descendant brightness/scene edits, attribute
+absence, Revision alignment, mismatched IDs, and unchanged source digest gates.
+No Production source promotion, DB ingest, website deployment or PC apply was
+performed while implementing this fix.

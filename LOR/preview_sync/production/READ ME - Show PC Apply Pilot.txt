@@ -1,4 +1,4 @@
-MSB PC Preview Updater 1.0.8 - controlled live test
+MSB PC Preview Updater 1.0.9 - controlled live test
 General programmer distribution is not yet accepted.
 
 Install and apply only on the PC explicitly approved by the MSB administrator.

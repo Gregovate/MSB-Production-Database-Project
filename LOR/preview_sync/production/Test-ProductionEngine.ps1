@@ -141,3 +141,38 @@ Check ($cancelLog -eq $firstLog -and $text.Contains('REVIEW_PREPARED') -and $tex
 $script:SessionLogPath=$null
 $nextLog=Write-SharedLog -Report $logReport -Build $build -Result 'REVIEW_PREPARED'
 Check ($nextLog -ne $firstLog -and (Test-Path $reportCopy)) 'next launch retains prior run evidence under unique name'
+
+# Root viewing preferences are local; all authored descendants remain controlled.
+$viewMaster='<PreviewClass id="view" Name="View" Revision="58" Brightness="20" LastSelectedSceneId=""><Scene id="s" Name="Scene"/><PropClass id="prop" Comment="HW-Flood-01" MasterDimmable="True" Brightness="100" ChannelGrid="Regular,1C,1,3"/></PreviewClass>'
+$viewLocal=$viewMaster.Replace('Brightness="20"','Brightness="0"').Replace('LastSelectedSceneId=""','LastSelectedSceneId="s"')
+$viewRecords=@{view=(Get-PreviewRecord $viewMaster 'View.lorprev')}
+$viewPath=Join-Path $fixture 'view.xml'
+[IO.File]::WriteAllText($viewPath,"<root>$personal$viewLocal</root>")
+$viewBuild=Build-SyncCandidate -MasterRecords $viewRecords -LocalPath $viewPath -ProgressWindow $null
+Check ($viewBuild.Rows[0].Action -eq 'NOOP' -and $viewBuild.Candidate -ceq [IO.File]::ReadAllText($viewPath)) 'presentation-only differences preserve exact local bytes and require no replacement'
+Check ($viewBuild.Rows[0].Presentation_Details.Contains('Brightness') -and $viewBuild.Rows[0].Presentation_Details.Contains('LastSelectedSceneId') -and $viewBuild.Rows[0].Review_Diff -eq '') 'presentation differences are reported separately from controlled diff'
+$editedView=$viewLocal.Replace('MasterDimmable="True"','MasterDimmable="False"')
+[IO.File]::WriteAllText($viewPath,"<root>$personal$editedView</root>")
+$viewBuild=Build-SyncCandidate -MasterRecords $viewRecords -LocalPath $viewPath -ProgressWindow $null
+$merged=[regex]::Matches($viewBuild.Candidate,$PreviewBlockPattern,$RegexOptions)[1].Value
+Check ($viewBuild.Rows[0].Action -eq 'REPLACE_IN_CANDIDATE' -and $viewBuild.Rows[0].Review_Diff.Contains('MasterDimmable')) 'real prop master-dimming change still requires reviewed replacement'
+Check ($merged.Contains('Brightness="0"') -and $merged.Contains('LastSelectedSceneId="s"') -and $merged.Contains('MasterDimmable="True"') -and $viewBuild.Candidate.Contains($personal)) 'content replacement preserves local preferences and unmanaged bytes while installing accepted prop settings'
+[IO.File]::WriteAllText($viewPath,$viewBuild.Candidate)
+$viewRepeat=Build-SyncCandidate -MasterRecords $viewRecords -LocalPath $viewPath -ProgressWindow $null
+Check ((Get-ActionCounts $viewRepeat.Rows).Replace -eq 0 -and (Get-ActionCounts $viewRepeat.Rows).Add -eq 0) 'repeat with retained viewing preferences requires zero additions and replacements'
+$descendant=$viewMaster.Replace('Brightness="100"','Brightness="50"')
+Check ((Get-PreviewRecord $descendant 'child').SemanticHash -ne (Get-PreviewRecord $viewMaster 'master').SemanticHash) 'descendant brightness remains controlled'
+$sceneEdit=$viewLocal.Replace('Name="Scene"','Name="Different Scene"')
+Check ((Get-PreviewRecord $sceneEdit 'scene').SemanticHash -ne (Get-PreviewRecord $viewMaster 'master').SemanticHash) 'scene definition change remains controlled despite selected-scene preference exclusion'
+$absent='<PreviewClass id="view" Name="View" Revision="58"><Scene id="s" Name="Scene"/><PropClass id="prop" Comment="HW-Flood-01" MasterDimmable="False" Brightness="100" ChannelGrid="Regular,1C,1,3"/></PreviewClass>'
+$absentMerge=[MSBPreviewSemantic]::PreservePresentation($absent,$viewMaster)
+Check (-not $absentMerge.Contains('Brightness="20"') -and -not $absentMerge.Contains('LastSelectedSceneId=')) 'missing local preference attributes remain absent during replacement'
+$alignedView=[MSBPreviewSemantic]::MatchMasterRevision($viewLocal.Replace('Revision="58"','Revision="99"'),$viewMaster)
+Check ($alignedView.Contains('Revision="58"') -and $alignedView.Contains('Brightness="0"') -and $alignedView.Contains('LastSelectedSceneId="s"')) 'optional Revision alignment preserves local viewing preferences'
+Blocks {[MSBPreviewSemantic]::PreservePresentation($viewLocal.Replace('id="view"','id="other"'),$viewMaster)} 'preference merge blocks mismatched preview identity'
+$viewFolder=Join-Path $fixture 'view-master';[void][IO.Directory]::CreateDirectory($viewFolder)
+$viewFile=Join-Path $viewFolder 'View.lorprev';[IO.File]::WriteAllText($viewFile,$viewMaster)
+$digestBefore=(Get-MasterRecords -Folder $viewFolder -ProgressWindow $null).SourceStateSha256
+[IO.File]::WriteAllText($viewFile,$viewLocal)
+$digestAfter=(Get-MasterRecords -Folder $viewFolder -ProgressWindow $null).SourceStateSha256
+Check ($digestBefore -ne $digestAfter) 'accepted-master byte digest still detects presentation edits to master'

@@ -37,7 +37,7 @@ def landing(): return send_from_directory(ROOT/'LOR2DB/Application/landing', 'in
 @static.get('/lor2db/<path:name>')
 def asset(name):
     if name == 'pc/': name = 'pc/index.html'
-    if name not in {'lor2db.js','lor2db.css','pc/index.html','pc/handoff.js','pc/downloads/MSB-PC-Preview-Updater-1.0.8-pilot.zip'}:
+    if name not in {'lor2db.js','lor2db.css','pc/index.html','pc/handoff.js','pc/downloads/MSB-PC-Preview-Updater-1.0.9-pilot.zip'}:
         return Response('Unavailable in disposable read-only review', 404)
     return send_from_directory(ROOT/'LOR2DB/Application/landing', name)
 

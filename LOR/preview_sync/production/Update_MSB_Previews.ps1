@@ -1,4 +1,4 @@
-# MSB LOR Preview Sync - Production Candidate v1.0.8
+# MSB LOR Preview Sync - Production Candidate v1.0.9
 # Programmer-facing MASTER -> LOCAL synchronization tool.
 #
 # Normal operators launch this through:
@@ -8,7 +8,7 @@
 # - gets the latest COMPLETED source through the authenticated LOR2PC browser handoff;
 # - validates the exact versioned master folder recorded by that report and blocks post-run source drift;
 # - compares controlled previews by PreviewClass.id and substantive content;
-# - ignores revision-only differences;
+# - preserves root background brightness/selected scene; ignores revision-only differences;
 # - preserves all personal/unmanaged PreviewClass blocks byte-for-byte;
 # - requires acknowledgement before overwriting substantively different local MSB previews;
 # - backs up the local LORPreviews.xml before apply;
@@ -61,7 +61,7 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 # Compile the semantic PreviewClass reader once per launch. It implements the
-# same comparison contract as the original PowerShell code: root Revision is
+# same comparison contract as the original PowerShell code: root Revision and local viewing preferences are
 # ignored, attributes are compared independent of ordering, whitespace-only
 # text is ignored, and all substantive element/text content is hashed.
 Add-Type -ReferencedAssemblies @('System.Xml.dll','System.Core.dll') -TypeDefinition @'
@@ -81,6 +81,42 @@ public sealed class MSBPreviewInfo
 
 public static class MSBPreviewSemantic
 {
+    // PC comparison only. Accepted-source byte digest never uses this exclusion.
+    // Match exact unqualified preference attributes; never ignore descendant
+    // brightness/output fields, scene definitions, or prop dimming settings.
+    private static bool IsLocalMetadata(XmlAttribute attr)
+    {
+        return String.Equals(attr.Name, "Revision", StringComparison.OrdinalIgnoreCase) ||
+            attr.Name == "Brightness" || attr.Name == "LastSelectedSceneId";
+    }
+
+    public static string PresentationDetails(string local, string master)
+    {
+        XmlElement before = ReadReview(local), after = ReadReview(master);
+        List<string> notes = new List<string>();
+        foreach (string name in new string[] { "Brightness", "LastSelectedSceneId" }) {
+            if (before.HasAttribute(name) != after.HasAttribute(name) || before.GetAttribute(name) != after.GetAttribute(name))
+                notes.Add(name + ": PC " + (before.HasAttribute(name) ? ReviewValue(before.GetAttribute(name)) : "(absent)") +
+                    "; master " + (after.HasAttribute(name) ? ReviewValue(after.GetAttribute(name)) : "(absent)") + "; local preference preserved.");
+        }
+        return String.Join(Environment.NewLine, notes.ToArray());
+    }
+
+    public static string PreservePresentation(string local, string master)
+    {
+        XmlElement before = ReadReview(local), after = ReadReview(master);
+        if (before.GetAttribute("id") != after.GetAttribute("id"))
+            throw new InvalidOperationException("Cannot merge preferences across different PreviewIDs.");
+        foreach (string name in new string[] { "Brightness", "LastSelectedSceneId" }) {
+            if (before.HasAttribute(name)) after.SetAttribute(name, before.GetAttribute(name));
+            else after.RemoveAttribute(name);
+        }
+        string result = after.OuterXml;
+        if (Parse(result, "preference merge").SemanticHash != Parse(master, "accepted merge").SemanticHash)
+            throw new InvalidOperationException("Preference merge changed controlled content.");
+        return result;
+    }
+
     private static void AddToken(StringBuilder builder, string kind, string value)
     {
         if (value == null) value = "";
@@ -101,7 +137,7 @@ public static class MSBPreviewSemantic
             List<XmlAttribute> attrs = new List<XmlAttribute>();
             foreach (XmlAttribute attr in node.Attributes)
             {
-                if (isRoot && String.Equals(attr.LocalName, "Revision", StringComparison.OrdinalIgnoreCase))
+                if (isRoot && IsLocalMetadata(attr))
                     continue;
                 attrs.Add(attr);
             }
@@ -190,7 +226,7 @@ public static class MSBPreviewSemantic
     {
         SortedDictionary<string, string> result = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (XmlAttribute attr in node.Attributes)
-            if (!(root && String.Equals(attr.LocalName, "Revision", StringComparison.OrdinalIgnoreCase)))
+            if (!(root && IsLocalMetadata(attr)))
                 result.Add(attr.Name, attr.Value);
         return result;
     }
@@ -523,7 +559,7 @@ if (Test-Path -LiteralPath $AppIconPath -PathType Leaf) {
 
 $LogFolder = Join-Path $Root 'logs'
 $DeploymentPath = Join-Path $Root 'DEPLOYMENT.json'
-$ApplicationVersion = '1.0.8'
+$ApplicationVersion = '1.0.9'
 $ApplicationReleaseDate = '2026-10-28'
 $script:SessionLogPath = $null
 $CandidateXml = Join-Path $localParent 'LORPreviews.MSB_SYNC_CANDIDATE.xml'
@@ -727,7 +763,7 @@ function Add-SemanticNode {
     if ($Node.Attributes) {
         $attrs = @($Node.Attributes | Sort-Object Name)
         foreach ($attr in $attrs) {
-            if ($IsRoot -and $attr.LocalName -ieq 'Revision') {
+            if ($IsRoot -and ($attr.Name -ieq 'Revision' -or $attr.Name -ceq 'Brightness' -or $attr.Name -ceq 'LastSelectedSceneId')) {
                 continue
             }
             Add-Token $Builder 'A' $attr.LocalName
@@ -1103,6 +1139,7 @@ function Build-SyncCandidate {
                 Review_Details         = 'Add the complete accepted preview. It is not present on this PC.'
                 Database_Impact        = 'New preview; review its display names, prop identities, scenes and wiring.'
                 Review_Diff            = '+ Complete accepted preview (not present on this PC).'
+                Presentation_Details   = ''
             }
             $additions += $approved.Raw
             continue
@@ -1126,7 +1163,7 @@ function Build-SyncCandidate {
             $action = 'ALIGN_REVISION_IN_CANDIDATE'
         }
         if ($action -in @('REPLACE_IN_CANDIDATE','ALIGN_REVISION_IN_CANDIDATE')) {
-            $replacementRaw = $(if ($action -eq 'ALIGN_REVISION_IN_CANDIDATE') { [MSBPreviewSemantic]::MatchMasterRevision($localRecord.Raw, $approved.Raw) } else { $approved.Raw })
+            $replacementRaw = $(if ($action -eq 'ALIGN_REVISION_IN_CANDIDATE') { [MSBPreviewSemantic]::MatchMasterRevision($localRecord.Raw, $approved.Raw) } else { [MSBPreviewSemantic]::PreservePresentation($localRecord.Raw, $approved.Raw) })
             $lineStart = $localText.LastIndexOf("`n", [Math]::Max(0, $block.Start - 1)) + 1
             $indent = $localText.Substring($lineStart, $block.Start - $lineStart)
             if ($indent -notmatch '^\s*$') { $indent = '' }
@@ -1150,6 +1187,7 @@ function Build-SyncCandidate {
             Local_Semantic_Hash    = $localRecord.SemanticHash
             Database_Impact        = $(if ($action -eq 'REPLACE_IN_CANDIDATE') { [MSBPreviewSemantic]::ImpactNotes($localRecord.Raw, $approved.Raw) } else { 'Preview identity and substantive content match the accepted master.' })
             Review_Diff            = $(if ($action -eq 'NOOP') { '' } else { [MSBPreviewSemantic]::UnifiedDiff($localRecord.Raw, $approved.Raw) })
+            Presentation_Details   = [MSBPreviewSemantic]::PresentationDetails($localRecord.Raw, $approved.Raw)
             Review_Details         = $(if ($action -eq 'REPLACE_IN_CANDIDATE') { [MSBPreviewSemantic]::DescribeChanges($localRecord.Raw, $approved.Raw) } else { '' })
         }
     }
@@ -1516,7 +1554,8 @@ function Show-ReviewDialog {
         $details.Clear()
         $notes=[string]$row.Database_Impact
         $text='Database review: '+$notes+"`r`n`r`n--- This PC`r`n+++ Accepted master`r`n"+[string]$row.Review_Diff
-        if ([string]::IsNullOrWhiteSpace([string]$row.Review_Diff)) { $text += 'No differences.' }
+        if ([string]::IsNullOrWhiteSpace([string]$row.Review_Diff)) { $text += 'No controlled-content differences.' }
+        if (-not [string]::IsNullOrWhiteSpace([string]$row.Presentation_Details)) { $text += "`r`n`r`nLocal viewing preferences (no update required):`r`n" + $row.Presentation_Details }
         $details.Text=$text
         foreach ($match in [regex]::Matches($text,'(?m)^[+-].*$')) {
             $details.Select($match.Index,$match.Length)
@@ -1536,6 +1575,7 @@ function Show-ReviewDialog {
                 'ADD_IN_CANDIDATE' {'Add preview'}
                 'ALIGN_REVISION_IN_CANDIDATE' {'Match Revision'}
                 'NOOP_REVISION_ONLY' {'Revision only - no action'}
+                'NOOP' {if ($row.Presentation_Details) {'Current - local preferences preserved'} else {'Current'}}
                 default {'Current'}
             }
             $i=$grid.Rows.Add([object[]]@([string]$row.Approved_Filename,$action,[string]$row.Local_Revision,[string]$row.Approved_Revision))
@@ -1675,6 +1715,7 @@ function Write-SharedLog {
     @(
         'MSB LOR Preview Sync'
         "Application version: $ApplicationVersion"
+        'PC comparison policy: root Revision metadata; root Brightness/LastSelectedSceneId local preferences; all other content controlled'
         "Release date: $ApplicationReleaseDate"
         "Application commit: $script:SourceCommit"
         "Timestamp: $(Get-Date -Format o)"
