@@ -660,3 +660,36 @@ Publisher review includes source/evidence destination folders. Approval checkbox
 uses existing flex confirmation style. No change to real direct-to-master export
 workflow: this picker/copy UI is engineering review only, not a required upload
 for Production publishing. Production source/DB/master/PC remain unchanged.
+
+
+## Publication closeout and source-release preparation
+
+Actual r3 browser publication succeeded: local Rotary-Trees58, eight dimming
+flags, reviewed digest e93a363ee254f5bf2c6579bd3b40a093f29a4246bcb5be917a2fa7374f1b698,
+disposable catalog c8365550d72f727f710ec4323f462b1ba3cd0b3d6d59feaba75017c8bbed274b.
+Retained /tmp/msb-lor2pc-review.sSBiAAiP; cleanup still pending user closeout.
+No real source/DB/PC changes. Native picker/source/destination/copy/approval
+workflow proven for that one preview. Multi-preview native acceptance not claimed.
+
+Completion UX corrected: prominent green publication-complete region receives
+focus, states disposable vs real scope, changed-preview count and no-ingest
+outcome. Receipt retains actor/time/catalog/master digest/database baseline.
+Old review detail is hidden and approval resets. A no-change review after an
+existing publication cannot create another redundant catalog, and reports the
+current parent rather than incorrectly saying initial registration is ready.
+Three-preview disposable test proves one batch and whole-batch rejection if one
+protected wiring change appears. This is automated proof, not a native batch PASS.
+
+Deployment gap corrected in root run_lor_runner.ps1: the existing task now reads
+private per-profile catalog-settings.json on every Start, independently of any
+interactive environment. Missing/disabled config clears catalog authority;
+enabled config validates schema/publishers/local evidence path and Windows write
+ACLs/reparse points before setting process-only values. Token/PG credential/task
+identity and existing parser/checker/ingest paths remain unchanged. Functions-only
+Linux checks pass; actual Print Service profile ACL/start/restart remain gates.
+
+Server Management owns new read-only preflight and source-only rollback plan.
+Collect current live backend/source hashes, current accepted evidence and paired
+runner version/activity before pinning production mutation. No old comparison
+migration deploy runner reuse; no maintenance fence/DB migration is needed.
+Do not make Greg repeat the same disposable single-preview publication test.

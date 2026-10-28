@@ -125,4 +125,28 @@ class CatalogTests(unittest.TestCase):
         (self.folder/'Rotary.lorprev').write_bytes(raw.encode('utf-8'))
         self.assertEqual(source_digest(capture(self.folder)),'f0b1d09d14ed4e5438f010e8fb69c096339dd97f4a44acbbee3cb6859d61fe18')
 
+    def test_three_preview_batch_and_atomic_rejection(self):
+        for index in (2,3):
+            (self.folder/('Test'+str(index)+'.lorprev')).write_text(RAW.replace('id="preview"','id="preview'+str(index)+'"'))
+        files=capture(self.folder)
+        self.accepted.update(preview_count=3,source_manifest_sha256=actual_parser_digest(self.folder),
+                             previews=[{k:f[k] for k in ('filename','preview_id','name','revision')} for f in files])
+        self.register()
+        for path in self.folder.glob('*.lorprev'):
+            path.write_text(path.read_text().replace('MasterDimmable="True"','MasterDimmable="False"'))
+        review=self.register()
+        self.assertTrue(review['can_publish']);self.assertEqual(len(review['changes']),3)
+        published=self.catalog.publish(self.accepted,self.actor,review['review_id'])
+        self.assertEqual(len(published['previews']),3)
+        self.assertEqual(published['source_manifest_sha256'],actual_parser_digest(self.folder))
+        current=self.register()
+        self.assertFalse(current['can_publish']);self.assertEqual(current['changes'],[])
+        # One protected edit rejects the entire next batch, never a subset.
+        for path in self.folder.glob('*.lorprev'):
+            path.write_text(path.read_text().replace('MasterDimmable="False"','MasterDimmable="True"'))
+        self.file.write_text(self.file.read_text().replace('Regular,1C,1,3','Aux A,1C,1,3'))
+        blocked=self.register();self.assertFalse(blocked['can_publish'])
+        with self.assertRaises(ValueError):self.catalog.publish(self.accepted,self.actor,blocked['review_id'])
+        self.assertEqual(self.catalog.current(self.accepted),published)
+
 if __name__=='__main__':unittest.main()

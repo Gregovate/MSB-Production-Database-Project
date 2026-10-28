@@ -78,3 +78,7 @@ dialog::backdrop { background: #0008; }
   .page-header, .card-title { align-items: flex-start; }
   .facts { grid-template-columns: 1fr; }
 }
+
+.catalog-complete { margin:18px 0; padding:20px; border:2px solid #267349; border-radius:8px; background:#ecf8f0; }
+.catalog-complete h2 { margin-top:0; color:#185b36; }
+.catalog-complete[hidden] { display:none; }

@@ -95,7 +95,7 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertIn("READINESS TIMEOUT", source)
         self.assertIn("$state = Wait-RunnerPrerequisites", source)
         self.assertIn("$ProductionSqlitePath", source)
-        self.assertIn("Starting runner V1.7.2", source)
+        self.assertIn(f"Starting runner {runner_module.RUNNER_VERSION}", source)
 
     def test_http_access_log_uses_stdout_not_stderr(self) -> None:
         """A successful request must not become a PowerShell native error."""

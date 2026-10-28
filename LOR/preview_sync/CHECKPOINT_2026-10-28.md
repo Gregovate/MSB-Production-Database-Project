@@ -102,3 +102,21 @@ Use the new immutable1.1.0-r3 review archive. Retain/clean up the active r2 revi
 through its own original SSH Enter prompt before starting another8898 session.
 Normal Production publishing still reads Greg's directly exported master; it
 will not require this disposable engineering file-copy UI.
+
+
+## R3 publication accepted / next production preflight
+
+Actual browser published disposable catalog
+c8365550d72f727f710ec4323f462b1ba3cd0b3d6d59feaba75017c8bbed274b from the one
+Rotary-Trees58 copy and eight master-dimming changes. New digest e93a363e...
+Full evidence path /tmp/msb-lor2pc-review.sSBiAAiP; cleanup output pending.
+Do not claim real G/DB/PC or native batch acceptance. Do not repeat that same
+single-preview test merely to fix visible completion feedback.
+
+Completion now prominent/scope-aware with receipt; duplicate unchanged publication
+blocked; automated three-preview batch and protected whole-batch rejection PASS.
+New persistent private catalog-settings.json import in existing root launcher
+fixes future-task environment gap; native profile ACL/restart proof pending.
+Source-only production rollout requires read-only Server Management preflight
+for current live hashes/paired runner/activity/accepted source, then exact
+bounded approval. No broad maintenance/migration or old comparison deploy reuse.

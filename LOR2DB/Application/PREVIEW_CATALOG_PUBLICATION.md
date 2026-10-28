@@ -140,3 +140,21 @@ It copies the unchanged master exports read-only, restores a disposable DB clone
 and serves the real catalog API/runner against the copies. Select the local new export in the launcher
 (native picker at C:\LOR\ImportExport), then confirm the copy at /review/; never copy it to G: during this review.
 Only the clone/copies change. Exact steps are in READ ME - Catalog Review.txt.
+
+
+## Persistent Windows launch configuration
+
+The updated repository-root run_lor_runner.ps1 loads
+%LOCALAPPDATA%\MSB\LORRunner\catalog-settings.json each Start. Configuration:
+{"schema_version":1,"enabled":true,"publishers":["gliebig@sheboyganlights.org"]}.
+Use the explicitly approved account; this example does not grant anyone access.
+Evidence is fixed at preview-catalog below that same local profile directory.
+The release installer must provision protected settings/evidence ACLs first.
+No ambient interactive environment is accepted as persistent catalog authority.
+Malformed enabled settings, redirected paths or unauthorized writable ACLs block
+runner Start. No changes to existing DPAPI/pairing/task registration are required.
+
+Actual r3 single-preview browser publication passed; completion feedback was
+inadequate and is now a prominent focused receipt panel. Automated three-preview
+batch and whole-batch rejection tests pass. Native batch, Print Service config,
+actual ACL, production Source/Windows/Web/PC and Cloudflare acceptance remain.
