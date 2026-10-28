@@ -71,3 +71,25 @@ Check ((Get-ActionCounts $replaceBuild.Rows).Replace -eq 1 -and $replaceBuild.Ca
 Blocks { Build-SyncCandidate $master.Records $local $null } 'duplicate controlled identity blocks'
 [IO.File]::WriteAllText($local, '<root><PreviewClass id="personal" Name="Rotary-Trees" Revision="1"><Scene /></PreviewClass></root>')
 Blocks { Build-SyncCandidate $master.Records $local $null } 'same controlled name with different local identity blocks'
+
+# Content explanations use actual XML, independently of Revision metadata.
+$before='<PreviewClass id="review" Name="Trees" Revision="99"><PropClass id="keep" Name="Flood" Channel="1" /></PreviewClass>'
+$after='<PreviewClass id="review" Name="Trees" Revision="1"><PropClass id="keep" Name="Flood" Channel="2" />'
+for ($i=0;$i -lt 8;$i++) { $after += '<PropClass id="new'+$i+'" Name="RGB '+$i+'" />' }
+$after+='</PreviewClass>'
+$details=[MSBPreviewSemantic]::DescribeChanges($before,$after)
+Check (([regex]::Matches($details,'Added item:')).Count -eq 8 -and $details.Contains('Channel: "1" -> "2"')) 'review explains actual added props and channel changes'
+Check (-not $details.Contains('Revision')) 'review does not use Revision as a substantive change'
+Check ([MSBPreviewSemantic]::DescribeChanges($before,$before.Replace('Revision="99"','Revision="1"')) -eq '') 'revision-only review has no content differences'
+$ordered='<PreviewClass id="review" Name="Trees"><Scene id="a" /><Scene id="b" /></PreviewClass>'
+$reordered='<PreviewClass id="review" Name="Trees"><Scene id="b" /><Scene id="a" /></PreviewClass>'
+Check ([MSBPreviewSemantic]::DescribeChanges($ordered,$reordered).Contains('Changed item order')) 'review exposes item reordering'
+Check ([MSBPreviewSemantic]::DescribeChanges($after,$before).Contains('Removed item:')) 'review exposes removed props'
+function Test-DeploymentIdentity {return $script:fakeDeployment}
+$script:fakeDeployment=[pscustomobject]@{VerifiedMetadataHash=('a'*64);source_commit=('b'*40);apply_enabled=$true}
+Assert-ReviewedDeployment -ExpectedHash ('a'*64) -ExpectedCommit ('b'*40)
+$script:fakeDeployment.apply_enabled=$false
+Blocks {Assert-ReviewedDeployment -ExpectedHash ('a'*64) -ExpectedCommit ('b'*40)} 'revoked apply permission blocks after review'
+$script:fakeDeployment.apply_enabled=$true
+Blocks {Assert-ReviewedDeployment -ExpectedHash ('c'*64) -ExpectedCommit ('b'*40)} 'changed release metadata blocks after review'
+Blocks {Assert-ReviewedDeployment -ExpectedHash ('a'*64) -ExpectedCommit ('c'*40)} 'changed source commit blocks after review'

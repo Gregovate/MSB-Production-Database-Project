@@ -22,16 +22,16 @@ class ReleaseAssetsTests(unittest.TestCase):
                 self.assertTrue((ROOT / name).is_file())
                 self.assertEqual(subprocess.run(['git', 'ls-files', '--error-unmatch', name], cwd=ROOT, capture_output=True).returncode, 0)
 
-    def test_comparison_only_release_has_both_launcher_and_metadata_guards(self):
+    def test_release_modes_keep_explicit_audit_override_and_opt_in_apply(self):
         self.assertIn('-AuditOnly', (PRODUCTION / 'Install-LOR2PC-Launcher.ps1').read_text())
-        self.assertIn('apply_enabled=False', (PRODUCTION / 'Prepare-LOR2PC-Candidate.py').read_text())
+        self.assertIn("action='store_true'", (PRODUCTION / 'Prepare-LOR2PC-Candidate.py').read_text())
         self.assertIn('$AuditOnly -or -not $prepared.Deployment.apply_enabled',
                       (PRODUCTION / 'Update_MSB_Previews.ps1').read_text())
 
     def test_download_matches_committed_runtime_and_comparison_guards(self):
         page = (ROOT/'LOR2DB/Application/landing/pc/index.html').read_text()
         path = re.search(r'id="install-updater"[^>]*href="([^"]+)"', page).group(1)
-        self.assertEqual(path, 'downloads/MSB-PC-Preview-Updater-1.0.5.zip')
+        self.assertEqual(path, 'downloads/MSB-PC-Preview-Updater-1.0.6-pilot.zip')
         with zipfile.ZipFile(ROOT/'LOR2DB/Application/landing/pc'/path) as archive:
             self.assertIsNone(archive.testzip())
             self.assertEqual(set(archive.namelist()), {'Setup MSB PC Preview Updater.vbs','READ ME Instructions.txt'})
@@ -49,8 +49,9 @@ class ReleaseAssetsTests(unittest.TestCase):
             self.assertEqual(len(names), len(set(names)))
             self.assertTrue(all('/' not in n and '\\' not in n for n in names))
             metadata = json.loads(archive.read('DEPLOYMENT.json'))
-            self.assertFalse(metadata['apply_enabled'])
-            self.assertEqual(metadata['version'], '1.0.5')
+            self.assertIs(metadata['apply_enabled'], True)
+            self.assertEqual(metadata['acceptance'], 'CONTROLLED_APPLY_PILOT')
+            self.assertEqual(metadata['version'], '1.0.6')
             for name, expected in metadata['files'].items():
                 actual = archive.read(name)
                 self.assertEqual(hashlib.sha256(actual).hexdigest(), expected)

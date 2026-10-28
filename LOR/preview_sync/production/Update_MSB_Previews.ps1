@@ -1,4 +1,4 @@
-# MSB LOR Preview Sync - Production Candidate v1.0.5
+# MSB LOR Preview Sync - Production Candidate v1.0.6
 # Programmer-facing MASTER -> LOCAL synchronization tool.
 #
 # Normal operators launch this through:
@@ -142,6 +142,131 @@ public static class MSBPreviewSemantic
                 result.Append(b.ToString("x2"));
             return result.ToString();
         }
+    }
+
+    private static XmlElement ReadReview(string raw)
+    {
+        XmlDocument doc = new XmlDocument();
+        doc.PreserveWhitespace = true;
+        doc.XmlResolver = null;
+        XmlReaderSettings settings = new XmlReaderSettings();
+        settings.DtdProcessing = DtdProcessing.Prohibit;
+        using (XmlReader reader = XmlReader.Create(new System.IO.StringReader(raw), settings))
+            doc.Load(reader);
+        return doc.DocumentElement;
+    }
+
+    private static string ReviewLabel(XmlElement node)
+    {
+        string name = node.GetAttribute("Name");
+        return String.IsNullOrEmpty(name) ? node.LocalName : name;
+    }
+
+    private static SortedDictionary<string, XmlElement> ReviewChildren(XmlElement node)
+    {
+        SortedDictionary<string, XmlElement> children = new SortedDictionary<string, XmlElement>(StringComparer.Ordinal);
+        Dictionary<string, int> seen = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (XmlNode child in node.ChildNodes)
+        {
+            XmlElement element = child as XmlElement;
+            if (element == null) continue;
+            string id = "";
+            foreach (XmlAttribute attr in element.Attributes)
+                if (String.Equals(attr.LocalName, "id", StringComparison.OrdinalIgnoreCase)) id = attr.Value;
+            string key = element.Name + (id.Length == 0 ? "" : "[" + id + "]");
+            int count;
+            seen.TryGetValue(key, out count);
+            seen[key] = count + 1;
+            // Repeated identities/unnamed children are matched by occurrence;
+            // this affects explanation only, never identity/content authority.
+            children.Add(key + "#" + count, element);
+        }
+        return children;
+    }
+
+    private static SortedDictionary<string, string> ReviewAttributes(XmlElement node, bool root)
+    {
+        SortedDictionary<string, string> result = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (XmlAttribute attr in node.Attributes)
+            if (!(root && String.Equals(attr.LocalName, "Revision", StringComparison.OrdinalIgnoreCase)))
+                result.Add(attr.Name, attr.Value);
+        return result;
+    }
+
+    private static string ReviewValue(string value)
+    {
+        // Escape control characters so values cannot forge extra review lines.
+        return value == null ? "(absent)" : "\"" + value.Replace("\\", "\\\\").Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t").Replace("\"", "\\\"") + "\"";
+    }
+
+    private static string ReviewText(XmlElement node)
+    {
+        StringBuilder result = new StringBuilder();
+        foreach (XmlNode child in node.ChildNodes)
+            if ((child.NodeType == XmlNodeType.Text || child.NodeType == XmlNodeType.CDATA) && !String.IsNullOrWhiteSpace(child.Value))
+                AddToken(result, "T", child.Value);
+        return result.ToString();
+    }
+
+    private static void DescribeItem(XmlElement item, string path, string action, List<string> lines)
+    {
+        lines.Add(action + ": " + path);
+        foreach (KeyValuePair<string, string> attr in ReviewAttributes(item, false))
+            lines.Add("  " + attr.Key + " = " + ReviewValue(attr.Value));
+        string text = ReviewText(item);
+        if (text.Length > 0) lines.Add("  Content = " + ReviewValue(text));
+        foreach (XmlNode child in item.ChildNodes)
+        {
+            XmlElement element = child as XmlElement;
+            if (element != null) DescribeItem(element, path + " / " + ReviewValue(ReviewLabel(element)), action, lines);
+        }
+    }
+
+    private static void CompareReview(XmlElement local, XmlElement master, string path, bool root, List<string> lines)
+    {
+        SortedDictionary<string, string> before = ReviewAttributes(local, root), after = ReviewAttributes(master, root);
+        SortedSet<string> attrs = new SortedSet<string>(before.Keys, StringComparer.Ordinal);
+        attrs.UnionWith(after.Keys);
+        foreach (string key in attrs)
+        {
+            string oldValue, newValue;
+            before.TryGetValue(key, out oldValue); after.TryGetValue(key, out newValue);
+            if (!String.Equals(oldValue, newValue, StringComparison.Ordinal))
+                lines.Add("Changed: " + path + " / " + key + ": " + ReviewValue(oldValue) + " -> " + ReviewValue(newValue));
+        }
+        string oldText = ReviewText(local), newText = ReviewText(master);
+        if (oldText != newText) lines.Add("Changed content: " + path + ": " + ReviewValue(oldText) + " -> " + ReviewValue(newText));
+        SortedDictionary<string, XmlElement> oldChildren = ReviewChildren(local), newChildren = ReviewChildren(master);
+        SortedSet<string> keys = new SortedSet<string>(oldChildren.Keys, StringComparer.Ordinal);
+        keys.UnionWith(newChildren.Keys);
+        foreach (string key in keys)
+        {
+            XmlElement oldChild, newChild;
+            bool had = oldChildren.TryGetValue(key, out oldChild), has = newChildren.TryGetValue(key, out newChild);
+            string label = path + " / " + ReviewValue(ReviewLabel(has ? newChild : oldChild));
+            if (!had) DescribeItem(newChild, label, "Added item", lines);
+            else if (!has) DescribeItem(oldChild, label, "Removed item", lines);
+            else CompareReview(oldChild, newChild, label, false, lines);
+        }
+        // Hash authority includes child order; ID matching above must not hide it.
+        List<string> oldOrder = new List<string>(), newOrder = new List<string>();
+        foreach (XmlNode child in local.ChildNodes) if (child is XmlElement) { StringBuilder b = new StringBuilder(); AddNode(child, b, false); oldOrder.Add(Sha256(b.ToString())); }
+        foreach (XmlNode child in master.ChildNodes) if (child is XmlElement) { StringBuilder b = new StringBuilder(); AddNode(child, b, false); newOrder.Add(Sha256(b.ToString())); }
+        if (oldOrder.Count == newOrder.Count && String.Join("|", oldOrder.ToArray()) != String.Join("|", newOrder.ToArray()))
+        {
+            oldOrder.Sort(StringComparer.Ordinal); newOrder.Sort(StringComparer.Ordinal);
+            if (String.Join("|", oldOrder.ToArray()) == String.Join("|", newOrder.ToArray()))
+                lines.Add("Changed item order: " + path);
+        }
+    }
+
+    public static string DescribeChanges(string local, string master)
+    {
+        List<string> lines = new List<string>();
+        CompareReview(ReadReview(local), ReadReview(master), "Preview", true, lines);
+        if (lines.Count == 0 && Parse(local, "local review").SemanticHash != Parse(master, "master review").SemanticHash)
+            throw new InvalidOperationException("Content differs but review could not explain the difference. Update blocked.");
+        return String.Join(Environment.NewLine, lines.ToArray());
     }
 
     public static MSBPreviewInfo Parse(string raw, string source)
@@ -314,7 +439,7 @@ if (Test-Path -LiteralPath $AppIconPath -PathType Leaf) {
 
 $LogFolder = Join-Path $Root 'logs'
 $DeploymentPath = Join-Path $Root 'DEPLOYMENT.json'
-$ApplicationVersion = '1.0.5'
+$ApplicationVersion = '1.0.6'
 $CandidateXml = Join-Path $localParent 'LORPreviews.MSB_SYNC_CANDIDATE.xml'
 $CandidateCsv = Join-Path $localParent 'LORPreviews.MSB_SYNC_REPORT.csv'
 
@@ -566,6 +691,7 @@ function Test-DeploymentIdentity {
     }
 
     try {
+        $metadataHash = Get-FileSha256 -Path $DeploymentPath
         $deployment = Get-Content -LiteralPath $DeploymentPath -Raw -Encoding UTF8 | ConvertFrom-Json
     }
     catch {
@@ -593,9 +719,21 @@ function Test-DeploymentIdentity {
         throw 'Deployment accepted-source service identity is missing or mismatched.'
     }
 
+    if ($deployment.apply_enabled -isnot [bool]) { throw 'Deployment apply permission must be an explicit boolean.' }
     if ($deployment.source_commit -cnotmatch '^[a-f0-9]{40}$') { throw 'Missing committed source identity.' }
+    if ((Get-FileSha256 -Path $DeploymentPath) -cne $metadataHash) { throw 'Deployment metadata changed while being verified.' }
+    $deployment | Add-Member -NotePropertyName VerifiedMetadataHash -NotePropertyValue $metadataHash
     $script:SourceCommit = $deployment.source_commit
     return $deployment
+}
+
+function Assert-ReviewedDeployment {
+    param([string]$ExpectedHash, [string]$ExpectedCommit)
+    $current = Test-DeploymentIdentity
+    if ($current.VerifiedMetadataHash -cne $ExpectedHash -or $current.source_commit -cne $ExpectedCommit -or
+        $current.apply_enabled -isnot [bool] -or -not $current.apply_enabled) {
+        throw 'The reviewed release identity or apply permission changed. Nothing was installed.'
+    }
 }
 
 function Get-RunningLorProcesses {
@@ -874,6 +1012,7 @@ function Build-SyncCandidate {
                 Local_Revision         = ''
                 Approved_Semantic_Hash = $approved.SemanticHash
                 Local_Semantic_Hash    = ''
+                Review_Details         = 'Add the complete accepted preview. It is not present on this PC.'
             }
             $additions += $approved.Raw
             continue
@@ -912,6 +1051,7 @@ function Build-SyncCandidate {
             Local_Revision         = $localRecord.Revision
             Approved_Semantic_Hash = $approved.SemanticHash
             Local_Semantic_Hash    = $localRecord.SemanticHash
+            Review_Details         = $(if ($action -eq 'REPLACE_IN_CANDIDATE') { [MSBPreviewSemantic]::DescribeChanges($localRecord.Raw, $approved.Raw) } else { '' })
         }
     }
 
@@ -1185,7 +1325,8 @@ function Prepare-SyncWithStartup {
 function Show-ReviewDialog {
     param(
         [Parameter(Mandatory=$true)]$AcceptedReport,
-        [Parameter(Mandatory=$true)]$Build
+        [Parameter(Mandatory=$true)]$Build,
+        [switch]$ReviewOnly
     )
 
     $counts = Get-ActionCounts $Build.Rows
@@ -1209,7 +1350,7 @@ function Show-ReviewDialog {
     $form.Controls.Add($title)
 
     $summary = New-Object System.Windows.Forms.Label
-    $summary.Text = (
+    $summary.Text = $(if ($ReviewOnly) { 'REVIEW ONLY - no changes can be applied.' + "`r`n" } else { '' }) + (
         "Accepted LOR2DB Run: {0}`r`nMaster source: {1}`r`n`r`n" +
         "Controlled previews: {2}`r`nAlready current: {3}`r`n" +
         "Revision-only differences (no action): {4}`r`n" +
@@ -1224,17 +1365,18 @@ function Show-ReviewDialog {
     $listLabel = New-Object System.Windows.Forms.Label
     $listLabel.Text = 'Controlled MSB previews that will change:'
     $listLabel.AutoSize = $true
-    $listLabel.Location = New-Object System.Drawing.Point(20, 195)
+    $listLabel.Location = New-Object System.Drawing.Point(20, 215)
     $listLabel.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
     $form.Controls.Add($listLabel)
 
     $box = New-Object System.Windows.Forms.TextBox
     $box.Multiline = $true
     $box.ReadOnly = $true
-    $box.ScrollBars = 'Vertical'
+    $box.ScrollBars = 'Both'
+    $box.WordWrap = $false
     $box.Font = New-Object System.Drawing.Font('Consolas', 9)
-    $box.Location = New-Object System.Drawing.Point(20, 220)
-    $box.Size = New-Object System.Drawing.Size(700, 230)
+    $box.Location = New-Object System.Drawing.Point(20, 240)
+    $box.Size = New-Object System.Drawing.Size(700, 210)
     $box.Anchor = 'Top,Left,Right,Bottom'
 
     if ($changed.Count -eq 0) {
@@ -1247,7 +1389,10 @@ function Show-ReviewDialog {
                 $lines += "ADD      $($row.Approved_Name)"
             }
             else {
-                $lines += "REPLACE  $($row.Approved_Name)    local rev $($row.Local_Revision) -> master rev $($row.Approved_Revision)"
+                $lines += "REPLACE  $($row.Approved_Name)"
+                $lines += "Identity: $($row.Preview_ID)"
+                $lines += [string]$row.Review_Details
+                $lines += ''
             }
         }
         $box.Text = $lines -join "`r`n"
@@ -1282,7 +1427,7 @@ function Show-ReviewDialog {
     $form.Controls.Add($cancel)
 
     $update = New-Object System.Windows.Forms.Button
-    $update.Text = 'Update PC Previews'
+    $update.Text = $(if ($ReviewOnly) { 'Review only' } else { 'Update PC Previews' })
     $update.Size = New-Object System.Drawing.Size(140, 34)
     $update.Location = New-Object System.Drawing.Point(600, 550)
     $update.Anchor = 'Right,Bottom'
@@ -1290,7 +1435,7 @@ function Show-ReviewDialog {
     $form.Controls.Add($update)
 
     $refreshButton = {
-        $update.Enabled = ($closedCheck.Checked -and $overwriteCheck.Checked)
+        $update.Enabled = (-not $ReviewOnly -and $closedCheck.Checked -and $overwriteCheck.Checked)
     }
     $closedCheck.add_CheckedChanged($refreshButton)
     $overwriteCheck.add_CheckedChanged($refreshButton)
@@ -1451,14 +1596,7 @@ try {
         $null = Write-SharedLog -Report $accepted -Build $build -Result 'AUDIT_ONLY' `
             -SourceStateHash $prepared.SourceStateHash -OriginalHash $prepared.OriginalHash `
             -CandidateHash $prepared.CandidateHash
-        Show-Message (
-            "Your PC needs an MSB preview update.`r`n`r`n" +
-            "Accepted LOR2DB Run: $($accepted.RunId)`r`n" +
-            "Will replace: $($counts.Replace)`r`n" +
-            "Will add: $($counts.Add)`r`n" +
-            "Personal/unmanaged previews preserved: $($build.UnmanagedCount)`r`n`r`n" +
-            "Audit-only mode did not change your PC."
-        ) 'MSB Preview Audit' ([System.Windows.Forms.MessageBoxIcon]::Warning)
+        $null = Show-ReviewDialog -AcceptedReport $accepted -Build $build -ReviewOnly
         exit 0
     }
 
@@ -1473,7 +1611,7 @@ try {
     # Recheck every moving boundary immediately before the write. A new
     # reconciliation, source edit, local LOR save or candidate edit invalidates
     # the review instead of silently installing stale work.
-    Test-DeploymentIdentity | Out-Null
+    Assert-ReviewedDeployment -ExpectedHash $prepared.Deployment.VerifiedMetadataHash -ExpectedCommit $prepared.Deployment.source_commit
     Assert-LightORamaClosed
 
     $latestNow = Get-CurrentAcceptedSource
@@ -1506,6 +1644,7 @@ try {
         throw 'The reviewed candidate changed while this review was open. Nothing was installed. Run the updater again.'
     }
 
+    Assert-ReviewedDeployment -ExpectedHash $prepared.Deployment.VerifiedMetadataHash -ExpectedCommit $prepared.Deployment.source_commit
     $install = Install-Candidate -CandidatePath $CandidateXml -LivePath $LocalXml `
         -ExpectedOriginalHash $prepared.OriginalHash -ExpectedCandidateHash $prepared.CandidateHash
 

@@ -378,3 +378,41 @@ tree/star asset. This does not claim the PowerShell taskbar icon is corrected.
 The outer download remains exactly setup plus instructions; no exposed runtime.
 Native self-contained Windows setup, shortcut, full updater comparison, protected
 download hosting and live apply/reopen/repeat remain acceptance gates.
+
+## Two-PC audit acceptance and 1.0.6 controlled apply candidate
+
+Actual 1.0.5 audit results against accepted Run32: new Show PC ADD34/REPLACE0,
+13 unmanaged; Greg laptop ADD0/REPLACE2, 8 unmanaged. Browser and desktop launch
+worked after per-user installation. No live library changes were applied. Laptop
+CSV identifies Rotary-Trees (same ID b820267c-7fa7-42ad-acf1-3850a057a3a4, local
+rev54/master57) and Icicle Tunnel (same ID 6e8a166f-9fa8-4ce7-9df0-be9146f087f7,
+local128/master130). There are 28 exact NOOP and 4 Revision-only NOOP previews.
+Greg describes adding 8 dumb RGB lights on trees and 16x3 RGB Pixie strings of
+length150 on the tunnel. This operator explanation is not an independently
+verified content diff and is never inserted as fabricated machine evidence.
+
+Candidate 1.0.6 derives replacement descriptions from the captured local/master
+XML: added/removed items and settings, changed attributes/text and reordered
+items. Identity-bearing children match by ID plus occurrence; other children by
+tag/occurrence. Pairing is explanatory only; semantic hashes still determine
+action. Root Revision is excluded. Unknown substantive differences that produce
+no explanation BLOCK. Control characters in values are escaped. Full details
+are retained in the CSV and shown in the scrollable named-preview review. Audit
+mode now shows that same review with its apply button disabled.
+
+Release preparation defaults to apply_enabled=false. Explicit --enable-apply
+prepares CONTROLLED_APPLY_PILOT metadata and a distinct immutable -pilot.zip;
+normal preparation yields -review.zip. Installer requires a boolean apply flag
+and uses one fixed launch-command generator for desktop/protocol; audit mode
+adds -AuditOnly, explicitly enabled pilot mode allows the reviewed apply flow.
+The updater still requires operator acknowledgement, LOR closed, current source
+identity/evidence/digest, unchanged local/candidate, atomic backup and audit.
+Metadata hash/commit/apply permission are frozen and revalidated after review
+and immediately before installation. Installation alone never applies previews.
+
+No live apply or new Production website deployment is authorized by preparation.
+The next operator gate is visual/content review then Cancel on the laptop. A
+separate explicit Show PC live-apply approval, LOR reopen/usability, close and
+repeat ADD0/REPLACE0, retained exact backup/audit paths remain mandatory. Current
+Production browser page remains 1.0.2 without the install download. Server
+Management owns bounded static publication after the candidate is accepted.

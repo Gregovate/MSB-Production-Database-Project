@@ -147,3 +147,14 @@ probe document. This does not establish full updater/source/master acceptance.
 After installation, launch from the Desktop, finish the normal protected browser
 handoff and retain the comparison result. Do not apply; the candidate cannot
 replace previews. The ZIP still exposes only setup plus instructions.
+
+## Candidate 1.0.6 controlled apply pilot (not distributed)
+
+Preparation defaults to review-only; --enable-apply builds the distinct
+MSB-PC-Preview-Updater-1.0.6-pilot.zip. It contains only Setup MSB PC Preview
+Updater.vbs and READ ME Instructions.txt. The pilot CAN apply after named content
+review and explicit operator acknowledgements. Installation does not apply.
+Use first on Greg's laptop to inspect the two replacement descriptions and
+Cancel; do not approve laptop replacement as part of the Show PC test. Show PC
+live apply still requires separate explicit approval and backup/reopen/repeat
+acceptance. Do not publish this as a general programmer release yet.

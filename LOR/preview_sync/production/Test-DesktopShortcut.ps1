@@ -25,8 +25,10 @@ try {
     if ($result.TargetPath -ne $power -or $result.Arguments -ne (Get-MSBLaunchArguments $installed)) {throw 'Wrong executable/arguments'}
     if ($result.Arguments -notmatch '-AuditOnly$' -or $result.Arguments -notlike '*-File "*"*') {throw 'Comparison-only quoting lost'}
     if ($result.IconLocation -ne ($icon+',0')) {throw 'Icon mismatch'}
+    Install-MSBDesktopShortcut -PowerShellPath $power -InstalledScript $installed -Desktop $desktop -IconPath $icon -ApplyEnabled $true
+    if ($script:link.Arguments -match '-AuditOnly' -or $script:link.Arguments -ne (Get-MSBLaunchArguments -InstalledScript $installed -ApplyEnabled $true)) {throw 'Explicit apply mode not reflected in fixed launch command'}
     $blocked=$false
     try {Install-MSBDesktopShortcut -PowerShellPath $power -InstalledScript $installed -Desktop (Join-Path $root 'missing') -IconPath $icon} catch {$blocked=$true}
-    if (-not $blocked -or $script:created -ne 1) {throw 'Missing desktop did not block before COM'}
-    Write-Host 'PASS: shortcut uses redirected Desktop, shared fixed quoted command, AuditOnly and tree icon; missing Desktop blocks (COM double only)'
+    if (-not $blocked -or $script:created -ne 2) {throw 'Missing desktop did not block before COM'}
+    Write-Host 'PASS: shortcut uses redirected Desktop, shared fixed quoted command, explicit audit/apply modes and tree icon; missing Desktop blocks (COM double only)'
 } finally {if([IO.Directory]::Exists($root)){[IO.Directory]::Delete($root,$true)}}
