@@ -1,4 +1,4 @@
-# MSB LOR Preview Sync - Production Candidate v1.0.6
+# MSB LOR Preview Sync - Production Candidate v1.0.7
 # Programmer-facing MASTER -> LOCAL synchronization tool.
 #
 # Normal operators launch this through:
@@ -158,6 +158,8 @@ public static class MSBPreviewSemantic
 
     private static string ReviewLabel(XmlElement node)
     {
+        if (node.LocalName == "PropClass" && !String.IsNullOrWhiteSpace(node.GetAttribute("Comment")))
+            return "Display " + node.GetAttribute("Comment");
         string name = node.GetAttribute("Name");
         return String.IsNullOrEmpty(name) ? node.LocalName : name;
     }
@@ -208,21 +210,22 @@ public static class MSBPreviewSemantic
         return result.ToString();
     }
 
-    private static void DescribeItem(XmlElement item, string path, string action, List<string> lines)
+    private static void DescribeItem(XmlElement item, string path, string action, List<string> lines, bool unified = false)
     {
-        lines.Add(action + ": " + path);
+        string prefix = unified ? (action == "Added item" ? "+ " : "- ") : "";
+        lines.Add(prefix + action + ": " + path);
         foreach (KeyValuePair<string, string> attr in ReviewAttributes(item, false))
-            lines.Add("  " + attr.Key + " = " + ReviewValue(attr.Value));
+            lines.Add(prefix + "  " + attr.Key + " = " + ReviewValue(attr.Value));
         string text = ReviewText(item);
-        if (text.Length > 0) lines.Add("  Content = " + ReviewValue(text));
+        if (text.Length > 0) lines.Add(prefix + "  Content = " + ReviewValue(text));
         foreach (XmlNode child in item.ChildNodes)
         {
             XmlElement element = child as XmlElement;
-            if (element != null) DescribeItem(element, path + " / " + ReviewValue(ReviewLabel(element)), action, lines);
+            if (element != null) DescribeItem(element, path + " / " + ReviewValue(ReviewLabel(element)), action, lines, unified);
         }
     }
 
-    private static void CompareReview(XmlElement local, XmlElement master, string path, bool root, List<string> lines)
+    private static void CompareReview(XmlElement local, XmlElement master, string path, bool root, List<string> lines, bool unified = false)
     {
         SortedDictionary<string, string> before = ReviewAttributes(local, root), after = ReviewAttributes(master, root);
         SortedSet<string> attrs = new SortedSet<string>(before.Keys, StringComparer.Ordinal);
@@ -231,11 +234,18 @@ public static class MSBPreviewSemantic
         {
             string oldValue, newValue;
             before.TryGetValue(key, out oldValue); after.TryGetValue(key, out newValue);
-            if (!String.Equals(oldValue, newValue, StringComparison.Ordinal))
-                lines.Add("Changed: " + path + " / " + key + ": " + ReviewValue(oldValue) + " -> " + ReviewValue(newValue));
+            if (!String.Equals(oldValue, newValue, StringComparison.Ordinal)) {
+                if (unified) {
+                    lines.Add("- " + path + " / " + key + " = " + ReviewValue(oldValue));
+                    lines.Add("+ " + path + " / " + key + " = " + ReviewValue(newValue));
+                } else lines.Add("Changed: " + path + " / " + key + ": " + ReviewValue(oldValue) + " -> " + ReviewValue(newValue));
+            }
         }
         string oldText = ReviewText(local), newText = ReviewText(master);
-        if (oldText != newText) lines.Add("Changed content: " + path + ": " + ReviewValue(oldText) + " -> " + ReviewValue(newText));
+        if (oldText != newText) {
+            if (unified) { lines.Add("- Content: " + path + " = " + ReviewValue(oldText)); lines.Add("+ Content: " + path + " = " + ReviewValue(newText)); }
+            else lines.Add("Changed content: " + path + ": " + ReviewValue(oldText) + " -> " + ReviewValue(newText));
+        }
         SortedDictionary<string, XmlElement> oldChildren = ReviewChildren(local), newChildren = ReviewChildren(master);
         SortedSet<string> keys = new SortedSet<string>(oldChildren.Keys, StringComparer.Ordinal);
         keys.UnionWith(newChildren.Keys);
@@ -244,9 +254,9 @@ public static class MSBPreviewSemantic
             XmlElement oldChild, newChild;
             bool had = oldChildren.TryGetValue(key, out oldChild), has = newChildren.TryGetValue(key, out newChild);
             string label = path + " / " + ReviewValue(ReviewLabel(has ? newChild : oldChild));
-            if (!had) DescribeItem(newChild, label, "Added item", lines);
-            else if (!has) DescribeItem(oldChild, label, "Removed item", lines);
-            else CompareReview(oldChild, newChild, label, false, lines);
+            if (!had) DescribeItem(newChild, label, "Added item", lines, unified);
+            else if (!has) DescribeItem(oldChild, label, "Removed item", lines, unified);
+            else CompareReview(oldChild, newChild, label, false, lines, unified);
         }
         // Hash authority includes child order; ID matching above must not hide it.
         List<string> oldOrder = new List<string>(), newOrder = new List<string>();
@@ -267,6 +277,80 @@ public static class MSBPreviewSemantic
         if (lines.Count == 0 && Parse(local, "local review").SemanticHash != Parse(master, "master review").SemanticHash)
             throw new InvalidOperationException("Content differs but review could not explain the difference. Update blocked.");
         return String.Join(Environment.NewLine, lines.ToArray());
+    }
+
+    private static string PropSignature(XmlElement root, params string[] attributes)
+    {
+        List<string> records = new List<string>();
+        foreach (XmlNode child in root.SelectNodes(".//PropClass")) {
+            XmlElement node = (XmlElement)child;
+            StringBuilder b = new StringBuilder();
+            AddToken(b, "id", node.GetAttribute("id"));
+            foreach (string attr in attributes) if (node.HasAttribute(attr)) AddToken(b, attr, node.GetAttribute(attr));
+            records.Add(b.ToString());
+        }
+        records.Sort(StringComparer.Ordinal);
+        return String.Join("|", records.ToArray());
+    }
+
+    private static string SceneSignature(XmlElement root)
+    {
+        StringBuilder result = new StringBuilder(); string scene = "";
+        foreach (XmlNode child in root.SelectNodes(".//*")) {
+            XmlElement node = (XmlElement)child;
+            if (node.LocalName.EndsWith("Scene", StringComparison.Ordinal)) {
+                scene = node.GetAttribute("id");
+                AddToken(result, "Scene", scene); AddToken(result, "Name", node.GetAttribute("Name"));
+                foreach (KeyValuePair<string,string> attr in ReviewAttributes(node,false)) AddToken(result,attr.Key,attr.Value);
+            } else if (node.LocalName == "PropClass" && scene.Length > 0) {
+                AddToken(result, "Member", scene + ":" + node.GetAttribute("id"));
+            }
+        }
+        return result.ToString();
+    }
+
+    public static string ImpactNotes(string local, string master)
+    {
+        XmlElement before = ReadReview(local), after = ReadReview(master);
+        List<string> notes = new List<string>();
+        if (before.GetAttribute("id") != after.GetAttribute("id") || before.GetAttribute("Name") != after.GetAttribute("Name")) notes.Add("Preview UUID / name");
+        if (PropSignature(before) != PropSignature(after)) notes.Add("Prop UUIDs");
+        if (PropSignature(before,"Comment") != PropSignature(after,"Comment")) notes.Add("Display names (Comment) / prop associations");
+        if (SceneSignature(before) != SceneSignature(after)) notes.Add("Scenes / scene membership");
+        if (PropSignature(before,"ChannelGrid","Name","DeviceType","StringType","DimmingCurveName","MasterPropId","Parm1") !=
+            PropSignature(after,"ChannelGrid","Name","DeviceType","StringType","DimmingCurveName","MasterPropId","Parm1"))
+            notes.Add("Wiring / channel names / device / string or master-link settings");
+        if (notes.Count == 0) notes.Add("No changes detected in the identity, scene or wiring fields checked here. Inspect the full diff for other content changes.");
+        return String.Join("; ", notes.ToArray());
+    }
+
+    public static string UnifiedDiff(string local, string master)
+    {
+        MSBPreviewInfo before = Parse(local, "local diff"), after = Parse(master, "master diff");
+        List<string> lines = new List<string>();
+        if (before.Revision != after.Revision) {
+            lines.Add("- Preview Revision = " + ReviewValue(before.Revision));
+            lines.Add("+ Preview Revision = " + ReviewValue(after.Revision));
+        }
+        if (before.SemanticHash != after.SemanticHash)
+            CompareReview(ReadReview(local), ReadReview(master), "Preview", true, lines, true);
+        return String.Join(Environment.NewLine, lines.ToArray());
+    }
+
+    public static string MatchMasterRevision(string local, string master)
+    {
+        MSBPreviewInfo before = Parse(local, "local revision"), accepted = Parse(master, "master revision");
+        if (before.PreviewId != accepted.PreviewId || before.SemanticHash != accepted.SemanticHash)
+            throw new InvalidOperationException("Revision alignment requires identical preview identity and content.");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(accepted.Revision, "^[0-9]+$"))
+            throw new InvalidOperationException("Master Revision is not a usable numeric value.");
+        XmlElement node = ReadReview(local);
+        node.SetAttribute("Revision", accepted.Revision);
+        string result = node.OuterXml;
+        MSBPreviewInfo verified = Parse(result, "aligned revision");
+        if (verified.PreviewId != before.PreviewId || verified.SemanticHash != before.SemanticHash || verified.Revision != accepted.Revision)
+            throw new InvalidOperationException("Revision alignment changed substantive preview content.");
+        return result;
     }
 
     public static MSBPreviewInfo Parse(string raw, string source)
@@ -439,7 +523,7 @@ if (Test-Path -LiteralPath $AppIconPath -PathType Leaf) {
 
 $LogFolder = Join-Path $Root 'logs'
 $DeploymentPath = Join-Path $Root 'DEPLOYMENT.json'
-$ApplicationVersion = '1.0.6'
+$ApplicationVersion = '1.0.7'
 $CandidateXml = Join-Path $localParent 'LORPreviews.MSB_SYNC_CANDIDATE.xml'
 $CandidateCsv = Join-Path $localParent 'LORPreviews.MSB_SYNC_REPORT.csv'
 
@@ -924,7 +1008,8 @@ function Build-SyncCandidate {
     param(
         [Parameter(Mandatory=$true)]$MasterRecords,
         [Parameter(Mandatory=$true)][string]$LocalPath,
-        [AllowNull()]$ProgressWindow
+        [AllowNull()]$ProgressWindow,
+        [switch]$MatchMasterRevision
     )
 
     if (-not (Test-Path -LiteralPath $LocalPath -PathType Leaf)) {
@@ -1006,6 +1091,7 @@ function Build-SyncCandidate {
             $rows += [pscustomobject]@{
                 Action                 = 'ADD_IN_CANDIDATE'
                 Preview_ID             = $previewId
+                Approved_Filename      = [IO.Path]::GetFileName($approved.Source)
                 Approved_Name          = $approved.Name
                 Local_Name             = ''
                 Approved_Revision      = $approved.Revision
@@ -1013,6 +1099,8 @@ function Build-SyncCandidate {
                 Approved_Semantic_Hash = $approved.SemanticHash
                 Local_Semantic_Hash    = ''
                 Review_Details         = 'Add the complete accepted preview. It is not present on this PC.'
+                Database_Impact        = 'New preview; review its display names, prop identities, scenes and wiring.'
+                Review_Diff            = '+ Complete accepted preview (not present on this PC).'
             }
             $additions += $approved.Raw
             continue
@@ -1031,10 +1119,16 @@ function Build-SyncCandidate {
         }
         else {
             $action = 'REPLACE_IN_CANDIDATE'
+        }
+        if ($MatchMasterRevision -and $action -eq 'NOOP_REVISION_ONLY') {
+            $action = 'ALIGN_REVISION_IN_CANDIDATE'
+        }
+        if ($action -in @('REPLACE_IN_CANDIDATE','ALIGN_REVISION_IN_CANDIDATE')) {
+            $replacementRaw = $(if ($action -eq 'ALIGN_REVISION_IN_CANDIDATE') { [MSBPreviewSemantic]::MatchMasterRevision($localRecord.Raw, $approved.Raw) } else { $approved.Raw })
             $lineStart = $localText.LastIndexOf("`n", [Math]::Max(0, $block.Start - 1)) + 1
             $indent = $localText.Substring($lineStart, $block.Start - $lineStart)
             if ($indent -notmatch '^\s*$') { $indent = '' }
-            $replacement = Add-IndentToFragment $approved.Raw $indent $newline
+            $replacement = Add-IndentToFragment $replacementRaw $indent $newline
             $replacements += [pscustomobject]@{
                 Start = $block.Start
                 End = $block.End
@@ -1045,12 +1139,15 @@ function Build-SyncCandidate {
         $rows += [pscustomobject]@{
             Action                 = $action
             Preview_ID             = $previewId
+            Approved_Filename      = [IO.Path]::GetFileName($approved.Source)
             Approved_Name          = $approved.Name
             Local_Name             = $localRecord.Name
             Approved_Revision      = $approved.Revision
             Local_Revision         = $localRecord.Revision
             Approved_Semantic_Hash = $approved.SemanticHash
             Local_Semantic_Hash    = $localRecord.SemanticHash
+            Database_Impact        = $(if ($action -eq 'REPLACE_IN_CANDIDATE') { [MSBPreviewSemantic]::ImpactNotes($localRecord.Raw, $approved.Raw) } else { 'Preview identity and substantive content match the accepted master.' })
+            Review_Diff            = $(if ($action -eq 'NOOP') { '' } else { [MSBPreviewSemantic]::UnifiedDiff($localRecord.Raw, $approved.Raw) })
             Review_Details         = $(if ($action -eq 'REPLACE_IN_CANDIDATE') { [MSBPreviewSemantic]::DescribeChanges($localRecord.Raw, $approved.Raw) } else { '' })
         }
     }
@@ -1169,6 +1266,7 @@ function Get-ActionCounts {
     param($Rows)
     return [pscustomobject]@{
         Noop = @($Rows | Where-Object Action -eq 'NOOP').Count
+        AlignRevision = @($Rows | Where-Object Action -eq 'ALIGN_REVISION_IN_CANDIDATE').Count
         RevisionOnly = @($Rows | Where-Object Action -eq 'NOOP_REVISION_ONLY').Count
         Replace = @($Rows | Where-Object Action -eq 'REPLACE_IN_CANDIDATE').Count
         Add = @($Rows | Where-Object Action -eq 'ADD_IN_CANDIDATE').Count
@@ -1322,135 +1420,144 @@ function Prepare-SyncWithStartup {
 }
 
 
+function New-ReviewPlan {
+    param($MasterRecords, [string]$LocalPath, [string]$ExpectedOriginalHash,
+          [string]$CandidatePath, [string]$ReportPath, [switch]$MatchMasterRevision)
+    Assert-LightORamaClosed
+    if ((Get-FileSha256 $LocalPath) -cne $ExpectedOriginalHash) { throw 'Local previews changed during review. Close LOR and restart the updater.' }
+    $build = Build-SyncCandidate -MasterRecords $MasterRecords -LocalPath $LocalPath -ProgressWindow $null -MatchMasterRevision:$MatchMasterRevision
+    if ((Get-FileSha256 $LocalPath) -cne $ExpectedOriginalHash) { throw 'Local previews changed while preparing the review.' }
+    Write-CandidateFile -Build $build -Path $CandidatePath
+    Write-ActionReport -Rows $build.Rows -Path $ReportPath
+    return [pscustomobject]@{ Build = $build; CandidateHash = (Get-FileSha256 $CandidatePath) }
+}
+
 function Show-ReviewDialog {
-    param(
-        [Parameter(Mandatory=$true)]$AcceptedReport,
-        [Parameter(Mandatory=$true)]$Build,
-        [switch]$ReviewOnly
-    )
-
-    $counts = Get-ActionCounts $Build.Rows
-    $changed = @($Build.Rows | Where-Object { $_.Action -in @('REPLACE_IN_CANDIDATE','ADD_IN_CANDIDATE') })
-
+    param($AcceptedReport, $Build, $MasterRecords, [string]$LocalPath, [string]$ExpectedOriginalHash,
+          [string]$CandidatePath, [string]$ReportPath, [string]$CandidateHash, [switch]$ReviewOnly)
+    $state = [pscustomobject]@{ Build=$Build; CandidateHash=$CandidateHash; Failed=$false; Approved=$false }
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = 'Update your PC Previews to LOR Master Files'
+    $form.Text = 'MSB PC Preview Updater - review changes'
     $form.StartPosition = 'CenterScreen'
-    $form.Size = New-Object System.Drawing.Size(760, 640)
-    $form.MinimumSize = New-Object System.Drawing.Size(700, 560)
-
+    $area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+    $form.Size = New-Object System.Drawing.Size([Math]::Min(1080,[int]($area.Width*0.94)), [Math]::Min(800,[int]($area.Height*0.90)))
+    $form.MinimumSize = New-Object System.Drawing.Size([Math]::Min(800,[int]($area.Width*0.85)), [Math]::Min(620,[int]($area.Height*0.80)))
     $form.ShowInTaskbar = $true
-    if ($null -ne $script:AppIcon) {
-        $form.Icon = $script:AppIcon
+    if ($null -ne $script:AppIcon) { $form.Icon = $script:AppIcon }
+    $layout = New-Object System.Windows.Forms.TableLayoutPanel
+    $layout.Dock = 'Fill'; $layout.ColumnCount = 1; $layout.RowCount = 6
+    $layout.Padding = New-Object System.Windows.Forms.Padding(14)
+    foreach ($height in @(0,0,35,0,65,0)) {
+        $style = New-Object System.Windows.Forms.RowStyle
+        if ($height -eq 0) { $style.SizeType='AutoSize' } else { $style.SizeType='Percent'; $style.Height=$height }
+        [void]$layout.RowStyles.Add($style)
     }
+    $form.Controls.Add($layout)
     $title = New-Object System.Windows.Forms.Label
-    $title.Text = 'MSB LOR Preview Update'
-    $title.Font = New-Object System.Drawing.Font('Segoe UI', 16, [System.Drawing.FontStyle]::Bold)
-    $title.AutoSize = $true
-    $title.Location = New-Object System.Drawing.Point(18, 16)
-    $form.Controls.Add($title)
-
+    $title.Text='Review MSB preview changes'; $title.AutoSize=$true
+    $title.Font=New-Object System.Drawing.Font('Segoe UI',16,[System.Drawing.FontStyle]::Bold)
+    [void]$layout.Controls.Add($title,0,0)
     $summary = New-Object System.Windows.Forms.Label
-    $summary.Text = $(if ($ReviewOnly) { 'REVIEW ONLY - no changes can be applied.' + "`r`n" } else { '' }) + (
-        "Accepted LOR2DB Run: {0}`r`nMaster source: {1}`r`n`r`n" +
-        "Controlled previews: {2}`r`nAlready current: {3}`r`n" +
-        "Revision-only differences (no action): {4}`r`n" +
-        "Will be replaced: {5}`r`nWill be added: {6}`r`n" +
-        "Personal/unmanaged previews preserved: {7}"
-    ) -f $AcceptedReport.RunId, $AcceptedReport.SourceFolder, $Build.Rows.Count, $counts.Noop, $counts.RevisionOnly, $counts.Replace, $counts.Add, $Build.UnmanagedCount
-    $summary.AutoSize = $true
-    $summary.Location = New-Object System.Drawing.Point(20, 55)
-    $summary.Font = New-Object System.Drawing.Font('Segoe UI', 10)
-    $form.Controls.Add($summary)
-
-    $listLabel = New-Object System.Windows.Forms.Label
-    $listLabel.Text = 'Controlled MSB previews that will change:'
-    $listLabel.AutoSize = $true
-    $listLabel.Location = New-Object System.Drawing.Point(20, 215)
-    $listLabel.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
-    $form.Controls.Add($listLabel)
-
-    $box = New-Object System.Windows.Forms.TextBox
-    $box.Multiline = $true
-    $box.ReadOnly = $true
-    $box.ScrollBars = 'Both'
-    $box.WordWrap = $false
-    $box.Font = New-Object System.Drawing.Font('Consolas', 9)
-    $box.Location = New-Object System.Drawing.Point(20, 240)
-    $box.Size = New-Object System.Drawing.Size(700, 210)
-    $box.Anchor = 'Top,Left,Right,Bottom'
-
-    if ($changed.Count -eq 0) {
-        $box.Text = 'No controlled MSB previews need to be added or replaced.'
+    $summary.AutoSize=$true; $summary.Dock='Fill'; $summary.Margin=New-Object System.Windows.Forms.Padding(0,8,0,10)
+    [void]$layout.Controls.Add($summary,0,1)
+    $grid=New-Object System.Windows.Forms.DataGridView
+    $grid.Dock='Fill'; $grid.ReadOnly=$true; $grid.AllowUserToAddRows=$false; $grid.AllowUserToDeleteRows=$false
+    $grid.MultiSelect=$false; $grid.SelectionMode='FullRowSelect'; $grid.RowHeadersVisible=$false
+    $grid.AutoSizeColumnsMode='Fill'; $grid.AllowUserToOrderColumns=$false
+    foreach ($column in @(@('Filename','Preview file',65),@('Action','Proposed action',20),@('Local','PC Revision',8),@('Master','Master Revision',8))) {
+        $index=$grid.Columns.Add([string]$column[0],[string]$column[1]); $grid.Columns[$index].FillWeight=[int]$column[2]
+        $grid.Columns[$index].SortMode='NotSortable'
     }
-    else {
-        $lines = @()
-        foreach ($row in $changed) {
-            if ($row.Action -eq 'ADD_IN_CANDIDATE') {
-                $lines += "ADD      $($row.Approved_Name)"
-            }
-            else {
-                $lines += "REPLACE  $($row.Approved_Name)"
-                $lines += "Identity: $($row.Preview_ID)"
-                $lines += [string]$row.Review_Details
-                $lines += ''
-            }
+    [void]$layout.Controls.Add($grid,0,2)
+    $detailLabel=New-Object System.Windows.Forms.Label
+    $detailLabel.AutoSize=$true; $detailLabel.Dock='Fill'; $detailLabel.Margin=New-Object System.Windows.Forms.Padding(0,8,0,4)
+    [void]$layout.Controls.Add($detailLabel,0,3)
+    $details=New-Object System.Windows.Forms.RichTextBox
+    $details.Dock='Fill'; $details.ReadOnly=$true; $details.WordWrap=$false; $details.DetectUrls=$false
+    $details.Font=New-Object System.Drawing.Font('Consolas',9)
+    [void]$layout.Controls.Add($details,0,4)
+    $bottom=New-Object System.Windows.Forms.FlowLayoutPanel
+    $bottom.Dock='Fill'; $bottom.AutoSize=$true; $bottom.FlowDirection='TopDown'; $bottom.WrapContents=$false
+    [void]$layout.Controls.Add($bottom,0,5)
+    $align=New-Object System.Windows.Forms.CheckBox
+    $align.AutoSize=$true; $align.Text='Match master Revision for previews with identical identity and content (metadata only).'
+    $align.Checked=$false; [void]$bottom.Controls.Add($align)
+    $closed=New-Object System.Windows.Forms.CheckBox
+    $closed.AutoSize=$true; $closed.Text='I have closed Light-O-Rama on this PC.'; [void]$bottom.Controls.Add($closed)
+    $ack=New-Object System.Windows.Forms.CheckBox
+    $ack.AutoSize=$true; $ack.Text='I approve the listed changes. A backup will be created; personal previews will be preserved.'
+    [void]$bottom.Controls.Add($ack)
+    $buttons=New-Object System.Windows.Forms.FlowLayoutPanel
+    $buttons.AutoSize=$true; $buttons.FlowDirection='LeftToRight'; [void]$bottom.Controls.Add($buttons)
+    $cancel=New-Object System.Windows.Forms.Button
+    $cancel.Text='Cancel'; $cancel.AutoSize=$true; $cancel.DialogResult='Cancel'; [void]$buttons.Controls.Add($cancel)
+    $update=New-Object System.Windows.Forms.Button
+    $update.Text=$(if ($ReviewOnly) { 'Review only' } else { 'Update PC Previews' })
+    $update.AutoSize=$true; $update.Enabled=$false; [void]$buttons.Controls.Add($update)
+    $refreshButtons={
+        $counts=Get-ActionCounts $state.Build.Rows
+        $update.Enabled=(-not $ReviewOnly -and -not $state.Failed -and $closed.Checked -and $ack.Checked -and
+            ($counts.Add + $counts.Replace + $counts.AlignRevision -gt 0))
+    }
+    $showDetails={
+        if ($grid.SelectedRows.Count -eq 0) { return }
+        $row=$grid.SelectedRows[0].Tag
+        if ($null -eq $row) { return }
+        $detailLabel.Text=([string]$row.Approved_Filename)+' - '+([string]$row.Approved_Name)
+        $details.Clear()
+        $notes=[string]$row.Database_Impact
+        $text='Database review: '+$notes+"`r`n`r`n--- This PC`r`n+++ Accepted master`r`n"+[string]$row.Review_Diff
+        if ([string]::IsNullOrWhiteSpace([string]$row.Review_Diff)) { $text += 'No differences.' }
+        $details.Text=$text
+        foreach ($match in [regex]::Matches($text,'(?m)^[+-].*$')) {
+            $details.Select($match.Index,$match.Length)
+            $details.SelectionColor=$(if ($match.Value.StartsWith('+')) { [Drawing.Color]::DarkGreen } else { [Drawing.Color]::DarkRed })
         }
-        $box.Text = $lines -join "`r`n"
+        $details.Select(0,0); $details.ScrollToCaret()
     }
-    $form.Controls.Add($box)
-
-    $closedCheck = New-Object System.Windows.Forms.CheckBox
-    $closedCheck.Text = 'I have closed Light-O-Rama on this PC.'
-    $closedCheck.AutoSize = $true
-    $closedCheck.Location = New-Object System.Drawing.Point(22, 470)
-    $closedCheck.Anchor = 'Left,Bottom'
-    $form.Controls.Add($closedCheck)
-
-    $overwriteCheck = New-Object System.Windows.Forms.CheckBox
-    $overwriteCheck.Text = 'I understand that different local MSB previews listed above will be replaced by the approved master. A backup will be created first.'
-    $overwriteCheck.AutoSize = $false
-    $overwriteCheck.Size = New-Object System.Drawing.Size(690, 45)
-    $overwriteCheck.Location = New-Object System.Drawing.Point(22, 500)
-    $overwriteCheck.Anchor = 'Left,Right,Bottom'
-    if ($counts.Replace -eq 0) {
-        $overwriteCheck.Checked = $true
-        $overwriteCheck.Enabled = $false
+    $populate={
+        $grid.Rows.Clear()
+        $counts=Get-ActionCounts $state.Build.Rows
+        $summary.Text=$(if ($ReviewOnly) { "REVIEW ONLY - apply disabled.`r`n" } else { '' }) +
+            ("Accepted Run {0} | ADD {1} | REPLACE {2} | Match Revision {3} | Revision-only unchanged {4} | Personal preserved {5}" -f
+             $AcceptedReport.RunId,$counts.Add,$counts.Replace,$counts.AlignRevision,$counts.RevisionOnly,$state.Build.UnmanagedCount)
+        foreach ($row in @($state.Build.Rows | Sort-Object @{Expression={if ($_.Action -eq 'REPLACE_IN_CANDIDATE'){0}elseif($_.Action -eq 'ADD_IN_CANDIDATE'){1}elseif($_.Action -in @('NOOP_REVISION_ONLY','ALIGN_REVISION_IN_CANDIDATE')){2}else{3}}},Approved_Filename)) {
+            $action=switch ($row.Action) {
+                'REPLACE_IN_CANDIDATE' {'Replace content'}
+                'ADD_IN_CANDIDATE' {'Add preview'}
+                'ALIGN_REVISION_IN_CANDIDATE' {'Match Revision'}
+                'NOOP_REVISION_ONLY' {'Revision only - no action'}
+                default {'Current'}
+            }
+            $i=$grid.Rows.Add([object[]]@([string]$row.Approved_Filename,$action,[string]$row.Local_Revision,[string]$row.Approved_Revision))
+            $grid.Rows[$i].Tag=$row
+        }
+        if ($grid.Rows.Count -gt 0) { $grid.Rows[0].Selected=$true }
+        & $showDetails; & $refreshButtons
     }
-    $form.Controls.Add($overwriteCheck)
-
-    $cancel = New-Object System.Windows.Forms.Button
-    $cancel.Text = 'Cancel'
-    $cancel.Size = New-Object System.Drawing.Size(110, 34)
-    $cancel.Location = New-Object System.Drawing.Point(480, 550)
-    $cancel.Anchor = 'Right,Bottom'
-    $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-    $form.Controls.Add($cancel)
-
-    $update = New-Object System.Windows.Forms.Button
-    $update.Text = $(if ($ReviewOnly) { 'Review only' } else { 'Update PC Previews' })
-    $update.Size = New-Object System.Drawing.Size(140, 34)
-    $update.Location = New-Object System.Drawing.Point(600, 550)
-    $update.Anchor = 'Right,Bottom'
-    $update.Enabled = $false
-    $form.Controls.Add($update)
-
-    $refreshButton = {
-        $update.Enabled = (-not $ReviewOnly -and $closedCheck.Checked -and $overwriteCheck.Checked)
-    }
-    $closedCheck.add_CheckedChanged($refreshButton)
-    $overwriteCheck.add_CheckedChanged($refreshButton)
-    & $refreshButton
-
-    $update.Add_Click({
-        $form.Tag = 'APPLY'
-        $form.Close()
+    $grid.Add_SelectionChanged($showDetails)
+    $closed.Add_CheckedChanged($refreshButtons); $ack.Add_CheckedChanged($refreshButtons)
+    $align.Add_CheckedChanged({
+        $update.Enabled=$false; $ack.Checked=$false
+        try {
+            $plan=New-ReviewPlan -MasterRecords $MasterRecords -LocalPath $LocalPath -ExpectedOriginalHash $ExpectedOriginalHash -CandidatePath $CandidatePath -ReportPath $ReportPath -MatchMasterRevision:$align.Checked
+            $state.Build=$plan.Build; $state.CandidateHash=$plan.CandidateHash; $state.Failed=$false
+            & $populate
+        } catch {
+            $state.Failed=$true; $details.Text=$_.Exception.Message
+            $summary.Text='BLOCKED: the revised review could not be prepared. Cancel and restart.'
+        }
+        & $refreshButtons
     })
-
-    $form.AcceptButton = $update
-    $form.CancelButton = $cancel
-    [void]$form.ShowDialog()
-
-    return ($form.Tag -eq 'APPLY')
+    $update.Add_Click({$state.Approved=$true;$form.Close()})
+    $form.Add_Resize({
+        $width=[Math]::Max(250,$form.ClientSize.Width-40)
+        foreach ($control in @($summary,$detailLabel,$align,$ack)) { $control.MaximumSize=New-Object Drawing.Size($width,0) }
+    })
+    $form.CancelButton=$cancel
+    & $populate
+    [void]$form.ShowDialog(); $form.Dispose()
+    return [pscustomobject]@{Approved=$state.Approved;Build=$state.Build;CandidateHash=$state.CandidateHash}
 }
 
 function Install-Candidate {
@@ -1557,7 +1664,8 @@ function Write-SharedLog {
         "Observed source state: $SourceStateHash"
         "Controlled previews: $($Build.Rows.Count)"
         "NOOP: $($counts.Noop)"
-        "Revision-only: $($counts.RevisionOnly)"
+        "Revision-only unchanged: $($counts.RevisionOnly)"
+        "Revisions matched: $($counts.AlignRevision)"
         "Replaced: $($counts.Replace)"
         "Added: $($counts.Add)"
         "Unmanaged/personal preserved: $($Build.UnmanagedCount)"
@@ -1577,7 +1685,7 @@ try {
     $build = $prepared.Build
     $counts = Get-ActionCounts -Rows $build.Rows
 
-    if ($counts.Replace -eq 0 -and $counts.Add -eq 0) {
+    if ($counts.Replace -eq 0 -and $counts.Add -eq 0 -and $counts.RevisionOnly -eq 0) {
         $logPath = Write-SharedLog -Report $accepted -Build $build -Result 'CURRENT' `
             -SourceStateHash $prepared.SourceStateHash -OriginalHash $prepared.OriginalHash `
             -CandidateHash $prepared.CandidateHash
@@ -1593,15 +1701,18 @@ try {
     }
 
     if ($AuditOnly -or -not $prepared.Deployment.apply_enabled) {
-        $null = Write-SharedLog -Report $accepted -Build $build -Result 'AUDIT_ONLY' `
+        $review = Show-ReviewDialog -AcceptedReport $accepted -Build $build -MasterRecords $master.Records -LocalPath $LocalXml -ExpectedOriginalHash $prepared.OriginalHash -CandidatePath $CandidateXml -ReportPath $CandidateCsv -CandidateHash $prepared.CandidateHash -ReviewOnly
+        $null = Write-SharedLog -Report $accepted -Build $review.Build -Result 'AUDIT_ONLY' `
             -SourceStateHash $prepared.SourceStateHash -OriginalHash $prepared.OriginalHash `
-            -CandidateHash $prepared.CandidateHash
-        $null = Show-ReviewDialog -AcceptedReport $accepted -Build $build -ReviewOnly
+            -CandidateHash $review.CandidateHash
         exit 0
     }
 
-    $approved = Show-ReviewDialog -AcceptedReport $accepted -Build $build
-    if (-not $approved) {
+    $review = Show-ReviewDialog -AcceptedReport $accepted -Build $build -MasterRecords $master.Records -LocalPath $LocalXml -ExpectedOriginalHash $prepared.OriginalHash -CandidatePath $CandidateXml -ReportPath $CandidateCsv -CandidateHash $prepared.CandidateHash
+    $build = $review.Build
+    $counts = Get-ActionCounts $build.Rows
+    $prepared.CandidateHash = $review.CandidateHash
+    if (-not $review.Approved) {
         $null = Write-SharedLog -Report $accepted -Build $build -Result 'CANCELLED' `
             -SourceStateHash $prepared.SourceStateHash -OriginalHash $prepared.OriginalHash `
             -CandidateHash $prepared.CandidateHash
@@ -1658,6 +1769,7 @@ try {
         "Controlled previews updated from LOR2DB Run $($accepted.RunId).`r`n" +
         "Replaced: $($counts.Replace)`r`n" +
         "Added: $($counts.Add)`r`n" +
+        "Revision metadata matched: $($counts.AlignRevision)`r`n" +
         "Personal/unmanaged previews preserved: $($build.UnmanagedCount)`r`n`r`n" +
         "Backup created:`r`n$($install.BackupPath)`r`n`r`n" +
         "You may open Light-O-Rama now."

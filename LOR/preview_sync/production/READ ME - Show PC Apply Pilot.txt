@@ -1,4 +1,4 @@
-MSB PC Preview Updater 1.0.6 - controlled live test
+MSB PC Preview Updater 1.0.7 - controlled live test
 General programmer distribution is not yet accepted.
 
 Install and apply only on the PC explicitly approved by the MSB administrator.
@@ -9,7 +9,10 @@ Installation itself does not replace any LOR previews.
 3. Double-click Setup MSB PC Preview Updater.vbs under your normal Windows user.
 4. Use the MSB PC Preview Updater Desktop shortcut and complete the normal
    protected browser sign-in/handoff. Return to the updater.
-5. Review the names and content differences for all proposed replacements/adds.
+5. Select a preview filename to see its differences: minus is this PC and plus
+   is the accepted master. Database-related differences appear first.
+   Optionally select Match master Revision for identical previews; that changes
+   only metadata and is counted separately from replacements.
    Cancel if they are unexpected. Personal/imported/store previews are preserved.
 6. Only after explicit approval for this PC's live test, confirm the displayed
    acknowledgements and click Update PC Previews. This candidate CAN apply changes.

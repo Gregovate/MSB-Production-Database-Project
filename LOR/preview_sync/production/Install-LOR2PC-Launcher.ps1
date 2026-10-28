@@ -41,7 +41,7 @@ try {
     if (-not (Test-Path $metadata)) { throw 'Missing committed-release deployment identity. Administrator preparation is required.' }
     $release = Get-Content $metadata -Raw | ConvertFrom-Json
     if ($release.apply_enabled -isnot [bool]) { throw 'Installer apply permission must be an explicit boolean.' }
-    if ($release.version -ne '1.0.6' -or $release.source_commit -notmatch '^[a-f0-9]{40}$' -or
+    if ($release.version -ne '1.0.7' -or $release.source_commit -notmatch '^[a-f0-9]{40}$' -or
         $release.files.'Update_MSB_Previews.ps1' -ine (Get-FileHash $source -Algorithm SHA256).Hash) { throw 'Updater release identity/hash mismatch.' }
     $destination = Join-Path $env:LOCALAPPDATA ('MSB\LOR2PC\' + $release.source_commit)
     New-Item -ItemType Directory -Path $destination -Force | Out-Null

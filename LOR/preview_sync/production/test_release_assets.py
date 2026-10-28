@@ -31,7 +31,7 @@ class ReleaseAssetsTests(unittest.TestCase):
     def test_download_matches_committed_runtime_and_comparison_guards(self):
         page = (ROOT/'LOR2DB/Application/landing/pc/index.html').read_text()
         path = re.search(r'id="install-updater"[^>]*href="([^"]+)"', page).group(1)
-        self.assertEqual(path, 'downloads/MSB-PC-Preview-Updater-1.0.6-pilot.zip')
+        self.assertEqual(path, 'downloads/MSB-PC-Preview-Updater-1.0.7-pilot.zip')
         with zipfile.ZipFile(ROOT/'LOR2DB/Application/landing/pc'/path) as archive:
             self.assertIsNone(archive.testzip())
             self.assertEqual(set(archive.namelist()), {'Setup MSB PC Preview Updater.vbs','READ ME Instructions.txt'})
@@ -51,7 +51,7 @@ class ReleaseAssetsTests(unittest.TestCase):
             metadata = json.loads(archive.read('DEPLOYMENT.json'))
             self.assertIs(metadata['apply_enabled'], True)
             self.assertEqual(metadata['acceptance'], 'CONTROLLED_APPLY_PILOT')
-            self.assertEqual(metadata['version'], '1.0.6')
+            self.assertEqual(metadata['version'], '1.0.7')
             for name, expected in metadata['files'].items():
                 actual = archive.read(name)
                 self.assertEqual(hashlib.sha256(actual).hexdigest(), expected)

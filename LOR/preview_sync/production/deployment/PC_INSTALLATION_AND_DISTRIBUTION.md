@@ -1,6 +1,6 @@
 # PC installation and distribution procedure
 
-Filename: PC_INSTALLATION_AND_DISTRIBUTION.md · Revision 2 · 2026-10-27
+Filename: PC_INSTALLATION_AND_DISTRIBUTION.md · Revision 3 · 2026-10-27
 Owner: #299 / PR #300; protected website hosting owned by Server Management.
 Status: COMPARISON-ONLY PILOT; not approved for general programmer distribution.
 
@@ -40,8 +40,7 @@ the installed handler uses -AuditOnly. This package cannot perform live apply.
    registry change if the required library is missing; no alternate path is offered.
 3. Close LOR. Verify the user can access the shared drive and the protected
    https://my.sheboyganlights.org/lor2db/ page with their own account.
-4. Transfer the complete approved ZIP without depending on G:. Extract all files
-   into C:\MSB299-ShowPC-Comparison. Do not execute from the ZIP viewer or mix
+4. Transfer the complete approved ZIP without depending on G:. Use Extract All with its default folder in Downloads. Do not execute from the ZIP viewer or mix
    files from different packages.
 5. Double-click `Install MSB PC Preview Updater.vbs` in that folder. This invokes
    the included installer and requires no programmer terminal work. If Windows
@@ -50,7 +49,7 @@ the installed handler uses -AuditOnly. This package cannot perform live apply.
 6. If the administrator needs the PowerShell alternative, run under the same
    normal Windows user (not Run as a different user):
 
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\MSB299-ShowPC-Comparison\Install-LOR2PC-Launcher.ps1"
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<extracted package>\Install-LOR2PC-Launcher.ps1"
 
 7. Require the installation confirmation: "MSB PC Preview Updater launcher
    installed. No previews were changed." On error, stop and retain the message.
@@ -158,3 +157,15 @@ Use first on Greg's laptop to inspect the two replacement descriptions and
 Cancel; do not approve laptop replacement as part of the Show PC test. Show PC
 live apply still requires separate explicit approval and backup/reopen/repeat
 acceptance. Do not publish this as a general programmer release yet.
+
+## Candidate 1.0.7 review refinement
+
+Use the same default Downloads / Extract All / Setup procedure on every PC.
+Select a preview filename to inspect local-minus/master-plus differences.
+Comment-based display identity, prop UUID and scene context are prioritized,
+with wiring/string/master-link differences also flagged for review.
+Match master Revision is optional, unchecked by default and permitted only for
+identical identity/substantive content. It rebuilds the reviewed candidate and
+requires new acknowledgement; it never changes the accepted master or DB.
+Pilot approval remains per-PC and explicit. General release is still pending
+actual Windows review and live backup/reopen/repeat acceptance.

@@ -416,3 +416,44 @@ separate explicit Show PC live-apply approval, LOR reopen/usability, close and
 repeat ADD0/REPLACE0, retained exact backup/audit paths remain mandatory. Current
 Production browser page remains 1.0.2 without the install download. Server
 Management owns bounded static publication after the candidate is accepted.
+
+## Candidate 1.0.7 — filename list, diff and optional Revision alignment
+
+Greg rejected the 1.0.6 combined text view after review (no apply approval).
+Replacement UI: all controlled preview filenames/actions/Revision metadata in a
+selectable grid, separate read-only red/green unified diff, and database-review
+notes. The resizable layout uses current screen working area and automatic
+layout instead of fixed stacked text. Actual Windows rendering is still an
+operator acceptance gate; Linux cannot establish WinForms acceptance.
+
+Priorities confirmed against parser field map and reconciliation ownership docs:
+Preview UUID/name; Comment-based display identity and prop association; raw prop
+UUID; scenes and positional scene membership. Parser also consumes ChannelGrid,
+channel Name, DeviceType, DimmingCurveName, string type/master relationships.
+Review labels prefer Comment for props, while Name remains visible as channel
+metadata. Review categories are an aid, not a second LOR2DB impact engine. The
+PC updater never writes the database; accepted #81 evidence remains authority.
+Other substantive settings/geometry remain actionable even without DB identity
+changes. Unknown/unexplained differences remain blocked.
+
+Match master Revision is initially unchecked. It is permitted only when stable
+PreviewID and the full substantive hash already match. It changes the local
+PreviewClass root Revision, verifies the same identity/hash afterward, and is
+counted as ALIGN_REVISION_IN_CANDIDATE, not REPLACE. Serialization may normalize
+formatting inside that controlled fragment; unmanaged fragments remain byte
+identical. Master numeric Revision must be usable. Revision never ranks content.
+Review-only rows show just two metadata diff lines. Matching the master can lower
+a local Revision; that is metadata normalization, not authority.
+
+Changing that option clears the acknowledgement, rebuilds only the candidate
+from the captured accepted master and unchanged local bytes, refreshes the CSV
+and freezes a new candidate hash. Failed rebuild disables apply. Both audit and
+pilot retain original release/local/master/candidate revalidation and exact-byte
+backup gates. No-change/Revision-only state cannot silently trigger a write;
+operator must opt in, acknowledge and approve a nonempty plan. No real PC apply
+or new Production website deployment has occurred.
+
+Installation procedure correction: download -> Extract All into the default
+Downloads folder -> double-click Setup MSB PC Preview Updater.vbs on every PC.
+No version-specific C:\MSB299 installation folders are required. C:\LOR remains
+the mandatory LOR data folder; application storage is per-user LocalAppData.

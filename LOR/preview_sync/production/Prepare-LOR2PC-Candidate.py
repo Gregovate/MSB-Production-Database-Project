@@ -26,7 +26,7 @@ for name in ['Update_MSB_Previews.ps1', 'Install-LOR2PC-Launcher.ps1', 'Install 
     shutil.copy2(source / name, target / name)
     files[name] = hashlib.sha256((target / name).read_bytes()).hexdigest()
 shutil.copy2(source.parent / 'artifacts/MSB Preview Update Tree v2.ico', target)
-(target / 'DEPLOYMENT.json').write_text(json.dumps(dict(version='1.0.6', source_commit=commit,
+(target / 'DEPLOYMENT.json').write_text(json.dumps(dict(version='1.0.7', source_commit=commit,
     apply_enabled=args.enable_apply, acceptance=('CONTROLLED_APPLY_PILOT' if args.enable_apply else 'BROWSER_COMPARISON_ONLY'), current_source_url='https://my.sheboyganlights.org/lor2db/preflight/api/current-source',
     updater_sha256=files['Update_MSB_Previews.ps1'], files=files), indent=2))
 print(f'Prepared candidate {commit}: {target}; not deployed')
