@@ -27,9 +27,13 @@ def digest(value):
 
 
 def source_digest(files):
-    # Exact Python parser captured-byte algorithm, not PC semantic comparison.
-    return digest(sorted([dict(filename=f['filename'], identity='PreviewClass:' + f['preview_id'].casefold(), sha256=f['sha256'])
-                          for f in files], key=lambda f: (f['identity'], f['filename'].casefold())))
+    # Match parse_props_v7_scene_parser.source_manifest_sha256 EXACTLY.
+    # The software-version checker's manifest_source_signature is a different
+    # contract (identity fields/key sorting) and cannot validate ingest evidence.
+    entries = [dict(filename=f['filename'], sha256=f['sha256'])
+               for f in sorted(files, key=lambda f: f['filename'].casefold())]
+    payload = json.dumps(entries, ensure_ascii=False, separators=(',', ':'))
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
 
 def contract_node(node, depth=0):

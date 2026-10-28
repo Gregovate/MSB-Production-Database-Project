@@ -1,11 +1,19 @@
 """Disposable catalog checks. Never use G:, PostgreSQL or production runner."""
+import ast
+import hashlib
 import json
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
 from preview_catalog import Catalog, capture, source_digest
-from lor_version_checker import build_manifest, manifest_source_signature
+# Load the actual parser functions via AST without running parser top-level I/O.
+parser_source=Path(__file__).with_name('parse_props_v7_scene_parser.py').read_text(encoding='utf-8-sig')
+parser_tree=ast.parse(parser_source)
+parser_functions=[node for node in parser_tree.body if isinstance(node,ast.FunctionDef) and node.name in {'sha256_file','source_manifest_sha256'}]
+parser_scope={'Path':Path,'json':json,'hashlib':hashlib}
+exec(compile(ast.Module(body=parser_functions,type_ignores=[]),'<actual-parser-source-digest>','exec'),parser_scope)
+actual_parser_digest=parser_scope['source_manifest_sha256']
 
 RAW='<PreviewClass id="preview" Name="Show Background Stage 00 Test" Revision="57" Brightness="20"><Scene id="scene" Name="Stage"/><PropClass id="prop" Name="Channel" Comment="HW-Flood-01" MasterDimmable="True" ChannelGrid="Regular,1C,1,3" DeviceType="LOR"/></PreviewClass>'
 
@@ -24,8 +32,7 @@ class CatalogTests(unittest.TestCase):
     def register(self): return self.catalog.review(self.accepted,self.actor)
 
     def test_parser_digest_parity(self):
-        manifest=build_manifest(self.folder,'6.6.12',None)
-        self.assertEqual(source_digest(capture(self.folder)),manifest_source_signature(manifest))
+        self.assertEqual(source_digest(capture(self.folder)),actual_parser_digest(self.folder))
 
     def test_bootstrap_requires_accepted_bytes(self):
         self.file.write_text(RAW.replace('True','False'))
@@ -105,5 +112,17 @@ class CatalogTests(unittest.TestCase):
         (self.catalog.context(self.accepted)/'current.json').unlink()
         with self.assertRaisesRegex(ValueError,'pointer is missing'):self.catalog.current(self.accepted)
         with self.assertRaisesRegex(ValueError,'pointer is missing'):self.register()
+
+    def test_parser_digest_multiple_files_nonascii_names_and_order(self):
+        (self.folder/'à Extras.lorprev').write_text(RAW.replace('id="preview"','id="second-preview"'),encoding='utf-8')
+        (self.folder/'A First.lorprev').write_bytes(RAW.replace('id="preview"','id="third-preview"').encode('utf-8-sig'))
+        captured=capture(self.folder)
+        self.assertEqual(source_digest(list(reversed(captured))),actual_parser_digest(self.folder))
+
+    def test_known_previously_proven_pc_parser_digest(self):
+        self.file.unlink()
+        raw='<PreviewClass id="managed" Name="Rotary-Trees" Revision="57"><Scene Name="HW-Flood" /></PreviewClass>'
+        (self.folder/'Rotary.lorprev').write_bytes(raw.encode('utf-8'))
+        self.assertEqual(source_digest(capture(self.folder)),'f0b1d09d14ed4e5438f010e8fb69c096339dd97f4a44acbbee3cb6859d61fe18')
 
 if __name__=='__main__':unittest.main()

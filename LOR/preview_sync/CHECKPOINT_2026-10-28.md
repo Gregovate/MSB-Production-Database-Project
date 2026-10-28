@@ -67,3 +67,23 @@ versioned self-service installer, not a silent update engine.
    explicit apply, LOR reopen/usability and repeat0/0 with backup/audit remain.
 
 #299/PR300 remain open/draft. No general Production release acceptance claimed.
+
+
+## First catalog review HOLD / r2 correction
+
+Actual attempt /tmp/msb-lor2pc-review.1fEgXNGG failed startup because catalog
+source_digest used the VERSION CHECKER signature rather than the PARSER source
+manifest digest frozen by ingest. This is an engineering defect, not evidence
+that Greg changed the master. Earlier parity fixture used the wrong reference.
+Do not deploy catalog code from4ceaf640/0ccf9623 without this correction. The
+PC installer1.1.0 remains unchanged: its source digest was already correct.
+
+Current correction matches actual parser source_manifest_sha256, with actual
+parser-function AST parity, multifile/Unicode/BOM/order and known C# fixture
+checks. Real API->runner fixture now generates expected evidence independently.
+First browser review is FAIL/HOLD, not accepted. Use the new immutable
+LOR2PC-Catalog-Review-1.1.0-r2.zip; exact corrected source is in SOURCE.json.
+Readiness failure now prints retained browser.log and records source-validation
+JSON with expected/observed/count/per-file hashes. Existing Windows PowerShell
+plus child process -ExecutionPolicy Bypass keeps errors visible without policy
+changes. Corrected operator browser/production/native acceptance remain pending.

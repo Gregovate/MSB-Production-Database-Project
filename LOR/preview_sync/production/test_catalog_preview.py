@@ -9,7 +9,7 @@ class CatalogPreviewTests(unittest.TestCase):
     def test_copy_review_export_publish_current_and_write_boundaries(self):
         script=r'''
 from pathlib import Path
-import tempfile,zipfile,sys
+import tempfile,zipfile,sys,json,hashlib
 from contextlib import contextmanager
 from unittest.mock import MagicMock
 from werkzeug.test import Client
@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory() as temp:
     files=capture(original)
     accepted=dict(schema_version=1,status='COMPLETED',validation='PASSED',lor_version='6.6.12',
         source_folder=r'G:\Shared drives\MSB Database\Database Previews V6.6.12',evidence_id='a'*64,
-        source_manifest_sha256=source_digest(files),previews=[{k:files[0][k] for k in ('filename','preview_id','name','revision')}],
+        source_manifest_sha256=hashlib.sha256(json.dumps([{'filename':'Test.lorprev','sha256':hashlib.sha256((original/'Test.lorprev').read_bytes()).hexdigest()}],ensure_ascii=False,separators=(',',':')).encode('utf-8')).hexdigest(),previews=[{k:files[0][k] for k in ('filename','preview_id','name','revision')}],
         run_id=32,import_run_id=74,preview_count=1,source_sqlite_sha256='b'*64,report_sha256='c'*64,report_url='report')
     archive=root/'master.zip'
     with zipfile.ZipFile(archive,'w') as out:out.write(original/'Test.lorprev','Test.lorprev')

@@ -52,8 +52,15 @@ def configure(archive, workspace, accepted=None):
     evidence=workspace/'catalog-evidence'
     # Verify exact copied source BEFORE serving, without registering the baseline.
     from preview_catalog import capture, source_digest
-    if source_digest(capture(folder))!=accepted['source_manifest_sha256']:
-        raise RuntimeError('Copied master does not match latest completed clone source; no review started')
+    files=capture(folder)
+    observed=source_digest(files)
+    expected=accepted['source_manifest_sha256']
+    validation=dict(expected_digest=expected,observed_digest=observed,expected_count=accepted['preview_count'],
+                    observed_count=len(files),copied_files=[{k:f[k] for k in ('filename','preview_id','revision','sha256')} for f in files])
+    (workspace/'source-validation.json').write_text(json.dumps(validation,indent=2),encoding='utf-8')
+    if observed!=expected:
+        raise RuntimeError('Copied source validation failed: expected '+expected+'; observed '+observed+
+                           '; files '+str(len(files))+'. Retained source-validation.json; no review started.')
     original_loader=current_source.load_current_source
     current_source.load_current_source=lambda conn, factory:dict(doc)
     token=secrets.token_hex(32)

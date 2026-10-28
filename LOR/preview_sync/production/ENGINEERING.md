@@ -601,3 +601,32 @@ Additional fail-closed repair: a missing current pointer after any catalog
 publication is now an error, never a fallback to the older database source.
 Test proves both read and new review are blocked in that condition. Native full
 workflow, live Cloudflare/runner, ACL and Production acceptance remain pending.
+
+
+## Catalog source-digest correction / review r2
+
+Actual first catalog browser attempt HOLD: copied master digest did not match
+latest clone accepted source; retained evidence /tmp/msb-lor2pc-review.1fEgXNGG.
+Traceback established the readiness failure, not a changed-master diagnosis.
+Code investigation found catalog source_digest wrongly copied the software-
+version checker's manifest_source_signature (identity/key sorting). The ingest
+SourceManifestSHA256 actually uses parse_props_v7_scene_parser.py's
+source_manifest_sha256: filenames sorted casefold; list of filename/sha256 dicts
+in that key order; ensure_ascii=False; compact JSON UTF8. Existing PC C# digest
+was already correct. Earlier "parser parity" test compared against the wrong
+version-checker helper and therefore did not prove parser/ingest parity.
+
+Corrected catalog hashing without weakening source validation. Tests now load
+actual parser SHA functions via AST (no parser top-level I/O), include multiple
+files/Unicode filenames/BOM/order and the independent previously proven C#/
+parser fixture digest f0b1d09d14ed4e5438f010e8fb69c096339dd97f4a44acbbee3cb6859d61fe18.
+HTTP fixture source evidence is independently generated instead of calling the
+catalog helper on both sides. First browser attempt remains FAIL/HOLD; corrected
+r2 operator review is pending. No Production code/source/DB was changed.
+
+Review now retains source-validation.json with expected/observed digests,
+counts and copied per-file hashes. Readiness failure prints the bounded retained
+browser log in the same foreground SSH output; expected startup connection
+retries are quiet. Existing PowerShell window should be used with process-only
+-ExecutionPolicy Bypass, not an unsigned direct invocation. r2 review archive is
+new and immutable; do not overwrite the first artifact.

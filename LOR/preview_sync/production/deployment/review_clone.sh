@@ -144,11 +144,15 @@ pgid=$(runuser -u lor-preflight -- bash -c '
 ' bash "$runtime" "$root/start.py" "$root/preview.env" "$entry" "$root/browser.log")
 ready=0
 for attempt in $(seq 1 40); do
-    if curl -fsS "http://127.0.0.1:$port/lor2db/preflight/api/current-source" > "$root/current-source.json"; then ready=1; break; fi
+    if curl -fsS "http://127.0.0.1:$port/lor2db/preflight/api/current-source" > "$root/current-source.json" 2>/dev/null; then ready=1; break; fi
     kill -0 "$pgid" 2>/dev/null || break
     sleep 1
 done
-[[ $ready == 1 ]] || { echo 'HOLD: browser/source readiness failed; inspect browser.log'; exit 2; }
+if [[ $ready != 1 ]]; then
+    echo 'HOLD: browser/source readiness failed. Retained browser.log follows:'
+    tail -n 100 "$root/browser.log"
+    exit 2
+fi
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$port/lor2db/preflight/api/parser/run")
 [[ $code == 403 ]] || { echo 'HOLD: preview write guard failed'; exit 2; }
 echo 'BROWSER REVIEW READY: http://127.0.0.1:8898/lor2db/'

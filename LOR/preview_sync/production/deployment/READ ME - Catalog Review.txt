@@ -1,5 +1,5 @@
 LOR2PC OFFICIAL CATALOG — DISPOSABLE ENGINEERING REVIEW
-2026-10-28 / candidate1.1.0
+2026-10-28 / candidate1.1.0 / review r2
 
 This tests the real candidate API and catalog runner using copied preview
 exports and a disposable current-Production database clone. It does not update

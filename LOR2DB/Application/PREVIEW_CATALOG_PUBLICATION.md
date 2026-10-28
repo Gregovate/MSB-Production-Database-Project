@@ -130,7 +130,9 @@ No new Production catalog, live source export or PC apply was performed here.
 
 Engineering launcher: LOR/preview_sync/production/deployment/Review-LOR2PC-Catalog.ps1.
 Build from a clean committed source using Build-Catalog-Review.py beside it.
-Review archive: LOR/preview_sync/artifacts/LOR2PC-Catalog-Review-1.1.0.zip.
+Review archive: LOR/preview_sync/artifacts/LOR2PC-Catalog-Review-1.1.0-r2.zip.
+The first review HOLD exposed a wrong digest reference; r2 matches the actual
+parser source_manifest_sha256 and has not yet passed operator browser review.
 This is an engineering review bundle, not the two-file programmer installer.
 It copies the unchanged master exports read-only, restores a disposable DB clone,
 and serves the real catalog API/runner against the copies. Upload the local new
