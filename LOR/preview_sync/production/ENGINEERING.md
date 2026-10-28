@@ -569,3 +569,35 @@ and documents per-user self-install (no administrator visit/elevation). The
 button downloads the immutable published ZIP; it does not silently execute an
 installer or automatically discover a newer release. Production1.0.2 page remains
 stale until the approved static publication is performed.
+
+
+## Exact catalog browser review — 2026-10-28
+
+Server Management Production_Database_Change_Deployment_Runbook.md classifies
+this catalog release as SOURCE-ONLY/non-migration (no database-wide maintenance
+window). Its Pre_Production_Browser_Review_Runbook.md still requires exact
+operator-visible browser review before production approval. There is no bypass
+of that review merely because unit tests pass.
+
+New catalog_preview_entry.py composes the real API and authenticated runner
+HTTP dispatch with copied master exports and a disposable database. Only the
+clone harness maps the baseline folder to a private local copied path and
+recomputes the disposable document identity; captured-byte digest must equal
+the actual clone's latest completed source. Baseline registration and subsequent
+XML upload/publication write only private disposable evidence/master copies.
+No live Windows runner is configured. Normal parser/ingest/reconciliation writes
+are blocked at the loopback middleware, including requests from the reviewer.
+The copied-export simulation is explicitly labelled and cannot address arbitrary
+paths: its target comes only from the existing controlled PreviewID inventory.
+
+Review-LOR2PC-Catalog.ps1 reads only master .lorprev files, uploads one bounded
+copy archive, then opens one foreground SSH session. Reuses8898 with prior port
+ownership checks and existing clone/post-init/readiness/cleanup gates. No browser
+opens before BROWSER REVIEW READY. The original GET-only harness remains GET-only.
+The review ZIP is built only from a clean committed checkpoint by
+production/deployment/Build-Catalog-Review.py, with SOURCE.json file hashes.
+
+Additional fail-closed repair: a missing current pointer after any catalog
+publication is now an error, never a fallback to the older database source.
+Test proves both read and new review are blocked in that condition. Native full
+workflow, live Cloudflare/runner, ACL and Production acceptance remain pending.

@@ -142,7 +142,7 @@ class Catalog:
         files = self.scan()
         directory = self.context(accepted)
         pointer = directory / 'current.json'
-        parent = self.read(pointer)['publication_id'] if pointer.exists() else None
+        parent = self.parent(directory)
         baseline_files = {f['filename']: f for f in baseline['files']}
         old = baseline_files
         if parent:
@@ -202,14 +202,22 @@ class Catalog:
         self.write(directory / 'current.json', dict(publication_id=publication_id))
         return document
 
-    def current(self, accepted):
-        directory = self.context(accepted)
+    def parent(self, directory):
         pointer = directory / 'current.json'
         if not pointer.exists():
-            return accepted
+            if any((directory / 'publications').glob('*.json')):
+                raise ValueError('Published catalog pointer is missing; do not fall back to older source')
+            return None
         publication_id = self.read(pointer)['publication_id']
         if not re.fullmatch('[a-f0-9]{64}', publication_id):
             raise ValueError('Invalid catalog pointer')
+        return publication_id
+
+    def current(self, accepted):
+        directory = self.context(accepted)
+        publication_id = self.parent(directory)
+        if publication_id is None:
+            return accepted
         document = self.read(directory / 'publications' / (publication_id + '.json'))['document']
         unsigned = dict(document); unsigned.pop('evidence_id', None)
         if (digest(unsigned) != publication_id or document['database_baseline_evidence_id'] != accepted['evidence_id']):

@@ -100,4 +100,10 @@ class CatalogTests(unittest.TestCase):
         changed=self.register();self.catalog.publish(self.accepted,self.actor,changed['review_id'])
         self.assertEqual(self.register()['changes'],[])
 
+    def test_missing_committed_pointer_never_falls_back(self):
+        review=self.register();self.catalog.publish(self.accepted,self.actor,review['review_id'])
+        (self.catalog.context(self.accepted)/'current.json').unlink()
+        with self.assertRaisesRegex(ValueError,'pointer is missing'):self.catalog.current(self.accepted)
+        with self.assertRaisesRegex(ValueError,'pointer is missing'):self.register()
+
 if __name__=='__main__':unittest.main()

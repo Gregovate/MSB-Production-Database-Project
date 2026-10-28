@@ -26,6 +26,7 @@ os.environ['LOR_PREFLIGHT_DATABASE_URL'] = DSN
 os.environ['LOR_PREFLIGHT_OPERATORS'] = EMAIL
 os.environ.pop('LOR_RUNNER_URL', None)
 os.environ.pop('LOR_RUNNER_TOKEN', None)
+os.environ['LOR_PREVIEW_CATALOG_ENABLED'] = 'false'
 sys.path.insert(0, str(ROOT/'LOR2DB/Application'))
 import backend  # noqa: E402
 
@@ -37,7 +38,7 @@ def landing(): return send_from_directory(ROOT/'LOR2DB/Application/landing', 'in
 @static.get('/lor2db/<path:name>')
 def asset(name):
     if name == 'pc/': name = 'pc/index.html'
-    if name not in {'lor2db.js','lor2db.css','pc/index.html','pc/handoff.js','pc/downloads/MSB-PC-Preview-Updater-1.1.0-pilot.zip'}:
+    if name not in {'lor2db.js','lor2db.css','catalog.js','pc/index.html','pc/handoff.js','pc/downloads/MSB-PC-Preview-Updater-1.1.0-pilot.zip'}:
         return Response('Unavailable in disposable read-only review', 404)
     return send_from_directory(ROOT/'LOR2DB/Application/landing', name)
 

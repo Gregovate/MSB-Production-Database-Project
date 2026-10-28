@@ -124,3 +124,15 @@ source-only deployment, real publisher and negative Crew authorization, initial
 unchanged-source registration, Greg's export/review/publish, PC retrieval of new
 catalog, controlled Show PC apply, LOR reopen/usability and repeat0/0 with backups.
 No new Production catalog, live source export or PC apply was performed here.
+
+
+## Disposable review handoff
+
+Engineering launcher: LOR/preview_sync/production/deployment/Review-LOR2PC-Catalog.ps1.
+Build from a clean committed source using Build-Catalog-Review.py beside it.
+Review archive: LOR/preview_sync/artifacts/LOR2PC-Catalog-Review-1.1.0.zip.
+This is an engineering review bundle, not the two-file programmer installer.
+It copies the unchanged master exports read-only, restores a disposable DB clone,
+and serves the real catalog API/runner against the copies. Upload the local new
+export at /review/ to simulate the export; never copy it to G: during this review.
+Only the clone/copies change. Exact steps are in READ ME - Catalog Review.txt.

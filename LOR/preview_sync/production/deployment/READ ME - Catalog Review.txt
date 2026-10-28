@@ -1,0 +1,44 @@
+LOR2PC OFFICIAL CATALOG — DISPOSABLE ENGINEERING REVIEW
+2026-10-28 / candidate1.1.0
+
+This tests the real candidate API and catalog runner using copied preview
+exports and a disposable current-Production database clone. It does not update
+Production, G:, the live Windows runner, or your PC preview library.
+
+1. Extract All into Downloads normally. Keep all review files together.
+2. Close any prior disposable review by pressing Enter in its original SSH
+   window and wait for CLEAN EXIT. Do not kill or reuse an unknown8898 listener.
+3. Open this extracted folder in File Explorer. Type powershell in its address
+   bar and press Enter. In that PowerShell window run exactly:
+
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Review-LOR2PC-Catalog.ps1"
+
+4. Enter your existing MSB login email. For Greg this is:
+   gliebig@sheboyganlights.org
+5. At the accepted master-folder prompt enter the current unchanged folder:
+   G:\Shared drives\MSB Database\Database Previews V6.6.12
+   This is the current test input, not a version hard-coded into the app.
+   The wrapper reads only .lorprev files and uploads a temporary ZIP of copies.
+6. Respond to the SCP, SSH and sudo prompts. Wait for BROWSER REVIEW READY.
+   If HOLD occurs, retain the output; do not switch ports or restart blindly.
+7. Open http://127.0.0.1:8898/lor2db/ manually. Confirm the yellow DISPOSABLE
+   CATALOG REVIEW banner. Select Review and Update Official Catalog once.
+   Expect unchanged-source registration. Do not publish yet.
+8. Open http://127.0.0.1:8898/review/ . Select your new locally exported
+   MSB-Rotary-Trees .lorprev and click Copy export into disposable master.
+   This writes ONLY the copied folder inside this temporary review.
+9. Return to the LOR2DB tab and select Review and Update Official Catalog again.
+   Inspect the changed file and eight MasterDimmable True -> False entries.
+   If any other unexpected contract change blocks publication, retain the
+   message and stop. Do not modify the real master or run a parser/ingest.
+10. Check the approval and select Publish Approved Catalog. This publishes only
+    disposable evidence. Expect a new accepted catalog identifier, no ingest.
+11. Inspect the PC entry page for updated Install / Update wording and1.1.0.
+    Do NOT install or launch the PC updater during this browser-only review.
+12. Capture the review/published results. Return to the SSH PowerShell window
+    and press Enter for cleanup. Wait for CLEAN EXIT and retain the evidence
+    path and output.
+
+The result is browser-workflow acceptance only. Actual Cloudflare policies,
+Production publisher permissions, the Windows runtime, and live PC synchronization
+require separate accepted deployment/testing. Your real master remains unchanged.

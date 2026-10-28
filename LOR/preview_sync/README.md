@@ -14,15 +14,18 @@ G:\Shared drives\MSB Database\UserPreviewStaging\LOR2DB_2PC_Sync
 
 Do not treat files manually overwritten in that shared folder as authoritative engineering source.
 
-## Active development — 2026-10-27
+## Active development — 2026-10-28
 
-Candidate 1.0.2 text source and the current engineering/acceptance boundary are
-in [production/ENGINEERING.md](production/ENGINEERING.md). This supersedes the
-historical CSV/report authority described below. #81 owns the read-only current
-source contract; #299 owns browser handoff and PC merge. Production Crew is the
-intended read/sync audience; administrator mutation routes remain restricted.
-Nothing has been deployed from this candidate. Windows and live LOR acceptance
-remain pending. Historical archives and prior evidence below are preserved.
+Current candidate: **1.1.0** (API V0.6.7 / Windows runner V1.8.0).
+See [October 28 checkpoint](CHECKPOINT_2026-10-28.md),
+[engineering state](production/ENGINEERING.md) and
+[official catalog contract](../../LOR2DB/Application/PREVIEW_CATALOG_PUBLICATION.md).
+#81 owns restricted catalog publication; #299 owns programmer-PC consumption.
+Greg keeps direct-to-master exports, then explicitly approves the catalog.
+Production Crew may sync but cannot publish. Presentation preferences remain local.
+This catalog candidate is NOT deployed. Exact-candidate browser review precedes
+Production approval; master bytes remain unchanged pending initial registration.
+The older checkpoints below are historical evidence, not the current authority.
 
 ## Current checkpoint
 

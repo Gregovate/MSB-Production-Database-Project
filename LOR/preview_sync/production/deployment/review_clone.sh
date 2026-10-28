@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # Temporary current-production clone + exact candidate browser review. No deploy.
 set -euo pipefail
-if [[ $# != 3 || "$1" != 8898 || ! "$2" =~ ^[a-f0-9]{40}$ || "$3" != *@* ]]; then
+if [[ ( $# != 3 && $# != 4 ) || "$1" != 8898 || ! "$2" =~ ^[a-f0-9]{40}$ || "$3" != *@* ]]; then
     echo 'Usage: review_clone.sh 8898 <exact-candidate-sha> <existing-MSB-reviewer-email>' >&2; exit 2
 fi
 port="$1"; sha="$2"; reviewer="$3"
+input_zip="${4:-}"
+if [[ -n "$input_zip" && ( ! "$input_zip" =~ ^/tmp/msb299-catalog-[a-f0-9]{32}\.zip$ || ! -f "$input_zip" ) ]]; then
+    echo 'HOLD: invalid copied master archive path'; exit 2
+fi
 [[ $(id -u) == 0 ]] || { echo 'Run via the established sudo boundary'; exit 2; }
 [[ -z $(ss -ltnH "sport = :$port") ]] || { echo 'HOLD: review listener already occupied'; exit 2; }
 repo=/opt/fieldwiring
@@ -102,6 +106,24 @@ open(path,'w').write(json.dumps({'LOR2PC_PREVIEW_MODE':'disposable','LOR2PC_PREV
     'LOR2PC_PREVIEW_EMAIL':email,'LOR2PC_PREVIEW_DSN':f'host=127.0.0.1 port={port} dbname=lor2pc_disposable user=lor_preflight_app password={password}'}))
 PY
 unset secret
+entry="$root/source/LOR/preview_sync/production/preview_entry.py"
+if [[ -n "$input_zip" ]]; then
+    cp -- "$input_zip" "$root/copied-master.zip"
+    rm -- "$input_zip"
+    mkdir "$root/catalog-workspace"
+    chown lor-preflight:msbadmin "$root/catalog-workspace"
+    chmod 700 "$root/catalog-workspace"
+    chgrp msbadmin "$root/copied-master.zip"
+    chmod 640 "$root/copied-master.zip"
+    python3 - "$root/preview.env" "$root" <<'PYENV'
+import json,sys
+path,root=sys.argv[1:]
+value=json.load(open(path))
+value.update(LOR2PC_COPIED_MASTER_ZIP=root+'/copied-master.zip',LOR2PC_CATALOG_WORKSPACE=root+'/catalog-workspace')
+open(path,'w').write(json.dumps(value))
+PYENV
+    entry="$root/source/LOR/preview_sync/production/catalog_preview_entry.py"
+fi
 cat > "$root/start.py" <<'PY'
 import json,os,runpy,sys
 os.environ.update(json.load(open(sys.argv[1])))
@@ -119,7 +141,7 @@ chmod 640 "$root/browser.log"
 pgid=$(runuser -u lor-preflight -- bash -c '
     setsid "$1" "$2" "$3" "$4" > "$5" 2>&1 &
     echo $!
-' bash "$runtime" "$root/start.py" "$root/preview.env" "$root/source/LOR/preview_sync/production/preview_entry.py" "$root/browser.log")
+' bash "$runtime" "$root/start.py" "$root/preview.env" "$entry" "$root/browser.log")
 ready=0
 for attempt in $(seq 1 40); do
     if curl -fsS "http://127.0.0.1:$port/lor2db/preflight/api/current-source" > "$root/current-source.json"; then ready=1; break; fi
@@ -131,5 +153,11 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$port/lo
 [[ $code == 403 ]] || { echo 'HOLD: preview write guard failed'; exit 2; }
 echo 'BROWSER REVIEW READY: http://127.0.0.1:8898/lor2db/'
 echo 'Disposable clone only. Actual Cloudflare/PC handoff is not accepted by this review.'
-echo 'Inspect shared landing/status and the PC entry. Do not install/launch the PC updater.'
+if [[ -n "$input_zip" ]]; then
+    echo 'CATALOG REVIEW: unchanged accepted master copies + disposable DB/evidence only.'
+    echo 'Review unchanged catalog first; then http://127.0.0.1:8898/review/ to upload your changed local export.'
+    echo 'Return to LOR2DB to review/publish the disposable catalog. Do not install/launch the PC updater.'
+else
+    echo 'Inspect shared landing/status and the PC entry. Do not install/launch the PC updater.'
+fi
 read -r -p 'After browser review, press Enter for cleanup: ' _ </dev/tty
