@@ -327,7 +327,8 @@ CREATE TABLE ops.label_print_batch_recovery (
     last_event text NOT NULL CHECK (last_event IN (
         'BATCH_CREATED', 'SUBMISSION_STARTED', 'SPOOLER_OBSERVED',
         'BROTHER_ACTIVE', 'SPOOLER_CLEARED', 'READY_IDLE',
-        'RECOVERABLE_MEDIA', 'AMBIGUOUS_ERROR', 'COMPLETED'
+        'RECOVERABLE_MEDIA', 'AMBIGUOUS_ERROR',
+        'RELEASED_NO_SUBMISSION', 'COMPLETED'
     )),
     submission_started boolean NOT NULL DEFAULT false,
     spooler_observed boolean NOT NULL DEFAULT false,
