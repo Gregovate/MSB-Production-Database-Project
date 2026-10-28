@@ -735,7 +735,40 @@ The immediate engineering task is to add a read-only sequence/media inventory wo
 
 ---
 
-## 12. Remaining Setup Steps
+## 12. Graphics Performance Requirement
+
+The new Show PC was initially operated using the Core Ultra 5 225 integrated Intel Graphics.
+
+During a large Light-O-Rama sequence, the operator observed severe UI/sequence lag. Task Manager showed approximately:
+
+```text
+Intel Graphics
+3D utilization: ~86%
+```
+
+while the lag was occurring.
+
+The prior Windows 10 Show PC used a discrete NVIDIA GeForce GT 710 and did not exhibit the same level of sequence-editing lag.
+
+### Current conclusion
+
+The integrated graphics configuration is **not accepted for the production Show PC**.
+
+A discrete GPU is required before final Show PC acceptance. The permanent GPU must:
+
+- be supported on Windows 11;
+- fit the ThinkStation P2 Tower Gen 2 with the planned PCIe NIC and sound card;
+- support both LG 27U421A-B monitors;
+- provide enough graphics headroom for large Light-O-Rama sequence editing/playback;
+- avoid unnecessary high-power gaming/workstation hardware.
+
+The old GeForce GT 710 may be useful only as a temporary comparison/test device. It is not the preferred permanent GPU because NVIDIA ended normal Game Ready support for the Kepler generation and its final Windows 11 security-driver support is legacy.
+
+After installing the permanent GPU, repeat the same large-sequence performance test and record GPU utilization and operator acceptance.
+
+---
+
+## 13. Remaining Setup Steps
 
 The following items still need to be performed and verified on the new Show PC before they become part of the confirmed procedure:
 
@@ -744,7 +777,7 @@ The following items still need to be performed and verified on the new Show PC b
 - configure the dedicated E1.31 interface(s);
 - verify E1.31 interfaces have no unintended default gateway;
 - install and verify the dedicated broadcast audio device;
-- configure both show monitors;
+- configure both show monitors and verify identical supported refresh rates after final GPU/cabling is installed;
 - verify recovery after loss of AC power;
 - configure automatic startup of the required show applications;
 - configure the Google Drive-to-`C:\\LOR` synchronization workflow;
