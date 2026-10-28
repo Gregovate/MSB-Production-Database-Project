@@ -162,8 +162,7 @@ $assert$;
 SET SESSION AUTHORIZATION label_print_mail;
 SELECT ops.label_print_mail_claim(
     repeat('a', 64),
-    (SELECT event_key FROM ops.label_print_notification_outbox
-      WHERE transition = 'SUCCESS'),
+    'print-success:controller:1:requester:15',
     1, 'rick@example.invalid',
     '{"subject":"ready","text":"ready","html":"<p>ready</p>","template_sha256":"test"}'::jsonb
 );
@@ -179,8 +178,7 @@ WHERE transition = 'SUCCESS';
 SET SESSION AUTHORIZATION label_print_mail;
 SELECT ops.label_print_mail_claim(
     repeat('b', 64),
-    (SELECT event_key FROM ops.label_print_notification_outbox
-      WHERE transition = 'SUCCESS'),
+    'print-success:controller:1:requester:15',
     2, 'rick@example.invalid',
     '{"subject":"ready","text":"ready","html":"<p>ready</p>","template_sha256":"test"}'::jsonb
 );
