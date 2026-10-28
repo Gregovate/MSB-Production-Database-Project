@@ -756,6 +756,8 @@ The integrated graphics configuration is **not accepted for the production Show 
 
 A subsequent large-sequence test escalated from lag to an operational hang: Light-O-Rama playback could not be stopped and the Windows UI stopped responding for minutes. This is a **failed performance/operability acceptance condition**. Do not use the large production sequence on integrated Intel graphics again except for controlled comparison testing after recovery.
 
+A cross-machine comparison further isolates the problem: Greg's Yoga laptop performs better with the same large sequence while reading it from Google Drive across the LiteBeam/network path than MSB-SHOW_PC2 does with the sequence stored locally. This makes local disk or Google Drive throughput an implausible primary cause of the tower's severe lag and supports the graphics/rendering bottleneck diagnosis.
+
 A discrete GPU is required before final Show PC acceptance. The permanent GPU must:
 
 - be supported on Windows 11;
