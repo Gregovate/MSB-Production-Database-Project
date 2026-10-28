@@ -1,5 +1,20 @@
 \set ON_ERROR_STOP on
 
+/* Every requester item contains its human-readable identity plus durable ID. */
+DO $assert$
+BEGIN
+    IF ops.label_print_request_item_display('DISPLAY', 8)
+           <> 'WV-MtCrumpit-Scaffold-01 (Display ID 8)'
+       OR ops.label_print_request_item_display('CONTAINER', 37)
+           <> 'Mt. Crumpit controller tote (C037)'
+       OR ops.label_print_request_item_display('CONTROLLER', 1001)
+           <> 'CTB32 — CTB32 Generation 3 Controller Board (CTRL:1001)'
+    THEN
+        RAISE EXCEPTION 'human-readable requester item contract failed';
+    END IF;
+END
+$assert$;
+
 INSERT INTO ops.label_print_notification_admin(
     person_id, active_flag, activated_at
 ) VALUES (17, true, clock_timestamp());
@@ -72,6 +87,9 @@ BEGIN
           AND message_kind = 'REQUESTER_ACTIVE'
           AND payload ->> 'operator_action' LIKE '%24 mm%'
           AND payload ->> 'operator_action' LIKE '%36 mm%'
+          AND payload -> 'request_items' = jsonb_build_array(
+              'CTB32 — CTB32 Generation 3 Controller Board (CTRL:1001)'
+          )
     ) OR EXISTS (
         SELECT 1 FROM ops.label_print_notification_outbox
         WHERE incident_key = 'preflight:PRINT-SERVER:controller'
@@ -125,6 +143,9 @@ BEGIN
           AND recipient_person_id = 15
           AND message_kind = 'REQUESTER_SUCCESS'
           AND payload ->> 'status' = 'READY'
+          AND payload -> 'request_items' = jsonb_build_array(
+              'CTB32 — CTB32 Generation 3 Controller Board (CTRL:1001)'
+          )
     ) THEN
         RAISE EXCEPTION 'successful ready-notification contract failed';
     END IF;

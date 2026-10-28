@@ -68,6 +68,16 @@ Requester notifications are the normal operating interface:
 - successful completion: identify only that person's completed requests and
   state that the labels are ready at the print station.
 
+Requester-facing item identity always includes the human-readable asset name.
+Durable IDs may be included for traceability but never appear alone:
+
+- Display: `display_name` plus Display ID;
+- Container: description/location identity plus printed `C###` label;
+- Controller: model code and model name plus `CTRL:<id>`.
+
+The database humanizes durable request items before template rendering, so the
+same rule applies to ACTIVE, RESOLVED and SUCCESS notifications.
+
 Administrator mail is not emitted for a condition the automatic recovery path
 is still handling. It is reserved for exhausted/ambiguous recovery, an
 unreconciled failed batch, or stale service heartbeat. Those messages include

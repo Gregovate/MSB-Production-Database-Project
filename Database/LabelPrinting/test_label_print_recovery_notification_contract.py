@@ -10,6 +10,9 @@ SQL = Path(__file__).with_name(
 ACCEPTANCE = Path(__file__).with_name(
     "label_print_disposable_acceptance.sql"
 ).read_text(encoding="utf-8")
+ITEM_NAMES = Path(__file__).with_name(
+    "002_label_print_human_readable_request_items.sql"
+).read_text(encoding="utf-8")
 
 
 class LabelPrintRecoveryNotificationContractTests(unittest.TestCase):
@@ -58,6 +61,22 @@ class LabelPrintRecoveryNotificationContractTests(unittest.TestCase):
         self.assertIn("'REQUESTER_SUCCESS'", SQL)
         self.assertIn("'PREFLIGHT_MEDIA', 'ACTIVE_MEDIA'", SQL)
         self.assertIn("'print-success:'", SQL)
+
+    def test_requester_items_always_include_names_and_ids(self) -> None:
+        self.assertIn("d.display_name", ITEM_NAMES)
+        self.assertIn("c.description", ITEM_NAMES)
+        self.assertIn("c.location_code", ITEM_NAMES)
+        self.assertIn("m.model_code", ITEM_NAMES)
+        self.assertIn("m.model_name", ITEM_NAMES)
+        self.assertIn("Display ID", ITEM_NAMES)
+        self.assertIn("CTRL:", ITEM_NAMES)
+        self.assertIn("trg_label_print_humanize_outbox_request_items", ITEM_NAMES)
+        self.assertIn("WV-MtCrumpit-Scaffold-01 (Display ID 8)", ACCEPTANCE)
+        self.assertIn("Mt. Crumpit controller tote (C037)", ACCEPTANCE)
+        self.assertIn(
+            "CTB32 — CTB32 Generation 3 Controller Board (CTRL:1001)",
+            ACCEPTANCE,
+        )
 
     def test_admin_is_reserved_for_unrecovered_or_unhealthy_state(self) -> None:
         self.assertIn(
