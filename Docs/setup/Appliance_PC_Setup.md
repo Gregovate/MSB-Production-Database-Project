@@ -781,7 +781,7 @@ For the planned/installed Show PC cards, use:
 
 ```text
 Slot 1: MSI GeForce RTX 3050 LP 6G OC
-        - dual-slot card; physically occupies Slot 1 + Slot 2 space
+        - dual-slot card; physically occupies Slot 1 + Slot 2 rear-opening space
         - 70 W, no auxiliary PCIe power required
 
 Slot 3: Intel I350-T4 quad-port Ethernet adapter
@@ -795,9 +795,31 @@ Slot 4: Creative Sound BlasterX AE-5 Plus
         - dedicated broadcast audio
 ```
 
-If the sound card is currently installed in Slot 2, move it to Slot 4 before installing the RTX 3050, because the GPU's dual-slot cooler/bracket uses the Slot 2 physical space.
+### Current rear-slot observation
 
-This arrangement leaves all three required expansion functions installed simultaneously: discrete graphics, quad-port E1.31 networking, and dedicated audio.
+A rear photo of MSB-SHOW_PC2 shows, from top to bottom:
+
+```text
+rear opening 1: dual USB-A bracket
+rear opening 2: Sound Blaster AE-5 Plus
+rear opening 3: USB-C bracket
+rear opening 4: Intel I350-T4
+```
+
+Therefore the RTX 3050 is **not** a drop-in install in the current bracket arrangement.
+
+Before installing the GPU:
+
+1. remove the two optional rear USB brackets if necessary to free physical openings;
+2. move the I350-T4 into the motherboard PCIe x4-capable Slot 3;
+3. move the AE-5 Plus into PCIe x1 Slot 4;
+4. install the RTX 3050 in Slot 1, allowing its dual-slot cooler/bracket to occupy the adjacent Slot 2 opening;
+5. confirm no card or cable interferes with the GPU fans;
+6. verify the NIC, audio card, and both displays after reboot.
+
+The exact motherboard connector alignment should be verified with the side panel open before moving cards. Do not assume the current rear-opening order proves the current electrical slot assignment.
+
+This arrangement is the intended end state because it preserves all three required expansion functions: discrete graphics, quad-port E1.31 networking, and dedicated audio.
 
 ---
 
