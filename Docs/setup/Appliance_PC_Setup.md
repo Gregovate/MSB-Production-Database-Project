@@ -758,6 +758,10 @@ A subsequent large-sequence test escalated from lag to an operational hang: Ligh
 
 A cross-machine comparison further isolates the problem: Greg's Yoga laptop performs better with the same large sequence while reading it from Google Drive across the LiteBeam/network path than MSB-SHOW_PC2 does with the sequence stored locally. This makes local disk or Google Drive throughput an implausible primary cause of the tower's severe lag and supports the graphics/rendering bottleneck diagnosis.
 
+The Yoga laptop also provides better apparent display resolution/quality than the new tower in its current integrated-graphics configuration. The tower's dual-monitor setup is therefore not accepted until the discrete GPU is installed and both LG 27U421A-B monitors are retested from the graphics card outputs.
+
+> **Procurement status:** MSI GeForce RTX 3050 LP 6G OC ordered for MSB-SHOW_PC2.
+
 A discrete GPU is required before final Show PC acceptance. The permanent GPU must:
 
 - be supported on Windows 11;
