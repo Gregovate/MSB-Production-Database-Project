@@ -7,6 +7,9 @@ import unittest
 SQL = Path(__file__).with_name(
     "001_label_print_recovery_notifications.sql"
 ).read_text(encoding="utf-8")
+ACCEPTANCE = Path(__file__).with_name(
+    "label_print_disposable_acceptance.sql"
+).read_text(encoding="utf-8")
 
 
 class LabelPrintRecoveryNotificationContractTests(unittest.TestCase):
@@ -77,6 +80,18 @@ class LabelPrintRecoveryNotificationContractTests(unittest.TestCase):
         self.assertIn("ops.label_print_recovery_checkpoint", SQL)
         self.assertIn("ops.label_print_recovery_candidates", SQL)
         self.assertIn("ops.label_print_release_batch_requests", SQL)
+
+    def test_disposable_acceptance_exercises_requested_operating_rules(self) -> None:
+        for evidence in (
+            "24 mm laminated tape",
+            "REQUESTER_SUCCESS",
+            "ADMIN_ACTIVE",
+            "FAILED_BEFORE_DATA",
+            "SMTP_ACCEPTED",
+            "RELEASED_NO_SUBMISSION",
+            "least-privilege boundary",
+        ):
+            self.assertIn(evidence, ACCEPTANCE)
 
 
 if __name__ == "__main__":
