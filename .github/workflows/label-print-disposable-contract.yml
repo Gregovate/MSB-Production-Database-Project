@@ -44,6 +44,10 @@ jobs:
         run: >-
           psql -X -v ON_ERROR_STOP=1
           -f Database/LabelPrinting/001_label_print_recovery_notifications.sql
+      - name: Apply human-readable request item migration
+        run: >-
+          psql -X -v ON_ERROR_STOP=1
+          -f Database/LabelPrinting/002_label_print_human_readable_request_items.sql
       - name: Exercise recovery and notification behavior
         run: >-
           psql -X -v ON_ERROR_STOP=1
