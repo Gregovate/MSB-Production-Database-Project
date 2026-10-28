@@ -1,4 +1,4 @@
-# MSB LOR Preview Sync - Production Candidate v1.1.0
+# MSB LOR Preview Sync - Production Candidate v1.1.1
 # Programmer-facing MASTER -> LOCAL synchronization tool.
 #
 # Normal operators launch this through:
@@ -593,13 +593,15 @@ if (Test-Path -LiteralPath $AppIconPath -PathType Leaf) {
 
 $LogFolder = Join-Path $Root 'logs'
 $DeploymentPath = Join-Path $Root 'DEPLOYMENT.json'
-$ApplicationVersion = '1.1.0'
+$ApplicationVersion = '1.1.1'
 $ApplicationReleaseDate = '2026-10-28'
 $script:SessionLogPath = $null
 $CandidateXml = Join-Path $localParent 'LORPreviews.MSB_SYNC_CANDIDATE.xml'
 $CandidateCsv = Join-Path $localParent 'LORPreviews.MSB_SYNC_REPORT.csv'
 
-$PreviewBlockPattern = '<PreviewClass\b[^>]*\bid=["''](?<id>[^"'']+)["''][^>]*>.*?</PreviewClass>'
+# Empty section-heading previews are valid self-closing XML. Match them
+# separately so they cannot absorb the following populated preview.
+$PreviewBlockPattern = '<PreviewClass\b[^>]*\bid\s*=\s*["''](?<id>[^"'']+)["''][^>]*?(?:/\s*>|>.*?</PreviewClass\s*>)'
 $RegexOptions = [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [System.Text.RegularExpressions.RegexOptions]::Singleline
 
 function Show-Message {

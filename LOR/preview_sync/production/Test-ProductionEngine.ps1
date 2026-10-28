@@ -11,7 +11,8 @@ foreach ($match in [regex]::Matches($source, "(?s)Add-Type -ReferencedAssemblies
     else { . ([scriptblock]::Create($match.Value)) }
 }
 foreach ($fn in $ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst]}, $false)) { . ([scriptblock]::Create($fn.Extent.Text)) }
-$PreviewBlockPattern = '<PreviewClass\b[^>]*\bid=["''](?<id>[^"'']+)["''][^>]*>.*?</PreviewClass>'
+# Load the production pattern instead of keeping a divergent test copy.
+Invoke-Expression (@($source -split "`n" | Where-Object { $_.StartsWith('$PreviewBlockPattern =') })[0])
 $RegexOptions = [Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [Text.RegularExpressions.RegexOptions]::Singleline
 function Check($value, $name) { if (-not $value) { throw "FAIL: $name" }; Write-Output "PASS: $name" }
 function Blocks($action, $name) { $blocked=$false; try { & $action } catch { $blocked=$true }; Check $blocked $name }
@@ -194,3 +195,29 @@ $shortSummary=[MSBPreviewSemantic]::ProgrammerSummary($viewMaster,$viewMaster.Re
 Check ($shortSummary.Contains('Network/channel assignment changed: 1') -and $shortSummary.Contains('Dimming settings changed: 1') -and -not $shortSummary.Contains('ChannelGrid')) 'programmer summary describes wiring and dimming without XML attribute dump'
 $shortAddition=[MSBPreviewSemantic]::ProgrammerSummary('<PreviewClass id="view" Name="View"/>',$viewMaster)
 Check ($shortAddition.Contains('Display/prop added: 1') -and $shortAddition.Contains('HW-Flood-01')) 'programmer summary identifies added display by its Comment label'
+
+# Adam's valid library includes self-closing section-heading previews. The old
+# scanner consumed a heading together with the next populated preview.
+$emptyHead='<PreviewClass id="section" Name="Section heading" Revision="1" />'
+$following='<PreviewClass id="following" Name="Following preview" Revision="2"><Scene Name="Keep" /></PreviewClass>'
+$emptyLast="<PreviewClass Name='Final heading' id = 'last' Revision='3'/>"
+$emptyLibrary='<root>'+ $emptyHead + $following + $emptyLast + '</root>'
+[IO.File]::WriteAllText($local,$emptyLibrary)
+$emptyBuild=Build-SyncCandidate @{} $local $null
+Check ($emptyBuild.LocalCount -eq 3 -and $emptyBuild.Candidate -ceq $emptyLibrary) 'self-closing headings remain separate and unchanged before and after populated preview'
+$withAddition=Build-SyncCandidate $master.Records $local $null
+Check ($withAddition.Candidate.Contains($emptyHead) -and $withAddition.Candidate.Contains($following) -and $withAddition.Candidate.Contains($emptyLast) -and (Get-ActionCounts $withAddition.Rows).Add -eq 1) 'adding controlled preview preserves empty headings and adjacent populated preview'
+
+# Optional private uploaded fixture stays outside the repository. Never install
+# the candidate or modify the programmer's original file during regression.
+if ($env:MSB_ADAM_LIBRARY_FIXTURE) {
+    $adamPath=$env:MSB_ADAM_LIBRARY_FIXTURE
+    $adamHash=Get-FileSha256 $adamPath
+    $adam=Build-SyncCandidate @{} $adamPath $null
+    Check ($adam.LocalCount -eq 140) 'actual Adam library scans all 140 previews'
+    $adamOriginal=[IO.File]::ReadAllText($adamPath)
+    Check ($adam.Candidate -ceq $adamOriginal) 'actual Adam library remains text-identical with zero controlled changes'
+    $adamAdd=Build-SyncCandidate $master.Records $adamPath $null
+    Check ((Get-ActionCounts $adamAdd.Rows).Add -eq 1 -and $adamAdd.UnmanagedCount -eq 140) 'actual Adam library accepts synthetic controlled addition and preserves all 140 existing previews'
+    Check ((Get-FileSha256 $adamPath) -ceq $adamHash) 'actual Adam fixture original bytes never modified'
+}

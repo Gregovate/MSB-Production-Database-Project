@@ -693,3 +693,31 @@ Collect current live backend/source hashes, current accepted evidence and paired
 runner version/activity before pinning production mutation. No old comparison
 migration deploy runner reuse; no maintenance fence/DB migration is needed.
 Do not make Greg repeat the same disposable single-preview publication test.
+
+
+## 2026-10-28 — 1.1.1 local-library scanner fix
+
+Adam's supplied library (not checked into git) reproduces exactly parsed140 /
+raw132 on1.1.0. Valid self-closing PreviewClass section headings were consumed
+together with following populated previews. Handle self-closing blocks separately;
+retain full XML parsing, raw/parsed-count validation, controlled duplicate/name
+guards and unmanaged raw-fragment hash preservation. Do not remove the mismatch
+guard or rewrite users' XML. Also accept whitespace around the id attribute's
+equals sign. Version all installer/runtime/download metadata1.1.1.
+
+Actual copied32MB library: all140 scan; zero-controlled-change candidate equals
+original text exactly; one synthetic managed ADD preserves all140 existing
+previews and original file bytes. Synthetic empty headings before/after populated
+previews pass, plus prior semantic/backup/identity/drift/catalog tests. Original
+Adam file untouched. Native Adam installation/apply and repeat0/0 remain pending.
+
+Production context: Windows runnerV1.8.0 and LinuxV0.6.7 deployed; official catalog
+afaffde1dbd1082f0ee3a7cf180fa9fa1ebcd29bf081925639a117c806ae92db
+published by Greg, baselineRun32/import74; master digest
+e93a363ee254f5bf2c65979bd3b40a093f29a4246bcb5be917a2fa7374f1b698.
+ShowPC1.1.0 actual apply ADD34/REPLACE0/unmanaged13 succeeded with backup;
+LOR reopen/repeat0/0 not yet supplied. Errno22 on one catalog review was not
+reproduced in read-only comparison; later actual publication succeeded, so do
+not claim its cause was fixed. Auto application updating remains separate work.
+1.1.1 update changes only programmer runtime/download/page; no runner/API restart,
+database ingest, master export or catalog republication required.
