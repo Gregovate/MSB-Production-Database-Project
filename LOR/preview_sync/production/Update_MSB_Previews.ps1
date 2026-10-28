@@ -1,4 +1,4 @@
-# MSB LOR Preview Sync - Production Candidate v1.0.9
+# MSB LOR Preview Sync - Production Candidate v1.1.0
 # Programmer-facing MASTER -> LOCAL synchronization tool.
 #
 # Normal operators launch this through:
@@ -360,6 +360,40 @@ public static class MSBPreviewSemantic
         return String.Join("; ", notes.ToArray());
     }
 
+    public static string ProgrammerSummary(string local, string master)
+    {
+        XmlElement before = ReadReview(local), after = ReadReview(master);
+        if (Parse(local, "summary local").SemanticHash == Parse(master, "summary master").SemanticHash)
+            return "Controlled preview content is current.";
+        Dictionary<string, XmlElement> oldProps = new Dictionary<string, XmlElement>();
+        Dictionary<string, XmlElement> newProps = new Dictionary<string, XmlElement>();
+        foreach (XmlNode n in before.GetElementsByTagName("PropClass")) { XmlElement p=(XmlElement)n; oldProps.Add(p.GetAttribute("id"),p); }
+        foreach (XmlNode n in after.GetElementsByTagName("PropClass")) { XmlElement p=(XmlElement)n; newProps.Add(p.GetAttribute("id"),p); }
+        List<string> added=new List<string>(), removed=new List<string>();
+        int displayNames=0, wiring=0, dimming=0, channelNames=0;
+        foreach (var pair in newProps) {
+            if (!oldProps.ContainsKey(pair.Key)) { added.Add(ReviewLabel(pair.Value)); continue; }
+            XmlElement a=oldProps[pair.Key], b=pair.Value;
+            if (a.GetAttribute("Comment") != b.GetAttribute("Comment")) displayNames++;
+            if (a.GetAttribute("ChannelGrid") != b.GetAttribute("ChannelGrid") || a.GetAttribute("DeviceType") != b.GetAttribute("DeviceType")) wiring++;
+            if (a.GetAttribute("MasterDimmable") != b.GetAttribute("MasterDimmable") || a.GetAttribute("DimmingCurveName") != b.GetAttribute("DimmingCurveName")) dimming++;
+            if (a.GetAttribute("Name") != b.GetAttribute("Name")) channelNames++;
+        }
+        foreach (var pair in oldProps) if (!newProps.ContainsKey(pair.Key)) removed.Add(ReviewLabel(pair.Value));
+        List<string> lines=new List<string>();
+        if (added.Count>0) lines.Add("Display/prop added: " + added.Count + " - " + String.Join(", ",added.ToArray()));
+        if (removed.Count>0) lines.Add("Display/prop removed: " + removed.Count + " - " + String.Join(", ",removed.ToArray()));
+        if (displayNames>0) lines.Add("Display name changed: " + displayNames);
+        if (wiring>0) lines.Add("Network/channel assignment changed: " + wiring);
+        if (dimming>0) lines.Add("Dimming settings changed: " + dimming);
+        if (channelNames>0) lines.Add("Programming channel name changed: " + channelNames);
+        if (SceneSignature(before)!=SceneSignature(after)) lines.Add("Scenes or scene membership changed.");
+        if (before.GetAttribute("Name")!=after.GetAttribute("Name")) lines.Add("Preview name changed.");
+        if (lines.Count==0) lines.Add("Other preview settings changed.");
+        lines.Add("The accepted master will replace this PC's controlled preview. Personal previews and viewing preferences will be kept.");
+        return String.Join(Environment.NewLine,lines.ToArray());
+    }
+
     public static string UnifiedDiff(string local, string master)
     {
         MSBPreviewInfo before = Parse(local, "local diff"), after = Parse(master, "master diff");
@@ -559,7 +593,7 @@ if (Test-Path -LiteralPath $AppIconPath -PathType Leaf) {
 
 $LogFolder = Join-Path $Root 'logs'
 $DeploymentPath = Join-Path $Root 'DEPLOYMENT.json'
-$ApplicationVersion = '1.0.9'
+$ApplicationVersion = '1.1.0'
 $ApplicationReleaseDate = '2026-10-28'
 $script:SessionLogPath = $null
 $CandidateXml = Join-Path $localParent 'LORPreviews.MSB_SYNC_CANDIDATE.xml'
@@ -711,7 +745,13 @@ function Get-CurrentAcceptedSource {
     # document crosses a nonce-bound, temporary loopback handoff.
     $json = Receive-BrowserSource
     $doc = $json | ConvertFrom-Json
-    if ($doc.schema_version -ne 1 -or $doc.status -cne 'COMPLETED' -or $doc.validation -cne 'PASSED' -or
+    $supported = ($doc.schema_version -eq 1 -and $doc.status -ceq 'COMPLETED')
+    if ($doc.schema_version -eq 2) {
+        $supported = ($doc.status -ceq 'ACCEPTED' -and $doc.acceptance_kind -ceq 'PREVIEW_CATALOG' -and
+            $doc.catalog_policy -ceq 'MSB_PREVIEW_CATALOG_V1' -and $doc.database_baseline_evidence_id -cmatch '^[a-f0-9]{64}$' -and
+            -not [string]::IsNullOrWhiteSpace([string]$doc.published_by) -and -not [string]::IsNullOrWhiteSpace([string]$doc.published_at))
+    }
+    if (-not $supported -or $doc.validation -cne 'PASSED' -or
         $doc.source_manifest_sha256 -cnotmatch '^[a-f0-9]{64}$' -or $doc.evidence_id -cnotmatch '^[a-f0-9]{64}$' -or
         $doc.report_sha256 -cnotmatch '^[a-f0-9]{64}$' -or $doc.source_sqlite_sha256 -cnotmatch '^[a-f0-9]{64}$' -or
         $doc.run_id -le 0 -or $doc.import_run_id -le 0 -or $doc.preview_count -le 0 -or
@@ -732,7 +772,8 @@ function Get-CurrentAcceptedSource {
     }
     return [pscustomobject]@{RunId=$doc.run_id; ImportRunId=$doc.import_run_id; Path=$doc.report_url;
         SourceFolder=$doc.source_folder; SourceManifestSha256=$doc.source_manifest_sha256;
-        EvidenceId=$doc.evidence_id; Rows=$rows}
+        EvidenceId=$doc.evidence_id; Rows=$rows;
+        AuthorityLabel=$(if ($doc.schema_version -eq 2) { 'Accepted preview catalog ' + $doc.evidence_id.Substring(0,12) + ' (DB baseline Run ' + $doc.run_id + ')' } else { 'Accepted LOR2DB Run ' + $doc.run_id })}
 }
 
 function Add-Token {
@@ -1140,6 +1181,7 @@ function Build-SyncCandidate {
                 Database_Impact        = 'New preview; review its display names, prop identities, scenes and wiring.'
                 Review_Diff            = '+ Complete accepted preview (not present on this PC).'
                 Presentation_Details   = ''
+                Change_Summary         = 'Preview added: the complete accepted preview is missing on this PC.'
             }
             $additions += $approved.Raw
             continue
@@ -1187,6 +1229,7 @@ function Build-SyncCandidate {
             Local_Semantic_Hash    = $localRecord.SemanticHash
             Database_Impact        = $(if ($action -eq 'REPLACE_IN_CANDIDATE') { [MSBPreviewSemantic]::ImpactNotes($localRecord.Raw, $approved.Raw) } else { 'Preview identity and substantive content match the accepted master.' })
             Review_Diff            = $(if ($action -eq 'NOOP') { '' } else { [MSBPreviewSemantic]::UnifiedDiff($localRecord.Raw, $approved.Raw) })
+            Change_Summary         = [MSBPreviewSemantic]::ProgrammerSummary($localRecord.Raw, $approved.Raw)
             Presentation_Details   = [MSBPreviewSemantic]::PresentationDetails($localRecord.Raw, $approved.Raw)
             Review_Details         = $(if ($action -eq 'REPLACE_IN_CANDIDATE') { [MSBPreviewSemantic]::DescribeChanges($localRecord.Raw, $approved.Raw) } else { '' })
         }
@@ -1475,7 +1518,7 @@ function New-ReviewPlan {
 function Show-ReviewDialog {
     param($AcceptedReport, $Build, $MasterRecords, [string]$LocalPath, [string]$ExpectedOriginalHash,
           [string]$CandidatePath, [string]$ReportPath, [string]$CandidateHash, [switch]$ReviewOnly)
-    $state = [pscustomobject]@{ Build=$Build; CandidateHash=$CandidateHash; Failed=$false; Approved=$false }
+    $state = [pscustomobject]@{ Build=$Build; CandidateHash=$CandidateHash; Failed=$false; Approved=$false; ShowFull=$false }
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "MSB PC Preview Updater $ApplicationVersion | $ApplicationReleaseDate | Review changes"
     $form.StartPosition = 'CenterScreen'
@@ -1552,6 +1595,12 @@ function Show-ReviewDialog {
         if ($null -eq $row) { return }
         $detailLabel.Text=([string]$row.Approved_Filename)+' - '+([string]$row.Approved_Name)
         $details.Clear()
+        if (-not $state.ShowFull) {
+            $details.Text=[string]$row.Change_Summary
+            if ($row.Action -in @('NOOP_REVISION_ONLY','ALIGN_REVISION_IN_CANDIDATE')) { $details.AppendText("`r`nRevision number differs; controlled content matches.") }
+            if ($row.Presentation_Details) { $details.AppendText("`r`nYour background brightness and selected scene will be kept.") }
+            return
+        }
         $notes=[string]$row.Database_Impact
         $text='Database review: '+$notes+"`r`n`r`n--- This PC`r`n+++ Accepted master`r`n"+[string]$row.Review_Diff
         if ([string]::IsNullOrWhiteSpace([string]$row.Review_Diff)) { $text += 'No controlled-content differences.' }
@@ -1567,8 +1616,8 @@ function Show-ReviewDialog {
         $grid.Rows.Clear()
         $counts=Get-ActionCounts $state.Build.Rows
         $summary.Text=$(if ($ReviewOnly) { "REVIEW ONLY - apply disabled.`r`n" } else { '' }) +
-            ("Accepted Run {0} | ADD {1} | REPLACE {2} | Match Revision {3} | Revision-only unchanged {4} | Personal preserved {5}" -f
-             $AcceptedReport.RunId,$counts.Add,$counts.Replace,$counts.AlignRevision,$counts.RevisionOnly,$state.Build.UnmanagedCount)
+            ("{0} | ADD {1} | REPLACE {2} | Match Revision {3} | Revision-only unchanged {4} | Personal preserved {5}" -f
+             $AcceptedReport.AuthorityLabel,$counts.Add,$counts.Replace,$counts.AlignRevision,$counts.RevisionOnly,$state.Build.UnmanagedCount)
         foreach ($row in @($state.Build.Rows | Sort-Object @{Expression={if ($_.Action -eq 'REPLACE_IN_CANDIDATE'){0}elseif($_.Action -eq 'ADD_IN_CANDIDATE'){1}elseif($_.Action -in @('NOOP_REVISION_ONLY','ALIGN_REVISION_IN_CANDIDATE')){2}else{3}}},Approved_Filename)) {
             $action=switch ($row.Action) {
                 'REPLACE_IN_CANDIDATE' {'Replace content'}
@@ -1584,6 +1633,15 @@ function Show-ReviewDialog {
         if ($grid.Rows.Count -gt 0) { $grid.Rows[0].Selected=$true }
         & $showDetails; & $refreshButtons
     }
+    $fullDetails=New-Object System.Windows.Forms.LinkLabel
+    $fullDetails.Text='Show full details'; $fullDetails.AutoSize=$true
+    $fullDetails.Margin=New-Object System.Windows.Forms.Padding(10,8,3,3)
+    [void]$buttons.Controls.Add($fullDetails)
+    $fullDetails.Add_LinkClicked({
+        $state.ShowFull=-not $state.ShowFull
+        $fullDetails.Text=$(if ($state.ShowFull) {'Show summary'} else {'Show full details'})
+        & $showDetails
+    })
     $grid.Add_SelectionChanged($showDetails)
     $closed.Add_CheckedChanged($refreshButtons); $ack.Add_CheckedChanged($refreshButtons)
     $align.Add_CheckedChanged({
@@ -1722,7 +1780,8 @@ function Write-SharedLog {
         "Computer: $env:COMPUTERNAME"
         "User: $env:USERNAME"
         "Result: $Result"
-        "LOR2DB Run: $($Report.RunId)"
+        "Database baseline Run: $($Report.RunId)"
+        "Distribution evidence: $($Report.EvidenceId)"
         "Published report: $($Report.Path)"
         "Accepted evidence: $($Report.EvidenceId)"
         "Captured ingest: $($Report.ImportRunId)"
@@ -1760,7 +1819,7 @@ try {
             -CandidateHash $prepared.CandidateHash
         Show-Message (
             "Your MSB previews are already current.`r`n`r`n" +
-            "Accepted LOR2DB Run: $($accepted.RunId)`r`n" +
+            "$($accepted.AuthorityLabel)`r`n" +
             "Master source: $($accepted.SourceFolder)`r`n" +
             "Controlled previews: $($build.Rows.Count)`r`n" +
             "Revision-only differences ignored: $($counts.RevisionOnly)`r`n" +
@@ -1841,7 +1900,7 @@ try {
 
     Show-Message (
         "MSB preview update completed successfully.`r`n`r`n" +
-        "Controlled previews updated from LOR2DB Run $($accepted.RunId).`r`n" +
+        "Controlled previews updated from $($accepted.AuthorityLabel).`r`n" +
         "Replaced: $($counts.Replace)`r`n" +
         "Added: $($counts.Add)`r`n" +
         "Revision metadata matched: $($counts.AlignRevision)`r`n" +

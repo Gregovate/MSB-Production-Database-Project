@@ -176,3 +176,21 @@ $digestBefore=(Get-MasterRecords -Folder $viewFolder -ProgressWindow $null).Sour
 [IO.File]::WriteAllText($viewFile,$viewLocal)
 $digestAfter=(Get-MasterRecords -Folder $viewFolder -ProgressWindow $null).SourceStateSha256
 Check ($digestBefore -ne $digestAfter) 'accepted-master byte digest still detects presentation edits to master'
+
+# New catalog acceptance is distinct from the inherited database baseline.
+$script:BrowserSourceForTest=$null
+function Receive-BrowserSource { return $script:BrowserSourceForTest }
+$CurrentSourceUrl='https://example.org/current-source'
+$doc=[ordered]@{schema_version=2;status='ACCEPTED';validation='PASSED';acceptance_kind='PREVIEW_CATALOG';catalog_policy='MSB_PREVIEW_CATALOG_V1';database_baseline_evidence_id=('a'*64);published_by='publisher@example.org';published_at='2026-10-28T12:00:00Z';source_manifest_sha256=('b'*64);evidence_id=('c'*64);report_sha256=('d'*64);source_sqlite_sha256=('e'*64);run_id=32;import_run_id=74;preview_count=1;lor_version='6.6.12';source_folder=(Join-Path $fixture 'Database Previews V6.6.12');report_url='https://example.org/report';previews=@(@{filename='Test.lorprev';preview_id='test';name='Test';revision='58'})}
+$script:BrowserSourceForTest=$doc|ConvertTo-Json -Depth 8
+$catalogSource=Get-CurrentAcceptedSource
+Check ($catalogSource.RunId -eq 32 -and $catalogSource.EvidenceId -eq ('c'*64) -and $catalogSource.AuthorityLabel.Contains('catalog') -and $catalogSource.Rows[0].Revision -eq '58') 'accepted preview catalog uses independent evidence and updated inventory with database baseline label'
+$doc.catalog_policy='UNKNOWN';$script:BrowserSourceForTest=$doc|ConvertTo-Json -Depth 8
+Blocks {Get-CurrentAcceptedSource} 'unknown catalog acceptance policy blocks'
+$doc.catalog_policy='MSB_PREVIEW_CATALOG_V1';$doc.database_baseline_evidence_id='';$script:BrowserSourceForTest=$doc|ConvertTo-Json -Depth 8
+Blocks {Get-CurrentAcceptedSource} 'catalog without database baseline evidence blocks'
+
+$shortSummary=[MSBPreviewSemantic]::ProgrammerSummary($viewMaster,$viewMaster.Replace('Regular,1C,1,3','Aux A,1D,4,6').Replace('MasterDimmable="True"','MasterDimmable="False"'))
+Check ($shortSummary.Contains('Network/channel assignment changed: 1') -and $shortSummary.Contains('Dimming settings changed: 1') -and -not $shortSummary.Contains('ChannelGrid')) 'programmer summary describes wiring and dimming without XML attribute dump'
+$shortAddition=[MSBPreviewSemantic]::ProgrammerSummary('<PreviewClass id="view" Name="View"/>',$viewMaster)
+Check ($shortAddition.Contains('Display/prop added: 1') -and $shortAddition.Contains('HW-Flood-01')) 'programmer summary identifies added display by its Comment label'

@@ -528,3 +528,44 @@ unmanaged bytes, zero repeat, descendant brightness/scene edits, attribute
 absence, Revision alignment, mismatched IDs, and unchanged source digest gates.
 No Production source promotion, DB ingest, website deployment or PC apply was
 performed while implementing this fix.
+
+
+## Candidate 1.1.0 — restricted official catalog publication
+
+Bounded #81 change implemented beside the existing Windows parser runner in
+preview_catalog.py; API V0.6.7 forwards fixed authenticated operations, Windows
+runner V1.8.0 owns approved-folder capture and protected local catalog evidence.
+No new DB tables/grants or ingest. Greg's direct-to-master export remains intact.
+First review of unchanged accepted bytes registers baseline before a new export.
+Later review/publish permits only root Revision/presentation and direct prop
+Name(with nonblank Comment)/MasterDimmable exceptions. Other fields stop for
+contract review. Unknown changes are never silently approved. Publication is a
+separate schema2 ACCEPTED evidence record, not a fabricated COMPLETED run.
+
+Dedicated publisher allowlists on API and runner, exact Origin/JSON checks,
+server-derived database baseline/folder, global runner operation lock, repeated
+captured-byte validation, actor/parent/source-bound review, immutable evidence
+and atomic pointer protect approval. Production Crew access only consumes.
+Feature is opt-in, disabled by default. Once enabled current-source requires
+runner/catalog availability; no stale fallback. New DB completion supersedes
+catalogs tied to an earlier baseline. PC1.1.0 validates schema2 policy/baseline and
+shows accepted catalog identity separately from the inherited database Run.
+
+See LOR2DB/Application/PREVIEW_CATALOG_PUBLICATION.md for exact configuration,
+initial registration and pending deployment/Windows/negative-auth gates. Review
+can register baseline without publication. Upgrade participating PC clients
+before first schema2 Publish (older clients fail closed). Source-only two-host
+rollout remains a Server Management task; no Production actions performed.
+Automatic app update checks remain separate, documented and unimplemented.
+
+
+Programmer UX update in1.1.0: selected-preview details default to a short summary
+of additions/removals, Display name changes, network/channel changes, dimming
+settings, programming names and scenes. Show full details toggles the existing
+technical diff; CSV retains full detail plus Change_Summary. Presentation and
+Revision-only states remain non-actionable summaries. The protected PC page
+removes the redundant sign-in instruction, uses Install / Update PC Updater,
+and documents per-user self-install (no administrator visit/elevation). The
+button downloads the immutable published ZIP; it does not silently execute an
+installer or automatically discover a newer release. Production1.0.2 page remains
+stale until the approved static publication is performed.

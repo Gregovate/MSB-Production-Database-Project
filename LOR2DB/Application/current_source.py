@@ -1,7 +1,8 @@
 """#81: read-only accepted source contract, independent of programmer-PC sync.
 
-Authority comes exclusively from frozen reconciliation evidence. Never inspect
-current preview files here or fall back to an earlier run with better metadata.
+This module provides the frozen completed DATABASE baseline. The API may layer
+a separately approved preview catalog on this baseline when explicitly enabled.
+Never inspect live preview files here or fall back to an older completed run.
 """
 from __future__ import annotations
 

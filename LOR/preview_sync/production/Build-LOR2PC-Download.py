@@ -29,7 +29,7 @@ def main():
     parser.add_argument('--enable-apply', action='store_true')
     args = parser.parse_args()
     suffix = 'pilot' if args.enable_apply else 'review'
-    target = DOWNLOADS/('MSB-PC-Preview-Updater-1.0.9-'+suffix+'.zip')
+    target = DOWNLOADS/('MSB-PC-Preview-Updater-1.1.0-'+suffix+'.zip')
     if target.exists():
         raise SystemExit('BLOCK: versioned installer archive already exists; do not overwrite')
     with tempfile.TemporaryDirectory(prefix='msb-lor2pc-package-') as temporary:

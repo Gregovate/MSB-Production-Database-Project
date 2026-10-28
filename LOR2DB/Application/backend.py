@@ -84,7 +84,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.6.6"
+APP_VERSION = "V0.6.7"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 STAGE_AUTHORITY_ACTIONS = {
     "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",
@@ -561,7 +561,8 @@ def get_dashboard() -> Response:
     allowed = {item.strip().lower() for item in required_setting("LOR_PREFLIGHT_OPERATORS").split(",") if item.strip()}
     with database() as conn:
         document = load_dashboard(conn, viewer=email)
-    document["access"] = {"can_run_parser": email in allowed, "can_operate_lor": email in allowed}
+    document["access"] = {"can_run_parser": email in allowed, "can_operate_lor": email in allowed,
+                          "can_publish_catalog": catalog_enabled() and email in catalog_publishers()}
     response = jsonify(document)
     response.headers["Cache-Control"] = "no-store, max-age=0"
     return response
@@ -935,8 +936,65 @@ def current_source() -> Response:
             document = load_current_source(conn, RealDictCursor)
     except SourceUnavailable as exc:
         raise ApiError(str(exc), 409) from exc
+    if catalog_enabled():
+        document = runner_request("catalog/current", {"accepted_source": document})["source"]
     response = jsonify(document)
     response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
+def catalog_enabled() -> bool:
+    return os.environ.get("LOR_PREVIEW_CATALOG_ENABLED") == "true"
+
+
+def catalog_publishers() -> set[str]:
+    # Deliberately independent of Production Crew and parser/reconciliation roles.
+    return {x.strip().lower() for x in os.environ.get("LOR_CATALOG_PUBLISHERS", "").split(",") if x.strip()}
+
+
+def catalog_publisher() -> str:
+    email = signed_in_email()
+    if not catalog_enabled() or email not in catalog_publishers():
+        raise ApiError("Official catalog publication is restricted to designated publishers", 403)
+    expected_origin = required_setting("LOR_CATALOG_ORIGIN")
+    if request.headers.get("Origin") != expected_origin:
+        raise ApiError("Catalog action requires the protected LOR2DB page", 403)
+    return email
+
+
+@app.post("/catalog/review")
+def catalog_review() -> Response:
+    from current_source import SourceUnavailable, load_current_source
+    actor = catalog_publisher()
+    json_body()  # Only JSON requests; all source/path authority is server-derived.
+    try:
+        with database() as conn:
+            accepted = load_current_source(conn, RealDictCursor)
+    except SourceUnavailable as exc:
+        raise ApiError(str(exc), 409) from exc
+    result = runner_request("catalog/review", {"accepted_source": accepted, "actor": actor}, timeout=180)
+    response = jsonify(result)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.post("/catalog/publish")
+def catalog_publish() -> Response:
+    from current_source import SourceUnavailable, load_current_source
+    actor = catalog_publisher()
+    body = json_body()
+    review_id = body.get("review_id")
+    if body.get("confirm_publish") is not True or not re.fullmatch(r"[a-f0-9]{64}", str(review_id)):
+        raise ApiError("Explicit approval of a valid catalog review is required")
+    try:
+        with database() as conn:
+            accepted = load_current_source(conn, RealDictCursor)
+    except SourceUnavailable as exc:
+        raise ApiError(str(exc), 409) from exc
+    result = runner_request("catalog/publish", {"accepted_source": accepted, "actor": actor,
+                            "review_id": review_id, "confirm_publish": True}, timeout=180)
+    response = jsonify(result)
+    response.headers["Cache-Control"] = "no-store"
     return response
 
 
