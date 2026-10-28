@@ -226,6 +226,8 @@ These applications are part of the normal Show PC setup.
 | LinkIQ | [Fluke Networks LinkIQ Download](https://www.flukenetworks.com/findit/9828007) | Install the LinkIQ software from the official Fluke Networks download page. Verify Windows 11 operation and device connectivity on the Show PC after installation. |
 | ExpertGPS | [ExpertGPS Download](https://www.expertgps.com/download.asp) | Install the Windows version from the official ExpertGPS site. Preserve existing license information outside the repository. |
 | AnyDesk | [AnyDesk Download](https://anydesk.com/en/downloads/windows) | Install for remote support. Configure **Unattended Access** for the appliance PC and do not store the unattended-access password in this repository. Verify AnyDesk starts with Windows and remains reachable after a reboot. |
+| ZeroTier | [ZeroTier Download](https://www.zerotier.com/download/) | Install the official Windows x86/x64 MSI and approve the ZeroTier network driver. Join only the approved MSB ZeroTier network(s). Record the assigned node/network identity outside this public setup document if it is sensitive. Verify ZeroTier reconnects automatically after reboot. |
+| FreeFileSync | [FreeFileSync Download](https://freefilesync.org/download.php) | Install the official Windows build. This PC uses FreeFileSync for controlled synchronization between maintained Google Drive content and the local Show PC. The exact sync jobs, directions, exclusions, and conflict policy belong in the Music/Sequence migration workstream and must be reviewed before unattended synchronization is enabled. |
 
 ### Standard application verification
 
@@ -591,7 +593,7 @@ Computer Configuration
 
 should remain **Not Configured** unless a deliberate update-source policy is later documented.
 
-> **Pending verification on MSB-SHOW_PC2:** Windows Update Group Policy has not yet been confirmed as disabled.
+> **Verified on MSB-SHOW_PC2:** `Configure Automatic Updates` is set to **Disabled** in Local Group Policy. Windows OS updates are therefore operator-controlled for this appliance; Microsoft Defender security intelligence updates remain enabled.
 
 ---
 
