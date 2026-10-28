@@ -1,4 +1,4 @@
-# MSB LOR Preview Sync - Production Candidate v1.0.7
+# MSB LOR Preview Sync - Production Candidate v1.0.8
 # Programmer-facing MASTER -> LOCAL synchronization tool.
 #
 # Normal operators launch this through:
@@ -523,7 +523,9 @@ if (Test-Path -LiteralPath $AppIconPath -PathType Leaf) {
 
 $LogFolder = Join-Path $Root 'logs'
 $DeploymentPath = Join-Path $Root 'DEPLOYMENT.json'
-$ApplicationVersion = '1.0.7'
+$ApplicationVersion = '1.0.8'
+$ApplicationReleaseDate = '2026-10-28'
+$script:SessionLogPath = $null
 $CandidateXml = Join-Path $localParent 'LORPreviews.MSB_SYNC_CANDIDATE.xml'
 $CandidateCsv = Join-Path $localParent 'LORPreviews.MSB_SYNC_REPORT.csv'
 
@@ -1295,7 +1297,7 @@ function Prepare-SyncWithStartup {
     $script:StartupException = $null
 
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = 'Update your PC Previews to LOR Master Files'
+    $form.Text = "MSB PC Preview Updater $ApplicationVersion | $ApplicationReleaseDate"
     $form.StartPosition = 'CenterScreen'
     $form.Size = New-Object System.Drawing.Size(580, 215)
     $form.MinimumSize = $form.Size
@@ -1324,7 +1326,7 @@ function Prepare-SyncWithStartup {
     }
 
     $title = New-Object System.Windows.Forms.Label
-    $title.Text = 'Starting MSB Preview Update...'
+    $title.Text = "Starting MSB Preview Update $ApplicationVersion..."
     $title.Font = New-Object System.Drawing.Font(
         'Segoe UI',
         15,
@@ -1437,7 +1439,7 @@ function Show-ReviewDialog {
           [string]$CandidatePath, [string]$ReportPath, [string]$CandidateHash, [switch]$ReviewOnly)
     $state = [pscustomobject]@{ Build=$Build; CandidateHash=$CandidateHash; Failed=$false; Approved=$false }
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = 'MSB PC Preview Updater - review changes'
+    $form.Text = "MSB PC Preview Updater $ApplicationVersion | $ApplicationReleaseDate | Review changes"
     $form.StartPosition = 'CenterScreen'
     $area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
     $form.Size = New-Object System.Drawing.Size([Math]::Min(1080,[int]($area.Width*0.94)), [Math]::Min(800,[int]($area.Height*0.90)))
@@ -1454,7 +1456,7 @@ function Show-ReviewDialog {
     }
     $form.Controls.Add($layout)
     $title = New-Object System.Windows.Forms.Label
-    $title.Text='Review MSB preview changes'; $title.AutoSize=$true
+    $title.Text="Review MSB preview changes - v$ApplicationVersion ($ApplicationReleaseDate)"; $title.AutoSize=$true
     $title.Font=New-Object System.Drawing.Font('Segoe UI',16,[System.Drawing.FontStyle]::Bold)
     [void]$layout.Controls.Add($title,0,0)
     $summary = New-Object System.Windows.Forms.Label
@@ -1494,6 +1496,13 @@ function Show-ReviewDialog {
     $update=New-Object System.Windows.Forms.Button
     $update.Text=$(if ($ReviewOnly) { 'Review only' } else { 'Update PC Previews' })
     $update.AutoSize=$true; $update.Enabled=$false; [void]$buttons.Controls.Add($update)
+    $reports=New-Object System.Windows.Forms.Button
+    $reports.Text='Open report folder'; $reports.AutoSize=$true
+    [void]$buttons.Controls.Add($reports)
+    $reports.Add_Click({
+        try { Start-Process -FilePath 'explorer.exe' -ArgumentList ('"{0}"' -f $LogFolder) -ErrorAction Stop | Out-Null }
+        catch { Show-Message "Reports are saved in:`r`n$LogFolder" 'MSB Preview Reports' ([System.Windows.Forms.MessageBoxIcon]::Information) }
+    })
     $refreshButtons={
         $counts=Get-ActionCounts $state.Build.Rows
         $update.Enabled=(-not $ReviewOnly -and -not $state.Failed -and $closed.Checked -and $ack.Checked -and
@@ -1542,6 +1551,8 @@ function Show-ReviewDialog {
         try {
             $plan=New-ReviewPlan -MasterRecords $MasterRecords -LocalPath $LocalPath -ExpectedOriginalHash $ExpectedOriginalHash -CandidatePath $CandidatePath -ReportPath $ReportPath -MatchMasterRevision:$align.Checked
             $state.Build=$plan.Build; $state.CandidateHash=$plan.CandidateHash; $state.Failed=$false
+            # Persist the rebuilt plan before presenting it or allowing approval.
+            $null=Write-SharedLog -Report $AcceptedReport -Build $state.Build -Result 'REVIEW_REBUILT' -OriginalHash $ExpectedOriginalHash -CandidateHash $state.CandidateHash
             & $populate
         } catch {
             $state.Failed=$true; $details.Text=$_.Exception.Message
@@ -1555,6 +1566,13 @@ function Show-ReviewDialog {
         foreach ($control in @($summary,$detailLabel,$align,$ack)) { $control.MaximumSize=New-Object Drawing.Size($width,0) }
     })
     $form.CancelButton=$cancel
+    # Request focus once after startup closes. Release topmost promptly so the
+    # operator can switch applications normally; never poll or steal focus again.
+    $focusTimer=New-Object System.Windows.Forms.Timer
+    $focusTimer.Interval=350
+    $focusTimer.Add_Tick({ $form.TopMost=$false; $focusTimer.Stop() })
+    $form.Add_Shown({ $this.TopMost=$true; $this.BringToFront(); $this.Activate(); $focusTimer.Start() })
+    $form.Add_FormClosed({ $focusTimer.Stop(); $focusTimer.Dispose() })
     & $populate
     [void]$form.ShowDialog(); $form.Dispose()
     return [pscustomobject]@{Approved=$state.Approved;Build=$state.Build;CandidateHash=$state.CandidateHash}
@@ -1641,15 +1659,23 @@ function Write-SharedLog {
     )
 
     New-Item -ItemType Directory -Path $LogFolder -Force | Out-Null
-    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $stamp = (Get-Date -Format 'yyyyMMdd-HHmmssfff') + '-' + [guid]::NewGuid().ToString('N')
     $safeUser = ($env:USERNAME -replace '[^A-Za-z0-9_.-]', '_')
     $safeComputer = ($env:COMPUTERNAME -replace '[^A-Za-z0-9_.-]', '_')
-    $path = Join-Path $LogFolder ("sync-{0}-{1}-{2}.txt" -f $safeComputer, $safeUser, $stamp)
+    if ([string]::IsNullOrWhiteSpace($script:SessionLogPath)) {
+        $script:SessionLogPath = Join-Path $LogFolder ("sync-{0}-{1}-{2}.txt" -f $safeComputer, $safeUser, $stamp)
+    }
+    $path = $script:SessionLogPath
+    # Retain the complete reviewed diff with this run, independently of the
+    # compatibility CSV in CommonData which the next launch will overwrite.
+    $reportCopy = [IO.Path]::ChangeExtension($path, '.csv')
+    $Build.Rows | Export-Csv -LiteralPath $reportCopy -NoTypeInformation -Encoding UTF8
     $counts = Get-ActionCounts $Build.Rows
 
     @(
         'MSB LOR Preview Sync'
         "Application version: $ApplicationVersion"
+        "Release date: $ApplicationReleaseDate"
         "Application commit: $script:SourceCommit"
         "Timestamp: $(Get-Date -Format o)"
         "Computer: $env:COMPUTERNAME"
@@ -1673,7 +1699,9 @@ function Write-SharedLog {
         "Candidate SHA-256: $CandidateHash"
         "Installed SHA-256: $InstalledHash"
         "Backup: $Backup"
-    ) | Set-Content -LiteralPath $path -Encoding UTF8
+        "Detailed report: $reportCopy"
+        ''
+    ) | Add-Content -LiteralPath $path -Encoding UTF8
 
     return $path
 }
@@ -1699,6 +1727,12 @@ try {
         ) 'Update your PC Previews to LOR Master Files' ([System.Windows.Forms.MessageBoxIcon]::Information)
         exit 0
     }
+
+    # Fail closed if durable evidence cannot be written. This happens before
+    # opening the review, so closing/killing the UI cannot erase the initial plan.
+    $null = Write-SharedLog -Report $accepted -Build $build -Result 'REVIEW_PREPARED' `
+        -SourceStateHash $prepared.SourceStateHash -OriginalHash $prepared.OriginalHash `
+        -CandidateHash $prepared.CandidateHash
 
     if ($AuditOnly -or -not $prepared.Deployment.apply_enabled) {
         $review = Show-ReviewDialog -AcceptedReport $accepted -Build $build -MasterRecords $master.Records -LocalPath $LocalXml -ExpectedOriginalHash $prepared.OriginalHash -CandidatePath $CandidateXml -ReportPath $CandidateCsv -CandidateHash $prepared.CandidateHash -ReviewOnly

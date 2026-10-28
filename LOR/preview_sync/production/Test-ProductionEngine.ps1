@@ -125,3 +125,19 @@ Check ((Get-FileSha256 $revisionInstall.BackupPath) -eq $originalAlignmentHash) 
 $repeatAlignment=Build-SyncCandidate -MasterRecords $master.Records -LocalPath $alignment -ProgressWindow $null -MatchMasterRevision
 $repeatCounts=Get-ActionCounts $repeatAlignment.Rows
 Check ($repeatCounts.Add -eq 0 -and $repeatCounts.Replace -eq 0 -and $repeatCounts.AlignRevision -eq 0) 'revision alignment second run has no additions replacements or metadata changes'
+
+# Evidence must exist before review and survive cancellation/new launches.
+$LogFolder=Join-Path $fixture 'logs'
+$ApplicationVersion='test'; $ApplicationReleaseDate='2026-10-28'; $script:SourceCommit='test-commit'; $script:SessionLogPath=$null
+$logReport=[pscustomobject]@{RunId=32;Path='report';EvidenceId='evidence';ImportRunId=74;SourceFolder=$folder;SourceManifestSha256=$master.SourceStateSha256}
+$firstLog=Write-SharedLog -Report $logReport -Build $build -Result 'REVIEW_PREPARED' -OriginalHash 'original' -CandidateHash 'candidate'
+$reportCopy=[IO.Path]::ChangeExtension($firstLog,'.csv')
+Check ((Test-Path $firstLog) -and (Test-Path $reportCopy) -and ([IO.File]::ReadAllText($firstLog)).Contains('REVIEW_PREPARED')) 'summary and complete CSV exist before review closes'
+$exported=@(Import-Csv -LiteralPath $reportCopy)
+Check ($exported.Count -eq $build.Rows.Count -and $exported[0].Review_Diff -ceq $build.Rows[0].Review_Diff) 'retained report includes exact multiline review diff'
+$cancelLog=Write-SharedLog -Report $logReport -Build $build -Result 'CANCELLED'
+$text=[IO.File]::ReadAllText($firstLog)
+Check ($cancelLog -eq $firstLog -and $text.Contains('REVIEW_PREPARED') -and $text.Contains('CANCELLED')) 'cancel appends to same run without losing prepared evidence'
+$script:SessionLogPath=$null
+$nextLog=Write-SharedLog -Report $logReport -Build $build -Result 'REVIEW_PREPARED'
+Check ($nextLog -ne $firstLog -and (Test-Path $reportCopy)) 'next launch retains prior run evidence under unique name'

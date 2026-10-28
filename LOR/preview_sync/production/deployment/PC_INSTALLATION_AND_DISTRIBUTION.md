@@ -158,7 +158,7 @@ Cancel; do not approve laptop replacement as part of the Show PC test. Show PC
 live apply still requires separate explicit approval and backup/reopen/repeat
 acceptance. Do not publish this as a general programmer release yet.
 
-## Candidate 1.0.7 review refinement
+## Candidate 1.0.8 review refinement
 
 Use the same default Downloads / Extract All / Setup procedure on every PC.
 Select a preview filename to inspect local-minus/master-plus differences.

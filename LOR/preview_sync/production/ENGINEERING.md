@@ -457,3 +457,32 @@ Installation procedure correction: download -> Extract All into the default
 Downloads folder -> double-click Setup MSB PC Preview Updater.vbs on every PC.
 No version-specific C:\MSB299 installation folders are required. C:\LOR remains
 the mandatory LOR data folder; application storage is per-user LocalAppData.
+
+
+## Candidate 1.0.8 — durable review evidence and foreground results
+
+Actual laptop 1.0.7 screenshots and supplied CSV confirm 34 controlled rows:
+28 current, four Revision-only, two content replacements (Rotary-Trees and
+Icicle Tunnel). Handoff trace confirms document receipt and listener closure.
+No live apply acceptance. Greg reported the browser covering the results and
+only browser-handoff.log in the runtime logs folder. The exact cause of the
+missing post-dialog summary has not been established; do not claim it was a
+successful cancellation or a sign-in failure.
+
+Write the initial REVIEW_PREPARED event and a complete CSV beside its unique
+sync summary before ShowDialog. Failure to retain evidence blocks review/apply.
+Rebuilds retain the updated plan before enabling approval. Final status appends
+to the same run log; unique millisecond/GUID names prevent subsequent launches
+from overwriting earlier runs. The normal CommonData CSV remains compatible.
+Open report folder opens runtime logs, including full multiline per-preview
+CSV details. No credentials or handoff tokens are added to these reports.
+
+Results request foreground on Shown with temporary topmost (350ms), then release
+it. There is no polling or continuing focus stealing. Native Windows behavior
+remains an operator test; Linux engine checks do not establish focus acceptance.
+Installer/version/download references advance to 1.0.8. Production and live
+preview libraries remain untouched; next operator gate is review then Cancel.
+
+Startup and review window captions display application version and release date;
+review heading repeats both. Logs record release date separately from run time.
+This identifies the installed PC runtime independently of the website version.
