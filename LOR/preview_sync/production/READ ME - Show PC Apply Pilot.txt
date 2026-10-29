@@ -1,0 +1,28 @@
+MSB PC Preview Updater 1.1.1 - controlled live test
+General programmer distribution is not yet accepted.
+
+Install and apply only on the PC explicitly approved by the MSB administrator.
+Installation itself does not replace any LOR previews.
+
+1. Close Light-O-Rama. The required data folder is C:\LOR.
+2. Extract both downloaded files into a new local folder.
+3. Double-click Setup MSB PC Preview Updater.vbs under your normal Windows user.
+4. Use the MSB PC Preview Updater Desktop shortcut and complete the normal
+   protected browser sign-in/handoff. Return to the updater.
+5. Select a preview filename to see its differences: minus is this PC and plus
+   is the accepted master. Database-related differences appear first.
+   Optionally select Match master Revision for identical previews; that changes
+   only metadata and is counted separately from replacements.
+   Cancel if they are unexpected. Personal/imported/store previews are preserved.
+6. Only after explicit approval for this PC's live test, confirm the displayed
+   acknowledgements and click Update PC Previews. This candidate CAN apply changes.
+7. Retain the printed backup and audit paths. Reopen Light-O-Rama and verify the
+   MSB previews are present and usable.
+8. Close Light-O-Rama, run the updater again, and require ADD 0 / REPLACE 0.
+9. Send the results and backup/audit paths to the MSB administrator.
+
+The new clean Show PC previously audited ADD 34 / REPLACE 0, preserving 13
+unmanaged previews. Greg's laptop audited ADD 0 / REPLACE 2, preserving 8.
+These are previous observations, not permanently hard-coded expectations.
+Do not apply on another PC merely because this package was approved elsewhere.
+Do not edit deployment files or manually replace the LOR preview library.

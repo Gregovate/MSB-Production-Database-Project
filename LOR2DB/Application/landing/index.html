@@ -15,9 +15,26 @@
       </div>
       <a class="secondary" href="reports/">Report archive</a>
     </header>
+    <section class="card"><h2>Programmer PC previews</h2><p><a class="primary" href="pc/">Update this PC’s MSB Previews</a></p></section>
+    <section id="catalog-panel" class="card" hidden>
+      <h2>Official preview catalog</h2>
+      <p>Export your approved previews to the master folder, then review and approve the catalog update here. Other programmers cannot publish.</p>
+      <p>Before the first new export, review the unchanged accepted master once to register its evidence.</p>
+      <button id="catalog-review" class="primary">Review and Update Official Catalog</button>
+      <p id="catalog-status" role="status"></p>
+      <section id="catalog-complete" class="catalog-complete" role="status" tabindex="-1" hidden>
+        <h2>Catalog publication complete</h2>
+        <p id="catalog-complete-message"></p>
+        <details><summary>Publication receipt</summary><pre id="catalog-receipt" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></details>
+      </section>
+      <pre id="catalog-details" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
+      <p><label class="review-confirmation"><input id="catalog-approve" type="checkbox"> I approve publishing the reviewed master files for programmer use.</label></p>
+      <button id="catalog-publish" class="primary" disabled>Publish Approved Catalog</button>
+    </section>
     <div id="app" aria-live="polite">
       <section class="card"><p>Loading current LOR state…</p></section>
     </div>
+    <footer class="meta">Updated 2026-10-28</footer>
   </main>
 
   <dialog id="start-dialog">
@@ -33,6 +50,7 @@
     </form>
   </dialog>
 
-  <script src="lor2db.js?v=0.6.2" defer></script>
+  <script src="catalog.js?v=4" defer></script>
+  <script src="lor2db.js?v=0.6.3" defer></script>
 </body>
 </html>

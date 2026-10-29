@@ -53,7 +53,7 @@ from urllib.parse import urlparse
 from lor_version_checker import build_manifest, compare_manifests, manifest_source_signature, write_json
 
 
-RUNNER_VERSION = "V1.7.2"
+RUNNER_VERSION = "V1.8.0"
 MAX_BROWSER_CONSOLE_CHARACTERS = 500_000
 
 AUTHORITATIVE_OUTPUT_TABLES = (
@@ -1580,6 +1580,24 @@ class RequestHandler(BaseHTTPRequestHandler):
                     "error": "Another parser, ingest, or version-check operation is already running"
                 }
             try:
+                if path in {"/catalog/review", "/catalog/publish", "/catalog/current"}:
+                    from preview_catalog import Catalog
+                    state = self.runner.store.read()
+                    catalog = Catalog(Path(required_environment("LOR_CATALOG_ROOT")),
+                                      Path(state["current_preview_folder"]), state["current_lor_version"])
+                    accepted = payload.get("accepted_source")
+                    if not isinstance(accepted, dict):
+                        raise ValueError("A completed source document is required")
+                    if path == "/catalog/current":
+                        return HTTPStatus.OK, {"source": catalog.current(accepted)}
+                    publishers = {x.strip().lower() for x in required_environment("LOR_CATALOG_PUBLISHERS").split(",") if x.strip()}
+                    if actor.lower() not in publishers:
+                        return HTTPStatus.FORBIDDEN, {"error": "Catalog publication permission required"}
+                    if path == "/catalog/review":
+                        return HTTPStatus.OK, catalog.review(accepted, actor)
+                    if payload.get("confirm_publish") is not True:
+                        raise ValueError("Explicit catalog approval is required")
+                    return HTTPStatus.OK, {"source": catalog.publish(accepted, actor, payload.get("review_id"))}
                 if path == "/candidate":
                     self.runner.select_candidate(
                         str(payload.get("new_lor_version") or ""), actor

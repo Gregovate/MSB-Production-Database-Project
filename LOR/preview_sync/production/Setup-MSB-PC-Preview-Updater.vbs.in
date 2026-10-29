@@ -1,0 +1,51 @@
+' MSB PC Preview Updater Setup - generated from an exact committed release.
+' Embedded payload is verified before extraction. No preview library is replaced.
+Option Explicit
+Dim shell, fso, folder, zipPath, psPath, payload, node, stream, writer, command, rc
+Set shell = CreateObject("WScript.Shell")
+Set fso = CreateObject("Scripting.FileSystemObject")
+On Error Resume Next
+folder = fso.BuildPath(fso.GetSpecialFolder(2), fso.GetTempName)
+fso.CreateFolder folder
+If Err.Number <> 0 Then
+    MsgBox "Setup could not create its temporary folder. No updater was installed.", vbCritical, "MSB PC Preview Updater"
+    WScript.Quit 2
+End If
+On Error GoTo 0
+zipPath = fso.BuildPath(folder, "payload.zip")
+psPath = fso.BuildPath(folder, "setup.ps1")
+payload = ""
+@@PAYLOAD@@
+Set node = CreateObject("Msxml2.DOMDocument.6.0").createElement("payload")
+node.DataType = "bin.base64"
+node.Text = payload
+Set stream = CreateObject("ADODB.Stream")
+stream.Type = 1
+stream.Open
+stream.Write node.nodeTypedValue
+stream.SaveToFile zipPath, 1
+stream.Close
+' UTF-16 preserves non-ASCII Windows account paths for Windows PowerShell 5.1.
+Set writer = fso.CreateTextFile(psPath, True, True)
+writer.WriteLine "$ErrorActionPreference = 'Stop'"
+writer.WriteLine "try {"
+writer.WriteLine "  $archive = '" & Replace(zipPath, "'", "''") & "'"
+writer.WriteLine "  $destination = '" & Replace(fso.BuildPath(folder, "runtime"), "'", "''") & "'"
+writer.WriteLine "  if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ine '@@SHA256@@') { throw 'Setup payload integrity check failed.' }"
+writer.WriteLine "  Expand-Archive -LiteralPath $archive -DestinationPath $destination"
+writer.WriteLine "  & (Join-Path $destination 'Install-LOR2PC-Launcher.ps1')"
+writer.WriteLine "  if (-not $?) { throw 'PC launcher installation failed.' }"
+writer.WriteLine "} catch {"
+writer.WriteLine "  Add-Type -AssemblyName System.Windows.Forms"
+writer.WriteLine "  [void][Windows.Forms.MessageBox]::Show($_.Exception.Message, 'MSB PC setup blocked')"
+writer.WriteLine "  exit 2"
+writer.WriteLine "}"
+writer.WriteLine "exit 0"
+writer.Close
+command = Chr(34) & shell.ExpandEnvironmentStrings("%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe") & Chr(34) & " -NoLogo -NoProfile -ExecutionPolicy Bypass -STA -File " & Chr(34) & psPath & Chr(34)
+rc = shell.Run(command, 1, True)
+' Delete only this uniquely created temporary payload; installed logs remain local.
+On Error Resume Next
+fso.DeleteFolder folder, True
+On Error GoTo 0
+WScript.Quit rc
