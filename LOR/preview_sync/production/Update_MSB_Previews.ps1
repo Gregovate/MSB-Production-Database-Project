@@ -1,4 +1,4 @@
-# MSB LOR Preview Sync - Production Candidate v1.1.1
+# MSB LOR Preview Sync - Production Candidate v1.1.2
 # Programmer-facing MASTER -> LOCAL synchronization tool.
 #
 # Normal operators launch this through:
@@ -337,7 +337,7 @@ public static class MSBPreviewSemantic
             if (node.LocalName.EndsWith("Scene", StringComparison.Ordinal)) {
                 scene = node.GetAttribute("id");
                 AddToken(result, "Scene", scene); AddToken(result, "Name", node.GetAttribute("Name"));
-                foreach (KeyValuePair<string,string> attr in ReviewAttributes(node,false)) AddToken(result,attr.Key,attr.Value);
+                foreach (KeyValuePair<string,string> attr in ReviewAttributes(node,false)) if (attr.Key != "BackgroundFile") AddToken(result,attr.Key,attr.Value);
             } else if (node.LocalName == "PropClass" && scene.Length > 0) {
                 AddToken(result, "Member", scene + ":" + node.GetAttribute("id"));
             }
@@ -349,7 +349,7 @@ public static class MSBPreviewSemantic
     {
         XmlElement before = ReadReview(local), after = ReadReview(master);
         List<string> notes = new List<string>();
-        if (before.GetAttribute("id") != after.GetAttribute("id") || before.GetAttribute("Name") != after.GetAttribute("Name")) notes.Add("Preview UUID / name");
+        if (before.GetAttribute("id") != after.GetAttribute("id")) notes.Add("Preview UUID");
         if (PropSignature(before) != PropSignature(after)) notes.Add("Prop UUIDs");
         if (PropSignature(before,"Comment") != PropSignature(after,"Comment")) notes.Add("Display names (Comment) / prop associations");
         if (SceneSignature(before) != SceneSignature(after)) notes.Add("Scenes / scene membership");
@@ -358,6 +358,18 @@ public static class MSBPreviewSemantic
             notes.Add("Wiring / channel names / device / string or master-link settings");
         if (notes.Count == 0) notes.Add("No changes detected in the identity, scene or wiring fields checked here. Inspect the full diff for other content changes.");
         return String.Join("; ", notes.ToArray());
+    }
+
+    private static string BranchSignature(XmlElement root, string tag) {
+        List<string> values=new List<string>();
+        foreach (XmlNode n in root.ChildNodes) if (n.LocalName==tag) values.Add(n.OuterXml);
+        return String.Join("|",values.ToArray());
+    }
+    private static string BackgroundSignature(XmlElement root) {
+        List<string> values=new List<string>();
+        values.Add(root.GetAttribute("BackgroundFile"));
+        foreach (XmlNode n in root.GetElementsByTagName("Scene")) values.Add(((XmlElement)n).GetAttribute("id")+"="+((XmlElement)n).GetAttribute("BackgroundFile"));
+        return String.Join("|",values.ToArray());
     }
 
     public static string ProgrammerSummary(string local, string master)
@@ -370,11 +382,14 @@ public static class MSBPreviewSemantic
         foreach (XmlNode n in before.GetElementsByTagName("PropClass")) { XmlElement p=(XmlElement)n; oldProps.Add(p.GetAttribute("id"),p); }
         foreach (XmlNode n in after.GetElementsByTagName("PropClass")) { XmlElement p=(XmlElement)n; newProps.Add(p.GetAttribute("id"),p); }
         List<string> added=new List<string>(), removed=new List<string>();
-        int displayNames=0, wiring=0, dimming=0, channelNames=0;
+        int displayNames=0, wiring=0, dimming=0, channelNames=0, layouts=0, motionRows=0;
         foreach (var pair in newProps) {
             if (!oldProps.ContainsKey(pair.Key)) { added.Add(ReviewLabel(pair.Value)); continue; }
             XmlElement a=oldProps[pair.Key], b=pair.Value;
             if (a.GetAttribute("Comment") != b.GetAttribute("Comment")) displayNames++;
+            if (a.SelectSingleNode("shape") != null && b.SelectSingleNode("shape") != null && a.SelectSingleNode("shape").OuterXml != b.SelectSingleNode("shape").OuterXml) layouts++;
+            XmlNode ar=a.SelectSingleNode("MotionRowDefaults"), br=b.SelectSingleNode("MotionRowDefaults");
+            if ((ar==null ? "" : ar.OuterXml)!=(br==null ? "" : br.OuterXml)) motionRows++;
             if (a.GetAttribute("ChannelGrid") != b.GetAttribute("ChannelGrid") || a.GetAttribute("DeviceType") != b.GetAttribute("DeviceType")) wiring++;
             if (a.GetAttribute("MasterDimmable") != b.GetAttribute("MasterDimmable") || a.GetAttribute("DimmingCurveName") != b.GetAttribute("DimmingCurveName")) dimming++;
             if (a.GetAttribute("Name") != b.GetAttribute("Name")) channelNames++;
@@ -387,10 +402,15 @@ public static class MSBPreviewSemantic
         if (wiring>0) lines.Add("Network/channel assignment changed: " + wiring);
         if (dimming>0) lines.Add("Dimming settings changed: " + dimming);
         if (channelNames>0) lines.Add("Programming channel name changed: " + channelNames);
+        if (layouts>0) lines.Add("Preview layout changed: " + layouts + " props.");
+        if (motionRows>0) lines.Add("Motion-effect rows changed: " + motionRows + " props.");
+        if (BranchSignature(before,"PropGroup")!=BranchSignature(after,"PropGroup")) lines.Add("Sequencing groups or group membership changed.");
+        if (BranchSignature(before,"PropViews")!=BranchSignature(after,"PropViews")) lines.Add("Preview views or view ordering changed.");
+        if (BackgroundSignature(before)!=BackgroundSignature(after)) lines.Add("Linked background image reference changed.");
         if (SceneSignature(before)!=SceneSignature(after)) lines.Add("Scenes or scene membership changed.");
         if (before.GetAttribute("Name")!=after.GetAttribute("Name")) lines.Add("Preview name changed.");
         if (lines.Count==0) lines.Add("Other preview settings changed.");
-        lines.Add("The accepted master will replace this PC's controlled preview. Personal previews and viewing preferences will be kept.");
+        lines.Add("Direction: This PC -> Accepted master. The accepted master will replace this PC's controlled preview. Personal previews and viewing preferences will be kept.");
         return String.Join(Environment.NewLine,lines.ToArray());
     }
 
@@ -593,8 +613,8 @@ if (Test-Path -LiteralPath $AppIconPath -PathType Leaf) {
 
 $LogFolder = Join-Path $Root 'logs'
 $DeploymentPath = Join-Path $Root 'DEPLOYMENT.json'
-$ApplicationVersion = '1.1.1'
-$ApplicationReleaseDate = '2026-10-28'
+$ApplicationVersion = '1.1.2'
+$ApplicationReleaseDate = '2026-10-31'
 $script:SessionLogPath = $null
 $CandidateXml = Join-Path $localParent 'LORPreviews.MSB_SYNC_CANDIDATE.xml'
 $CandidateCsv = Join-Path $localParent 'LORPreviews.MSB_SYNC_REPORT.csv'
@@ -738,6 +758,42 @@ function Receive-BrowserSource {
     }
 }
 
+function Test-BackgroundAssets {
+    param([AllowEmptyCollection()][object[]]$Assets)
+    $seen=@{}
+    foreach ($asset in $Assets) {
+        $path=[string]$asset.path
+        if ($path -notmatch '(?i)^G:\\Shared drives\\Display Folders\\' -or $path -match '(?:^|[\\/])\.\.(?:[\\/]|$)' -or
+            $path -match '/' -or $path.Substring(2).Contains(':') -or [IO.Path]::GetExtension($path) -notin @('.png','.jpg','.jpeg','.bmp','.gif') -or
+            $asset.sha256 -cnotmatch '^[a-f0-9]{64}$' -or $asset.bytes -le 0 -or $asset.bytes -gt 67108864 -or $seen.ContainsKey($path)) {
+            throw 'Invalid or duplicate linked-background evidence in accepted catalog.'
+        }
+        $seen[$path]=$true
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Background image missing or not synced. Open Google Drive and wait for sync: $path" }
+        if ((Get-Item -LiteralPath $path).Length -ne $asset.bytes -or (Get-FileSha256 -Path $path) -cne $asset.sha256) {
+            throw "Background image differs from the approved catalog or is still syncing: $path"
+        }
+    }
+}
+
+function Test-BackgroundReferences {
+    param($MasterRecords,[object[]]$Assets)
+    $approved=@{}; foreach ($asset in $Assets) { $approved[[string]$asset.path]=$true }
+    $referenced=@{}
+    foreach ($record in $MasterRecords.Values) {
+        [xml]$xml=$record.Raw
+        if ($xml.DocumentElement.GetAttribute('EmbedBackgrounds') -ieq 'True') { throw 'Embedded preview backgrounds are not allowed.' }
+        foreach ($node in @($xml.SelectNodes('//*[@BackgroundFile]'))) {
+            $path=$node.GetAttribute('BackgroundFile')
+            if ([string]::IsNullOrWhiteSpace($path)) { continue }
+            $path=[IO.Path]::GetFullPath($path)
+            if (-not $approved.ContainsKey($path)) { throw "Accepted catalog has no image hash for linked background: $path" }
+            $referenced[$path]=$true
+        }
+    }
+    if ($referenced.Count -ne $approved.Count) { throw 'Catalog background inventory does not match the actual preview references.' }
+}
+
 function Get-CurrentAcceptedSource {
     # The #81 service selects the current completed run. No archive scanning,
     # copied report, static CSV or missing-hash fallback is permitted.
@@ -748,7 +804,7 @@ function Get-CurrentAcceptedSource {
     $json = Receive-BrowserSource
     $doc = $json | ConvertFrom-Json
     $supported = ($doc.schema_version -eq 1 -and $doc.status -ceq 'COMPLETED')
-    if ($doc.schema_version -eq 2) {
+    if ($doc.schema_version -in @(2,3)) {
         $supported = ($doc.status -ceq 'ACCEPTED' -and $doc.acceptance_kind -ceq 'PREVIEW_CATALOG' -and
             $doc.catalog_policy -ceq 'MSB_PREVIEW_CATALOG_V1' -and $doc.database_baseline_evidence_id -cmatch '^[a-f0-9]{64}$' -and
             -not [string]::IsNullOrWhiteSpace([string]$doc.published_by) -and -not [string]::IsNullOrWhiteSpace([string]$doc.published_at))
@@ -762,6 +818,12 @@ function Get-CurrentAcceptedSource {
         (Split-Path -Leaf $doc.source_folder) -cne ('Database Previews V' + $doc.lor_version)) {
         throw 'Accepted source is not the exact versioned master folder.'
     }
+    $assets = @()
+    if ($doc.schema_version -eq 3) {
+        if ($doc.minimum_updater_version -cne '1.1.2' -or $null -eq $doc.PSObject.Properties['background_assets']) { throw 'Background-aware catalog is incomplete.' }
+        $assets = @($doc.background_assets)
+        Test-BackgroundAssets -Assets $assets
+    }
     $names = @{}; $ids = @{}; $rows = @()
     foreach ($item in $doc.previews) {
         if ([IO.Path]::GetFileName([string]$item.filename) -cne $item.filename -or
@@ -774,8 +836,8 @@ function Get-CurrentAcceptedSource {
     }
     return [pscustomobject]@{RunId=$doc.run_id; ImportRunId=$doc.import_run_id; Path=$doc.report_url;
         SourceFolder=$doc.source_folder; SourceManifestSha256=$doc.source_manifest_sha256;
-        EvidenceId=$doc.evidence_id; Rows=$rows;
-        AuthorityLabel=$(if ($doc.schema_version -eq 2) { 'Accepted preview catalog ' + $doc.evidence_id.Substring(0,12) + ' (DB baseline Run ' + $doc.run_id + ')' } else { 'Accepted LOR2DB Run ' + $doc.run_id })}
+        EvidenceId=$doc.evidence_id; Rows=$rows; BackgroundAssets=$assets; ImageAware=($doc.schema_version -eq 3);
+        AuthorityLabel=$(if ($doc.schema_version -in @(2,3)) { 'Accepted preview catalog ' + $doc.evidence_id.Substring(0,12) + ' (DB baseline Run ' + $doc.run_id + ')' } else { 'Accepted LOR2DB Run ' + $doc.run_id })}
 }
 
 function Add-Token {
@@ -1457,12 +1519,22 @@ function Prepare-SyncWithStartup {
                 "Checking the live master folder against frozen Run {0} evidence..." -f $accepted.RunId
             )
             Test-MasterAgainstReport -Report $accepted -Master $master -ProgressWindow $this
+            if ($accepted.ImageAware) { Test-BackgroundReferences -MasterRecords $master.Records -Assets $accepted.BackgroundAssets }
 
             Set-StartupStatus -Window $this -Text (
                 "Comparing {0} controlled previews with this PC..." -f $master.Records.Count
             )
             $originalHash = Get-FileSha256 -Path $LocalXml
             $build = Build-SyncCandidate -MasterRecords $master.Records -LocalPath $LocalXml -ProgressWindow $this
+            if ($accepted.BackgroundAssets.Count -gt 0) {
+                foreach ($row in $build.Rows) {
+                    $previewXml = [xml]$master.Records[$row.Preview_ID].Raw
+                    $imagePaths = @($previewXml.SelectNodes('//*[@BackgroundFile]') | ForEach-Object { $_.GetAttribute('BackgroundFile') } | Where-Object { $_ } | Sort-Object -Unique)
+                    foreach ($imagePath in $imagePaths) {
+                        $row.Change_Summary += "`r`nLinked background verified: $imagePath"
+                    }
+                }
+            }
 
             Set-StartupStatus -Window $this -Text 'Preparing and freezing the update review...'
             Write-CandidateFile -Build $build -Path $CandidateXml
@@ -1790,6 +1862,7 @@ function Write-SharedLog {
         "Master folder: $($Report.SourceFolder)"
         "Frozen source manifest: $($Report.SourceManifestSha256)"
         "Observed source state: $SourceStateHash"
+        $(if ($Report.PSObject.Properties['BackgroundAssets']) { "Linked backgrounds: $($Report.BackgroundAssets | ConvertTo-Json -Depth 4 -Compress)" })
         "Controlled previews: $($Build.Rows.Count)"
         "NOOP: $($counts.Noop)"
         "Revision-only unchanged: $($counts.RevisionOnly)"
@@ -1824,6 +1897,7 @@ try {
             "$($accepted.AuthorityLabel)`r`n" +
             "Master source: $($accepted.SourceFolder)`r`n" +
             "Controlled previews: $($build.Rows.Count)`r`n" +
+            "Linked background images verified: $($accepted.BackgroundAssets.Count)`r`n" +
             "Revision-only differences ignored: $($counts.RevisionOnly)`r`n" +
             "Personal/unmanaged previews preserved: $($build.UnmanagedCount)"
         ) 'Update your PC Previews to LOR Master Files' ([System.Windows.Forms.MessageBoxIcon]::Information)
@@ -1876,6 +1950,7 @@ try {
         throw 'Accepted LOR2DB source evidence changed during review. Nothing was installed.'
     }
 
+    Test-BackgroundAssets -Assets $accepted.BackgroundAssets
     $sourceStateNow = [MSBSourceManifest]::Compute($accepted.SourceFolder)
     if ($sourceStateNow -ne $prepared.SourceStateHash) {
         throw (

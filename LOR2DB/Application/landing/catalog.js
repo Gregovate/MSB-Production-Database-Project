@@ -36,8 +36,10 @@
         : proposal.can_publish ? 'Review ready. Publication updates preview distribution evidence only; no database ingest.'
         : 'The master matches the current published catalog. No publication is needed.';
       const lines = ['Source master folder: ' + (proposal.source_folder || 'Not reported'), 'Catalog evidence destination: ' + (proposal.catalog_evidence_folder || 'Not reported'), '', 'Database baseline: Run ' + proposal.baseline_run_id, 'Reviewed master digest: ' + proposal.master_digest];
+      if (proposal.minimum_updater_version) lines.push('Required PC updater: ' + proposal.minimum_updater_version);
       for (const change of proposal.changes) {
-        lines.push('', change.filename, change.database_contract_review_required ? 'Database-contract review required' : 'Preview metadata / presentation change');
+        lines.push('', change.filename, change.database_contract_review_required ? 'Database-contract review required' : 'Sequencing / presentation change — database contract unchanged');
+        for (const item of (change.background_changes || [])) lines.push(item.action.replaceAll('_', ' ') + ': ' + item.path);
         for (const item of change.metadata_changes) lines.push(item.prop_id + ' · ' + item.field + ': ' + JSON.stringify(item.before) + ' → ' + JSON.stringify(item.after));
       }
       if (proposal.parent_publication_id) lines.push('Current published catalog: ' + proposal.parent_publication_id);
@@ -71,3 +73,4 @@
     .catch(() => { panel.hidden = true; });
   controls();
 })();
+

@@ -48,9 +48,9 @@ def contract_node(node, depth=0):
             (node.tail or '').strip()]
 
 
-COMPARISON_POLICY = 'MSB_SEQUENCING_CONTRACT_V2'
+COMPARISON_POLICY = 'MSB_SEQUENCING_CONTRACT_V3'
 # Filled from a reviewed, exact published export; never from current master bytes.
-LEGACY_SEQUENCING_ANCHORS = {'02e0e910e1987c37363b570d9b546bb740c6b27502c7fd512c2081fee4bf3c26': '726ef2ccef80a7660812f3a3a1418015b0b6a81f49d4f939e5f959554c393c53'}
+LEGACY_SEQUENCING_ANCHORS = {'02e0e910e1987c37363b570d9b546bb740c6b27502c7fd512c2081fee4bf3c26': 'f20022f1efa0d53a0b40a80df19f668fd7d369fa9f61989916e3a4b60aa3a3af', '76501d972e5e739b8ab8f9c2c6736b633912b14fb17b4b80c7376a4cbbd86c53': 'b8bc082bd7e6718bec1b3f370bb045cbd5cd52b175b2c6c61997733a097fd555', '6874537a9b97b8b239005af3ad209bbe4de055b8defd457ab63fbf13ceaa66c5': '77e0534b628681c0984ea6694d6774d548c204d1ea86336d3e51d61d9d15068c'}
 
 
 def preview_stage(name):
@@ -72,6 +72,9 @@ def sequencing_contract_node(node, depth=0):
                      'PropViews': {'PropViews', 'PropView', 'ViewMember'},
                      'MotionRowDefaults': {'MotionRowDefaults', 'MotionRowDefault'}}
     ignored = {'Revision', 'Brightness', 'LastSelectedSceneId', 'Name'} if depth == 0 else set()
+    if node.tag in {'PreviewClass', 'Scene'}: ignored.add('BackgroundFile')
+    if depth == 2 and node.tag == 'shape': ignored.update({'OffsetX', 'OffsetY'})
+    if depth == 3 and node.tag == 'point': ignored.update({'x', 'y'})
     if depth == 1 and node.tag == 'PropClass':
         ignored = {'MasterDimmable'}
         if (node.get('Comment') or '').strip(): ignored.add('Name')
@@ -90,8 +93,49 @@ def sequencing_contract_node(node, depth=0):
 
 def same_database_contract(baseline, current):
     if baseline['contract_sha256'] == current['contract_sha256']: return True
-    anchor = baseline.get('sequencing_contract_sha256') or LEGACY_SEQUENCING_ANCHORS.get(baseline['sha256'])
+    anchor = (baseline.get('sequencing_contract_sha256') if baseline.get('comparison_policy') == COMPARISON_POLICY else None) or LEGACY_SEQUENCING_ANCHORS.get(baseline['sha256'])
     return bool(anchor and anchor == current['sequencing_contract_sha256'])
+
+
+def capture_backgrounds(root):
+    from pathlib import PureWindowsPath
+    if str(root.get('EmbedBackgrounds', 'False')).lower() != 'false':
+        raise ValueError('Embedded preview backgrounds are not permitted; use external file links')
+    result = {}
+    for node in root.iter():
+        raw = node.get('BackgroundFile', '').strip()
+        if not raw: continue
+        path = PureWindowsPath(raw)
+        if (path.drive.upper() != 'G:' or not path.is_absolute() or '..' in path.parts
+                or len(path.parts) < 4 or tuple(p.casefold() for p in path.parts[1:3]) != ('shared drives','display folders')
+                or ':' in str(path)[2:] or path.suffix.lower() not in {'.png','.jpg','.jpeg','.bmp','.gif'}):
+            raise ValueError('Background must be an external image under G:\\Shared drives\\Display Folders: ' + raw)
+        canonical_path = str(path)
+        if canonical_path.casefold() in result: continue
+        digestor = hashlib.sha256(); size = 0
+        try:
+            with Path(canonical_path).open('rb') as stream:
+                for block in iter(lambda:stream.read(1024*1024), b''):
+                    size += len(block)
+                    if size > 64*1024*1024: raise ValueError('Background image exceeds 64MB: ' + canonical_path)
+                    digestor.update(block)
+        except OSError as error:
+            raise ValueError('Background image missing, unreadable or not synced: ' + canonical_path) from error
+        if not size: raise ValueError('Background image is empty: ' + canonical_path)
+        result[canonical_path.casefold()] = dict(path=canonical_path,sha256=digestor.hexdigest(),bytes=size)
+    return sorted(result.values(),key=lambda a:a['path'].casefold())
+
+
+def background_changes(previous, current):
+    if previous is None:
+        return [dict(action='VERIFY_LINKED_BACKGROUND',path=a['path']) for a in current]
+    old={a['path'].casefold():a for a in previous};new={a['path'].casefold():a for a in current}
+    result=[]
+    for key in sorted(old.keys() | new.keys()):
+        a,b=old.get(key),new.get(key)
+        if a==b:continue
+        result.append(dict(action='BACKGROUND_REMOVED' if b is None else 'BACKGROUND_ADDED' if a is None else 'BACKGROUND_IMAGE_UPDATED',path=(b or a)['path']))
+    return result
 
 
 def capture(folder):
@@ -125,7 +169,7 @@ def capture(folder):
         metadata = {p.get('id'): {k: p.get(k) for k in ('Name', 'MasterDimmable')} for p in root if p.tag == 'PropClass'}
         files.append(dict(filename=path.name, preview_id=identity, name=root.get('Name'), revision=root.get('Revision'),
                           sha256=hashlib.sha256(raw).hexdigest(), contract_sha256=digest(contract_node(root)),
-                          metadata=metadata, sequencing_contract_sha256=digest(sequencing_contract_node(root))))
+                          metadata=metadata, sequencing_contract_sha256=digest(sequencing_contract_node(root)), comparison_policy=COMPARISON_POLICY, background_assets=capture_backgrounds(root)))
     return files
 
 
@@ -193,7 +237,8 @@ class Catalog:
         result = {}
         for identity, original in baseline_files.items():
             base = dict(original)
-            if not base.get('sequencing_contract_sha256'):
+            if base.get('comparison_policy') != COMPARISON_POLICY or not base.get('sequencing_contract_sha256'):
+                base.pop('sequencing_contract_sha256', None)
                 binding = dict(comparison_policy=COMPARISON_POLICY, preview_id=identity,
                                baseline_sha256=base['sha256'])
                 path = directory / 'comparison-anchors' / (digest(binding) + '.json')
@@ -210,6 +255,7 @@ class Catalog:
                     if fingerprint:
                         self.write(path, dict(binding, sequencing_contract_sha256=fingerprint))
                         base['sequencing_contract_sha256'] = fingerprint
+            if base.get('sequencing_contract_sha256'): base['comparison_policy'] = COMPARISON_POLICY
             result[identity] = base
         return result
 
@@ -231,7 +277,7 @@ class Catalog:
         changes = []
         for name in sorted(set(old) | set(new)):
             a, b = old.get(name), new.get(name)
-            if a and b and a['sha256'] == b['sha256'] and a['filename'] == b['filename']:
+            if a and b and a['sha256'] == b['sha256'] and a['filename'] == b['filename'] and a.get('background_assets', []) == b.get('background_assets', []):
                 continue
             base = baseline_files.get(name)
             requires_review = not base or not b or not same_database_contract(base, b)
@@ -243,7 +289,8 @@ class Catalog:
                         before, after = a['metadata'][prop][field], b['metadata'][prop][field]
                         if before != after:
                             details.append(dict(prop_id=prop, field=field, before=before, after=after))
-            changes.append(dict(filename=b['filename'] if b else a['filename'], preview_id=name,
+            asset_notes = background_changes(a.get('background_assets') if a else None, b.get('background_assets') if b else [])
+            changes.append(dict(background_changes=asset_notes, filename=b['filename'] if b else a['filename'], preview_id=name,
                                 previous_filename=a['filename'] if a else None, previous_name=a['name'] if a else None,
                                 name=b['name'] if b else None, database_contract_review_required=bool(requires_review),
                                 before_sha256=a['sha256'] if a else None, after_sha256=b['sha256'] if b else None,
@@ -253,7 +300,7 @@ class Catalog:
                         database_contract_review_required=bool(protected), reviewed_by=actor)
         proposal_id = digest(proposal)
         self.write(directory / 'reviews' / (proposal_id + '.json'), proposal)
-        return dict(review_id=proposal_id, changes=changes, source_folder=str(self.folder), catalog_evidence_folder=str(self.root), database_contract_review_required=bool(protected),
+        return dict(review_id=proposal_id, minimum_updater_version='1.1.2', changes=changes, source_folder=str(self.folder), catalog_evidence_folder=str(self.root), database_contract_review_required=bool(protected),
                     can_publish=not protected and (parent is None or bool(changes)), master_digest=proposal['source_manifest_sha256'],
                     baseline_run_id=accepted['run_id'], parent_publication_id=parent)
 
@@ -267,9 +314,11 @@ class Catalog:
         fresh = self.review(accepted, actor)
         if fresh['review_id'] != review_id or not fresh['can_publish']:
             raise ValueError('Catalog review is stale or requires database-contract review; nothing published')
-        document = dict(accepted, schema_version=2, status='ACCEPTED', acceptance_kind='PREVIEW_CATALOG',
+        document = dict(accepted, schema_version=3, status='ACCEPTED', acceptance_kind='PREVIEW_CATALOG',
                         database_baseline_evidence_id=accepted['evidence_id'], catalog_policy=POLICY,
                         source_manifest_sha256=review['source_manifest_sha256'],
+                        background_assets=sorted({asset['path'].casefold(): asset for f in review['files'] for asset in f['background_assets']}.values(), key=lambda x:x['path'].casefold()),
+                        minimum_updater_version='1.1.2',
                         previews=[{k: f[k] for k in ('filename', 'preview_id', 'name', 'revision')} for f in review['files']],
                         published_by=actor, published_at=datetime.now(timezone.utc).isoformat(),
                         parent_publication_id=review['parent_publication_id'])

@@ -221,3 +221,33 @@ if ($env:MSB_ADAM_LIBRARY_FIXTURE) {
     Check ((Get-ActionCounts $adamAdd.Rows).Add -eq 1 -and $adamAdd.UnmanagedCount -eq 140) 'actual Adam library accepts synthetic controlled addition and preserves all 140 existing previews'
     Check ((Get-FileSha256 $adamPath) -ceq $adamHash) 'actual Adam fixture original bytes never modified'
 }
+
+
+# Presentation summaries must describe source-to-destination changes clearly.
+$layoutOld='<PreviewClass id="layout" Name="Layout"><Scene id="s" Name="Stage" BackgroundFile="old.png"/><PropClass id="p" Name="Prop" Comment="Display"><shape OffsetX="0"><point x="0" y="0"/></shape></PropClass></PreviewClass>'
+$layoutNew=$layoutOld.Replace('old.png','new.png').Replace('OffsetX="0"','OffsetX="1"')
+$layoutSummary=[MSBPreviewSemantic]::ProgrammerSummary($layoutOld,$layoutNew)
+Check ($layoutSummary.Contains('Preview layout changed: 1') -and $layoutSummary.Contains('Linked background image reference changed.')) 'summary explains prop layout and linked background updates'
+Check (-not $layoutSummary.Contains('Scenes or scene membership changed.')) 'background reference does not falsely imply scene membership changed'
+Check ($layoutSummary.Contains('This PC -> Accepted master')) 'summary states replacement direction'
+Test-BackgroundAssets -Assets @()
+Check $true 'empty linked-background manifest is valid'
+$doc.schema_version=3;$doc.database_baseline_evidence_id='a'*64
+$doc.minimum_updater_version='1.1.2';$doc.background_assets=@()
+$script:BrowserSourceForTest=$doc|ConvertTo-Json -Depth 8
+$assetSource=Get-CurrentAcceptedSource
+Check ($assetSource.BackgroundAssets.Count -eq 0) 'schema3 validates image-aware catalog with no image dependencies'
+
+& {
+    function Test-Path { param($LiteralPath,$PathType) return $true }
+    function Get-Item { param($LiteralPath) return [pscustomobject]@{Length=10} }
+    function Get-FileSha256 { param($Path) return $script:assetHash }
+    $script:assetHash='a'*64
+    $asset=[pscustomobject]@{path='G:\Shared drives\Display Folders\Background.png';sha256=('a'*64);bytes=10}
+    Test-BackgroundAssets -Assets @($asset)
+    Check $true 'linked background hash and size validated'
+    $script:assetHash='b'*64
+    Blocks {Test-BackgroundAssets -Assets @($asset)} 'unsynced or changed background blocks before approval'
+    $script:assetHash='a'*64
+    Blocks {Test-BackgroundAssets -Assets @($asset,$asset)} 'duplicate background evidence blocks'
+}

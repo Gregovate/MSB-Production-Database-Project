@@ -44,7 +44,7 @@ class CatalogTests(unittest.TestCase):
         proposal=self.register();self.assertTrue(proposal['can_publish'])
         self.assertEqual(len(proposal['changes'][0]['metadata_changes']),2)
         before=self.file.read_bytes();doc=self.catalog.publish(self.accepted,self.actor,proposal['review_id'])
-        self.assertEqual(doc['schema_version'],2);self.assertEqual(doc['status'],'ACCEPTED')
+        self.assertEqual(doc['schema_version'],3);self.assertEqual(doc['status'],'ACCEPTED')
         self.assertEqual(doc['database_baseline_evidence_id'],self.accepted['evidence_id'])
         self.assertEqual(doc,self.catalog.current(self.accepted));self.assertEqual(before,self.file.read_bytes())
         self.assertEqual(doc['previews'][0]['revision'],'58')
@@ -185,6 +185,8 @@ class SequencingPolicyTests(CatalogTests):
         if not fixture:self.skipTest('Private operator fixtures not in repository')
         old=Path(fixture)/'2026 Master Musical Preview v6.6.12 2026-08-20.lorprev'
         new=Path(fixture)/'2026 Master Musical Preview v6.6.12 2026-10-30.lorprev'
+        self.asset_patch=patch('preview_catalog.capture_backgrounds',return_value=[])
+        self.asset_patch.start();self.addCleanup(self.asset_patch.stop)
         self.file.write_bytes(old.read_bytes());files=capture(self.folder)
         self.accepted.update(source_manifest_sha256=source_digest(files),previews=[{k:files[0][k] for k in ('filename','preview_id','name','revision')}])
         self.register();directory=self.catalog.context(self.accepted)
@@ -203,3 +205,38 @@ class SequencingPolicyTests(CatalogTests):
         self.register()  # still exact original bytes: safe policy adoption
         self.file.write_text(RAW.replace('Stage 00 Test','Stage 00 New Date'))
         self.assertTrue(self.register()['can_publish'])
+
+class BackgroundTests(CatalogTests):
+    def setUp(self):
+        super().setUp()
+        import io
+        self.image=b'old external image bytes'
+        self.original_open=Path.open
+        def reader(path,*args,**kwargs):
+            if str(path).startswith('G:'):
+                return io.BytesIO(self.image)
+            return self.original_open(path,*args,**kwargs)
+        self.open_patch=patch.object(Path,'open',reader);self.open_patch.start();self.addCleanup(self.open_patch.stop)
+        self.image_raw=RAW.replace('<Scene id="scene" Name="Stage"/>','<Scene id="scene" Name="Stage" BackgroundFile="G:\\Shared drives\\Display Folders\\Background.png"/>')
+
+    def test_external_image_change_same_path_is_reviewed_and_published(self):
+        self.file.write_text(self.image_raw)
+        files=capture(self.folder)
+        self.accepted.update(source_manifest_sha256=source_digest(files))
+        first=self.register();doc=self.catalog.publish(self.accepted,self.actor,first['review_id'])
+        self.assertEqual(doc['schema_version'],3);self.assertEqual(doc['minimum_updater_version'],'1.1.2')
+        self.image=b'new external image bytes'
+        review=self.register();self.assertTrue(review['can_publish'])
+        self.assertEqual(review['changes'][0]['background_changes'][0]['action'],'BACKGROUND_IMAGE_UPDATED')
+        self.assertEqual(review['master_digest'],doc['source_manifest_sha256'])
+        self.image=b'edited again after review'
+        with self.assertRaisesRegex(ValueError,'stale'):self.catalog.publish(self.accepted,self.actor,review['review_id'])
+
+    def test_no_embedding_no_arbitrary_files(self):
+        from preview_catalog import capture_backgrounds
+        import xml.etree.ElementTree as ET
+        for raw in [self.image_raw.replace('Background.png','../secret.png'),self.image_raw.replace('G:', 'C:'),self.image_raw.replace('Background.png','secret.txt'),self.image_raw.replace('Revision="57"','Revision="57" EmbedBackgrounds="True"')]:
+            with self.subTest(raw=raw):
+                with self.assertRaises(ValueError):capture_backgrounds(ET.fromstring(raw))
+        self.image=b''
+        with self.assertRaisesRegex(ValueError,'empty'):capture_backgrounds(ET.fromstring(self.image_raw))
