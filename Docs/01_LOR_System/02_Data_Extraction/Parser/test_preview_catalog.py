@@ -263,7 +263,22 @@ class AllBackgroundProblemTests(CatalogTests):
             with self.assertRaises(ValueError) as raised:
                 capture(self.folder)
         report = str(raised.exception)
-        for label in [self.file.name, 'Second.lorprev', 'Mega Tree', 'Fred’s Stars', 'Tunnel', 'missing.png', 'other.png', 'publication blocked']:
+        for label in [self.file.name, 'Second.lorprev', 'Mega Tree', 'Fred’s Stars', 'Tunnel', 'missing.png', 'other.png', 'Publication blocked']:
             self.assertIn(label, report)
         self.assertEqual(len(attempted), 4)
         self.assertNotIn('Scene: Good scene', report)
+
+
+class BackgroundErrorReasonTests(unittest.TestCase):
+    def test_missing_and_denied_are_distinguished_without_repeating_path(self):
+        from preview_catalog import capture_backgrounds
+        import xml.etree.ElementTree as ET
+        raw = '<PreviewClass><Scene Name="Test scene" BackgroundFile="G:\\Shared drives\\Display Folders\\one.png"/></PreviewClass>'
+        for error, reason in [(FileNotFoundError(2, 'not found'), 'File or folder not found'), (PermissionError(13, 'denied'), 'Access denied'), (OSError(22, 'invalid argument'), 'File read failed')]:
+            with self.subTest(reason=reason), patch.object(Path, 'open', side_effect=error):
+                with self.assertRaises(ValueError) as raised:
+                    capture_backgrounds(ET.fromstring(raw))
+                message = str(raised.exception)
+                self.assertIn(reason, message)
+                self.assertIn('errno=' + str(error.errno), message)
+                self.assertEqual(message.count('one.png'), 1)

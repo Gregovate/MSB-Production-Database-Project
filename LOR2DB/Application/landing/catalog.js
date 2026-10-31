@@ -7,6 +7,9 @@
   const approve = document.getElementById('catalog-approve');
   const status = document.getElementById('catalog-status');
   const details = document.getElementById('catalog-details');
+  // Preserve scene-by-scene diagnostics even when shared CSS resets pre tags.
+  details.style.whiteSpace = 'pre-wrap';
+  details.style.overflowWrap = 'anywhere';
   const complete = document.getElementById('catalog-complete');
   const completeMessage = document.getElementById('catalog-complete-message');
   const receipt = document.getElementById('catalog-receipt');

@@ -119,7 +119,7 @@ def capture_backgrounds(root):
     if str(root.get('EmbedBackgrounds', 'False')).lower() != 'false' and not problems:
         problems.append('Scene: (preview)\nImage: (embedded)\nReason: Embedded preview backgrounds are not permitted; use external file links')
     if problems:
-        raise ValueError('\n\n'.join(problems))
+        raise ValueError('\n\n'.join(str(number) + '. ' + problem for number, problem in enumerate(problems, 1)))
     return sorted(result.values(), key=lambda asset: asset['path'].casefold())
 
 
@@ -146,7 +146,11 @@ def _capture_backgrounds(root):
                     if size > 64*1024*1024: raise ValueError('Background image exceeds 64MB: ' + canonical_path)
                     digestor.update(block)
         except OSError as error:
-            raise ValueError('Background image missing, unreadable or not synced: ' + canonical_path) from error
+            code = getattr(error, 'winerror', None)
+            reason = ('File or folder not found' if isinstance(error, FileNotFoundError) else
+                      'Access denied' if isinstance(error, PermissionError) else 'File read failed')
+            diagnostic = error.strerror or type(error).__name__
+            raise ValueError(reason + '; ' + diagnostic + '; Windows error=' + str(code) + '; errno=' + str(error.errno)) from error
         if not size: raise ValueError('Background image is empty: ' + canonical_path)
         result[canonical_path.casefold()] = dict(path=canonical_path,sha256=digestor.hexdigest(),bytes=size)
     return sorted(result.values(),key=lambda a:a['path'].casefold())
@@ -203,7 +207,7 @@ def capture(folder):
                           sha256=hashlib.sha256(raw).hexdigest(), contract_sha256=digest(contract_node(root)),
                           metadata=metadata, sequencing_contract_sha256=digest(sequencing_contract_node(root)), comparison_policy=COMPARISON_POLICY, background_assets=assets))
     if background_errors:
-        raise ValueError('Background image problems — publication blocked. Fix all listed references, export the affected previews, then review again.\n\n' + '\n\n'.join(background_errors))
+        raise ValueError('Background files could not be read on PRINT-SERVER under Print Service. Publication blocked. Check the errors below before changing any preview links.\n\n' + '\n\n'.join(background_errors))
     return files
 
 
