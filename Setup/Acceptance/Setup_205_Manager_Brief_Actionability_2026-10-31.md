@@ -100,3 +100,10 @@ Email original-report links use the recorded assignment when available; fallback
 remains the supported annual planning screen. No new correction workflow exists.
 Check the example UTC 2026-10-31 00:40 becomes Oct30 7:40 PM CDT, and confirm original
 note text and task counts remain unchanged. Production installation stays HOLD.
+
+V0.3.99-manager-brief-readable also shortens Container rows, de-duplicates shared
+movement/load event evidence, and keeps all recorded review reasons and counts.
+Display evidence per Container distinguishes inferred unloads, Container-linked
+positions, Display observations and absent location evidence. A shared-GPS group
+is explicitly flagged for placement review; it does not establish final position
+or physical absence. Verify actual group counts on the current disposable clone.

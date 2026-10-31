@@ -28,9 +28,9 @@ $captain_tbd_count future assignments with no Captain assigned
 
 WHAT TO DO
 - No work occurred? Use "Reschedule · No work performed." Do not enter fictitious time, crew counts or progress.
-- Work occurred but no report? Help the Captain enter actual work against the original assignment.
-- Work already reported but unfinished? Plan the remaining work. Do not ask for a duplicate report.
-- Unsure? Check with the crew before changing the record.
+- Work occurred? Help the Captain report actual work against the original assignment.
+- Reported but unfinished? Plan continuation; do not duplicate reports.
+- Unsure? Check with the crew first.
 
 PAST ASSIGNMENTS TO VERIFY
 $overdue_lines
@@ -39,6 +39,8 @@ STARTED TASKS NEEDING CONTINUATION
 $continuation_lines
 
 CONTAINER RECORDS AND REVIEW REASONS
+Pickup readiness is not an actual return receipt. Home is assigned storage. Record Location supports new observations.
+
 $container_detail_lines
 
 DISPLAY PLACEMENT VERIFICATION

@@ -274,3 +274,18 @@ label creation as a correction when audit timestamps match. Preserve original
 Report Work text and separately expose the existing annual completion_note;
 replace repeated task-boundary boilerplate with concise original-report review
 instructions. No note interpretation, state changes or new correction workflow.
+
+### Container readability follow-up
+
+Greg requests shorter Container explanations while keeping summary cards. Keep
+all rows, aggregate counts and evidence decisions. Use compact labeled facts;
+show an event once when last movement and load observation share its identity.
+Retain exact per-event review reasons and links. Put shared interpretation/action
+limits once before the list, retaining the required pending-correction wording.
+Keep HTML and text consistent; no movement or workflow changes.
+
+Greg's GPS follow-up: migration070 explicitly creates inferred unload events at
+the prior Container anchor. Expose this provenance and per-Container Display
+evidence counts, including exact shared-GPS groups. Equal coordinates alone do
+not prove misplaced Displays; neither unload nor independent scan establishes
+#431 final position. No mutation or new completion state is introduced.

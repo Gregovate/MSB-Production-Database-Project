@@ -103,7 +103,8 @@ def test_authoritative_pickup_request_is_not_actual_return_or_association_empty(
     assert 'Integral show equipment' in result['container_rows'][0]['detail']
     row=result['container_rows'][2]
     assert 'Confirmed Ready for Pickup' in row['detail']
-    assert 'not an actual return receipt' in row['detail']
+    assert 'not an actual return receipt' in mail.DEFAULT_TEMPLATE.read_text()
+    assert 'not an actual return receipt' in mail.DEFAULT_HTML_TEMPLATE.read_text()
     assert 'request #7' in row['detail'] and 'crew@example.com' in row['detail']
     assert '/container-pickups/?asset=CONT%3A131' in row['url']
     assert 'Returned Home' in result['container_rows'][1]['detail']
@@ -128,3 +129,30 @@ def test_readable_central_dates_completion_note_and_actual_update_only():
     evidence[422]['updated_at'] = '2026-11-02T00:40:30Z'
     mail.enrich_continuations(report,evidence)
     assert 'Updated by: Tom' in row['detail'] and '6:40 PM CST' in row['detail']
+
+
+def test_container_rows_do_not_repeat_event_evidence_or_shared_explanations():
+    source = picture()
+    source['effect_rows'][0]['recorded_by_name'] = 'Tom Shircel'
+    result = mail.movement_details(source, locate_assets(source))
+    row = result['container_rows'][0]
+    assert row['detail'].count('Tom Shircel') == 1
+    assert 'same event as last movement' in row['detail']
+    assert '#1: Operator reported NOT_EMPTY without identifying remaining cargo' in row['detail']
+    assert len(row['detail'].split()) < 110
+    assert 'opening the link records nothing' not in row['detail']
+
+
+def test_shared_gps_does_not_certify_final_positions_or_fabricate_scans():
+    source = picture()
+    source['displays'] = [dict(display_id=i, container_id=9, position_mode='DETACHED', last_movement_event_id=10+i)
+                          for i in range(1,4)]
+    events = {10+i:dict(event_type='DISPLAY_MOVE', gps_latitude=43.7, gps_longitude=-87.7,
+                       notes='inferred_unload=true') for i in range(1,4)}
+    text = mail.container_display_evidence(9, source, events, {})
+    assert '3 inferred unload' in text and '3/3 share recorded GPS — placement review required' in text
+    assert 'Final positions unconfirmed' in text and 'Display observation' not in text
+    events[11]['notes'] = ''
+    text = mail.container_display_evidence(9, source, events, {})
+    assert '1 Display observation' in text and '2 inferred unload' in text
+    assert 'Final positions unconfirmed' in text

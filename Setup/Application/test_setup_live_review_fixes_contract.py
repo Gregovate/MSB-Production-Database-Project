@@ -68,7 +68,7 @@ def test_changed_live_review_assets_use_fresh_cache_keys() -> None:
         "setup_resource_review.css?v=2026-09-11.2",
         "setup_resource_review.js?v=2026-09-11.2",
         "setup_live_review_fixes.css?v=2026-09-08.3",
-        "setup_live_review_fixes.js?v=2026-10-31.98",
+        "setup_live_review_fixes.js?v=2026-10-31.99",
     ):
         assert asset in html
 

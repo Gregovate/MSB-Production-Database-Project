@@ -256,6 +256,39 @@ def contents_observation(event: dict) -> dict:
         return {}
 
 
+def container_display_evidence(ident: int, picture: dict, events: dict, last: dict) -> str:
+    """Classify recorded provenance only; equal GPS never proves final placement."""
+    counts = {"Container-linked": 0, "inferred unload": 0, "Display observation": 0,
+              "unload only": 0, "no usable location": 0}
+    positions = {}
+    for d in picture['displays']:
+        if d.get('container_id') != ident:
+            continue
+        e = last if d.get('position_mode') == 'WITH_CONTAINER' else events.get(d.get('last_movement_event_id'), {})
+        usable = e.get('gps_latitude') is not None and e.get('gps_longitude') is not None
+        if not usable and not (e.get('stage_name') or e.get('destination_location_note')):
+            key = 'no usable location'
+        elif d.get('position_mode') == 'WITH_CONTAINER':
+            key = 'Container-linked'
+        elif 'inferred_unload=true' in (e.get('notes') or ''):
+            key = 'inferred unload'
+        elif e.get('event_type') == 'DISPLAY_MOVE':
+            key = 'Display observation'
+        else:
+            key = 'unload only'
+        counts[key] += 1
+        if usable:
+            point = (str(e['gps_latitude']), str(e['gps_longitude']))
+            positions[point] = positions.get(point, 0) + 1
+    total = sum(counts.values())
+    if not total:
+        return 'Displays: no active associations.'
+    shared = max(positions.values(), default=0)
+    return ('Displays: ' + ', '.join(f'{n} {key}' for key, n in counts.items() if n) +
+            (f'; {shared}/{total} share recorded GPS — placement review required' if shared > 1 else '') +
+            '. Final positions unconfirmed.')
+
+
 def movement_details(picture: dict, projected: dict) -> dict:
     """Read-only explanation of #88 evidence; no #077/#430/#431 dependency."""
     events = {e['setup_movement_event_id']:e for e in picture['effect_rows']}
@@ -282,30 +315,31 @@ def movement_details(picture: dict, projected: dict) -> dict:
             reason = ('Operator selected NOT_SURE' if v.get('decision') == 'NOT_SURE' else
                       'Operator reported NOT_EMPTY without identifying remaining cargo' if v.get('decision') == 'NOT_EMPTY' else
                       'Recorded contents_review_required=true; structured reason unavailable')
-            reasons.append(f"{event_text(e)}: {reason}. Original note: {e.get('notes') or ''}")
+            reasons.append(f"#{e.get('setup_movement_event_id')}: {reason}")
         # #078 requests require an explicit empty confirmation and are removed
         # by cancellation or a later actual RETURNED record. Never infer readiness.
         pickup = pickups.get(ident)
         if pickup:
             status = (f"Confirmed Ready for Pickup — active request #{pickup['pickup_event_id']}; "
                       f"{readable_date(pickup['requested_at'])}; {pickup['operator_email']}; "
-                      f"{pickup.get('stage_name') or ''} / {pickup.get('location_note') or ''}. "
-                      "This is an empty/pickup confirmation, not an actual return receipt")
-            load_label += f"; pickup empty confirmation also recorded at {readable_date(pickup['requested_at'])}"
+                      f"{pickup.get('stage_name') or ''} / {pickup.get('location_note') or ''}")
+            load_label += "; pickup request also confirms empty"
         else:
             status = 'Returned Home — actual RETURNED record' if c.get('reported_home') else 'Pickup readiness unverified — no active request'
         kind = state.get('container_type_name')
-        role = ('Integral show equipment — recorded Standalone Display type; verify before pickup' if kind == 'Standalone Display'
-                else f"Container type: {kind or 'Not recorded'}; integral/removable role needs review")
-        detail = (f"{status}. Last movement: {event_text(last)}\n"
-                  f"Permanent Home: {c.get('home_location_code') or 'Not recorded'} (not current location proof).\n"
-                  f"Load: {load_label}; {event_text(load_event)}\n"
-                  f"Recorded Display associations: {c.get('load_state')}; not physical contents proof. "
-                  f"{role}; do not infer return eligibility from type or association counts.\n" +
-                  ("Contents review evidence (resolution unverified): " + ' | '.join(reasons) if reasons else
-                   'No recorded contents-review flag; this is not proof of verified contents.') +
-                  f"\n{PENDING}. Existing Record Location supports a new field observation; "
-                  "opening the link records nothing. Pickup readiness and actual return are separate.")
+        role = ('Integral show equipment (Standalone Display)' if kind == 'Standalone Display'
+                else f"{kind or 'Type not recorded'}; equipment role unverified")
+        # Avoid repeating the same actor, GPS and timestamp for the same event.
+        same_event = bool(load_event) and load_event.get('setup_movement_event_id') == last.get('setup_movement_event_id')
+        load_source = 'same event as last movement' if same_event else event_text(load_event) if load_event else 'no observation recorded'
+        detail = (f"Status: {status}\n"
+                  f"Last movement: {event_text(last)}\n"
+                  f"Load: {load_label} ({load_source})\n"
+                  f"Home: {c.get('home_location_code') or 'Not recorded'} · Type: {role}\n" +
+                  container_display_evidence(ident, picture, events, last) + "\n" +
+                  ("Contents review — resolution unverified: " + ' | '.join(reasons) if reasons else
+                   'Contents review: no flag recorded.') +
+                  f"\n{PENDING}.")
         container_rows.append({'name':f"C{ident:03d} — {c.get('name') or 'Description not recorded'}",
                                'detail':detail, 'url':(SETUP_URL + f'container-pickups/?asset=CONT%3A{ident}&season_year=2026' if pickup else record_url('CONT', ident))})
     display_rows = []
@@ -327,6 +361,7 @@ def movement_details(picture: dict, projected: dict) -> dict:
             label = 'Unloaded / independent location recorded; final position unconfirmed'
             reason = event_text(e)
             if 'inferred_unload=true' in (e.get('notes') or ''):
+                label = 'Unloaded; location inherited from Container; final position unconfirmed'
                 reason += '; inferred prior unload, not a physical Display scan'
         else:
             label = 'No usable placement evidence'
