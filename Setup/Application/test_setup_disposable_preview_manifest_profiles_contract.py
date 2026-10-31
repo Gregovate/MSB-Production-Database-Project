@@ -54,8 +54,10 @@ def _parser_only(runner: Path, *, stop_before: str, manifest: Path) -> subproces
     assert stop_before in source
     # stop BEFORE temp files, sudo, Docker, port inspection, cleanup or pg_dump
     shell = source.split(stop_before, 1)[0] + "\necho MANIFEST_PARSER_ACCEPTED\n"
+    script = manifest.parent / (runner.stem + "-parser-only.sh")
+    script.write_text(shell, encoding="utf-8")
     return subprocess.run(
-        ["bash", "-c", shell, "--", str(manifest)],
+        ["bash", str(script), str(manifest)],
         capture_output=True, text=True, timeout=5, check=False,
     )
 

@@ -8,8 +8,8 @@ This is operator-reported October22 evidence, not a new live-host assertion.
 
 ## Engineering evidence
 
-- Combined Setup application + acceptance: 1197 passed, 8 skipped.
-- Separate application/GIS run: 924 passed, including four new evidence tests.
+- Combined Setup application + acceptance: 1198 passed, 8 skipped.
+- Separate application/GIS run: 925 passed, including five new evidence tests.
 - 274 acceptance/tooling tests passed; 8 optional PostgreSQL/environment tests skipped.
 - Existing Manager navigation Node tests pass; startup URL adapter tested with exact annual ID.
 - New read-only SQL validation exercises Report Work columns and attribution joins as
@@ -41,8 +41,10 @@ links use the existing my.sheboyganlights.org/setup/ URL.
 3. Review Container C009/C034/C052/C053/C131/C216 where present. Confirm real names,
    last movement, load observation source/date, historical review reasons and
    unresolved-resolution wording. No park stop/membership count proves physical
-   emptiness. No installed authoritative readiness/integral role was found in main;
-   verify the read-only schema evidence before release. Do not invent these flags.
+   emptiness. Existing #078 active requests provide explicit empty/Ready for
+   Pickup confirmation and source/actor/date; cancellation/later return removes
+   them through the existing view. Standalone Display type is shown as integral
+   equipment; other physical membership remains unverified.
 4. Review unscanned, Container-inferred, unloaded, independent and conflicting
    Display cases. None is called physically missing or final Setup verified.
    #431 is not a prerequisite. Manager historical corrections remain pending.

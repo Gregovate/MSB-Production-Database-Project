@@ -25,6 +25,8 @@ WITH latest AS (
 SELECT count(*) AS tasks_with_report_evidence,
        count(progress_note) AS latest_reports_with_notes,
        count(recorded_by) AS latest_reports_with_attribution FROM latest;
+SELECT count(*) AS active_authoritative_pickup_requests
+FROM ops.setup_container_pickup_list WHERE season_year=2026;
 -- Inspect availability; absence is a reporting gap, never permission to migrate.
 SELECT table_schema,table_name,column_name
 FROM information_schema.columns

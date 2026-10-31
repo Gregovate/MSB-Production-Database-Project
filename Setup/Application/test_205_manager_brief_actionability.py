@@ -92,3 +92,21 @@ def test_missing_attribution_and_note_are_explicit():
     mail.enrich_continuations(report,{})
     assert 'Attribution not recorded' in report['continuation_lines']
     assert 'No Report Work note recorded' in report['continuation_lines']
+
+
+def test_authoritative_pickup_request_is_not_actual_return_or_association_empty():
+    source=picture()
+    source['pickup_requests']=[dict(container_id=131,pickup_event_id=7,requested_at='2026-10-31',
+                                    operator_email='crew@example.com',stage_name='Command Center',location_note='Gate')]
+    source['containers'][0]['container_type_name']='Standalone Display'
+    result=mail.movement_details(source,locate_assets(source))
+    assert 'Integral show equipment' in result['container_rows'][0]['detail']
+    row=result['container_rows'][2]
+    assert 'Confirmed Ready for Pickup' in row['detail']
+    assert 'not an actual return receipt' in row['detail']
+    assert 'request #7' in row['detail'] and 'crew@example.com' in row['detail']
+    assert '/container-pickups/?asset=CONT%3A131' in row['url']
+    assert 'Returned Home' in result['container_rows'][1]['detail']
+    # Cancellation / later return are removed by existing #078 view, not inferred here.
+    source['pickup_requests']=[]
+    assert 'Confirmed Ready for Pickup' not in mail.movement_details(source,locate_assets(source))['container_detail_lines']

@@ -230,6 +230,7 @@ def movement_details(picture: dict, projected: dict) -> dict:
     """Read-only explanation of #88 evidence; no #077/#430/#431 dependency."""
     events = {e['setup_movement_event_id']:e for e in picture['effect_rows']}
     containers = {c['container_id']:c for c in picture['containers']}
+    pickups = {p['container_id']:p for p in picture.get('pickup_requests', [])}
     container_rows = []
     for c in projected['containers']:
         ident = c['container_id']
@@ -252,20 +253,31 @@ def movement_details(picture: dict, projected: dict) -> dict:
                       'Operator reported NOT_EMPTY without identifying remaining cargo' if v.get('decision') == 'NOT_EMPTY' else
                       'Recorded contents_review_required=true; structured reason unavailable')
             reasons.append(f"{event_text(e)}: {reason}. Original note: {e.get('notes') or ''}")
-        # Installed model has no authoritative readiness/integral-role field.
-        # Do not label any type/association-derived empty Container ready to pick up.
-        status = 'Returned Home — actual RETURNED record' if c.get('reported_home') else 'Pickup readiness unverified'
+        # #078 requests require an explicit empty confirmation and are removed
+        # by cancellation or a later actual RETURNED record. Never infer readiness.
+        pickup = pickups.get(ident)
+        if pickup:
+            status = (f"Confirmed Ready for Pickup — active request #{pickup['pickup_event_id']}; "
+                      f"{pickup['requested_at']}; {pickup['operator_email']}; "
+                      f"{pickup.get('stage_name') or ''} / {pickup.get('location_note') or ''}. "
+                      "This is an empty/pickup confirmation, not an actual return receipt")
+            load_label += f"; pickup empty confirmation also recorded at {pickup['requested_at']}"
+        else:
+            status = 'Returned Home — actual RETURNED record' if c.get('reported_home') else 'Pickup readiness unverified — no active request'
+        kind = state.get('container_type_name')
+        role = ('Integral show equipment — recorded Standalone Display type; verify before pickup' if kind == 'Standalone Display'
+                else f"Container type: {kind or 'Not recorded'}; integral/removable role needs review")
         detail = (f"{status}. Last movement: {event_text(last)}\n"
                   f"Permanent Home: {c.get('home_location_code') or 'Not recorded'} (not current location proof).\n"
                   f"Load: {load_label}; {event_text(load_event)}\n"
                   f"Recorded Display associations: {c.get('load_state')}; not physical contents proof. "
-                  "Integral show equipment: classification unverified; do not infer return eligibility.\n" +
+                  f"{role}; do not infer return eligibility from type or association counts.\n" +
                   ("Contents review evidence (resolution unverified): " + ' | '.join(reasons) if reasons else
                    'No recorded contents-review flag; this is not proof of verified contents.') +
                   f"\n{PENDING}. Existing Record Location supports a new field observation; "
                   "opening the link records nothing. Pickup readiness and actual return are separate.")
         container_rows.append({'name':f"C{ident:03d} — {c.get('name') or 'Description not recorded'}",
-                               'detail':detail, 'url':record_url('CONT', ident)})
+                               'detail':detail, 'url':(SETUP_URL + f'container-pickups/?asset=CONT%3A{ident}&season_year=2026' if pickup else record_url('CONT', ident))})
     display_rows = []
     for d in picture['displays']:
         e = events.get(d.get('last_movement_event_id'), {})
@@ -369,6 +381,8 @@ def container_summary(dsn: str, season_year: int = 2026) -> dict:
     if not session_id:
         raise PilotStop("2026 Setup Session missing for Container snapshot")
     picture = movement_picture(repository, session_id, include_unobserved=True)
+    from setup_movement_repository import SetupMovementRepository
+    picture["pickup_requests"] = SetupMovementRepository(dsn).pickup_list(season_year)["containers"]
     projected = locate_assets(picture)
     counts = summarize_container_snapshot(
         projected["containers"], picture.get("generated_at")

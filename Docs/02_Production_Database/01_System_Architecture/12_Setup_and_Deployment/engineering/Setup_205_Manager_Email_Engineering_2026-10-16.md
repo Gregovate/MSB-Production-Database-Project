@@ -201,9 +201,12 @@ Use #88 movement_picture and #171 locate_assets read models. Keep association
 counts unchanged but explicitly distinguish physical contents reconciliation
 from assigned membership. Parse existing contents_reconciliation event evidence;
 retain original flagged reasons and dates. No deployed review ledger means
-resolution is unverified, not automatically open or resolved. Integral role and
-pickup readiness must be explicit authoritative evidence, never inferred from
-Container type, Display count or park stop. Return receipt is independent.
+resolution is unverified, not automatically open or resolved. Pickup readiness consumes the existing #078 setup_container_pickup_list view,
+whose REQUEST requires an explicit empty confirmation and whose cancellation /
+later RETURNED receipt removes the request. Include source ID, actor and date.
+Recorded Standalone Display type identifies integral show equipment; other types
+do not establish integral/removable membership. Never infer readiness from type,
+Display count or park stop. Return receipt is independent.
 
 Display rows use actual movement effects and state, including WITH_CONTAINER,
 independent scans, inferred unloads, missing evidence and contradictions. A
@@ -239,3 +242,7 @@ the former 150 KB bound. Inbox clients may clip long messages; preview review
 must evaluate actual size before release, without silently dropping records.
 The report deadline is corrected to Greg's November17; task/count predicates
 remain unchanged. The shared linked Work Order exemption from PR452 is retained.
+
+CI reconciliation: parser-only tests now execute their bounded source prefix as
+a temporary script, matching the real runner BASH_SOURCE context across Bash
+versions. They still stop before runtime actions; no production runner changed.
