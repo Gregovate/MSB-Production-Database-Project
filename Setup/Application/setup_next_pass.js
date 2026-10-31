@@ -20,6 +20,68 @@ const setupNextState = {
   performCaptainFilterTouched: false
 };
 
+// Catalog drag scrolling is independent of the Scheduling Board's pane scroll.
+const nextCatalogDragScroll = { pane: null, clientY: null, frame: null };
+
+function nextCatalogStopDragScroll() {
+  if (nextCatalogDragScroll.frame != null) window.cancelAnimationFrame(nextCatalogDragScroll.frame);
+  nextCatalogDragScroll.frame = null;
+  nextCatalogDragScroll.pane = null;
+  nextCatalogDragScroll.clientY = null;
+}
+
+function nextCatalogScrollOwner(node) {
+  for (let parent = node?.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+    if (/(auto|scroll)/.test(window.getComputedStyle(parent).overflowY)
+        && parent.scrollHeight > parent.clientHeight) return parent;
+  }
+  return document.scrollingElement;
+}
+
+function nextCatalogDragScrollTick() {
+  nextCatalogDragScroll.frame = null;
+  const pane = nextCatalogDragScroll.pane;
+  if (!pane || !pane.isConnected || !setupNextState.draggedTaskId || el('library-view')?.hidden) {
+    nextCatalogStopDragScroll();
+    return;
+  }
+  const root = pane === document.scrollingElement;
+  const rect = root ? { top: 0, bottom: window.innerHeight } : pane.getBoundingClientRect();
+  const headerBottom = document.querySelector('.site-header')?.getBoundingClientRect().bottom || 0;
+  const top = Math.max(0, rect.top, headerBottom);
+  const bottom = Math.min(window.innerHeight, rect.bottom);
+  const y = nextCatalogDragScroll.clientY;
+  const edge = Math.min(100, Math.max(48, (bottom - top) * 0.15));
+  if (bottom <= top || y == null) { nextCatalogStopDragScroll(); return; }
+  let direction = 0;
+  if (y >= 0 && y < top + edge) direction = -1;
+  else if (y <= window.innerHeight && y > bottom - edge) direction = 1;
+  if (direction) pane.scrollTop += direction * 20;
+  // Continue while the pointer is held still at the edge, not only on dragover.
+  nextCatalogDragScroll.frame = window.requestAnimationFrame(nextCatalogDragScrollTick);
+}
+
+function nextInstallCatalogDragScroll() {
+  const catalog = el('library-list');
+  if (!catalog || catalog.dataset.dragScrollInstalled) return;
+  catalog.dataset.dragScrollInstalled = '1';
+  document.addEventListener('dragover', (event) => {
+    if (!setupNextState.draggedTaskId) return;
+    if (!catalog.contains(event.target)) { nextCatalogStopDragScroll(); return; }
+    nextCatalogDragScroll.pane = nextCatalogScrollOwner(event.target);
+    nextCatalogDragScroll.clientY = event.clientY;
+    if (nextCatalogDragScroll.frame == null) {
+      nextCatalogDragScroll.frame = window.requestAnimationFrame(nextCatalogDragScrollTick);
+    }
+  }, true);
+  document.addEventListener('drop', nextCatalogStopDragScroll, true);
+  document.addEventListener('dragend', nextCatalogStopDragScroll, true);
+  document.addEventListener('dragleave', (event) => {
+    if (event.target === document.documentElement && !event.relatedTarget) nextCatalogStopDragScroll();
+  }, true);
+  window.addEventListener('blur', nextCatalogStopDragScroll);
+}
+
 function nextIsSitewide(task) {
   return task?.stage_id == null;
 }
@@ -226,8 +288,9 @@ async function nextMoveTask(taskId, stageId, sceneId, beforeTaskId = null) {
         lor_scene_id: normalizedSceneId
       })
     );
+    // Refresh saved scope before cached scope can overwrite the reloaded row.
+    await loadNextOrganization(false, { force: true });
     await reloadTasks(null);
-    await loadNextOrganization(false);
     const destination = nextTasksForScope(normalizedStageId, normalizedSceneId);
     const sourceIndex = destination.findIndex((item) => Number(item.setup_task_id) === Number(taskId));
     if (sourceIndex >= 0) destination.splice(sourceIndex, 1);
@@ -427,6 +490,7 @@ function wireNextLibrary() {
 }
 
 function installNextLibraryTools() {
+  nextInstallCatalogDragScroll();
   const header = document.querySelector('#library-view .section-title');
   if (!header || document.getElementById('next-collapse-all')) return;
   const actions = document.createElement('div');
@@ -541,7 +605,9 @@ async function submitNextCopy(event) {
       }));
     }
     el('next-copy-dialog').close();
-    await reloadTasks(null); await loadNextOrganization(false);
+    // New tasks need their saved Scene scope before destination ordering.
+    await loadNextOrganization(false, { force: true });
+    await reloadTasks(null);
     setupNextState.closedStages.delete(stageId == null ? 'site-wide' : String(stageId));
     setupNextState.closedScopes.delete(nextScopeKey(stageId, sceneId));
     const destination = nextTasksForScope(stageId, sceneId);

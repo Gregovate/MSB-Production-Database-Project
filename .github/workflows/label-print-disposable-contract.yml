@@ -1,0 +1,55 @@
+name: Label Print disposable PostgreSQL contract
+
+on:
+  pull_request:
+    paths:
+      - 'Database/LabelPrinting/**'
+      - '.github/workflows/label-print-disposable-contract.yml'
+  workflow_dispatch:
+
+jobs:
+  disposable-postgresql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: acceptance-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: acceptance-only
+      PGDATABASE: msb_label_print_preview
+      PGOPTIONS: -c msb.label_print_preview_authorized=approved_disposable_clone
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create disposable database
+        env:
+          PGDATABASE: postgres
+          PGOPTIONS: ''
+        run: createdb msb_label_print_preview
+      - name: Install current contract fixture
+        run: >-
+          psql -X -v ON_ERROR_STOP=1
+          -f Database/LabelPrinting/label_print_acceptance_fixture.sql
+      - name: Apply candidate migration
+        run: >-
+          psql -X -v ON_ERROR_STOP=1
+          -f Database/LabelPrinting/001_label_print_recovery_notifications.sql
+      - name: Apply human-readable request item migration
+        run: >-
+          psql -X -v ON_ERROR_STOP=1
+          -f Database/LabelPrinting/002_label_print_human_readable_request_items.sql
+      - name: Exercise recovery and notification behavior
+        run: >-
+          psql -X -v ON_ERROR_STOP=1
+          -f Database/LabelPrinting/label_print_disposable_acceptance.sql
+

@@ -8,12 +8,16 @@ on:
       - "Setup/Application/**"
       - "Setup/Acceptance/test_setup_gis_preview.py"
       - "FieldWiring/Application/**"
+      - "FieldWiring/Engineering/**"
+      - "Database/EngineeringTools/sql/171_panel_circuit_capture_candidate.sql"
       - ".github/workflows/setup205-regression.yml"
   pull_request:
     paths:
       - "Setup/Application/**"
       - "Setup/Acceptance/test_setup_gis_preview.py"
       - "FieldWiring/Application/**"
+      - "FieldWiring/Engineering/**"
+      - "Database/EngineeringTools/sql/171_panel_circuit_capture_candidate.sql"
       - ".github/workflows/setup205-regression.yml"
 
 permissions:
@@ -41,6 +45,8 @@ jobs:
           node Setup/Application/test_205_nullable_crew_duration.cjs
           node Setup/Application/test_205_sticky_day_search.cjs
           node Setup/Application/test_205_mixed_shift_group_drop.cjs
+          node Setup/Application/test_205_drag_autoscroll_container.cjs
+          node Setup/Application/test_205_schedule_crew_captain_options.cjs
           node Setup/Application/test_205_perform_manager_reschedule.cjs
 
   fieldwiring-full:
@@ -56,3 +62,31 @@ jobs:
         run: python -m pip install -r FieldWiring/Application/requirements.txt pytest
       - name: Execute full FieldWiring application regression
         run: python -m pytest -q -p no:cacheprovider FieldWiring/Application
+      - name: Node for isolated circuit command and browser checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned circuit test dependencies
+        working-directory: FieldWiring/Engineering
+        run: npm ci
+      - name: Execute isolated circuit PostgreSQL command acceptance
+        run: |
+          node FieldWiring/Engineering/test_power_capture.mjs
+          node FieldWiring/Engineering/test_breaker_state.mjs
+          node FieldWiring/Engineering/test_breaker_correction.mjs
+          node FieldWiring/Engineering/test_power_snapshot_performance.mjs
+          node FieldWiring/Engineering/test_equipment_lifecycle.mjs
+          node FieldWiring/Engineering/test_equipment_catalog.mjs
+          node FieldWiring/Engineering/test_panel_receptacles.mjs
+          node FieldWiring/Engineering/test_cable_history.mjs
+          node FieldWiring/Engineering/test_controller_location.mjs
+          node FieldWiring/Engineering/test_container_pickups.mjs
+      - name: Install browser for isolated circuit workflow
+        working-directory: FieldWiring/Engineering
+        run: npx playwright install --with-deps chromium
+      - name: Execute isolated circuit browser workflow
+        run: |
+          node FieldWiring/Engineering/test_controller_location_browser.mjs
+          node FieldWiring/Engineering/test_container_pickups_browser.mjs
+          node FieldWiring/Engineering/test_power_capture_browser.mjs
+          node FieldWiring/Engineering/test_panel_performance_browser.mjs

@@ -10,5 +10,5 @@
   "migration": "Setup/Database/073_add_setup_required_container_command.sql",
   "migration_blob": "9685321bc4ac5f7b00bd4e9c23ab3641ac79306f",
   "validation_blob": "d6a0294fad16015ba1749e5d51acadeeb64923d9",
-  "helper_sha256": "3dcc687bb18b0d050b49dd24a697eaf0f8958832e4e6dcec0f1b685812aa5545"
+  "helper_sha256": "4a2e34064ce1eced57e277b368048810fd8c122034749792ac121e1367c970ab"
 }

@@ -17,6 +17,7 @@ from pathlib import Path
 import re
 import smtplib
 import ssl
+import time
 from string import Template
 from zoneinfo import ZoneInfo
 
@@ -192,67 +193,6 @@ def summarize_container_snapshot(containers: list[dict], generated_at: object) -
     return counts
 
 
-def returned_attached_review(picture: dict, *, max_cases: int = 5) -> dict:
-    """Manager evidence: a RETURNED Container with active WITH_CONTAINER Displays.
-
-    Read ONLY the current recorded attachment state, before #171's returned
-    load_state=EMPTY business interpretation. This does not prove physical load,
-    operator fault, or that any historic event may safely be rewritten.
-    """
-    if not isinstance(picture.get("containers"), list) or not isinstance(picture.get("displays"), list):
-        raise PilotStop("Current movement snapshot lacks Container/Display states")
-    attached = {}
-    observed = set()
-    for d in picture["displays"]:
-        ident = int(d["display_id"])
-        if ident in observed:
-            raise PilotStop("Duplicate active Display in movement snapshot")
-        observed.add(ident)
-        if d.get("container_id") is not None and d.get("position_mode") == "WITH_CONTAINER":
-            attached.setdefault(int(d["container_id"]), []).append(d)
-    cases = []
-    for c in picture["containers"]:
-        if str(c.get("movement_status") or "").upper() != "RETURNED":
-            continue
-        cid = int(c["container_id"])
-        displays = attached.get(cid, [])
-        if not displays:
-            continue
-        # Human-readable names are essential; never substitute numeric Display
-        # IDs or claim that a returned Container was physically full.
-        names = sorted(str(d.get("display_name") or "Unnamed Display") for d in displays)
-        cases.append({
-            "container_id": cid,
-            "container_identity": f"CONT:{cid:03d}",
-            "container_name": str(c.get("container_name") or "Unnamed Container"),
-            "display_names": names,
-            "display_count": len(names),
-            "event_id": c.get("last_movement_event_id"),
-        })
-    cases.sort(key=lambda row: (-row["display_count"],row["container_id"]))
-    featured = []
-    for case in cases[:max_cases]:
-        n = case["display_count"]
-        brief = ", ".join(case["display_names"][:5])
-        if n > 5:
-            brief += f" (+{n-5} other names in Container Movement)"
-        featured.append(
-            f"- {case['container_identity']} {case['container_name']}: {n} Displays "
-            f"still WITH_CONTAINER in recorded data; {brief}; "
-            f"last Container event #{case['event_id'] or 'unknown'}"
-        )
-    if len(cases) > max_cases:
-        featured.append(f"- And {len(cases)-max_cases} more returned Containers needing review")
-    return {
-        "containers_returned_recorded_attached":len(cases),
-        "displays_with_returned_container":sum(c["display_count"] for c in cases),
-        "returned_attachment_cases":cases[:max_cases],
-        "returned_attachment_case_lines":"\n".join(featured) if featured else (
-            "No recorded returned/attached contradictions in the current snapshot"
-        ),
-    }
-
-
 def container_summary(dsn: str, season_year: int = 2026) -> dict:
     """Reuse the installed #88 movement snapshot and #171 Container projection."""
     from setup_repository import SetupRepository
@@ -269,7 +209,6 @@ def container_summary(dsn: str, season_year: int = 2026) -> dict:
     counts = summarize_container_snapshot(
         projected["containers"], picture.get("generated_at")
     )
-    counts.update(returned_attached_review(picture))
     counts["containers_session_id"] = int(session_id)
     return counts
 
@@ -318,7 +257,10 @@ def summarize(board: dict, today: date) -> dict:
             "captain":str(crew.get("captain_display_name") or "Captain TBD"),
             "id":int(a["setup_work_day_task_id"]),
         }
-        if work_day < today and not int(a.get("work_report_count") or 0):
+        # A completed Work Order satisfies its Setup gate without a second
+        # Setup report; stored execution_status may correctly remain PLANNED.
+        completed_gate = task.get("linked_work_order_gate") and task.get("effective_complete")
+        if work_day < today and not completed_gate and not int(a.get("work_report_count") or 0):
             past.append(row)
         if today <= work_day <= today + timedelta(days=7) and not task.get("effective_complete") and (
             task.get("prerequisites_complete") is False or
@@ -425,16 +367,6 @@ def render_html(template: str, person: dict, report: dict) -> str:
         'colspan="3"', 'colspan="2"'
     )
 
-    return_cases = []
-    for case in report.get("returned_attachment_cases") or []:
-        names = ", ".join(case["display_names"][:5])
-        if case["display_count"] > 5:
-            names += f" (+{case['display_count']-5} more names in detailed report)"
-        return_cases.append("<tr>" + td(case["container_identity"] + " — " + case["container_name"])
-                            + td(f"{case['display_count']} recorded attached")
-                            + td(names) + "</tr>")
-    values["returned_attachment_html_rows"] = rows_or_none(return_cases)
-
     try:
         body = Template(template).substitute(values)
     except (KeyError, ValueError) as exc:
@@ -444,8 +376,21 @@ def render_html(template: str, person: dict, report: dict) -> str:
     return body
 
 
+class MailDeliveryError(PilotStop):
+    """Keep submission uncertainty separate from connection preparation failures."""
+
+    def __init__(self, stage, cause, attempts):
+        self.stage = stage
+        self.error_class = type(cause).__name__
+        self.attempts = attempts
+        self.uncertain = stage == "submission"
+        self.smtp_code = getattr(cause, "smtp_code", None)
+        super().__init__(f"SMTP {stage} failed ({self.error_class}); "
+                         f"attempts={attempts}; no automatic resubmission")
+
+
 def deliver(recipient: str, subject: str, body: str, html_body: str | None = None) -> str:
-    """No passwords, no non-TLS fallback and never a Captain recipient."""
+    """Retry connection preparation only; never retry message submission."""
     if not MANAGER_ADDRESS.fullmatch(recipient):
         raise PilotStop("Manager recipient email rejected")
     message = EmailMessage()
@@ -455,16 +400,45 @@ def deliver(recipient: str, subject: str, body: str, html_body: str | None = Non
     message.set_content(body, charset="utf-8")
     if html_body is not None:
         message.add_alternative(html_body, subtype="html", charset="utf-8")
-    with smtplib.SMTP(GOOGLE_RELAY, 587, timeout=20) as smtp:
-        smtp.ehlo()
-        if not smtp.has_extn("starttls"):
-            raise PilotStop("Google did not offer STARTTLS")
-        smtp.starttls(context=ssl.create_default_context())
-        smtp.ehlo()
-        refused = smtp.send_message(message, from_addr=FROM, to_addrs=[recipient])
-        if refused:
-            raise PilotStop("SMTP recipient was rejected")
-    return "SMTP_ACCEPTED_NOT_DELIVERED"
+    for attempt in range(1, 4):
+        smtp = None
+        stage = "connect"
+        try:
+            smtp = smtplib.SMTP(GOOGLE_RELAY, 587, timeout=20)
+            stage = "ehlo"
+            code, _ = smtp.ehlo()
+            if code != 250:
+                raise smtplib.SMTPHeloError(code, b"EHLO rejected")
+            stage = "starttls"
+            if not smtp.has_extn("starttls"):
+                raise PilotStop("Google did not offer STARTTLS")
+            smtp.starttls(context=ssl.create_default_context())
+            stage = "tls_ehlo"
+            code, _ = smtp.ehlo()
+            if code != 250:
+                raise smtplib.SMTPHeloError(code, b"TLS EHLO rejected")
+            # Once send_message begins, conservatively treat any failure as
+            # uncertain. No second call is allowed for this recipient.
+            stage = "submission"
+            refused = smtp.send_message(message, from_addr=FROM, to_addrs=[recipient])
+            if refused:
+                raise PilotStop("SMTP recipient was rejected")
+            # Successful DATA acknowledgement is authoritative even if closing
+            # the socket subsequently fails. QUIT must not erase acceptance.
+            return "SMTP_ACCEPTED_NOT_DELIVERED"
+        except (OSError, smtplib.SMTPException, PilotStop) as exc:
+            transient = isinstance(exc, (smtplib.SMTPServerDisconnected,
+                                         TimeoutError, ConnectionError))
+            if stage != "submission" and transient and attempt < 3:
+                time.sleep(attempt)
+                continue
+            raise MailDeliveryError(stage, exc, attempt) from exc
+        finally:
+            if smtp is not None:
+                try:
+                    smtp.close()
+                except OSError:
+                    pass
 
 
 def enforce_approved_manager_audience(managers: list[dict], roster: list[dict]) -> None:
@@ -487,13 +461,13 @@ def enforce_approved_manager_audience(managers: list[dict], roster: list[dict]) 
     # blanket SMTP disqualifiers. No silent privilege changes are performed.
 
 
-def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: str | None) -> dict:
+def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: str | None, *, dry_run: bool = False) -> dict:
     """Every send must pass a second dispatch-time Manager lookup and guards."""
     local = now.astimezone(CHICAGO)
     today = local.date()
     if mode == "live" and (today != DAY or not (local.hour == 4 and local.minute <= 30)):
         raise PilotStop("One-day pilot send window is closed")
-    if mode in ("today", "daily"):
+    if mode in ("today", "daily", "recover"):
         raw = os.environ.get("MSB_MANAGER_MAIL_STOP_DATE", "").strip()
         try:
             stop_date = date.fromisoformat(raw)
@@ -501,7 +475,12 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
             raise PilotStop("Bounded Manager mail end date missing or invalid") from exc
         if stop_date < OCT18 or stop_date > SHOW_OPENING:
             raise PilotStop("Manager mail end date must be Oct 18 through Nov 27, 2026")
-        if mode == "today":
+        if mode == "recover":
+            if today != date(2026,10,22) or os.environ.get("MSB_SETUP_MANAGER_RECOVERY_DATE") != str(today):
+                raise PilotStop("Recovery requires explicit October 22 approval")
+            if not FIRST_RECURRING <= today <= stop_date:
+                raise PilotStop("Recovery outside approved season")
+        elif mode == "today":
             if today != OCT18:
                 raise PilotStop("Oct 18 immediate Manager send only; no other catch-up")
             if os.environ.get("MSB_SETUP_MANAGER_TODAY_SEND") != MISSED_DAY_SEND_GUARD:
@@ -521,7 +500,7 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         str(test_to or "").strip().lower() != LOGO_TEST_RECIPIENT
     ):
         raise PilotStop("Final logo test limited to October 17 and the single reviewed Manager mailbox")
-    if mode in ("today", "daily"):
+    if mode in ("today", "daily", "recover"):
         if (os.environ.get("MSB_SETUP_MANAGER_SEASON_SEND") != SEASON_SEND_GUARD
                 or os.environ.get("SETUP_NOTIFICATION_SMTP_SEND_ENABLED") != "1"):
             raise PilotStop("Bounded season Manager SMTP approval is OFF")
@@ -536,7 +515,7 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     managers = [p for p in roster if p["send_eligible"]]
     if not managers:
         raise PilotStop("No eligible Manager recipients; review People and Setup permissions")
-    if mode in ("live", "today", "daily"):
+    if mode in ("live", "today", "daily", "recover"):
         enforce_approved_manager_audience(managers, roster)
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     report = summarize(board, today)
@@ -565,7 +544,9 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         subject = "FORMATTED TEST — " + subject
     elif mode == "logo_test":
         subject = "FINAL LOGO TEST — " + subject
-    if mode == "preview":
+    if dry_run and not ledger.is_dir():
+        raise PilotStop("Protected SMTP attempt directory unavailable")
+    if mode == "preview" or dry_run:
         print(json.dumps({
             "mode":"NO_SEND_PREVIEW", "chicago_date":str(today),
             "eligible_managers":[
@@ -585,7 +566,6 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
                 "containers_empty_at_park","containers_partial_at_park",
                 "containers_returned","containers_no_movement",
                 "containers_location_review","containers_contents_review_history",
-                "containers_returned_recorded_attached","displays_with_returned_container",
                 "containers_snapshot_as_of")},
             "subject":subject,
         },indent=2))
@@ -594,7 +574,7 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         print("--- REVIEWED HTML ALTERNATIVE: prepared, NOT SENT ---")
         print("HTML characters:",len(messages[0][2]))
         return {"status":"PREVIEW_ONLY","sent":0}
-    if mode in ("today", "daily"):
+    if mode in ("today", "daily", "recover"):
         if (os.environ.get("MSB_SETUP_MANAGER_SEASON_SEND") != SEASON_SEND_GUARD
                 or os.environ.get("SETUP_NOTIFICATION_SMTP_SEND_ENABLED") != "1"):
             raise PilotStop("Bounded season Manager SMTP approval is OFF")
@@ -604,6 +584,9 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     if not ledger.is_dir():
         raise PilotStop("Protected SMTP attempt directory unavailable")
 
+    accepted = 0
+    skipped = 0
+    failures = 0
     for person, body, html_body in messages:
         digest = hashlib.sha256(person["email"].encode("ascii")).hexdigest()[:24]
         filename = (f"test-{today}-{digest}.json" if mode == "test"
@@ -614,6 +597,9 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         try:
             fd = os.open(record_path,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
         except FileExistsError as exc:
+            if mode == "recover":
+                skipped += 1
+                continue  # Preserve every prior attempt, including uncertain sends.
             raise PilotStop("Prior recipient attempt exists; do not retry automatically") from exc
         purpose = ("MANAGER_LOGO_REVIEW_TEST" if mode == "logo_test"
                    else "MANAGER_HTML_REVIEW_TEST" if mode == "html_test"
@@ -629,12 +615,23 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
             receipt["status"]=deliver(person["email"],subject,body,html_body)
         except (OSError,smtplib.SMTPException,PilotStop) as exc:
             receipt["status"]="UNKNOWN_NO_AUTORETRY"
-            receipt["error_class"]=type(exc).__name__
+            receipt["error_class"]=getattr(exc,"error_class",type(exc).__name__)
+            receipt["smtp_stage"]=getattr(exc,"stage","unknown")
+            receipt["connection_attempts"]=getattr(exc,"attempts",1)
+            receipt["smtp_code"]=getattr(exc,"smtp_code",None)
+            if isinstance(exc,MailDeliveryError) and not exc.uncertain:
+                receipt["status"]="FAILED_BEFORE_SUBMISSION"
             record_path.write_text(json.dumps(receipt)+"\n",encoding="utf-8")
-            raise PilotStop("SMTP outcome uncertain; inspect audit; STOP") from exc
+            failures += 1
+            print(f"SMTP recipient attempt held: stage={receipt['smtp_stage']} "
+                  f"error={receipt['error_class']} status={receipt['status']}")
+            continue  # Other distinct recipients have independent attempt claims.
+        accepted += 1
         receipt["accepted_at"]=chicago_now().isoformat()
         record_path.write_text(json.dumps(receipt)+"\n",encoding="utf-8")
-    return {"status":"SMTP_ACCEPTED_NOT_INBOX_PROOF","recipients":len(messages),"day":str(today)}
+    if failures:
+        raise PilotStop(f"SMTP batch incomplete: accepted={accepted}, held={failures}, skipped={skipped}; inspect audit")
+    return {"status":"SMTP_ACCEPTED_NOT_INBOX_PROOF","recipients":accepted,"skipped_existing":skipped,"day":str(today)}
 
 
 def accepted_setup_dsn() -> str:
@@ -665,8 +662,10 @@ def main(argv=None) -> int:
     parser=argparse.ArgumentParser(description="Manager-only single-day 2026 Setup mail pilot")
     mode=parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--preview",action="store_true",help="Read-only, sends nothing")
+    mode.add_argument("--preview-recovery", action="store_true", help="Validate all recovery guards and rendering; no SMTP or receipts")
     mode.add_argument("--live",action="store_true",help="Historic Oct 17 one-day Manager only")
     mode.add_argument("--send-today",action="store_true",help="One immediate Oct 18 Manager digest only")
+    mode.add_argument("--recover-unattempted",action="store_true",help="Explicit October 22 recovery; preserve and skip all existing receipts")
     mode.add_argument("--daily",action="store_true",help="Bounded daily 04:00 Manager digest until opening")
     mode.add_argument("--test-to",metavar="AUTHORIZED_MANAGER_EMAIL",help="Original one-recipient test (not a resend)")
     mode.add_argument("--html-test-to",metavar="OPERATOR_MAILBOX",help="One distinct formatted Manager review email, Oct 17 only")
@@ -674,17 +673,18 @@ def main(argv=None) -> int:
     parser.add_argument("--template",type=Path,default=DEFAULT_TEMPLATE)
     parser.add_argument("--ledger",type=Path,default=Path("/var/lib/msb-setup-manager-mail-pilot"))
     args=parser.parse_args(argv)
-    if (args.send_today or args.daily or args.html_test_to or args.logo_test_to) and args.ledger != Path("/var/lib/msb-setup-manager-mail-pilot"):
+    if (args.preview_recovery or args.recover_unattempted or args.send_today or args.daily or args.html_test_to or args.logo_test_to) and args.ledger != Path("/var/lib/msb-setup-manager-mail-pilot"):
         print("STOP: Review must use the same protected Production receipt directory")
         return 2
     try:
         dsn = accepted_setup_dsn()
         result=send(dsn,args.template,args.ledger,chicago_now(),
                     "preview" if args.preview else "today" if args.send_today
-                    else "daily" if args.daily else "logo_test" if args.logo_test_to
+                    else "recover" if (args.preview_recovery or args.recover_unattempted) else "daily" if args.daily else "logo_test" if args.logo_test_to
                     else "html_test" if args.html_test_to
                     else "test" if args.test_to else "live",
-                    args.logo_test_to or args.html_test_to or args.test_to)
+                    args.logo_test_to or args.html_test_to or args.test_to,
+                    dry_run=args.preview_recovery)
         print(json.dumps(result))
     except (PilotStop,ValueError,OSError) as exc:
         print("STOP:",str(exc))

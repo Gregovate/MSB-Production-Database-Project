@@ -2094,6 +2094,10 @@ export default {
               Record Location
             </a>
 
+            <a class="btn" href="https://my.sheboyganlights.org/setup/container-pickups/?asset=CONT:${encodeURIComponent(key)}">
+              Setup Complete Return to Shop
+            </a>
+
             <a class="btn" href="/scan">
               Back to Scan
             </a>

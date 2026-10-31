@@ -42,7 +42,8 @@ def test_map_endpoint_authentication_validation_and_no_store(monkeypatch):
             return {'setup_session_id': 1}
     monkeypatch.setattr(api, 'require_reader', lambda: (Base(), 'reader', {}))
     assert client.get('/api/setup/locate/assets?season_year=bad').status_code == 403
-    monkeypatch.setattr(api, 'repo', lambda: object())
+    from types import SimpleNamespace
+    monkeypatch.setattr(api, 'repo', lambda: SimpleNamespace(controller_observations=lambda sid: []))
     picture = dict(generated_at=None, through_event_id=0, effect_rows=[], containers=[], displays=[])
     monkeypatch.setattr(report, 'movement_picture', lambda repo, sid, **kwargs: picture)
     response = client.get('/api/setup/locate/assets?season_year=2026')
@@ -97,7 +98,14 @@ def test_display_artwork_above_container_preserves_gps():
     from pathlib import Path
     source = Path(__file__).with_name('setup_locate_assets.js').read_text()
     assert 'L.marker(a.position' in source
-    assert 'iconAnchor: container ? [16,16] : [16,48]' in source
+    # #88 Container coordinates are unchanged; independent Displays use
+    # a native-size Plain SVG offset vertically, not the legacy square PNG.
+    assert 'iconSize: [32,32], iconAnchor: [16,16]' in source
+    assert "window.msbReferenceSymbols.setSymbol(marker, 'T-Post', {yOffset:16});" in source
+    assert "iconAnchor:[6,22]" in source
+    symbols = Path(__file__).with_name('setup_locate_symbols.js').read_text()
+    assert 'iconSize: [width, height]' in symbols
+    assert 'iconAnchor: [width / 2, height / 2 + offset]' in symbols
     assert 'zIndexOffset: container ? 0 : 1000' in source
 
 
@@ -106,7 +114,7 @@ def test_search_is_served_before_asset_overlay():
     client = app.test_client()
     page = client.get('/locate/').get_data(as_text=True)
     assert 'id="map-search"' in page
-    assert page.index('src="assets/setup_locate_search.js"') < page.index('src="assets/setup_locate_assets.js"')
+    assert page.index('src="assets/setup_locate_search.js"') < page.index('src="assets/setup_locate_assets.js?v=2026-10-27-recorded-by"')
     assert client.get('/locate/assets/setup_locate_search.js').status_code == 200
 
 
@@ -158,3 +166,25 @@ def test_confirmed_round_trip_preserves_detached_park_locations():
     assert len(result['displays']) == 32
     assert all(d['position'] == [43.776757,-87.745766] for d in result['displays'][:16])
     assert all(d['position'] == [43.776652,-87.745525] for d in result['displays'][16:])
+
+
+def test_controller_map_uses_observed_gps_only_and_existing_symbol():
+    picture=dict(generated_at=None,through_event_id=1,effect_rows=[],containers=[],displays=[],controller_observations=[
+        dict(controller_id=1001,name='CTRL:1001',gps_latitude=43.7,gps_longitude=-87.7,event_type='CONTROLLER_MOVE'),
+        dict(controller_id=1002,name='CTRL:1002')])
+    result=locate_assets(picture)
+    assert result['controllers'][0]['position']==[43.7,-87.7]
+    assert result['controllers'][1]['position'] is None
+    from pathlib import Path
+    source=Path(__file__).with_name('setup_locate_assets.js').read_text()
+    assert "msbReferenceSymbols.marker(a.position,'Controller')" in source
+
+
+def test_recorded_actor_is_preserved_not_inferred_from_viewer():
+    picture=dict(generated_at=None,through_event_id=715,effect_rows=[],containers=[],displays=[],
+        controller_observations=[dict(controller_id=1053,name='WW-WhoPanel-04',
+            setup_movement_event_id=715,recorded_by_name='Recorded Person',
+            captured_operator_email='recorded@example.test')])
+    record=locate_assets(picture)['controllers'][0]['observation']
+    assert record['recorded_by_name']=='Recorded Person'
+    assert record['captured_operator_email']=='recorded@example.test'

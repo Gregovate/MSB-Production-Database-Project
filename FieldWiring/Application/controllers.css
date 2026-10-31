@@ -150,3 +150,7 @@ h3 { font-size:16px; }
   .summary-grid, .filters, .fact-grid { grid-template-columns:1fr; }
   .assignment, .firmware-row { grid-template-columns:1fr; }
 }
+
+/* Keep list ordering visible above the independently scrolling inventory. */
+.controller-sort { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); }
+.controller-sort select { flex:1; min-width:0; }

@@ -15,7 +15,11 @@ param(
     [string]$ExternalAppsBlob = '',
     [string[]]$MigrationPaths = @(),
     [string[]]$ValidationPaths = @(),
-    [switch]$AllowConcurrentProductionWrites
+    [switch]$AllowConcurrentProductionWrites,
+    [string]$LocalReviewBranch = '',
+    [string]$GisGpxPath = '',
+    [string]$GisFlwPath = '',
+    [string]$GisActor = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,9 +29,31 @@ if (-not $repo) {
     throw 'Run this wrapper from the MSB-Production-Database-Project checkout.'
 }
 
+# Keep the operator's local review branch separate from the remote candidate
+# branch the governed server fetches. Do not alter existing callers: absent
+# LocalReviewBranch, the original current-branch-equals-TargetRef rule applies.
+if ([string]::IsNullOrWhiteSpace($LocalReviewBranch)) {
+    $LocalReviewBranch = $TargetRef
+}
+if ($LocalReviewBranch -notmatch '^[A-Za-z0-9._/-]+$' -or
+    $TargetRef -notmatch '^[A-Za-z0-9._/-]+$' -or
+    $LocalReviewBranch.Contains('..') -or $TargetRef.Contains('..')) {
+    throw 'STOP before server contact: invalid local or remote Git ref.'
+}
 $currentBranch = (git -C $repo branch --show-current).Trim()
-if ($LASTEXITCODE -ne 0 -or $currentBranch -ne $TargetRef) {
-    throw "STOP before server contact: current branch '$currentBranch' does not equal TargetRef '$TargetRef'."
+if ($LASTEXITCODE -ne 0 -or $currentBranch -ne $LocalReviewBranch) {
+    throw "STOP before server contact: current branch '$currentBranch' does not equal LocalReviewBranch '$LocalReviewBranch'."
+}
+
+# Candidate must be the exact fetched remote branch head; a local review
+# branch may not silently substitute a different SHA.
+& git -C $repo show-ref --verify --quiet "refs/remotes/origin/$TargetRef"
+if ($LASTEXITCODE -ne 0) {
+    throw "STOP before server contact: no fetched origin/$TargetRef remote-tracking ref."
+}
+$remoteHead = (& git -C $repo rev-parse "refs/remotes/origin/$TargetRef").Trim()
+if ($LASTEXITCODE -ne 0 -or $remoteHead -ne $CandidateSha) {
+    throw "STOP before server contact: origin/$TargetRef is '$remoteHead', not exact CandidateSha '$CandidateSha'."
 }
 
 $toolingHead = (git -C $repo rev-parse HEAD).Trim()
@@ -120,6 +146,40 @@ if ($PreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+$') {
     throw 'PreviewEmail is not a valid email address.'
 }
 
+# #230 reference-data SQL requires an exact candidate allowlist. Ordinary
+# historical Setup-only previews must continue to work without this new file.
+$referenceMigrationPaths = @()
+$referenceValidationPaths = @()
+$referenceSqlPaths = @($MigrationPaths) + @($ValidationPaths) | Where-Object {
+    $_ -is [string] -and $_.StartsWith('Database/') -and
+    $_ -ne 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql' -and
+    $_ -ne 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
+}
+if (@($referenceSqlPaths).Count -gt 0) {
+    $referenceAllowlistPath = 'Database/Acceptance/reference_data_disposable_allowlist.json'
+    $referenceAllowlistJson = (& git -C $repo show "${CandidateSha}:$referenceAllowlistPath" | Out-String)
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($referenceAllowlistJson)) {
+        throw "STOP: reference-data disposable allowlist missing in exact candidate."
+    }
+    try { $referenceAllowlist = $referenceAllowlistJson | ConvertFrom-Json -ErrorAction Stop }
+    catch { throw "STOP: invalid candidate reference-data disposable allowlist." }
+    if ($referenceAllowlist.schema_version -ne 1 -or
+        $null -eq $referenceAllowlist.approved_migration_paths -or
+        $null -eq $referenceAllowlist.approved_validation_paths) {
+        throw "STOP: unsupported reference-data disposable allowlist."
+    }
+    foreach ($entry in @($referenceAllowlist.approved_migration_paths) +
+                       @($referenceAllowlist.approved_validation_paths)) {
+        if ($entry -isnot [string] -or
+            $entry -notmatch '^Database/[A-Za-z0-9_./-]+[.]sql$' -or
+            $entry.Contains('..') -or $entry.Contains('*')) {
+            throw "STOP: unsafe candidate reference-data SQL path: $entry"
+        }
+    }
+    $referenceMigrationPaths = @($referenceAllowlist.approved_migration_paths)
+    $referenceValidationPaths = @($referenceAllowlist.approved_validation_paths)
+}
+
 # Setup profile preserves the explicitly approved shared database repair and
 # explicitly approved shared database validation exceptions. Other profiles
 # must use only their own feature-owned migration/validation directories.
@@ -142,7 +202,7 @@ function Assert-SafeCandidatePath {
         $allowed = if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
             $isPeopleMigration
         } else {
-            $isSetupMigration -or $isApprovedSharedMigration
+            $isSetupMigration -or $isApprovedSharedMigration -or ($referenceMigrationPaths -ccontains $Path)
         }
         if (-not $allowed) {
             throw "Migration path is outside the approved $PreviewProfile preview boundary: $Path"
@@ -155,7 +215,7 @@ function Assert-SafeCandidatePath {
         $allowed = if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
             $isPeopleValidation
         } else {
-            $isSetupValidation -or $isApprovedSharedValidation
+            $isSetupValidation -or $isApprovedSharedValidation -or ($referenceValidationPaths -ccontains $Path)
         }
         if (-not $allowed) {
             throw "Validation path is outside the approved $PreviewProfile preview boundary: $Path"
@@ -213,6 +273,29 @@ foreach ($listener in $localListeners) {
     }
     Write-Host "Stopping stale local SSH preview tunnel PID $($owner.Id) on port $PreviewPort"
     Stop-Process -Id $owner.Id -Force
+}
+
+$gisIntake = -not [string]::IsNullOrWhiteSpace($GisGpxPath) -or -not [string]::IsNullOrWhiteSpace($GisFlwPath)
+if ($gisIntake) {
+    if ([string]::IsNullOrWhiteSpace($GisActor) -or $GisActor -match '[\r\n\t]') {
+        throw 'Real-source GIS acceptance requires a named GisActor without control characters.'
+    }
+    if ([string]::IsNullOrWhiteSpace($GisGpxPath)) { throw 'GIS acceptance requires a GPX master.' }
+    $gisSourcePaths = @($GisGpxPath, $GisFlwPath) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    foreach ($source in $gisSourcePaths) {
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing GIS source: $source" }
+    }
+    # One combined GIS/power release; preserve the reviewed dependency order.
+    $combinedMigrations = @(
+        'Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql',
+        'Database/EngineeringTools/sql/171_panel_circuit_capture_candidate.sql',
+        'Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql'
+    )
+    if (($MigrationPaths -join '|') -cne ($combinedMigrations -join '|') -or
+        $ValidationPaths -cnotcontains 'Database/Acceptance/171_site_infrastructure_disposable_validation.sql' -or
+        $ValidationPaths -cnotcontains 'Database/Acceptance/171_site_reference_operations_disposable_validation.sql') {
+        throw 'GIS intake requires the complete ordered GIS/circuit migration set and both validations in this same run.'
+    }
 }
 
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -305,6 +388,31 @@ try {
     }
     foreach ($path in $ValidationPaths) {
         $manifestLines += "validation`t$path"
+    }
+    if ($gisIntake) {
+        # Hash the originals; only stage a local copy when the server lacks it.
+        $gpxHash = (Get-FileHash -LiteralPath $GisGpxPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $flwHash = ''
+        if (-not [string]::IsNullOrWhiteSpace($GisFlwPath)) {
+            $flwHash = (Get-FileHash -LiteralPath $GisFlwPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        }
+        if ($gpxHash -notmatch '^[a-f0-9]{64}$' -or ($flwHash -ne '' -and $flwHash -notmatch '^[a-f0-9]{64}$')) {
+            throw 'Invalid GIS source hash.'
+        }
+        # One foreground probe reports missing files through an exit bitmask.
+        # SSH owns the console directly; no password-sensitive output pipeline.
+        $cacheProbe = 'gis_cache="$HOME/setup-source-cache"; gis_missing=0; test -f "$gis_cache/{0}.gpx" || gis_missing=$((gis_missing+1)); if [ -n "{1}" ]; then test -f "$gis_cache/{1}.flw" || gis_missing=$((gis_missing+2)); fi; exit "$gis_missing"' -f $gpxHash, $flwHash
+        & ssh -o ServerAliveInterval=15 -o ServerAliveCountMax=3 $Server $cacheProbe
+        $missingSources = $LASTEXITCODE
+        if ($missingSources -notin @(0, 1, 2, 3)) { throw 'GIS source-cache probe failed.' }
+        if (($missingSources -band 1) -ne 0) {
+            Copy-Item -LiteralPath $GisGpxPath -Destination (Join-Path $localBundle 'source.gpx')
+        } else { Write-Host "Reusing server GPX source $gpxHash" }
+        if ($flwHash -ne '' -and ($missingSources -band 2) -ne 0) {
+            Copy-Item -LiteralPath $GisFlwPath -Destination (Join-Path $localBundle 'source.flw')
+        } elseif ($flwHash -ne '') { Write-Host "Reusing server FLW source $flwHash" }
+        $manifestLines += "gis_gpx_sha`t$gpxHash", "gis_actor`t$GisActor"
+        if ($flwHash -ne '') { $manifestLines += "gis_flw_sha`t$flwHash" }
     }
     $manifestText = ($manifestLines -join "`n") + "`n"
     [System.IO.File]::WriteAllText($localManifest, $manifestText, $utf8NoBom)

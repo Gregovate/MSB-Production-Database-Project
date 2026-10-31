@@ -3,6 +3,7 @@ const stageFilter = document.getElementById('stage-filter');
 const statusFilter = document.getElementById('status-filter');
 const modelFilter = document.getElementById('model-filter');
 const assignmentFilter = document.getElementById('assignment-filter');
+const controllerSort = document.getElementById('controller-sort');
 const controllerList = document.getElementById('controller-list');
 const controllerCount = document.getElementById('controller-count');
 const detail = document.getElementById('detail');
@@ -10,6 +11,7 @@ const detailEmpty = document.getElementById('detail-empty');
 const themeToggle = document.getElementById('theme-toggle');
 
 let selectedControllerId = null;
+let currentControllers = [];
 let filtersLoaded = false;
 let debounceTimer = null;
 
@@ -128,7 +130,12 @@ function renderControllerList(controllers) {
     return;
   }
 
-  controllerList.innerHTML = controllers.map(item => {
+  // Sort a copy of the filtered response. Never reload the selected editor or
+  // change network chain order when the operator changes list presentation.
+  const assignedName = item => Number(item.assignment_count) > 0 ? item.display_names : '';
+  const ordered = [...controllers].sort((a,b) => window.MSBControllerDeployment.compareControllers(
+    a.controller_id, assignedName(a), b.controller_id, assignedName(b), controllerSort.value));
+  controllerList.innerHTML = ordered.map(item => {
     const active = item.controller_id === selectedControllerId ? ' active' : '';
     const assignmentText = Number(item.assignment_count) === 0
       ? 'Unassigned'
@@ -157,6 +164,7 @@ function renderControllerList(controllers) {
 }
 
 async function loadControllers() {
+  controllerSort.disabled = true;
   controllerList.innerHTML = '<div class="empty-state">Loading controllers…</div>';
   try {
     const response = await fetch(`api/controllers?${queryString()}`);
@@ -164,7 +172,9 @@ async function loadControllers() {
     if (!response.ok) throw new Error(payload.error || 'Controller Inventory could not be loaded.');
     populateFilters(payload);
     renderSummary(payload.summary || {});
-    renderControllerList(payload.controllers || []);
+    currentControllers = payload.controllers || [];
+    renderControllerList(currentControllers);
+    controllerSort.disabled = false;
   } catch (error) {
     controllerList.innerHTML = `<div class="error">${esc(error.message)}</div>`;
   }
@@ -223,8 +233,21 @@ function renderFirmwareHistory(rows) {
     </div>`).join('');
 }
 
+// Share concurrent main-detail/label reads; do not retain details after completion.
+const controllerDetailRequests = new Map();
+function getControllerDetail(controllerId) {
+  if(controllerDetailRequests.has(controllerId))return controllerDetailRequests.get(controllerId);
+  const request=fetch(`api/controllers/${controllerId}`).then(async response=>{
+    const payload=await response.json();
+    if(!response.ok)throw new Error(payload.error || 'Controller could not be loaded.');
+    return payload;
+  }).finally(()=>{if(controllerDetailRequests.get(controllerId)===request)controllerDetailRequests.delete(controllerId);});
+  controllerDetailRequests.set(controllerId,request);return request;
+}
 async function loadControllerDetail(controllerId) {
+  if (window.MSBControllerDeployment && !window.MSBControllerDeployment.mayLeave()) return;
   selectedControllerId = controllerId;
+  window.MSBControllerDeployment?.render(controllerId);
   for (const row of controllerList.querySelectorAll('.controller-row')) {
     row.classList.toggle('active', Number(row.dataset.controllerId) === controllerId);
   }
@@ -237,10 +260,10 @@ async function loadControllerDetail(controllerId) {
   document.getElementById('firmware-history').innerHTML = '';
 
   try {
-    const response = await fetch(`api/controllers/${controllerId}`);
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || 'Controller could not be loaded.');
+    const payload = await getControllerDetail(controllerId);
+    if (selectedControllerId !== controllerId) return;
     const c = payload.controller;
+    window.dispatchEvent(new CustomEvent("msb-controller-detail-loaded", {detail: payload}));
     document.getElementById('detail-id').textContent = `CTRL ${c.controller_id}`;
     document.getElementById('detail-model').textContent = `${c.manufacturer} · ${c.model_code} · ${c.model_name}`;
     const status = document.getElementById('detail-status');
@@ -273,6 +296,12 @@ async function loadControllerDetail(controllerId) {
       fact('Last Updated', formatDate(c.updated_at)),
     ].join('');
 
+    // A normal Scan still identifies the controller; movement requires the
+    // explicit Setup workflow, separate from wiring placement and assignments.
+    let locationAction=document.getElementById('controller-record-location');
+    if(!locationAction){locationAction=document.createElement('a');locationAction.id='controller-record-location';locationAction.className='header-link';document.getElementById('detail-facts').before(locationAction);}
+    locationAction.textContent='Record Location';
+    locationAction.href='/setup/record-location/?asset=CTRL:'+encodeURIComponent(c.controller_id);
     renderAssignments(payload.assignments || []);
     renderFirmwareHistory(payload.firmware_history || []);
   } catch (error) {
@@ -294,6 +323,10 @@ function scheduleRefresh() {
   debounceTimer = setTimeout(loadControllers, 220);
 }
 
+controllerSort.addEventListener('change', () => {
+  renderControllerList(currentControllers);
+  window.MSBControllerDeployment.sortPickers();
+});
 searchInput.addEventListener('input', scheduleRefresh);
 stageFilter.addEventListener('change', loadControllers);
 statusFilter.addEventListener('change', loadControllers);

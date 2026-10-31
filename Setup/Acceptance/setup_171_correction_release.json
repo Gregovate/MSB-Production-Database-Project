@@ -1,0 +1,17 @@
+{
+  "profile": "site-171-breaker-correction",
+  "release_tag": "PR464-Breaker-Correction",
+  "candidate": "2548edd130b5cebad33a44786bc1811c2b089bf8",
+  "target": "2548edd130b5cebad33a44786bc1811c2b089bf8",
+  "tree": "6d06374985960c315b1942c12a1f538e1afe8958",
+  "shared": "875003c504e8a60c5851c530ec6496e4430945d9",
+  "old_setup": "72a94be772f2e4ae8bfaed74051f667fc87201a6",
+  "blobs": {
+    "Database/EngineeringTools/sql/171_unassigned_breaker_correction.sql": "d8ef8ec358a2b7b17d72eb89c98484b92a1a9977",
+    "Database/Acceptance/171_unassigned_breaker_correction_validation.sql": "70190aaf0317c65c379adbc3cb8e593f41cc70c8"
+  },
+  "helpers": {
+    "setup_171_correction_release.py": "260e12b3c8479a17536987c317a18c76e16cd67f9850601f6ba0eab51df7929c",
+    "setup_maintenance_deploy.py": "4a2e34064ce1eced57e277b368048810fd8c122034749792ac121e1367c970ab"
+  }
+}

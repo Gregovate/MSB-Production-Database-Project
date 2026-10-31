@@ -118,19 +118,28 @@
     }
   }
 
-  async function syncManageAssignmentCapability() {
+  // DOM observers must never fetch controller details. The selected detail
+  // loader already owns that read and guards out-of-order responses.
+  let selectedDetail = null;
+  function syncManageAssignmentCapability() {
     const heading = document.getElementById('detail-id');
     const match = String(heading?.textContent || '').match(/CTRL\s+(\d+)/i);
     const button = document.querySelector('#controller-management-actions .manage-assignments-button');
     if (!match || !button) return;
-    try {
-      const controller = (await api(`api/controllers/${Number(match[1])}`)).controller || {};
-      if (controller.display_assignment_capable === false) {
-        button.disabled = true;
-        button.title = 'This Controller/device model is not a Display-assignment device.';
-      }
-    } catch (_) {}
+    const controller = selectedDetail?.controller;
+    if (Number(controller?.controller_id) !== Number(match[1])) {
+      button.disabled = true;
+      button.title = 'Loading Controller assignment capability…';
+      return;
+    }
+    button.disabled = controller.display_assignment_capable === false;
+    button.title = button.disabled
+      ? 'This Controller/device model is not a Display-assignment device.' : '';
   }
+  window.addEventListener('msb-controller-detail-loaded', event => {
+    selectedDetail = event.detail;
+    syncManageAssignmentCapability();
+  });
 
   const observer = new MutationObserver(mutations => {
     for (const mutation of mutations) {

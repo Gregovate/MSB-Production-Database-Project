@@ -9,7 +9,52 @@
 | Evidence Date | 2026-09-09; live metadata reverified 2026-10-15 |
 | Related | #130; #385; #395 |
 
-## Purpose
+## October 21 — Launch Control reconciliation
+
+This checkpoint supersedes older current-state and next-action claims about the
+named people and #395 deployment. It does not replace historical receipts.
+
+| Owner | Verified state | Candidate / remaining gate |
+| --- | --- | --- |
+| #385 People reconciliation | V0.2.2 / migration 005 deployed; shared exact-email link repair is the authority | No replacement identity or role system |
+| #447 under #419 | Steve Person 26 repaired with the existing helper; operator confirmed Work Orders access. Don 18, abubb 3 and jhodzinski 13 manually repaired afterward | `fix/work-orders-identity-reconciliation`, implementation `c8a4af578bc8a1d941ff60fd6c2658075fcdc2d6`; source-tested, not published/deployed; current-clone SQL and protected-browser acceptance pending |
+| #419 installed release | V1.1.2-manager-utilities, `24c0c8e526e032f4a7202a77ed14ab9a30b2459b`; migrations 002/003 installed, mail enabled, first Inbox receipt confirmed | Existing operational recipient/worker follow-ups remain; do not reinstall Phase 1/2 |
+| #395 invisible first-time bootstrap | Accepted runtime `dcc8f25f07a74e19ce3de3aae2d9d137b5411815` merged, not deployed; issue closure is not completion | Migration 006, runtime/credential and Apps integration are not an accepted installed release |
+| #403 release-readiness draft | `issue-395-production-deployment-readiness` at `4d5b61cbfb114c35aebf8b582dba797134d21127`; tooling/docs only, accepted People runtime unchanged | Credential preflight stopped at `TOKEN_NOT_CONFIGURED`; scoped proof stopped at API verification, not PASS. Later architecture pause supersedes its stale final NEXT instruction |
+
+The #403 head is 1181 main-only commits behind the inspected main
+`2d65781d73c761f0320eefd35fc06a5bf7b7dfa9`; do not promote it as the combined
+release checkout. Preserve its evidence and deliberately reconcile it with main
+before any resumed tooling work. Its 58 local People application/acceptance tests
+pass, but these do not establish Directus credential scope or Production readiness.
+
+Don's previous missing-Directus fixture is consumed: the October 21 operator
+report identifies his existing **Manager** role. Never reset his account/link or
+downgrade him to recreate first-login evidence. Use an owned disposable fixture.
+Steve's confirmed repair is settled unless a new failure is observed.
+
+Backbone PR #29 removed the premature Apps bootstrap POST after the live database
+error. Keep Apps as launcher until a complete accepted People integration exists.
+The #403 later design pause remains: do not restart scoped-token experiments or
+silently substitute the unaccepted direct-Google redirect. Neither route may
+manufacture People, enroll nonhuman/mail-only accounts, elevate roles, or mismatch
+Cloudflare and Directus humans. Existing Directus roles/policies remain authority.
+
+The authorized immediate engineering correction is the Work Orders consumer of
+#385, documented in the [#447 candidate](../../../../../WorkOrders/Acceptance/Identity_Reconciliation_Candidate.md).
+It commits the existing audited reconciliation before linked-Person reads,
+without a new account, role or management table. Next acceptance uses the existing
+#419 disposable runner and same clone for SQL/HTTP/browser proof. #122 owns one
+compatible tested release batch; no Production mutation before exact-candidate
+acceptance and explicit approval. #395 stays open for the separate first-time
+initialization outcome; #447 acceptance cannot close it.
+
+Evidence: [#395 Apps containment](https://github.com/Gregovate/MSB-Production-Database-Project/issues/395#issuecomment-6312067201),
+[PR #403](https://github.com/Gregovate/MSB-Production-Database-Project/pull/403),
+[#419 installed receipt](https://github.com/Gregovate/MSB-Production-Database-Project/issues/419#issuecomment-6305104957),
+[#122 batching direction](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122#issuecomment-6318324976).
+
+## Historical observation scope
 
 This document records the current Production Directus **User Onboarding** flow as observed directly in the Directus administrative UI on 2026-09-09. It also records the identity lifecycle decisions that People Manager must preserve.
 

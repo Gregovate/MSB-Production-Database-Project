@@ -96,10 +96,16 @@ try {
  assert.equal((await state(12)).current_stage_id,16);
  assert.equal(await state(13),undefined);
  assert.equal((await db.query('SELECT container_id FROM ref.display WHERE display_id=12')).rows[0].container_id,224);
- await record(224,'CONTAINER_MOVE','2026-10-07T16:20:00Z','Later Container location','NOT_SURE');
+ const containerLater=await record(224,'CONTAINER_MOVE','2026-10-07T16:20:00Z','Later Container location','NOT_SURE');
  assert.equal((await state(12)).last_movement_event_id,direct.setup_movement_event_id);
  assert.equal((await state(12)).current_location_note,'16 · Actual placement elsewhere');
  assert.equal((await db.query(directQuery,directParams)).rows[0].duplicate_event,true);
+ // Actual shop return must not carry an already-detached Display home.
+ await record(224,'RETURNED','2026-10-07T16:30:00Z',null,'EMPTY',[13],containerLater.setup_movement_event_id);
+ assert.equal((await state(12)).position_mode,'DETACHED');
+ assert.equal((await state(12)).current_stage_id,16);
+ assert.equal((await state(12)).current_location_note,'16 · Actual placement elsewhere');
+ assert.equal((await state(12)).last_movement_event_id,direct.setup_movement_event_id);
  // Existing Stage-group unload uses the NEW observed location, not reconciliation's prior anchor.
  await db.exec("INSERT INTO ref.container VALUES(34,1,'RC03-A-04','Stage group fixture'); INSERT INTO ref.display VALUES(14,34,1,'Group member A'),(15,34,1,'Group member B'),(16,34,1,'Next Stage stays attached')");
  await record(34,'CONTAINER_MOVE','2026-10-07T17:00:00Z','Earlier Container drop',null,null,null,null,[43.70,-87.70,3]);

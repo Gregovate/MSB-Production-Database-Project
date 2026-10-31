@@ -33,7 +33,7 @@ const markers = data.features.filter(f => ['LineString','MultiLineString'].inclu
 })));
 const toggle = {...element(), checked: false};
 let selectionBounds;
-const context = {document: {getElementById: id => elements[id], createElement: element, querySelector: () => toggle},
+const context = {window:{siteReferenceReady:null}, document: {getElementById: id => elements[id], createElement: element, querySelector: () => toggle},
   fetch: async () => ({ok: true, json: async () => source}),
   layers: Object.fromEntries(['NET','HV','PRI','Other'].map(name => [name, {eachLayer(fn) { markers.filter(m => m._searchFeature.properties.class === name).forEach(fn); }, addTo() {}}])),
   map: {fitBounds(bounds) { selectionBounds = bounds.items; }, closePopup() {}},
@@ -114,7 +114,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(activeIds().size, 0, 'Parent off restores all highlighted source tracks');
   assert([...controls.values()].every(c => !c.checked));
   assert(page.includes('<details id="network-picker"><summary>'), 'Network list has native keyboard-accessible disclosure');
-  assert(page.includes('V0.3.62-field-networks · Source refreshed 2026-10-11'));
+  assert(page.includes('V0.3.63-site-reference · Source refreshed 2026-10-11'));
   assert(!page.includes('temporary-workshop'), 'Obsolete October 8 marker must not be rendered');
   const styles = vm.runInNewContext('(' + page.match(/const trackStyles=(.*?);/)[1] + ')');
   assert.equal(styles.PRI.color, '#ff8b25');
@@ -142,14 +142,21 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   const page = fs.readFileSync(path.join(__dirname, 'locate_preview.html'), 'utf8');
   const controls = {};
   let focused;
-  for (const id of ['map-controls', 'map-controls-open', 'map-controls-close']) {
+  for (const id of ['map-controls', 'map-controls-open', 'map-controls-close', 'map-return']) {
     controls[id] = { hidden: id === 'map-controls-open', attributes: {}, handlers: {},
       setAttribute(name, value) { this.attributes[name] = value; },
       addEventListener(name, handler) { this.handlers[name] = handler; },
       focus() { focused = id; } };
   }
   const source = page.match(/<script id="map-controls-script">([\s\S]*?)<\/script>/)[1];
-  vm.runInNewContext(source, { document: { getElementById: id => controls[id] } });
+  vm.runInNewContext(source, { document: { getElementById: id => controls[id] }, URLSearchParams, location:{search:''} });
+  assert.equal(controls['map-return'].href,'/setup/');
+  assert.equal(controls['map-return'].textContent,'Back to Setup');
+  for(const [query,href,label] of [['?view=fieldwiring','/fieldwiring/','Back to FieldWiring'],['?return=https://example.invalid','/setup/','Back to Setup']]){
+    vm.runInNewContext(source,{document:{getElementById:id=>controls[id]},URLSearchParams,location:{search:query}});
+    assert.equal(controls['map-return'].href,href);assert.equal(controls['map-return'].textContent,label);
+  }
+  assert(page.indexOf('id="map-return"')<page.indexOf('id="map-controls-close"'));
   controls['map-controls-close'].handlers.click();
   assert.equal(controls['map-controls'].hidden, true);
   assert.equal(controls['map-controls-open'].hidden, false);
@@ -215,21 +222,212 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
  context.watchId=null;context.renderGps();assert.equal(buttons.children.length,0);
 }
 
-// A failed refresh must not erase the last successful snapshot/search registrations.
+// A failed live movement refresh must CLEAR potentially stale asset markers;
+// offline map may only show saved reference geography, never false live positions.
 (async () => {
   const controls = Object.fromEntries(['asset-year','asset-status','asset-unlocated','asset-refresh'].map(id => [id,element()]));
   let clears = 0, calls = 0;
-  const ctx = {document:{getElementById:id=>controls[id]}, URLSearchParams,
+  const ctx = {document:{getElementById:id=>controls[id],createElement:()=>({dataset:{},append(){}}),createTextNode:t=>t,querySelector:()=>({parentElement:{after(){}}})}, URLSearchParams,
+    L:{layerGroup:()=>({clearLayers(){clears++;},addTo(){}})},map:{hasLayer:()=>false},
     window:{location:{search:''}},
     layers:{containers:{clearLayers(){clears++;}},displays:{clearLayers(){clears++;}}},
     mapSearch:{clearAssets(){clears++;}},
     fetch:async()=>{if (++calls > 1) throw new Error('Offline'); return {ok:true,json:async()=>({containers:[],displays:[],through_event_id:188})};}};
   vm.runInNewContext(read('setup_locate_assets.js'), ctx);
   await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(clears,3);
+  assert.equal(clears,4);
   await controls['asset-refresh'].click();
-  assert.equal(clears,3,'Offline refresh retains existing layers and search');
-  assert.match(controls['asset-status'].textContent,/Previously loaded locations remain visible/);
+  assert.equal(clears,8,'Offline refresh clears Container, Display, Controller marker layers and search');
+  assert.match(controls['asset-status'].textContent,/CURRENT Container \/ Display locations unavailable/);
+  assert.match(controls['asset-status'].textContent,/No last-known locations are being represented as live/);
   assert.equal(controls['asset-refresh'].disabled,false);
-  console.log('PASS: failed refresh preserves existing asset snapshot');
+  console.log('PASS: failed movement refresh clears obsolete locations, retaining reference-only offline map');
 })().catch(error => {console.error(error);process.exitCode=1;});
+
+
+// Regression: shared icon-top popup rule for all map symbol classes.
+(async () => {
+  const symbolCode = read('setup_locate_symbols.js');
+  const source = read('setup_locate_assets.js');
+  const begin = source.indexOf('  function render(items, container) {');
+  const end = source.indexOf('  // Reuse the approved Controller symbol', begin);
+  assert(begin >= 0 && end > begin, 'Run the actual current asset renderer');
+
+  const made = [];
+  function icon(options) { return {options}; }
+  const L = {
+    icon, divIcon: icon,
+    marker(xy, options) {
+      const original = [...xy], handlers = {};
+      const item = {
+        xy, original, options, handlers, updates: 0,
+        setIcon(next) {this.options.icon = next; return this;},
+        bindTooltip() {return this;},
+        bindPopup(content, popupOptions) {
+          const dom = {
+            handlers: {}, addEventListener(type, handler) {this.handlers[type] = handler;}
+          };
+          this.dom = dom;
+          this.popup = {
+            options: {...popupOptions}, isOpen: () => Boolean(item.opened),
+            getElement: () => dom, update() {item.updates++;}
+          };
+          return this;
+        },
+        on(type, handler) {handlers[type] = handler; return this;},
+        getPopup() {return this.popup;},
+        openPopup() {this.opened = true; handlers.popupopen?.(); return this;},
+        addTo() {made.push(this); return this;}
+      };
+      return item;
+    },
+    circleMarker(xy,options) {
+      return L.marker(xy,{radius:options.radius});
+    }
+  };
+  class ImageStub {
+    set src(value) {
+      this.naturalWidth = 18;
+      this.naturalHeight = 32;
+      queueMicrotask(() => this.onload?.());
+    }
+  }
+  const ctx = {window:{},L,Image:ImageStub,setTimeout,clearTimeout,document:{createElement:()=>({})}};
+  vm.createContext(ctx);
+  vm.runInContext(symbolCode,ctx);
+  Object.assign(ctx,{
+    layers:{containers:{},displays:{}},
+    icons:{EMPTY:'empty.svg',UNKNOWN:'unknown.svg'},
+    esc:String,popup:a=>a.name,
+    unlocated:{appendChild(){}},
+    mapSearch:{addAsset(){}}
+  });
+  vm.runInContext(source.slice(begin,end),ctx);
+  const symbols=ctx.window.msbReferenceSymbols;
+
+  ctx.render([{container_id:9,name:'Ginger Bread House',
+    load_state:'EMPTY',position:[43.77,-87.74]}],true);
+  const container=made[0];
+  assert.deepEqual(Array.from(container.popup.options.offset),[0,-24],
+    '32x32 Container popup is centered 8px above its actual top edge');
+  container.openPopup();
+  assert(container.dom.handlers.toggle,'Details disclosure is handled by the shared symbol helper');
+  container.dom.handlers.toggle({target:{tagName:'DETAILS'}});
+  assert(container.updates>=2,'Opening/expanding popup must refresh Leaflet layout');
+  assert.deepEqual(container.xy,container.original,'No Container GPS movement');
+
+  ctx.render([{display_id:909,name:'CL-GingerbreadHouse',position:[43.78,-87.75]},
+              {display_id:910,name:'CL-TumbleGinger-01',position:[43.78,-87.75]}],false);
+  const display=made[1];
+  assert.equal(made.length,2,'Coincident Displays share one marker');
+  assert.deepEqual(Array.from(display.popup.options.offset),[0,-30],
+    'Placeholder 12x12 icon top is correctly calculated while SVG loads');
+  display.openPopup();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(Array.from(display.options.icon.options.iconAnchor),[9,32],
+    'T-Post SVG natural 18x32 icon has 16px additional map offset');
+  assert.deepEqual(Array.from(display.options.icon.options.popupAnchor),[0,-32]);
+  assert.deepEqual(Array.from(display.popup.options.offset),[0,-8],
+    'Custom SVG popupAnchor already reaches top edge; do NOT double-offset');
+  display.dom.handlers.toggle({target:{tagName:'DETAILS'}});
+  assert.deepEqual(display.xy,display.original,'No Display GPS movement');
+
+  const reference=symbols.marker([43.79,-87.76],'Panel');
+  symbols.bindPopupAtIconTop(reference,'Reference details');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(Array.from(reference.popup.options.offset),[0,-8],
+    'Permanent GPX waypoint popups use the same top-centered rule');
+  assert.deepEqual(reference.xy,reference.original,'Permanent reference geometry unchanged');
+  assert(read('locate_preview.html').includes(
+    'window.msbReferenceSymbols.bindPopupAtIconTop(marker,detail(p))'),
+    'The reference map must use the shared popup rule, not a separate legacy anchor');
+  console.log('PASS: Container, independent Display and reference popups top-centered across icon replacement and disclosure');
+})().catch(e=>{console.error(e);process.exitCode=1;});
+
+// Panel checklist deep links select maintained wp IDs, never stale GPX IDs.
+{
+ const marker={_searchFeature:{properties:{id:'wp:42',name:'WV-00',type:'Panel'}},getLatLng(){return 'panel-point'},openPopup(){this.opened=true}};
+ context.layers.refs={eachLayer(fn){fn(marker)},addTo(){}};
+ context.search.reindexMapReferences();
+ context.search.focusWaypoint('42');
+ assert.equal(marker.opened,true);
+ assert.equal(elements['map-search-status'].textContent,'WV-00');
+ context.search.focusWaypoint('99999');
+ assert.match(elements['map-search-status'].textContent,/not available/);
+ console.log('PASS: checklist panel link focuses maintained waypoint and handles missing location');
+}
+
+// Run the shipped label manager: zoom gate, dense straight tracks, upright text,
+// layer visibility, collision priority and escaped source names.
+{
+  const code=read('setup_site_reference.js');
+  const helper=code.slice(code.indexOf('  function createMapLabels('),code.indexOf('  const mapLabels ='));
+  let zoom=18;const handlers={};const rendered=[];
+  const group={visible:true,items:[],eachLayer(fn){this.items.forEach(fn);}};
+  const map={getZoom:()=>zoom,getSize:()=>({x:1000,y:700}),hasLayer:g=>g.visible,
+    on(events,fn){for(const event of events.split(' '))handlers[event]=fn;},
+    latLngToContainerPoint:xy=>({x:xy[1],y:xy[0]}),containerPointToLatLng:xy=>xy};
+  const L={layerGroup:()=>({addTo(){return this;},clearLayers(){rendered.length=0;}}),divIcon:options=>options,
+    marker:(xy,options)=>({addTo(){rendered.push({xy,options});}})};
+  const document={createElement:tag=>tag==='canvas'?{getContext:()=>({measureText:t=>({width:t.length*7})})}:{style:{}}};
+  const ctx={L,map,layers:{refs:group},document};vm.createContext(ctx);
+  vm.runInContext(helper+'globalThis.manager=createMapLabels(map,layers);',ctx);
+  const feature=(name,type,coordinates)=>({_searchFeature:{properties:{name},geometry:{type,coordinates}}});
+  group.items=[feature('FE-02B','Point',[200,200]),feature('overlap','Point',[200,200]),
+    feature('NET <safe>','LineString',[[100,400],[150,400],[200,400],[250,400],[300,400]]),
+    feature('reverse','LineString',[[800,600],[500,450]])];
+  ctx.manager.refresh();assert.equal(rendered.length,0,'overview has no labels');
+  zoom=19;handlers.zoomend();assert.equal(rendered.length,3,'overlapping waypoint suppressed');
+  assert.equal(rendered[0].options.icon.html.textContent,'FE-02B');
+  assert.ok(rendered.some(r=>r.options.icon.html.textContent==='NET <safe>'));
+  const track=rendered.find(r=>r.options.icon.html.textContent==='NET <safe>');
+  assert.equal(track.xy[1],400,'compact label follows the track');
+  assert.match(track.options.icon.html.className,/gis-track-name/);
+  assert.ok(rendered.every(r=>r.options.interactive===false&&r.options.keyboard===false));
+  for(const r of rendered){const angle=Number(r.options.icon.html.style.transform.match(/rotate\(([-\d.]+)deg/)[1]);assert.ok(angle>=-90&&angle<=90);}
+  group.visible=false;handlers.layerremove({layer:group});assert.equal(rendered.length,0);
+  group.visible=true;handlers.layeradd({layer:group});assert.equal(rendered.length,3);
+  group.items=[];ctx.manager.refresh();assert.equal(rendered.length,0,'snapshot replacement clears stale names');
+  zoom=17;handlers.zoomend();assert.equal(rendered.length,0);
+  assert.equal(ctx.manager.placement([[100,100],[102,102]],100),null,'short track has no forced label');
+  console.log('PASS: zoom-aware waypoint/track labels, alignment, collision, source text and layer cleanup');
+}
+
+// Controller popups expose one latest record directly and escape source names.
+{
+  const source=read('setup_locate_assets.js'), popups=[];
+  const ctx={esc:v=>String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),
+    layers:{controllers:{}}, unlocated:{append(){}},
+    window:{msbReferenceSymbols:{marker:()=>({addTo(){}}),bindPopupAtIconTop:(m,t)=>popups.push(t)}}};
+  vm.createContext(ctx);
+  vm.runInContext(source.slice(source.indexOf('  function evidence('),source.indexOf('  function popup(')),ctx);
+  vm.runInContext(source.slice(source.indexOf('  function renderControllers('),source.indexOf('  async function load(')),ctx);
+  ctx.renderControllers([{controller_id:1057,name:'Tree <West> · AUX-A / 0A',position:[43,-87],
+    observation:{recorded_by_name:'Recorded Person',event_type:'CONTROLLER_MOVE',setup_movement_event_id:42,occurred_at:'2026-10-27T14:00:00Z',destination_location_note:'Panel 42'}}]);
+  assert.match(popups[0],/Tree &lt;West&gt;/);
+  assert.match(popups[0],/CTRL:1057/);
+  assert.match(popups[0],/Controller location recorded/);
+  assert.match(popups[0],/Latest record/);
+  assert.match(popups[0],/Event: 42/);
+  assert.match(popups[0],/Recorded by: Recorded Person/);
+  assert.match(popups[0],/Panel 42/);
+  assert.doesNotMatch(popups[0],/<details>|<summary>/);
+  ctx.renderControllers([{controller_id:1,name:'Controller',position:[43,-87]}]);
+  assert.match(popups[1],/Observation: not recorded/);
+  console.log('PASS: controller names and latest record visible without disclosure');
+}
+
+// FLW networks remain visible without a physical-cable or catalog lookup.
+{
+ const source=read('setup_site_reference.js');
+ const ctx={current:{memberships:[{site_waypoint_id:7,site_network_id:2,network_code:'REG'}],
+   networks:[],flw_tests:[{endpoint_a:7,endpoint_b:8,network_key:'AUX-E'},
+     {endpoint_a:7,endpoint_b:8,network_key:'REG'},{endpoint_a:9,endpoint_b:10,network_key:'INET'}]},
+   byId:(rows,id,key)=>rows.find(r=>Number(r[key])===Number(id))};
+ vm.createContext(ctx);
+ vm.runInContext(source.slice(source.indexOf('  const networkNames ='),source.indexOf('  const testResult ='))+';globalThis.names=networkNames;',ctx);
+ assert.deepEqual(Array.from(ctx.names(7)),['REG','AUX-E']);
+ assert.deepEqual(Array.from(ctx.names(8)),['AUX-E','REG']);
+ assert.deepEqual(Array.from(ctx.names(99)),[]);
+ console.log('PASS: combo-box FLW network names survive missing catalog entries');
+}

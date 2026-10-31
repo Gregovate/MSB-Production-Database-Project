@@ -1,0 +1,39 @@
+
+/* Shared connection semantics and action hierarchy; labels retain meaning without color. */
+.connection-network {background:#e8f3ff;color:#163750;padding:.6rem;border-radius:.4rem;}
+.connection-power {background:#ffeded;color:#552929;padding:.6rem;border-radius:.4rem;}
+button.equipment-save, #deployment-save {background:#1768b3;color:white;border-color:#1768b3;}
+button.equipment-save:hover, #deployment-save:hover {background:#104c85;}
+.deployment-reload {background:#e6e9ed;color:#172b40;}
+#deployment-chain {padding-left:2rem;max-width:65rem;}
+#deployment-chain li {padding:.35rem .6rem;border-left:3px solid #8abbe5;background:#e8f3ff;color:#163750;overflow-wrap:anywhere;}
+#deployment-chain li[aria-current] {font-weight:bold;border-left:6px solid #1768b3;background:#cbe3fb;}
+button:focus-visible, a:focus-visible {outline:3px solid #1768b3;outline-offset:3px;}
+[data-theme="dark"] .connection-network,[data-theme="dark"] #deployment-chain li {background:#203c56;color:#edf6ff;}
+[data-theme="dark"] .connection-power {background:#512e35;color:#fff0f0;}
+[data-theme="dark"] #deployment-chain li[aria-current] {background:#315b7d;}
+
+.cable-results {overflow-x:auto;} .cable-test-table {width:100%;border-collapse:collapse;} .cable-test-table td,.cable-test-table th {padding:.6rem;border:1px solid #9cabb9;text-align:left;vertical-align:top;} .cable-test-table article {border-top:1px solid #9cabb9;overflow-wrap:anywhere;}
+nav[aria-label="Field wiring screens"] a:hover {background:#c7d6e5;}
+[data-theme="dark"] nav[aria-label="Field wiring screens"] a:hover {background:#31516e;}
+
+.edit-controller-button,.manage-assignments-button {background:#e6edf5;color:#172b40;border:1px solid #9eafc1;} .edit-controller-button:hover,.manage-assignments-button:hover,.deployment-reload:hover {background:#c7d6e5;} [data-theme="dark"] .edit-controller-button,[data-theme="dark"] .manage-assignments-button {background:#253d54;color:#edf6ff;} [data-theme="dark"] .edit-controller-button:hover,[data-theme="dark"] .manage-assignments-button:hover {background:#31516e;}
+
+/* Extend the existing shared action palette to equipment and its dialogs.
+   Keep semantic connection/panel colors separate from command controls. */
+:root {--fw-action-bg:#1768b3;--fw-action-ink:#ffffff;--fw-action-border:#1768b3;--fw-action-hover:#104c85;--fw-neutral-bg:#e6e9ed;}
+[data-theme="dark"] {--fw-action-bg:#1768b3;--fw-action-ink:#ffffff;--fw-action-border:#78afe3;--fw-action-hover:#104c85;--fw-neutral-bg:#334155;}
+#add-device,#manage-equipment-models,.equipment-actions button,body[data-power-screen="equipment"] dialog button {
+ background:var(--fw-action-bg);color:var(--fw-action-ink);border-color:var(--fw-action-border);
+}
+#add-device:hover:not(:disabled),#manage-equipment-models:hover:not(:disabled),.equipment-actions button:hover:not(:disabled),body[data-power-screen="equipment"] dialog button:hover:not(:disabled) {
+ background:var(--fw-action-hover);
+}
+body[data-power-screen="equipment"] dialog button.equipment-save {background:#1768b3;color:#fff;border-color:#1768b3;}
+body[data-power-screen="equipment"] dialog button.equipment-save:hover:not(:disabled) {background:#104c85;border-color:#104c85;}
+body[data-power-screen="equipment"] dialog button:last-child {background:var(--fw-neutral-bg);color:#172b40;}
+body[data-power-screen="equipment"] dialog button:last-child:hover:not(:disabled) {background:#c7d6e5;}
+
+[data-theme="dark"] body[data-power-screen="equipment"] dialog button:last-child {color:#edf6ff;}
+
+[data-theme="dark"] body[data-power-screen="equipment"] dialog button:last-child:hover:not(:disabled) {background:#475569;}

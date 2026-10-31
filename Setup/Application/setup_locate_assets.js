@@ -1,11 +1,49 @@
+/* Tab-local navigation state, never a saved copy of live movement records. */
+function installMapReturnState(map, layers, doc, win, storage) {
+  const key='msb.park-map.view.v1';
+  let restoring=false;
+  function controls() {
+    for (const input of doc.querySelectorAll('[data-layer]'))
+      if (layers[input.dataset.layer]) input.checked=map.hasLayer(layers[input.dataset.layer]);
+  }
+  function restore() {
+    restoring=true;
+    try {
+      const saved=JSON.parse(storage.getItem(key) || 'null');
+      if (saved && Array.isArray(saved.center) && saved.center.length===2 &&
+          saved.center.every(Number.isFinite) && Math.abs(saved.center[0])<=90 && Math.abs(saved.center[1])<=180 &&
+          Number.isFinite(saved.zoom) && saved.zoom>=14 && saved.zoom<=24) {
+        map.setView(saved.center,saved.zoom,{animate:false});
+        for (const [name,group] of Object.entries(layers)) {
+          if (saved.layers?.[name]===true) group.addTo(map);
+          else if (saved.layers?.[name]===false) map.removeLayer(group);
+        }
+      }
+    } catch (_) { /* Storage may be unavailable or contain an obsolete value. */ }
+    finally {controls();restoring=false;}
+  }
+  function save() {
+    if(restoring) return;
+    const center=map.getCenter();
+    try {storage.setItem(key,JSON.stringify({center:[center.lat,center.lng],zoom:map.getZoom(),
+      layers:Object.fromEntries(Object.entries(layers).map(([n,g])=>[n,map.hasLayer(g)]))}));} catch (_) {}
+    controls();
+  }
+  restore();
+  map.on('moveend',save);
+  map.on('layeradd layerremove',event=>{if(Object.values(layers).includes(event.layer))save();});
+  win.addEventListener('pagehide',save);
+  // Browser history may restore form values after script initialization.
+  win.addEventListener('pageshow',restore);
+  return {save,restore};
+}
 /* #171 consumes #88 observations. Rendering never records movement. */
 (() => {
   const icons = {
     UNKNOWN: 'assets/container-unknown.svg',
     LOADED: 'assets/container-loaded.svg',
     PARTIAL: 'assets/container-partial.svg',
-    EMPTY: 'assets/container-empty.svg',
-    DISPLAY: 'https://webassets.sheboyganlights.org/images/symbols/msb/T-Post.png'
+    EMPTY: 'assets/container-empty.svg'
   };
   const year = document.getElementById('asset-year');
   year.value = new Date().getFullYear();
@@ -15,8 +53,9 @@
   let sequence = 0;
   // Coversheets can address an existing container without recording movement.
   const requestedContainer = new URLSearchParams(window.location.search).get('container_id');
-  function evidence(o) {
+  function evidence(o = {}) {
     let text = `Observation: ${esc(o.occurred_at ? new Date(o.occurred_at).toLocaleString('en-US', {timeZone: 'America/Chicago'}) + ' (Chicago)' : 'not recorded')}`;
+    text += `<br>Recorded by: ${esc(o.recorded_by_name || o.captured_operator_email || 'Not recorded')}`;
     if (o.gps_latitude != null && o.gps_longitude != null) text += `<br>Recorded GPS: ${esc(o.gps_latitude)}, ${esc(o.gps_longitude)}`;
     if (o.gps_accuracy_m != null && Number(o.gps_accuracy_m) >= 0) text += `<br>Accuracy: ±${Math.round(Number(o.gps_accuracy_m) / 0.3048)} ft`;
     text += `<br>Event: ${esc(o.setup_movement_event_id ?? 'none')} · ${esc(o.event_type ?? '')}`;
@@ -35,7 +74,7 @@
       IN_TRANSIT: 'In transit', DELIVERED: 'Delivered', UNLOADED: 'Unloaded',
       STAGED: 'Staged for setup', PLACED: 'Placed', RELOCATED: 'Relocated',
       RETURNED: 'Returned to storage', TASK_UNLOAD: 'Unloaded from container',
-      CONTAINER_MOVE: 'Container moved'};
+      CONTAINER_MOVE: 'Container moved', CONTROLLER_MOVE: 'Controller location recorded'};
     let location = a.current_location_note || o.destination_location_note;
     if (a.reported_home) location = 'Home — Workshop' + ((a.home_location_code || a.current_location_note) ? ' · ' + (a.home_location_code || a.current_location_note) : '');
     if (!location && o.stage_name) location = `${o.stage_key || ''} ${o.stage_name}`.trim();
@@ -56,13 +95,13 @@
       text += '</ul>';
       if (!a.contents.length) text += '<p>No displays assigned.</p>';
     }
-    text += `<details><summary>Record details</summary>${evidence(a.observation)}`;
+    text += `<section class="asset-latest-record"><b>Latest record</b><br>${evidence(a.observation || {})}`;
     if (a.position_source === "storage-workshop-reference") text += "<br>Map position: Workshop reference location, not device GPS. Rack location is shown above.";
     if (container) {
       text += `<br>Recorded movement: ${esc(a.movement_status || 'none')}<br>Recorded contents: ${esc(a.load_state)}<br>${esc(a.uncertainty)}`;
       if (a.review_event_ids.length) text += `<br>Contents review recorded in events ${esc(a.review_event_ids.join(', '))}; resolution not established here.`;
     } else text += `<br>Recorded position mode: ${esc(a.position_mode)}`;
-    return text + '</details>';
+    return text + '</section>';
   }
   function render(items, container) {
     const group = layers[container ? 'containers' : 'displays'];
@@ -83,12 +122,48 @@
     }
     for (const values of positions.values()) {
       const a = values[0];
-      const marker = L.marker(a.position, {icon: L.icon({iconUrl: container ? icons[a.load_state] || icons.UNKNOWN : icons.DISPLAY, iconSize: [32,32], iconAnchor: container ? [16,16] : [16,48]}), zIndexOffset: container ? 0 : 1000});
+      const marker = L.marker(a.position, {
+        icon: container
+          ? L.icon({iconUrl: icons[a.load_state] || icons.UNKNOWN,
+            iconSize: [32,32], iconAnchor: [16,16]})
+          : L.divIcon({className:'msb-reference-placeholder',
+            html:'<span aria-hidden="true"></span>',iconSize:[12,12],iconAnchor:[6,22]}),
+        zIndexOffset: container ? 0 : 1000
+      });
+      // Independent Displays sit above colocated Containers. Use reviewed SVG
+      // at natural width/height; no legacy T-Post PNG or inferred GPS movement.
+      if (!container) window.msbReferenceSymbols.setSymbol(marker, 'T-Post', {yOffset:16});
       const title = values.map(v => container ? 'C' + String(v.container_id).padStart(3, '0') : v.name).join(' · ');
       marker.bindTooltip(esc(title));
-      marker.bindPopup(values.map(v => popup(v, container)).join('<hr>'), {maxHeight: 360});
+      // Shared #171 rule: popup pointer centers 8px above the REAL icon's
+      // top edge. Symbol Manager accounts for iconAnchor + popupAnchor and
+      // refreshes after async SVG replacement and details disclosure.
+      window.msbReferenceSymbols.bindPopupAtIconTop(
+        marker,
+        values.map(v => popup(v, container)).join('<hr>'),
+        {maxHeight: 360}
+      );
       marker.addTo(group);
       for (const v of values) mapSearch.addAsset(v, container, marker);
+    }
+  }
+  // Reuse the approved Controller symbol and the same observed-location map.
+  layers.controllers=L.layerGroup();
+  const controllerToggle=document.createElement('input');controllerToggle.type='checkbox';controllerToggle.dataset.layer='controllers';
+  controllerToggle.checked=map.hasLayer(layers.containers);
+  const controllerLabel=document.createElement('label');controllerLabel.append(controllerToggle,document.createTextNode(' Controllers'));
+  document.querySelector('[data-layer="containers"]').parentElement.after(controllerLabel);
+  if(controllerToggle.checked)layers.controllers.addTo(map);
+  controllerToggle.onchange=()=>controllerToggle.checked?layers.controllers.addTo(map):map.removeLayer(layers.controllers);
+  function renderControllers(items){
+    for(const a of items){
+      // The API supplies only the latest dated observation. Keep it visible;
+      // the user needs this record without opening a disclosure control.
+      const text=`<b>${esc(a.name)}</b><br><small>CTRL:${esc(a.controller_id)}</small>${volunteerSummary(a)}<section class="controller-latest-record"><b>Latest record</b><br>${evidence(a.observation || {})}</section>`;
+      if(!a.position){const row=document.createElement('details');row.innerHTML=`<summary>${esc(a.name)}</summary>${text}`;unlocated.append(row);continue;}
+      const marker=window.msbReferenceSymbols.marker(a.position,'Controller');
+      window.msbReferenceSymbols.bindPopupAtIconTop(marker,text,{maxHeight:360});
+      marker.addTo(layers.controllers);
     }
   }
   async function load() {
@@ -100,15 +175,31 @@
       if (!response.ok) throw new Error(`Asset data unavailable (${response.status})`);
       const data = await response.json();
       if (current !== sequence) return;
-      layers.containers.clearLayers(); layers.displays.clearLayers();
+      layers.containers.clearLayers(); layers.displays.clearLayers(); layers.controllers.clearLayers();
       unlocated.replaceChildren(); mapSearch.clearAssets();
-      render(data.containers, true); render(data.displays, false);
+      render(data.containers, true); render(data.displays, false); renderControllers(data.controllers||[]);
       if (requestedContainer && /^\d+$/.test(requestedContainer)) mapSearch.focusContainer(Number(requestedContainer));
-      status.textContent = `${data.containers.length} Containers · ${data.displays.length} independent Displays · ${unlocated.children.length} unlocated · through event ${data.through_event_id}. Icons show recorded associations: Loaded / Partial / Empty / Unknown. Physical loads unconfirmed.`;
+      status.textContent = `${(data.controllers||[]).length} Controllers · ${data.containers.length} Containers · ${data.displays.length} independent Displays · ${unlocated.children.length} unlocated · through event ${data.through_event_id}. Icons show recorded associations: Loaded / Partial / Empty / Unknown. Physical loads unconfirmed.`;
     } catch (error) {
-      if (current === sequence) status.textContent = `${error.message}. Previously loaded locations remain visible; they have not been refreshed. Refresh to retry.`;
+      if (current === sequence) {
+        // A failed live API must never leave apparently current movement positions.
+        layers.containers.clearLayers();
+        layers.displays.clearLayers();
+        layers.controllers.clearLayers();
+        unlocated.replaceChildren();
+        mapSearch.clearAssets();
+        status.textContent = 'CURRENT Container / Display locations unavailable (' +
+          error.message + '). No last-known locations are being represented as live. ' +
+          'Offline Park Map shows saved reference geography only.';
+      }
     } finally { if (current === sequence) refresh.disabled = false; }
   }
   refresh.addEventListener('click', load);
+  // Keep the view only; live asset records are always fetched again.
+  if (typeof window.addEventListener === 'function') {
+    let storage; try { storage=window.sessionStorage; } catch (_) {}
+    if (storage) installMapReturnState(map,layers,document,window,storage);
+    window.addEventListener('pageshow',event=>{if(event.persisted) load();});
+  }
   load();
 })();

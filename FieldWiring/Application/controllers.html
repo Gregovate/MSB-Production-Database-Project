@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Controller Inventory</title>
   <script src="static/analytics.js?v=2026-08-31.1"></script>
-  <link rel="stylesheet" href="controllers.css">
+  <link rel="stylesheet" href="controllers.css?v=2026-10-25-r14">
   <link rel="stylesheet" href="static/controllers_search_context.css">
   <link rel="stylesheet" href="static/controllers_management.css?v=2026-09-02.2">
   <link rel="stylesheet" href="static/controllers_planner.css?v=2026-10-16.1">
   <link rel="stylesheet" href="static/controllers_assignment_context.css?v=2026-09-02.1">
   <link rel="stylesheet" href="static/controllers_ux_refinements.css?v=2026-09-02.1">
-</head>
+<link rel="stylesheet" href="static/controller_ports.css?v=2026-10-24-r13"><link rel="stylesheet" href="static/connection_controls.css?v=2026-10-25-r28"></head>
 <body>
 <header class="site-header">
   <div class="brand">
@@ -53,13 +53,14 @@
   <section class="workspace">
     <div class="card list-card">
       <div class="section-title"><h2>Controllers</h2><span id="controller-count" class="muted"></span></div>
+      <label class="controller-sort">Sort by<select id="controller-sort"><option value="id">Controller ID</option><option value="display">Display name</option></select></label>
       <div id="controller-list" class="controller-list" aria-live="polite"></div>
     </div>
     <div class="card detail-card">
       <div id="detail-empty" class="empty-state">Select a controller to see its permanent asset information and current Display assignments.</div>
       <div id="detail" hidden>
         <div class="detail-heading"><div><div class="eyebrow">Controller</div><h2 id="detail-id"></h2><div id="detail-model" class="detail-model"></div></div><span id="detail-status" class="pill"></span></div>
-        <div id="detail-facts" class="fact-grid"></div>
+        <div id="detail-facts" class="fact-grid"></div><section class="detail-section" id="controller-deployment"></section>
         <section class="detail-section"><div class="section-title"><h3>Current Display Assignments</h3><span id="assignment-count" class="muted"></span></div><div id="assignments" class="assignment-list"></div></section>
         <section class="detail-section"><div class="section-title"><h3>Firmware History</h3></div><div id="firmware-history" class="firmware-history"></div></section>
         <section class="detail-section directus-note"><strong>Maintenance</strong><div>Cloudflare Access identifies the signed-in user. Directus remains the role/policy authority. Controller actions are enabled here only when the server authorizes them.</div></section>
@@ -68,12 +69,12 @@
   </section>
 </main>
 
-<script src="controllers.js?v=2026-09-03.1"></script>
+<script src="static/controller_deployment.js?v=2026-10-26-r30d"></script><script src="controllers.js?v=ctrl077-2026-10-25-r30c"></script>
 <script src="static/controllers_search_context.js"></script>
-<script src="static/controllers_detail_extras.js?v=2026-09-02.3"></script>
-<script src="static/controllers_management.js?v=2026-09-02.2"></script>
+<script src="static/controllers_detail_extras.js?v=2026-10-25-r30b"></script>
+<script src="static/controllers_management.js?v=2026-10-25-r30b"></script>
 <script src="static/controllers_ux_refinements.js?v=2026-09-02.1"></script>
-<script src="static/controllers_assignment_context.js?v=2026-09-02.1"></script>
+<script src="static/controllers_assignment_context.js?v=2026-10-25-r30c"></script>
 <script src="static/controllers_planner_v2.js?v=2026-10-16.1"></script>
 </body>
 </html>

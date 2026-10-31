@@ -1,0 +1,5 @@
+{
+  "subject": "More information needed: $ticket",
+  "text": "Please help us clarify your original report.\n\nTicket: $ticket \u2014 $title\n\nQuestion: $question\n\nRespond on this ticket: $ticket_url\n\nMaking Spirits Bright\nPlease use the ticket link to respond; email replies are not captured in Work Orders.",
+  "html": "<!doctype html><html><body style=\"font-family:Arial,sans-serif;color:#202830;line-height:1.5\"><h2>Making Spirits Bright</h2><p>Please help us clarify your original report.</p><p><strong>Ticket</strong><br>$ticket \u2014 $title</p><p><strong>Question</strong><br>$question</p><p><a href=\"$ticket_url\">Respond on this ticket</a></p><p>Please use the ticket link to respond; email replies are not captured in Work Orders.</p></body></html>"
+}

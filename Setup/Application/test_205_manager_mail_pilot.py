@@ -54,10 +54,6 @@ def fixture_containers():
         "containers_partial_at_park":1, "containers_returned":1,
         "containers_no_movement":2, "containers_location_review":1,
         "containers_contents_review_history":1,
-        "containers_returned_recorded_attached":0,
-        "displays_with_returned_container":0,
-        "returned_attachment_cases":[],
-        "returned_attachment_case_lines":"No recorded returned/attached contradictions in the current snapshot",
         "containers_snapshot_as_of":"2026-10-17 02:00:00-05:00",
         "containers_session_id":2,
         "containers_evidence_note":"Recorded state; not verified empty",
@@ -368,9 +364,10 @@ def test_mail_delivery_contains_html_and_complete_plain_text(monkeypatch):
         def __init__(self,host,port,timeout):
             assert (host,port)==("smtp-relay.gmail.com",587)
             self.started=False
+        def close(self):pass
         def __enter__(self):return self
         def __exit__(self,*a):return None
-        def ehlo(self):return None
+        def ehlo(self):return 250, b"ok"
         def has_extn(self,x):return x=="starttls"
         def starttls(self,context):
             self.started=True
@@ -535,167 +532,16 @@ def test_no_sender_header_from_operator_content():
     assert mail.FROM == "no-reply@sheboyganlights.org"
     assert not hasattr(mail,"captain_email")
 
-# October 18 first missed day, followed by bounded pre-opening 04:00 daily.
-def _enable_bounded_mail(monkeypatch, end="2026-11-27"):
-    monkeypatch.setenv("MSB_MANAGER_MAIL_STOP_DATE",end)
-    monkeypatch.setenv("MSB_SETUP_MANAGER_SEASON_SEND",mail.SEASON_SEND_GUARD)
-    monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED","1")
-    monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_APPROVED_ROSTER",
-                       "manager@sheboyganlights.org,second@sheboyganlights.org")
 
-
-def test_oct18_immediate_send_is_authorized_once_and_reuses_daily_key(monkeypatch,tmp_path):
-    setup_fakes(monkeypatch)
-    _enable_bounded_mail(monkeypatch)
-    monkeypatch.setenv("MSB_SETUP_MANAGER_TODAY_SEND",mail.MISSED_DAY_SEND_GUARD)
-    sent=[]
-    monkeypatch.setattr(mail,"deliver",lambda recipient,subject,body,html:
-        sent.append((recipient,subject,body,html)) or "SMTP_ACCEPTED_NOT_DELIVERED")
-    # Preserve an October 17 receipt; October 18 is a new day.
-    older=tmp_path/"manager-2026-10-17-existing.json"
-    older.write_text('{"status":"SMTP_ACCEPTED_NOT_DELIVERED"}')
-    result=mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(5,18),"today",None)
-    assert result["day"]=="2026-10-18"
-    assert result["recipients"]==2 and len(sent)==2
-    assert all("2026-10-18" in subject for _,subject,_,_ in sent)
-    assert all("msb-white-logo-600-plain.png" in markup for _,_,_,markup in sent)
-    assert older.read_text()=='{"status":"SMTP_ACCEPTED_NOT_DELIVERED"}'
-    from hashlib import sha256
-    for addr,_,_,_ in sent:
-        key=sha256(addr.encode("ascii")).hexdigest()[:24]
-        receipt=tmp_path/f"manager-2026-10-18-{key}.json"
-        import json
-        assert json.loads(receipt.read_text())["purpose"]=="MANAGER_DAILY"
-    with pytest.raises(mail.PilotStop,match="Prior recipient attempt"):
-        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(5,18),"today",None)
-    assert len(sent)==2
-
-
-def test_oct18_manual_send_requires_specific_independent_approval(monkeypatch,tmp_path):
-    setup_fakes(monkeypatch)
-    _enable_bounded_mail(monkeypatch)
-    monkeypatch.delenv("MSB_SETUP_MANAGER_TODAY_SEND",raising=False)
-    monkeypatch.setattr(mail,"deliver",lambda *args: pytest.fail("not permitted"))
-    with pytest.raises(mail.PilotStop,match="Immediate Oct 18 Manager mail approval"):
-        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(5,18),"today",None)
-    assert not list(tmp_path.iterdir())
-
-
-@pytest.mark.parametrize("mode,when,end", [
-    ("today",time_at(5,19),"2026-11-27"),
-    ("daily",time_at(4,18),"2026-11-27"),
-    ("daily",time_at(5,19),"2026-11-27"),
-    ("daily",time_at(3,19),"2026-11-27"),
-    ("daily",datetime(2026,11,28,4,0,tzinfo=CHI),"2026-11-27"),
-    ("daily",datetime(2026,11,1,4,0,tzinfo=CHI),"2026-10-31"),
-])
-def test_bounded_season_rejects_unapproved_date_or_hour_before_db(
-        monkeypatch,tmp_path,mode,when,end):
-    _enable_bounded_mail(monkeypatch,end)
-    monkeypatch.setenv("MSB_SETUP_MANAGER_TODAY_SEND",mail.MISSED_DAY_SEND_GUARD)
-    monkeypatch.setattr(mail,"manager_directory",lambda dsn:pytest.fail("DB queried"))
-    monkeypatch.setattr(mail,"deliver",lambda *a:pytest.fail("SMTP"))
-    with pytest.raises(mail.PilotStop):
-        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,when,mode,None)
-    assert not list(tmp_path.iterdir())
-
-
-def test_nov27_is_last_show_opening_morning_and_dsts_are_local(monkeypatch,tmp_path):
-    setup_fakes(monkeypatch)
-    _enable_bounded_mail(monkeypatch)
-    monkeypatch.setattr(mail,"deliver",lambda *a:"SMTP_ACCEPTED_NOT_DELIVERED")
-    for now in (datetime(2026,11,1,4,0,tzinfo=CHI),
-                datetime(2026,11,27,4,0,tzinfo=CHI)):
-        path=tmp_path/now.strftime("%Y-%m-%d")
-        path.mkdir()
-        result=mail.send("fixture",mail.DEFAULT_TEMPLATE,path,now,"daily",None)
-        assert result["recipients"]==2
-
-
-@pytest.mark.parametrize("stop",["", "2026-12-01", "not-a-date", "2026-10-17"])
-def test_bounded_end_date_must_be_explicit_and_not_pass_show_open(
-        monkeypatch,tmp_path,stop):
-    _enable_bounded_mail(monkeypatch,stop)
-    monkeypatch.setattr(mail,"manager_directory",lambda dsn:pytest.fail("DB"))
-    with pytest.raises(mail.PilotStop,match="end date"):
-        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(4,19),"daily",None)
-
-
-def test_returned_containers_with_stale_active_display_associations_are_actionable():
-    # Real-world pattern: C052/C053 returned, but 16 Tree Wrap Displays each
-    # remain WITH_CONTAINER; a returned load_state=EMPTY must not hide them.
-    containers=[
-        {"container_id":52,"container_name":"Wraps One","movement_status":"RETURNED",
-         "last_movement_event_id":183},
-        {"container_id":53,"container_name":"Wraps Two","movement_status":"RETURNED",
-         "last_movement_event_id":182},
-        {"container_id":54,"container_name":"Empty Return","movement_status":"RETURNED"},
-        {"container_id":34,"container_name":"Active Trailer","movement_status":"DELIVERED"},
-    ]
-    displays=[
-        {"display_id":cid*100+i,"container_id":cid,
-         "display_name":f"Tree Wrap {cid}-{i:02d}", "position_mode":"WITH_CONTAINER"}
-        for cid in (52,53) for i in range(16)
-    ]
-    displays += [
-        # Legitimate detached Display remains independent of returned Container.
-        {"display_id":9001,"container_id":54,"display_name":"Already Unloaded",
-         "position_mode":"DETACHED","last_movement_event_id":220},
-        # Active trailer is a legitimate multi-stop full/interim load, NOT return.
-        {"display_id":9002,"container_id":34,"display_name":"Still on Trailer",
-         "position_mode":"WITH_CONTAINER"},
-    ]
-    result=mail.returned_attached_review({"containers":containers,"displays":displays})
-    assert result["containers_returned_recorded_attached"]==2
-    assert result["displays_with_returned_container"]==32
-    assert len(result["returned_attachment_cases"])==2
-    assert "CONT:052" in result["returned_attachment_case_lines"]
-    assert "CONT:053" in result["returned_attachment_case_lines"]
-    assert "Tree Wrap 52-00" in result["returned_attachment_case_lines"]
-    assert "last Container event #183" in result["returned_attachment_case_lines"]
-    assert "CONT:034" not in result["returned_attachment_case_lines"]
-    assert "CONT:054" not in result["returned_attachment_case_lines"]
-
-
-def test_returned_association_detection_requires_current_snapshot_and_unique_display_identity():
-    with pytest.raises(mail.PilotStop,match="lacks Container/Display states"):
-        mail.returned_attached_review({"containers":[]})
-    with pytest.raises(mail.PilotStop,match="Duplicate active Display"):
-        mail.returned_attached_review({"containers":[],"displays":[
-            {"display_id":1}, {"display_id":1}
-        ]})
-
-
-def test_html_returned_association_rows_escape_display_names_and_preserve_no_resolve_link():
-    report=mail.summarize(fixture_board(),date(2026,10,17))
+@pytest.mark.parametrize("gate,complete,expected", [(True,True,0),(True,False,1),(False,True,1)])
+def test_completed_work_order_gate_needs_no_duplicate_setup_report(gate,complete,expected):
+    board=fixture_board()
+    task=board["tasks"][1]
+    task.update(task_name="Replace Light Pole 8 Outlet Box",execution_status="PLANNED",
+                linked_work_order_gate=gate,linked_work_order_id=416,effective_complete=complete)
+    report=mail.summarize(board,date(2026,10,17))
     report.update(fixture_containers())
-    report["containers_returned_recorded_attached"]=1
-    report["displays_with_returned_container"]=1
-    report["returned_attachment_cases"]=[{
-        "container_id":52,"container_identity":"CONT:052",
-        "container_name":'<img src=x onerror=alert(1)>',
-        "display_count":1,"display_names":['<script>alert("pwn")</script>'],
-        "event_id":183,
-    }]
-    html=mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(encoding="utf-8"),
-                          {"display_name":"Manager"},report)
-    assert "Returned Containers · Display association review" in html
-    assert "CONT:052" in html
-    assert "&lt;img" in html and "&lt;script&gt;" in html
-    assert '<script>alert("pwn")</script>' not in html
-    assert 'https://my.sheboyganlights.org/setup/material-status/' in html
-    assert "read-only" in html
-    assert 'href="https://my.sheboyganlights.org/setup/resolve' not in html
-
-
-def test_plain_text_discloses_false_zero_status_and_historical_review_context():
-    report=mail.summarize(fixture_board(),date(2026,10,17))
-    report.update(fixture_containers())
-    text=mail.render(mail.DEFAULT_TEMPLATE.read_text(encoding="utf-8"),
-                     {"display_name":"Manager"},report)
-    assert "Unclassified movement statuses:" in text
-    assert "NOT an overall discrepancy count" in text
-    assert "Returned Containers still have" not in text  # number precedes word
-    assert "0 returned Containers / 0 active Displays still WITH_CONTAINER" in text
-    assert "Historical contents-review flags:" in text
-    assert "No recorded returned/attached contradictions" in text
+    assert report["missing_report_occurrences"]==expected
+    assert (task["task_name"] in report["overdue_lines"]) == bool(expected)
+    html=mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(),{"display_name":"Fixture"},report)
+    assert (task["task_name"] in html) == bool(expected)

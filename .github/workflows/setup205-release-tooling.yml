@@ -37,6 +37,15 @@ jobs:
           Setup/Acceptance/test_setup_205_estimates_deploy.py
           Setup/Acceptance/test_setup_205_estimates_postgres.py
           Setup/Acceptance/test_setup_maintenance_deploy.py
+          Setup/Acceptance/test_setup_171_release.py
+          Setup/Acceptance/test_setup_171_panel_release.py
+          Setup/Acceptance/test_setup_171_breaker_release.py
+          Setup/Acceptance/test_setup_171_performance_release.py
+          Setup/Acceptance/test_setup_171_correction_release.py
+          Setup/Acceptance/test_setup_470_release.py
+          Setup/Acceptance/test_setup_463_release.py
+          Setup/Acceptance/test_setup_463_transport.py
+          Setup/Acceptance/test_diagnose_171_controller_preview.py
           Setup/Acceptance/test_setup_required_container_deploy.py
           Setup/Acceptance/test_setup_scheduled_search_deploy.py
       - name: Full unchanged Setup regression
@@ -55,8 +64,26 @@ jobs:
         run: |
           $tokens = $null
           $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/measure_171_controller_transport.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
           [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_205_estimates_deploy.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
           if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_171_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          python Setup/Acceptance/setup_171_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb171-package')
+          if ($LASTEXITCODE -ne 0) { throw 'GIS committed transport failed' }
+
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_171_panel_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          python Setup/Acceptance/setup_171_panel_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb171-panel-package')
+          if ($LASTEXITCODE -ne 0) { throw 'Panel committed transport failed' }
+
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_171_breaker_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          python Setup/Acceptance/setup_171_breaker_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb171-breaker-package')
+          if ($LASTEXITCODE -ne 0) { throw 'Breaker committed transport failed' }
+
+
           $bundle = Join-Path $env:RUNNER_TEMP 'msb205-package'
           python Setup/Acceptance/setup_205_estimates_transport.py $PWD $bundle
           if ($LASTEXITCODE -ne 0) { throw 'Committed transport failed' }
@@ -65,3 +92,26 @@ jobs:
             if ($bytes -contains 13) { throw 'CR found in Linux transport' }
             if ($bytes.Length -gt 2 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191) { throw 'UTF8 BOM found' }
           }
+
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_171_performance_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          python Setup/Acceptance/setup_171_performance_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb171-performance-package')
+          if ($LASTEXITCODE -ne 0) { throw 'Performance committed transport failed' }
+
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_171_correction_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          python Setup/Acceptance/setup_171_correction_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb171-correction-package')
+          if ($LASTEXITCODE -ne 0) { throw 'Breaker correction committed transport failed' }
+
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_463_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+
+          python -m pip install pytest
+          if ($LASTEXITCODE -ne 0) { throw 'Transport test dependency install failed' }
+          python -m pytest -q Setup/Acceptance/test_setup_463_transport.py
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Scan archive byte regression failed' }
+
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_470_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          python Setup/Acceptance/setup_470_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb470-package')
+          if ($LASTEXITCODE -ne 0) { throw 'PR470 committed transport failed' }

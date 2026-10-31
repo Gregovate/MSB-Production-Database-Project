@@ -1,57 +1,52 @@
-# Urgency and Target Year Reference
+# Urgency, Target Year, and Due By
 
-[← Previous: Complete a Work Order](Complete_a_Work_Order.md) | [↑ Work Orders Home](README.md)
+[↑ Work Orders Home](README.md)
 
 | Document Control | Value |
 |---|---|
-| Document Type | Operational SOP |
+| Document Type | Operational Reference |
 | System | Production Database — Work Orders |
-| Task | Choose Work Order urgency and target year |
 | Audience | Managers / Authorized Operators |
 | Status | CURRENT |
 | Owner | Production Database Manager |
-| Last Reviewed | 2026-08-09 |
-| Keywords | work order, urgency, priority, target year, planning |
-
-## Purpose
-
-Use this reference when reviewing or creating a Work Order and you need to choose its Urgency or Target Year.
+| Last Reviewed | 2026-10-21 |
+| Keywords | urgency, priority, target year, planning, due by, overdue |
 
 ## Urgency
 
-Urgency indicates how quickly the work should be addressed.
+Urgency indicates operational priority:
 
-- **1 — Immediate / Critical** — highest-priority work, including urgent operational or weather-related problems during the show.
-- **2 — High** — important work that should be addressed soon.
-- **3 — Normal** — normal operational work.
-- **4 — Low** — work that can wait behind more important tasks.
-- **5 — Planning** — future or planning work that should remain visible but is not an immediate operational task.
+- **1 — Immediate / Critical**
+- **2 — High**
+- **3 — Normal**
+- **4 — Low**
+- **5 — Planning**
 
-The public Work Order Request form currently asks for a numbered Priority. That submitted number is an intake estimate. During triage, a manager reviews it and assigns the correct Work Order Urgency.
-
-If you are not authorized or do not know the correct urgency, leave the decision to the manager reviewing the Work Order.
+The public request Priority is an intake estimate. The Manager confirms the native Work Order urgency during triage.
 
 ## Target Year
 
-**Target Year** identifies work intended for a particular future season or planning year.
+**Target Year** is for future/planning work. Priority 5 **Planning** work requires the appropriate Target Year.
 
-Examples include:
+Do not use Target Year as a substitute for a current operational deadline.
 
-- a major rebuild planned for a future year;
-- deferred maintenance; or
-- new display construction.
+## Due By
 
-A planning item can have low urgency and still need a Target Year so it is not forgotten.
+**Due by** is the current deadline for the Work Order. Current Work Management requires a valid Due by date on governed Create/Promote paths.
 
-## Expected Result
+Managers may update Due by where the current action allows it. Testing-linked work uses the narrower governed deadline action.
 
-The Work Order has enough scheduling information for managers to understand its priority and, when applicable, the season or year in which the work is intended to be completed.
+**Due today is not overdue.** A Work Order becomes overdue only after its Due by date has passed while the Work Order remains active.
+
+## Aging vs Deadline
+
+- **Created / Days open** = how old the Work Order is.
+- **Due by / Deadline status** = when the current work is expected to be completed.
+
+The Manager Aging Report shows both. Do not infer one from the other.
 
 ## Related Documents
 
 - [Triage a Work Order Request](Triage_a_Work_Order_Request.md)
+- [Manage an Internal Work Order](Manage_an_Internal_Work_Order.md)
 - [Assign a Work Order](Assign_a_Work_Order.md)
-
----
-
-[← Previous: Complete a Work Order](Complete_a_Work_Order.md) | [↑ Work Orders Home](README.md)

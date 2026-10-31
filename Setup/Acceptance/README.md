@@ -1,4 +1,27 @@
+## PR470 October 27 map-label review
+
+Prior f79b62e preview CLEAN EXIT confirmed. Next exact candidate must pass CI before launching the existing reusable preview on 8898 with the unchanged 171_panel_receptacles migration/validation. At park overview zoom, route and waypoint labels disappear; at zoom19+ waypoint names appear and track names align with their lines, with overlapping text suppressed. Check panning, layer toggles and popup clicks. Verify compact Cable ID/Test ID rows and explicit unmatched network names. No FLW/GPX import, source deletion or Production write is included. Operator acceptance and CLEAN EXIT remain required before Production release.
+
 # Setup Acceptance Tooling
+
+October 26 PR463 first attempt stopped ONLINE at isolated Scan artifact verification: Windows Git archive produced CRLF bytes (`3e899a6a...`) instead of accepted LF bytes (`f9b82250...`). Report `PR463-Equipment-Location-20261026T154830Z` proves live Scan and Directus state unchanged, validation root/TAR removed, no maintenance entry or migration. Transport now uses command-local Git EOL overrides and verifies archived src/dist against exact Git blobs before SCP. Regression reproduces the original failure with `core.autocrlf=true` and `core.eol=crlf`, on Linux and Windows. Accepted application and server helpers unchanged; corrected deployment completed with server PASS in `PR463-Equipment-Location-20261026T155409Z`; protected browser/live Scan acceptance remains pending.
+
+PR463 accepted equipment/location release: `run_setup_463_release.ps1` defaults to ONLINE preflight; `-Deploy` runs the established maintenance controller and snapshot gates for the four pending migrations, then the existing Scan runner. Exact app `820b154cd664f0cac0d1d8dfd38e47b4fe19df9c`; live Scan acceptance remains pending. Failure retains the report and snapshot; do not replay. Production execution PASS is recorded in [the deployment change log](../../System_Documentation/Production_Deployment_Change_Log.md); do not rerun.
+
+`measure_171_controller_transport.ps1` complements the server probe with three read-only GETs through the already-running localhost8898 preview tunnel. It reports headers/body download/PowerShell parse durations and bytes to Documents/MSB-Diagnostics, without API writes, SSH changes or database access. Browser rendering is not measured. Use only while the existing preview remains open; PR463 supplies the pinned no-edit invocation.
+
+
+## #171 controller initial-load diagnostic (existing preview only)
+
+`diagnose_171_controller_preview.py` attaches read-only to the existing port8898 reusable preview state and exact expected SHA. It performs only loopback GETs and clone-local EXPLAIN ANALYZE SELECTs within BEGIN READ ONLY / SET LOCAL ROLE fieldwiring_app; no migrations, Production connection, credentials/process-environment discovery, service changes or clone lifecycle changes. SQL comes from the running candidate's existing query builders. Uses documented `/opt/fieldwiring/.venv/bin/python`, foreground SSH/sudo and container-local psql. Full HTTP measurements and SQL plans are retained in `/home/msbadmin/setup-acceptance-reports/Controller_Initial_Load_Diagnostic_<tag>.json`. The original preview runner owns cleanup. PR463 contains the exact-byte pinned upload/run/download block; use a second PowerShell window and leave the preview open. This is diagnostic evidence, not Production or browser acceptance.
+
+
+## #171 accepted panel correction — Production preparation
+
+[PR455 incremental panel-slot release](Setup_171_Panel_Production_Release.md)
+records accepted V0.4.22 and the existing-controller release profile. Initial GIS
+installation must not be replayed. Production execution remains pending.
+
 
 ## #205 current non-mail KPI and Report Work candidate
 
@@ -8,7 +31,18 @@
 Current integrated #122 candidate: [field release checkpoint and review](Setup_122_Integrated_Field_Release.md). This supersedes separate preview handoffs for the included PR308/309/318/321 changes.
 
 
-## #88 report-only Production release
+## #88 current contents recovery
+
+[October 17 event494 field-picture findings and recovery order](Setup_88_Contents_Reconciliation_Candidate.md#october-17-current-field-picture--event-494)
+distinguish coherent C154/C155 returns, still-old C216 detachments, protected
+Standalone violations, C052/C053 returned-but-attached wraps, missing C131
+Display location, historical review flags and source-proven report gaps.
+Guided behavior/070 shipped via #318 on October10 despite the old #309 draft
+remaining open. Manager resolve/correct and Containers to Move remain unfinished.
+The PDF analysis performed no Production mutation; the October8 source pins and
+handoffs below are historical release evidence, not current deployment advice.
+
+## #88 October 8 report-only Production release — historical
 
 [Approved Container Movement source-only release and pinned install handoff](Setup_88_Container_Movement_Report_Deployment.md)
 uses V0.3.50 / exact application 6c44a082dd520b75881c50ad2ce78feb029ff87d.
@@ -22,8 +56,8 @@ snapshot path/hash transcription remain pending. **Do not rerun deployment.**
 
 [Read prerequisite, failure history and actual server receipt](Setup_88_Report_Read_Prerequisite.md)
 retain earlier transport/backup/stdin STOPs and their corrections. Execution used
-merged tooling main `cc93378f`; deployed application remains `6c44a082` / V0.3.50.
-Guided #309, migration 070 and historical movement repair remain separate. No
+merged tooling main `cc93378f`; that run deployed `6c44a082` / V0.3.50.
+Guided #309, migration 070 and historical movement repair were separate then. No
 operator pause or new workstation dependency was needed.
 
 ## #88 contents reconciliation browser candidate
@@ -95,15 +129,84 @@ For database-affecting Setup work, use the same sequence every time:
 ```text
 exact candidate + clean local checkout
     -> full Setup/Application regression
-    -> disposable current-Production clone acceptance
-    -> exact-candidate browser review against a fresh disposable clone
-    -> operator acceptance
+    -> ONE current-Production dump and disposable clone
+    -> migrations + database assertions + feature import checks on that clone
+    -> exact-candidate browser review against THAT SAME clone
+    -> operator finishes browser review and exits cleanly
+    -> preview/clone cleanup, retained evidence
     -> separate Production deployment runbook
 ```
 
 Production mutation is not part of either reusable acceptance launcher. Production is limited to `pg_dump` and read-only evidence/fingerprint queries until the candidate has been explicitly accepted.
 
-If the candidate changes after either gate, start again from the new exact SHA. Do not carry forward a prior disposable clone or browser preview.
+For database-changing work requiring browser review, use
+`run_setup_disposable_browser_preview.ps1` for the combined regression, database
+and browser lifecycle. Do not run the standalone database acceptance first and
+then take a second dump for browser review of the same candidate. Normal cleanup
+runs after the operator completes browser review and presses ENTER in the review
+terminal. Closing a browser tab alone is not the runner's completion signal.
+Transport loss uses the existing reconnect path; do not launch another clone
+merely because the browser tunnel disconnected. Failure cleanup and retained
+reports remain governed by the existing runbook.
+
+If the candidate changes, prior acceptance is invalidated; rerun affected gates
+against the exact new SHA. This does not authorize duplicate dumps merely to
+move from regression/database checks into browser review.
+
+For #171/#230 real-source acceptance, pass `-GisGpxPath`, `-GisFlwPath`, and
+`-GisActor` to that same browser launcher, with the centrally allowlisted #171
+migration and validation SQL. The importer runs before browser launch on that
+same clone. Its exported artifacts and receipts are evidence; importing them
+does not by itself establish that every application screen consumes the new data.
+
+**Source transfer / bounded cache (October 11):** The browser wrapper
+computes the exact SHA-256 of the selected GPX and FLW, probes
+\`$HOME/setup-source-cache/<sha>.gpx/.flw\` on the server, and transfers a
+file only when that exact source hash is absent. The October 11 first
+cache-populating run may upload the ~253 MB FLW once because earlier accepted
+disposable runs predated this cache. A subsequent run with unchanged FLW SHA
+must print \`Reusing server FLW source <sha>\` and omit \`source.flw\` from
+SCP. A genuinely new FLW version still requires one transfer: it must
+**never overwrite bytes under an old hash**.
+
+The server's incoming \`/tmp/msb-setup-disposable-browser-preview-*\` upload
+bundle and temporary PostgreSQL dump are removed by normal governed browser
+cleanup. The newer bounded-retention cleanup also holds an exclusive
+per-operator cache lock, verifies both active source hashes, and removes
+superseded hash-named GPX/FLW cache versions **only after a clean completed
+browser review**. It does not remove a source on transport loss, on failed
+acceptance, when another preview may be active, or if current hashes are
+unverified. Original Shared Drive files, immutable PostgreSQL source
+observations, LinkIQ test evidence, and acceptance reports are never cleaned
+by this operation. Cache deletion is recorded as a count and bytes in the
+existing preview report; skipped cleanup is visible. The current in-flight
+preview is pinned to its own exact candidate SHA and will not adopt newer
+runner changes retroactively.
+
+
+For the combined #171/#230 GIS/circuit candidate, use the ONE reusable browser
+runner with all three allowlisted migrations in order: infrastructure foundation,
+panel circuit capture, GIS operations; include both rollback-only validations.
+Supply the selected Master GPX and optionally LinkIQ FLW. Both applications use
+one disposable clone and one listener. The selected operator must already have
+Directus Manager authority. No synthetic user or separate GIS grant is created.
+The candidate rejects an incomplete migration set before server contact.
+FieldWiring's /fieldwiring/circuits consumes the same imported waypoint IDs and
+current names as /setup/locate/. Its tests and cable evidence remain consumers of
+that source; there is no competing waypoint store or LinkIQ upload facility.
+Production installation and recurring GPX revision promotion remain separate
+acceptance gates, not implied by successful initial-load browser review.
+
+During browser review test the existing /setup/locate/ track-name correction
+from historical NET FT-SS Reg/Spare/Aux to reviewed NET LP-08 to CL-00, reload
+and search; original GPX name, geometry and source description remain retained.
+Test circuit/network relationships and audit/optimistic conflict behavior only
+in the disposable clone. The second, reviewed LinkIQ physical-cable-to-GPX
+route-consistency exception workflow is NOT implemented or accepted yet.
+Do not infer a number of cables from track description. ExpertGPS export
+after editing, Android airplane-mode map, and public SVG visual acceptance
+are separate required gates, not implied by preview readiness.
+
 
 ## Mandatory exact client/server build identity gate
 
@@ -345,3 +448,34 @@ wrapper is not a #205 release command. Operator acceptance and CLEAN EXIT are
 already approved. Production runner PASS and initial operator spot-check PASS
 were received October 16; the linked record contains the transcript and retained
 report directory. Do not rerun the completed release for documentation.
+
+- [Catalog Scene placement refresh candidate](Setup_122_Catalog_Scene_Refresh_Candidate.md) — Copy/Add/Move refresh correction; operator browser acceptance pending.
+
+- Catalog approved source promotion: `run_setup_catalog_scope_deploy.ps1` reuses the established maintenance-controlled source profile; accepted app remains pinned to PR440 revision3.
+
+### PR464 accepted breaker correction release
+
+[Authorized release and pinned identities](Setup_171_Breaker_Correction_Release.md): existing maintenance runner, incremental unassigned-breaker command/index migration, FieldWiring-only promotion. PR463 equipment work excluded; PR464 server deployment PASS, protected Production browser check pending.
+
+## October 27 panel supplies, breaker outlets and FLW map correction
+
+Candidate versions: Setup `V0.3.94-map-navigation`, FieldWiring `V0.4.34-test-identifiers`.
+The first PR470 preview ended CLEAN EXIT with changes required. The replacement
+uses the existing breaker: Breaker settings → Supplies outlets at this panel → Yes.
+Existing Bottom/Top Panel Outlets notes remain; there is no Add panel receptacle.
+
+Use the existing reusable browser runner on 8898, exact candidate SHA/ref,
+`-MigrationPaths @('Database/EngineeringTools/sql/171_panel_receptacles.sql')`
+and `-ValidationPaths @('Database/Acceptance/171_panel_receptacles_validation.sql')`.
+Apply this revised candidate only to a fresh current-Production clone; never layer
+it onto the old PR470 device-parent migration. PR463 migrations remain installed.
+Preserve current GIS imports and circuit assignments; no GPX/FLW reimport.
+
+Review 42-03S's power circuits and FLW networks/test pairs; Open panel must navigate directly to the selected/supplying panel. Cable details
+retains the short map disclosure. Verify FLW Cable ID/Test ID on unmatched cable
+records and search both IDs. Verify Back to FieldWiring / Back to Setup beside
+Collapse for each entry path. At Panel42-00, retain Bottom Panel Outlets
+(1/3) and Top Panel Outlets (2/4), designate their existing breakers, save/reload,
+then clear a designation and confirm notes/circuits remain. No extra devices or
+waypoints. End with CLEAN EXIT and retain the report. Production deployment and
+live Scan acceptance remain separate gates.

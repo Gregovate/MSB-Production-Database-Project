@@ -248,6 +248,19 @@ class Deploy:
         require(after == baseline, 'Preserved business data changed')
         self.mark('database validation PASS')
         self.frozen(self.controller('status'))
+        self.promote_source(baseline)
+        self.before_reopen(baseline)
+        self.mark('returning to service')
+        state = self.controller('off')
+        require(state.get('state') == 'ONLINE' and not state.get('last_error') and
+                state.get('live', {}).get('database_fenced') is False and
+                state.get('gates', {}).get('online_proof', {}).get('ok') is True,
+                'Return to service not proven')
+        self.live_validation()
+        self.after_reopen()
+        self.mark('server deployment PASS; protected browser and documentation closeout pending')
+
+    def promote_source(self, baseline):
         self.git('checkout', '--detach', self.m['target'], root=SETUP)
         require(self.git('rev-parse', 'HEAD', root=SETUP) == self.m['target'], 'Setup promotion differs')
         require(not self.git('status', '--porcelain', root=SETUP), 'Promoted worktree dirty')
@@ -263,13 +276,8 @@ class Deploy:
             require(not self.git('status', '--porcelain'), 'Shared checkout dirty after promotion')
             self.frozen(self.controller('status'))
             require(self.capture() == baseline, 'Business data changed before reopening')
-        self.before_reopen(baseline)
-        self.mark('returning to service')
-        state = self.controller('off')
-        require(state.get('state') == 'ONLINE' and not state.get('last_error') and
-                state.get('live', {}).get('database_fenced') is False and
-                state.get('gates', {}).get('online_proof', {}).get('ok') is True,
-                'Return to service not proven')
+
+    def live_validation(self):
         health = json.loads(self.run(['curl', '-fsS', '--max-time', '10',
                                      'http://192.168.5.9:8794/api/health']))
         require(health.get('status') == 'ok' and health.get('data_mode') == 'postgres'
@@ -280,8 +288,6 @@ class Deploy:
         if self.m.get('profile') == 'field-070':
             self.field_health(new=True)
             self.validate()
-        self.after_reopen()
-        self.mark('server deployment PASS; protected browser and documentation closeout pending')
 
     def apply_migrations(self):
         """Default single-file release; reviewed profiles may supply an ordered set."""

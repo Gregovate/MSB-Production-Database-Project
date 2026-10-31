@@ -1,10 +1,10 @@
 # Setup and Deployment Engineering
 
-## #205 Manager email — current engineering authority (October 16)
+## Shared email ownership — 2026-10-22
 
-[Manager-only Email Engineering Authority](Setup_205_Manager_Email_Engineering_2026-10-16.md) is the focused current specification, subordinate to the [existing whole-Setup #205 KPI/reporting contract](Setup_205_Schedule_Performance_and_Daily_Accountability_Contract_2026-10-15.md). It reuses the accepted **V0.3.84** Setup backend (operator-confirmed deployed SHA `7740498e6602f`), current People/Directus-backed Manager authorization, and the existing Google Workspace SMTP relay. The October 17 **04:00 America/Chicago** pilot is **Manager-only**, dry-run-first; **no Captain sending**. Server Management owns any new timer installation/rollback procedure. Current notification pilot is **NOT installed/scheduled/accepted**.
+[Email System Integration](../../Email_System_Integration.md) links the single Server Management delivery authority, [#97](https://github.com/Gregovate/MSB-Server-Management/issues/97). #205 retains Setup digest/report meaning, audience rules and content; #122 coordinates Setup releases. The later Manager SMTP sender and [October22 recovery evidence](Setup_205_Manager_Mail_Recovery_2026-10-22.md) supersede the earlier paused Directus transport proposal as the recorded implementation. Do not revive that proposal or fork another sender. Runtime consolidation is pending; historical business requirements and acceptance remain preserved.
 
-Operator workflow: [Review the Manager Email](../operatorSOP/Review_Setup_Manager_Email.md). Follow **engineering authority + this README → operator SOP → implementation and tests → PR last**. The older October 15 Directus paragraphs below are historical and **not mail implementation authority**; draft PR #412 and draft Server Management PR #79 are not approved for Production.
+[Manager email content authority](Setup_205_Manager_Email_Engineering_2026-10-16.md) governs the existing sender and no-send preview.
 
 ## #205 Schedule performance and daily Manager accountability — engineering contract
 

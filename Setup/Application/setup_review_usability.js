@@ -254,6 +254,19 @@ function installSetupHowItWorks() {
     window.location.href = 'pick-list/' + query;
   });
 
+  // Keep return collection beside outbound picking and preserve the selected season.
+  const pickupListButton = document.createElement('button');
+  pickupListButton.id = 'setup-pickup-list-link';
+  pickupListButton.className = 'tab';
+  pickupListButton.type = 'button';
+  pickupListButton.textContent = 'Pickup List';
+  pickupListButton.addEventListener('click', () => {
+    const query = appState.seasonYear == null
+      ? ''
+      : '?season_year=' + encodeURIComponent(appState.seasonYear);
+    window.location.href = 'container-pickups/' + query;
+  });
+
   const recordLocationButton = document.createElement('button');
   recordLocationButton.id = 'setup-record-location-link';
   recordLocationButton.className = 'tab';
@@ -273,6 +286,7 @@ function installSetupHowItWorks() {
   helpButton.textContent = 'How Setup Works';
   helpButton.addEventListener('click', () => showView('help'));
   tabs.appendChild(pickListButton);
+  tabs.appendChild(pickupListButton);
   tabs.appendChild(recordLocationButton);
   tabs.appendChild(helpButton);
 

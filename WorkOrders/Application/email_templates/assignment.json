@@ -1,0 +1,5 @@
+{
+  "subject": "Work Order $ticket assigned \u2014 due $due_by",
+  "text": "You have been assigned a Work Order.\n\nWork Order: $ticket \u2014 $title\n\nAssigned to: $assignees\n\nDue by: $due_by\n\nOpen Work Order: $ticket_url\n\nMaking Spirits Bright\nPlease use the ticket link to respond; email replies are not captured in Work Orders.",
+  "html": "<!doctype html><html><body style=\"font-family:Arial,sans-serif;color:#202830;line-height:1.5\"><h2>Making Spirits Bright</h2><p>You have been assigned a Work Order.</p><p><strong>Work Order</strong><br>$ticket \u2014 $title</p><p><strong>Assigned to</strong><br>$assignees</p><p><strong>Due by</strong><br>$due_by</p><p><a href=\"$ticket_url\">Open Work Order</a></p><p>Please use the ticket link to respond; email replies are not captured in Work Orders.</p></body></html>"
+}

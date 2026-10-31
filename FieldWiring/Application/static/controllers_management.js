@@ -34,6 +34,7 @@
   }
 
   async function api(url, init = {}) {
+    if(init.method && init.method.toUpperCase()!=="GET")window.MSBControllerDeployment?.invalidate();
     const response = await fetch(url, init);
     const payload = await responseJson(response);
     if (!response.ok) {

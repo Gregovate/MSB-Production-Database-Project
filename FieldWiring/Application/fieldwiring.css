@@ -143,16 +143,18 @@ input, select {
   letter-spacing:.03em;
 }
 .actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
+/* Visible filled actions are the default, consistent with Setup's blue actions.
+   Explicit secondary, panel and connection semantics retain their own styles. */
 button {
-  border:1px solid var(--border);
-  background:var(--input);
-  color:var(--ink);
+  border:1px solid #1768b3;
+  background:#1768b3;
+  color:#ffffff;
   border-radius:7px;
   padding:9px 12px;
   cursor:pointer;
   font-weight:700;
 }
-button:hover { background:var(--soft); }
+button:hover:not(:disabled) { background:#104c85; }
 button.primary { background:var(--blue); border-color:var(--blue); color:var(--blue-ink); }
 button:disabled { opacity:.5; cursor:not-allowed; }
 .status { margin-top:10px; padding:8px 10px; border-radius:6px; font-size:12px; background:var(--soft); }

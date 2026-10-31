@@ -9,6 +9,84 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## October 26 — PR463 equipment/location Production server deployment PASS
+
+Greg returned the governed runner's successful receipt for the run starting 2026-10-26 15:54:09 UTC (10:54:09 America/Chicago). This is operator-returned evidence; no independent host probe or protected browser/physical Scan acceptance is claimed.
+
+- Verified FieldWiring and Setup source: `820b154cd664f0cac0d1d8dfd38e47b4fe19df9c` (FieldWiring V0.4.31-field-review; Setup V0.3.91-integrated-power).
+- Application PR463 merge: `2fbd19b812d56158cd4b37ec6938334f944c0c37`. Release tooling PR467 merge: `d4d8147ef2ce410aeab5a59e48687ee1484a2df6`; Windows archive correction PR468 merge: `6527d961dfbc5a3be15b28d8606ea64c794e16ba`.
+- Applied in order: `171_equipment_lifecycle.sql`, `171_equipment_catalog.sql`, `077_add_setup_controller_location.sql`, `078_add_setup_container_pickup.sql`. Earlier breaker/performance migrations were not replayed.
+- Receipt confirms freeze, validated snapshot, all four migrations committed, database validation, both source promotions while fenced, return ONLINE and existing Scan installation gates PASS. The reviewed runner's PASS contract includes existing business-row preservation, new operational rows/nullable-field checks before reopening, health/negative-auth checks and the Container pickup handoff route check.
+- Matching Scan artifact SHA256: `f9b82250df837abb416359a7d2216b26b81fe13fc5b3be0078dcfee91d550521`, enforced by the successful canonical Scan runner. Physical live Scan and protected browser acceptance remain pending.
+- Report: `/home/msbadmin/setup-deployment-reports/PR463-Equipment-Location-20261026T155409Z`.
+- Validated rollback snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr463-equipment-location-PR463-Equipment-Location-20261026T155409Z.dump`.
+- Snapshot SHA256: `81e1cff661cefd2a0c448c42c0a526d773c1964e29edfb9a168badffae8cf780`.
+
+The first attempt (`PR463-Equipment-Location-20261026T154830Z`) stopped before maintenance because Windows Git archive converted LF to CRLF. Its report confirms live Scan/Directus unchanged and disposable cleanup. PR468 corrected archive transport and added Windows regression before this successful run. **Do not rerun the completed release or restore its snapshot as cleanup.**
+
+Remaining acceptance: protected Production Setup Pickup List placement/report; Controller Record Location; Combo Box equipment actions; live CTRL/CONT Scan handoffs. User previously accepted disposable presentation and CLEAN EXIT; physical live Scan was explicitly deferred. #122/#205/#171/#88 remain open as applicable; server PASS alone does not close field acceptance.
+
+## October 25 — PR464 Production server deployment PASS
+
+Greg returned the reviewed release runner's server PASS receipt. This is operator-returned evidence; no independent live host probe or protected Production browser acceptance is claimed.
+
+- FieldWiring installed: `2548edd130b5cebad33a44786bc1811c2b089bf8` / `V0.4.29-breaker-correction`.
+- Setup verified unchanged: `72a94be772f2e4ae8bfaed74051f667fc87201a6` / `V0.3.91-integrated-power`.
+- Application PR464 merge: `af8b6efc0c7a57975071b32fd46bd784e077f2b2`. Release tooling `d339f3cf0956b54f51a464e5c372a5163bc35cb3`; PR465 merge `b8763948b422b9f6fd2f0e39444a8c703b24d2ce`.
+- Report: `/home/msbadmin/setup-deployment-reports/PR464-Breaker-Correction-20261025T225218Z`.
+- Validated rollback snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr464-breaker-correction-PR464-Breaker-Correction-20261025T225218Z.dump`.
+- Snapshot SHA256: `c3a63d77cfb0a49bfec2dc85a634c4707a5c9e954149622bc9383a0d28b217ce`.
+- Only `Database/EngineeringTools/sql/171_unassigned_breaker_correction.sql` applied, with `Database/Acceptance/171_unassigned_breaker_correction_validation.sql`. Command body MD5 is `906289a801cae2e2d85957898984f031`; optimized snapshot remains `1409b5a8bada107ecfd5954c8f49a18d`. Circuit designation uniqueness now applies only to active rows.
+- The reviewed runner's PASS contract proves maintenance/freeze, validated snapshot, migration/validation, existing-row preservation, FieldWiring promotion while fenced and return ONLINE with health/source/negative-auth checks. Detailed evidence remains in the retained report.
+
+Disposable operator acceptance: ST-00 correction/deletion and four recreated single-pole Milbank entries PASS; CLEAN EXIT released8898/source lock and restored the other review branch. No panel records were automatically repaired during deployment. Greg must repeat desired corrections in Production. **Protected Production browser spot check remains pending.** Do not replay this successful migration or restore the snapshot as routine cleanup.
+
+PR463 equipment/cable work is not installed by this release. Its later command migration must reconcile the new installed command body and preserve this correction before review/release; do not weaken the baseline guard. #171/#230 under #122 remain open for Part2 work. Earlier pending-release entries below are historical and superseded by this receipt.
+
+
+## 2026-10-25 — PR457 breaker state/reports — server deployment PASS
+
+**Server deployment PASS; protected Production browser spot check pending.** Greg returned the reviewed maintenance runner's successful receipt. This is operator-returned execution evidence, not an independent host probe. Earlier candidate/pending-release sections below are historical and superseded by this receipt.
+
+- Both `/opt/fieldwiring` and `/opt/msb-setup`: `72a94be772f2e4ae8bfaed74051f667fc87201a6`.
+- FieldWiring `V0.4.26-breaker-reports`; Setup `V0.3.91-integrated-power` (source advanced for the panel map deep link).
+- Application PR457 merge: `c56e3a63c6ad3c0c0d21618a0ef65ec865b25c2c`. Release tooling `7175d3c01f6e3eae218c47d198db7cec5a8cf484`, PR458 merge `c6e88f8a6b81836ec6e38467bc3e4b153ecc4161`. Documentation commits are not deployed source identities.
+- Report: `/home/msbadmin/setup-deployment-reports/PR457-Breakers-20261025T134723Z`.
+- Validated rollback snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr457-breakers-PR457-Breakers-20261025T134723Z.dump`.
+- Snapshot SHA256: `497c958d8bcf9737bcc91af9190461ff6a3da154834f55c24650df8dba7e1002`.
+- Receipt: preflight, maintenance/freeze, snapshot, migration commit, database validation, both source promotions while fenced, and return to service PASS. The reviewed runner's success contract includes controller ONLINE, health, preservation and negative authorization checks; detailed evidence remains in the report.
+- Applied only `Database/EngineeringTools/sql/171_breaker_state.sql`; validated with `Database/Acceptance/171_breaker_state_validation.sql`. No GPX/FLW import, slot-count migration replay or initial-state seeding. **Do not rerun the completed release.**
+
+Protected Production browser acceptance remains pending. Greg will enter observed initial states; technicians must verify outlet assignments and map labels. #171/#230 remain open for Part 2.
+
+## 2026-10-25 — #171/#230 FieldWiring/GIS — server deployment PASS
+
+- PR #319 merged as `6aa23c399cea5dad7ba6b9cef619d469fe024991`; accepted/deployed application `439ab237beaae4ac648e7590f824a774969cd84f`: FieldWiring **V0.4.20-picker-sort**, Setup **V0.3.91-integrated-power**. Release tooling `82bb112e19ec815d0b49c8d1dfed5c604e075490` is a separate identity.
+- Existing maintenance controller: preflight, freeze, validated snapshot, three accepted #171 schema migrations, initial accepted GPX/FLW load, preserved-data validation and return to service all PASS in Greg's receipt.
+- Report: `/home/msbadmin/setup-deployment-reports/PR319-GIS-20261025T062215Z`. Snapshot path/hash remain in that retained report; not separately supplied here.
+- Greg has begun real Production panel inventory and supplied WV-00 Panel 10 evidence. Slot-count and presentation corrections are a follow-up candidate, not an initial-install replay. Preserve live data. Full browser/documentation closeout is not claimed solely from server PASS.
+
+## 2026-10-20 — #419 Phase 2 Work Orders and email — Production PASS
+
+- Installed application: **V1.1.2-manager-utilities**, source `24c0c8e526e032f4a7202a77ed14ab9a30b2459b`; PR #435 merged as `7f88be7d9a6b476fa60688e775b1e044140f5c28`. Infrastructure: Server Management #81, merged PRs #87 and #88.
+- Migrations `002_work_management_due_by.sql` and `003_work_management_mail_delivery.sql` applied through existing #37 maintenance, validated rollback snapshot, independent source promotion and return ONLINE. Server regression: **193 passed**. Shared checkout `17c522c4f8ec06549bf7a6d9e8530c61276203f7` preserved.
+- Upgrade receipt: `/home/msbadmin/work-management-deployment-reports/WO81-service-a6601b10c3e340b7b3e044c1639aee02.txt`.
+- Bounded first delivery: SMTP accepted; Greg explicitly confirmed Inbox receipt. Receipt: `/home/msbadmin/work-management-deployment-reports/WO81-service-2788a2d26bc247e48196e29feae8d0be.txt`.
+- Scheduled mail enabled; Setup timer remained active. Receipt: `/home/msbadmin/work-management-deployment-reports/WO81-service-947799d704a94744a7c95c5e2ee73188.txt`.
+- Capture ON; only legacy email Flows `ebcde355-32c5-4826-b6fa-360621d0d357` and `9a7fb87b-d78e-492b-b2c5-ac3b521b5cf7` inactive, verified by activation gates. Non-mail Flows/operations and historical pending notifications preserved. Worker runs about every minute, bounded to 50 events; uncertain claimed sends are not automatically retried. Setup daily email schedule is separate and unchanged.
+- Greg confirmed the live application working. Utilities is a separate Manager page for fictional no-send email previews. Source templates remain reviewed editable files; this utility does not edit or send them.
+- Disposable SQL PASS/CLEAN EXIT at `61b73293f32ca9b49f3be863e3d9da89095db7a0`: `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261020T234604.txt`. Later Utilities change was presentation-only; no repeat database dump was required.
+- Snapshot path/hash and full preservation evidence reside in retained private server journals; their literal values were not supplied in the abbreviated receipt and are not invented here.
+- **Follow-ups, not deployment failures:** Apps tile publication remains outstanding; all-event recipient coverage and longer-running worker observation are not claimed. Greg's 3–4-second typed-search delay is assigned to his separate performance thread; no performance investigation or change is part of this closeout. Keep #419/#81 open for remaining scope. These documentation commits do not change the installed application SHA.
+
+## 2026-10-17 — #205 Scheduling Board drag-scroll and Crew Captain labels — Production PASS
+
+- Emergency source-only correction under #205/#122: PR [#414](https://github.com/Gregovate/MSB-Production-Database-Project/pull/414) merged at `bcebcedde6c8043d00e26d1c3f72a244a338f76f`. Final source-only release PR [#415](https://github.com/Gregovate/MSB-Production-Database-Project/pull/415) merged at `65ea23dbfa474d50b9ffe8c23f101dbb76f9951c`; exact deployed application target `ec6d3f0e6a6a1cd69dd60256dcb7f76699e07910`, version remains `V0.3.84-direct-crew-cells` with October 17 UI footer/cache pins.
+- Corrects drag-edge auto-scrolling to use the actual right Scheduling Board scroll owner `.setup-board205-right`, after #205 had changed the inner `.setup-board205-board` to non-scrolling overflow. Preserves established crew colors, scheduling and Report Work history. Schedule Annual Task/Move Crew choices now display Captain names, consistent with Perform Work.
+- Greg explicitly reported disposable browser PASS for restored drag-and-drop and Captain names across both screens, then `Setup REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT`. Candidate browser SHA `86d9983d1ba2dff8b9c03b24e25cf6420985143b`; subsequent source-only release updated only browser cache/date and associated source contracts. Setup/FieldWiring and source-release safety/Windows transport GitHub CI PASS prior to merge.
+- Operator reported `PASS: PR414 source-only deployment completed` and `#414 SOURCE-ONLY DEPLOYMENT PASS`, followed by **confirmed PASS in the protected Production browser**. Deployment used the established Setup source-only runner; no schema/data migrations, no #37 database maintenance entry or PostgreSQL rollback archive. Only Setup source/service is intended to be promoted. Exact server report path/fingerprint, old source SHA, and tested counts from the Production run were not supplied in the abbreviated output; do not invent them. Retain the runner report as controlling detail.
+- #205 accepted functional behavior restored. Do not redeploy migrations 075/076 for this repair. This documentation-only closeout commit is not the installed application SHA.
+
 ## 2026-10-16 — Setup V0.3.84 direct crew cells / 2026 estimates — Production PASS
 
 - Owner #205 under #122. Accepted application `723a733ffbea516519c6dd7a20ec75faca10a9c4`; feature PR #394; exact deployed Setup target `7740498e6602f36c8cdfd384791bbafaab71ee9e`, `V0.3.84-direct-crew-cells`. Tooling PR #409 merged at `b3cf229ccde4bcdfda9c27acedebb16ee5a61cda`; tooling/documentation SHAs are distinct from deployed source.

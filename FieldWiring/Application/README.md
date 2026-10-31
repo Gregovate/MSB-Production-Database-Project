@@ -1,8 +1,46 @@
 # FieldWiring Application
 
+Controller QR scans retain the inventory destination. Record Location now opens Setup with the CTRL identity; physical observations use the existing movement audit and offline workflow, separately from controller wiring. The park map reuses the approved lor-controller.svg symbol for recorded controller locations. Pending migration 077 is required with this combined candidate. Equipment actions use solid blue fills and darker hover; earlier pale-fill acceptance failed.
+
 Status: **PRODUCTION-OPERATIONAL — CONTROLLER INVENTORY INTEGRATION ACTIVE**
 
 This folder contains the browser-based FieldWiring application and the read-side Controller Inventory browser experience.
+
+## Current Part 2 candidate — V0.4.35-power-panel-link
+
+FieldWiring temporarily maintains shared additional-equipment type/model references and the existing physical inventory while #230 management remains incomplete. Install Equipment directly records units at the chosen waypoint from model, quantity(default1) and one optional note; no spare-stock prerequisite. Model rename/delete supports cleanup before use. Model seeds and purchase totals create no physical units. Cameras follow the same model/inventory/history workflow. Controllers retain their existing CTRL inventory. Catalog creation uses the existing authorization/revision/audit command contract.
+
+Additional Equipment uses a compact table with one row per unit, its condition, existing lifecycle actions and collapsed history. Cable Test Table and Search are operator PASS on ed9113b3.
+
+Cable history has searchable network-scoped test points, sortable columns, readable tester-local dates and segment-only comparison tables. Unresolved source labels remain explicit. Original FLW inspection verified 1=PASS, 6=FAIL, 8=INFO against all 517 unique tests and embedded JSON status. Regression retains source-derived LinkWare anchors. Same network/unordered accepted endpoints share one comparison regardless of direction, cable ID or length; significant length changes remain visible for replacement review. Waypoint Connections opens with a field summary and collapsed engineering details.
+
+Apply only pending lifecycle then catalog migrations to a disposable current-Production clone; use final catalog validation and cable evidence inspection. No completed migrations are replayed. Exact pinned candidate, CI and complete operator launch block are maintained in PR463. This is not a Production release.
+
+### Earlier V0.4.30 review history
+
+October26 equipment/cable correction: breaker/season controls are hidden before focused rendering. Additional Equipment uses power/network/combo locations plus spares and excludes infrastructure types/models; recorded out-of-scope locations remain for reconciliation. Cable History displays the saved FLW test standard and its nominal rate, not an absent measured-speed field. These changes need disposable browser acceptance; controller payload/cache fixes remain. No new migration.
+
+
+October26 transport evidence: the full2.37MB snapshot took23–25seconds to transfer through preview. Controller deployment now uses `api/power?view=controller`, retaining the same authorized snapshot/revision and only controller-consumed fields. Full snapshot/report consumers and commands are unchanged. Synthetic scale payload falls87%; actual preview bytes and cold-load timing remain pending. This reduces transfer, not the existing SQL computation.
+
+
+PR463 is a disposable review candidate, not a Production deployment. Review of 6963b639 found 6–9 second same-chain controller selection: the correction reuses the page connection snapshot until reload/mutation/page hiding, preserves revision-checked writes, and shares concurrent detail/label reads. Initial cold opening remains separate from this warm-selection fix. Further field timing failed (9–13 seconds); the management-only capability observer now consumes the existing detail response instead of fetching after every DOM mutation. Management-enabled request-count regression replaces the prior incomplete fixture evidence. Additional Equipment is now an inventory-focused route with waypoint/spares selection, per-device lifecycle actions and collapsed connection engineering only for installed locations; global controller guidance and correction history are omitted from this screen. The ea080130 browser review requires changes: cable filters now use catalog networks and retained test endpoints, with unresolved source labels preserved. Cable History skips unrelated rendering, caches its projection and expands older evidence lazily; renewed browser acceptance is pending. It adds equipment TEST/MOVE/REPLACE history to existing site devices, All/Network/Waypoint cable-test browsing and controller presentation corrections. Controller inventory/CTRL identity, LOR authority and accepted power behavior are retained. Labels remain low priority. Only `171_equipment_lifecycle.sql` applies to a PR464 current-Production clone; initial and completed migrations must not be replayed.
+
+Read the [engineering design](../../Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Panel_Circuit_Design.md) and [operator review steps](../../Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/operatorSOP/Panel_Circuit_Capture.md). Server Production is V0.4.29 after PR464; earlier candidate/release descriptions below are historical. Exact candidate acceptance evidence belongs in PR463 and the implementation checkpoint.
+
+## Panel circuit candidate — #171 / #230 under #122
+
+`V0.4.3-panel-circuit-capture` adds `/circuits` and guarded PostgreSQL capture
+commands inside this existing host. Crew can define panels/circuits, assign
+multiple current waypoints, correct feeds, record intermediate equipment and
+network memberships, and preserve separate seasonal observations/activity.
+This is a source candidate, not deployed behavior.
+
+[Panel Circuit Design](../../Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Panel_Circuit_Design.md)
+records the live catalog and mandatory #319 integration boundary. Its old power
+SQL cannot be applied alongside this candidate. The waypoint foundation and
+current approved source remain the separate GIS thread's responsibility.
+No generic database write role or separate user grant store is introduced.
 
 ## GIS v1 candidate — #171 / PR #318 (2026-10-10)
 
