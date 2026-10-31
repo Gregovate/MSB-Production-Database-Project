@@ -35,13 +35,14 @@ from setup_scheduling_board_api import setup_scheduling_board_api
 from setup_work_order_intake_api import setup_work_order_intake_api
 from setup_material_readiness_api import setup_material_readiness_api
 from setup_movement_api import setup_movement_api
+from setup_manager_mail_admin_api import setup_manager_mail_admin_api
 from setup_site_reference_api import site_reference_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.95-map-return"
+PRODUCTION_VERSION = "V0.3.101-manager-placement"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -202,6 +203,7 @@ app.register_blueprint(setup_scheduling_board_api)
 app.register_blueprint(setup_work_order_intake_api)
 app.register_blueprint(setup_material_readiness_api)
 app.register_blueprint(setup_movement_api)
+app.register_blueprint(setup_manager_mail_admin_api)
 app.register_blueprint(site_reference_api)
 
 

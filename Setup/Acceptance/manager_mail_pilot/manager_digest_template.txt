@@ -3,7 +3,7 @@ Good morning $recipient_name,
 2026 SETUP — $report_date
 TOTAL $total_tasks  |  COMPLETED $completed_tasks  |  REMAINING $remaining_tasks
 Blocked / NOT READY: $blocked_tasks
-Task pace: $actual_pace completed/day (last 7 days) vs $required_pace needed/day by November 19
+Task pace: $actual_pace completed/day (last 7 days) vs $required_pace needed/day by November 17
 Task-based projected finish: $projected_finish
 $projection_confidence
 
@@ -11,8 +11,8 @@ CONTAINERS — RECORDED FIELD MOVEMENT
 Reference Containers: $containers_total
 Park setup stop recorded: $containers_park_recorded
 Picked / loaded / on the way: $containers_outbound
-Empty at park (recorded Display associations, not physically verified): $containers_empty_at_park
-Partly unloaded at park (recorded associations): $containers_partial_at_park
+No Displays attached at park (associations, not physical contents): $containers_empty_at_park
+Some Displays detached at park (associations): $containers_partial_at_park
 Returned Home (reported empty return): $containers_returned
 No movement recorded: $containers_no_movement
 Location / status needs review: $containers_location_review
@@ -28,9 +28,9 @@ $captain_tbd_count future assignments with no Captain assigned
 
 WHAT TO DO
 - No work occurred? Use "Reschedule · No work performed." Do not enter fictitious time, crew counts or progress.
-- Work occurred but no report? Help the Captain enter actual work against the original assignment.
-- Work already reported but unfinished? Plan the remaining work. Do not ask for a duplicate report.
-- Unsure? Check with the crew before changing the record.
+- Work occurred? Help the Captain report actual work against the original assignment.
+- Reported but unfinished? Plan continuation; do not duplicate reports.
+- Unsure? Check with the crew first.
 
 PAST ASSIGNMENTS TO VERIFY
 $overdue_lines
@@ -38,9 +38,17 @@ $overdue_lines
 STARTED TASKS NEEDING CONTINUATION
 $continuation_lines
 
+CONTAINER RECORDS AND REVIEW REASONS
+Pickup readiness is not an actual return receipt. Home is assigned storage. Record Location supports new observations.
+
+$container_detail_lines
+
+DISPLAY PLACEMENT VERIFICATION
+$display_detail_lines
+
 Open Setup → Manager Action Center:
 https://my.sheboyganlights.org/setup/
 
-Unresolved items remain in the Manager Action Center until corrected. No Captain reminders are being sent during this pilot; any future Captain reminder requires Manager review and separate activation.
+Unresolved items remain in the Manager Action Center until corrected. Captain reminders remain OFF; activation requires separate Manager approval.
 
 MSB Production DB — automated message; replies are not monitored.

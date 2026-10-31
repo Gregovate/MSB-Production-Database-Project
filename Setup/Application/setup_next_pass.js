@@ -195,6 +195,7 @@ function setupAnnualMilestoneDates(seasonYear) {
 
   const setupComplete = new Date(thanksgiving);
   setupComplete.setUTCDate(setupComplete.getUTCDate() - 7);
+  if (year === 2026) setupComplete.setUTCDate(17);
 
   const foodBankRunWalk = new Date(thanksgiving);
   foodBankRunWalk.setUTCDate(foodBankRunWalk.getUTCDate() - 5);
@@ -856,6 +857,8 @@ function installNextTabs() {
   management.innerHTML = '<div class="card">' +
     '<div class="section-title"><div><div class="eyebrow">Management · 2026 Setup</div>' +
     '<h2>Setup Action Center</h2></div>' +
+    (appState.access?.can_admin_setup
+      ? '<a class="small secondary" href="notifications/" id="setup205-email-admin-link">Email recipients &amp; preview</a>' : '') +
     '<button type="button" class="secondary" id="setup205-actions-refresh">Refresh current actions</button></div>' +
     '<p class="muted">Review original missing reports, unfinished work, and upcoming scheduling risks. ' +
     'Use the actions to open the exact work or crew. Planning and actual work stay separate.</p>' +
@@ -2180,6 +2183,37 @@ function setup205WireManagementNavigation(root) {
 
 // Manager-only #205 Action Center: one source classifier shared by both pages.
 // No email or history writes happen from this read-only worklist.
+function setup205ReadableDate(value) {
+  // Date-only work records must not shift to the preceding Central calendar day.
+  if (!value) return 'Not recorded';
+  const raw = String(value);
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(raw);
+  if (!dateOnly && !/(Z|[+-]\d{2}:?\d{2})$/.test(raw)) return 'Time zone not recorded';
+  const instant = new Date(dateOnly ? raw + 'T12:00:00Z' : raw);
+  if (Number.isNaN(instant.getTime())) return 'Date unavailable';
+  const options = {timeZone:'America/Chicago', month:'short', day:'numeric', year:'numeric'};
+  if (!dateOnly) Object.assign(options, {hour:'numeric', minute:'2-digit', hour12:true, timeZoneName:'short'});
+  return new Intl.DateTimeFormat('en-US', options).format(instant);
+}
+
+function setup205LatestWorkReportHtml(task, button) {
+  const p = task.latest_work_report || {};
+  const safe = value => escapeHtml(String(value));
+  const note = p.progress_note == null ? 'No Report Work note recorded' : p.progress_note;
+  return '<p>Latest Report Work #' + safe(p.setup_task_progress_id ?? 'not recorded') +
+    ' · Work date: ' + safe(setup205ReadableDate(p.performed_on)) +
+    ' · Reported: ' + safe(p.percent_complete ?? 'Not recorded') + '% ' +
+    ' · Reported by: ' + safe(p.recorded_by || 'Attribution not recorded') +
+    ' · Recorded: ' + safe(setup205ReadableDate(p.recorded_at)) +
+    (Date.parse(p.updated_at) > Date.parse(p.recorded_at) ? ' · Updated by: ' + safe(p.updated_by || 'Attribution not recorded') + ' · ' + safe(setup205ReadableDate(p.updated_at)) : '') +
+    '</p><div style="white-space:pre-wrap"><strong>Report Work note:</strong> ' + safe(note) + '</div>' +
+    '<div style="white-space:pre-wrap"><strong>Task completion note:</strong> ' + safe(task.completion_note || 'No task completion note recorded') + '</div>' +
+    (task.blocked_next_tasks || []).map(n => '<p><strong>Next task: ' + safe(n.name) +
+      '</strong> — blocked because this task is incomplete. ' + button('planning', n.id, 'Review next task') + '</p>').join('') +
+    '<p class="muted">Review the original report if the note or reported percentage needs correction.</p>' +
+    (p.setup_work_day_task_id ? button('report', p.setup_work_day_task_id, 'Review original Report Work') : '');
+}
+
 function setup205ActionCenterHtml(board, model) {
   if (!appState.access?.can_manage_setup) return '';
   const k = model || setup205DeadlineKpiModel(board, appState.seasonYear);
@@ -2219,6 +2253,7 @@ function setup205ActionCenterHtml(board, model) {
   const continuations = k.needsRescheduling.map(t => '<strong>' + safe(t.task_name) +
     '</strong> · ' + safe(context(t)) + ' · ' + safe(t.percent_complete ?? 0) +
     '% reported; no current/future continuation. ' +
+    setup205LatestWorkReportHtml(t, button) +
     button('schedule',t.setup_session_task_id,'Plan continuation'));
   const imminent = (board.assignments || []).filter(a => {
     const d = dayById.get(Number(a.setup_work_day_id));
@@ -2318,8 +2353,49 @@ function setup205ActionCenterHtml(board, model) {
     '</section>';
 }
 
-// The same action buttons work on Schedule and Perform Work without inventing
-// unaccepted external URL parameters. All writes remain in existing guarded UI.
+// The same action handlers serve buttons and stable email navigation.
+// All writes remain in the existing guarded UI.
+// Stable email links delegate to the existing guarded Manager screens.
+async function setup205OpenManagerRecord(action, id) {
+  if (!appState.access?.can_manage_setup) throw new Error('Setup Manager permission required.');
+  if (!Number.isSafeInteger(id) || id < 1 || !['report','planning','schedule','day'].includes(action))
+    throw new Error('Invalid Manager record link.');
+  if (action === 'report') {
+    if (await navigateSetupView('perform') === false) return;
+    // A Manager may see all Captains and historic reported occurrences.
+    setupNextState.performCaptainFilter = 'ALL';
+    setupNextState.performCaptainFilterTouched = true;
+    const showAll = document.getElementById('next-perform-show-completed');
+    if (showAll) showAll.checked = true;
+    renderNextExecution();
+    const details = [...document.querySelectorAll('#next-perform-list .next-perform-assignment')]
+      .find(node => Number(node.dataset.assignmentId) === id);
+    if (!details) throw new Error('Original assignment not visible. Verify the 2026 Session and refresh.');
+    const dayContent = details.closest('.next-perform-day-content');
+    if (dayContent?.hidden) {
+      dayContent.hidden = false;
+      const toggle = dayContent.closest('.next-perform-day')?.querySelector('.next-perform-toggle-complete-day');
+      if (toggle) toggle.setAttribute('aria-expanded','true');
+    }
+    details.open = true;
+    details.scrollIntoView({block:'center',behavior:'auto'});
+    await loadNextTaskExecution(details,false);
+    details.querySelector('.next-performed-on')?.focus();
+  } else if (action === 'schedule' ||
+             action === 'planning') {
+    if (await navigateSetupView('schedule') === false) return;
+    if (action === 'schedule') {
+      board205OpenScheduleDialog({kind:'task',id});
+    } else {
+      board205OpenPlanningInfoDialog(id);
+    }
+  } else if (action === 'day') {
+    const d = (setupBoard205State.board.work_days || []).find(x => Number(x.setup_work_day_id) === id);
+    if (await navigateSetupView('schedule') === false) return;
+    if (d) board205FocusWorkDate(d.work_date);
+  }
+}
+
 function setup205WireActionCenter(root) {
   if (!root || root.dataset.setup205ActionsInstalled === '1') return;
   root.dataset.setup205ActionsInstalled = '1';
@@ -2332,40 +2408,7 @@ function setup205WireActionCenter(root) {
     const id = Number(button.dataset.id);
     if (!Number.isSafeInteger(id) || id < 1) return;
     try {
-      if (button.dataset['205Action'] === 'report') {
-        if (await navigateSetupView('perform') === false) return;
-        // A Manager may see all Captains and historic reported occurrences.
-        setupNextState.performCaptainFilter = 'ALL';
-        setupNextState.performCaptainFilterTouched = true;
-        const showAll = document.getElementById('next-perform-show-completed');
-        if (showAll) showAll.checked = true;
-        renderNextExecution();
-        const details = [...document.querySelectorAll('#next-perform-list .next-perform-assignment')]
-          .find(node => Number(node.dataset.assignmentId) === id);
-        if (!details) throw new Error('Original assignment not visible. Verify the 2026 Session and refresh.');
-        const dayContent = details.closest('.next-perform-day-content');
-        if (dayContent?.hidden) {
-          dayContent.hidden = false;
-          const toggle = dayContent.closest('.next-perform-day')?.querySelector('.next-perform-toggle-complete-day');
-          if (toggle) toggle.setAttribute('aria-expanded','true');
-        }
-        details.open = true;
-        details.scrollIntoView({block:'center',behavior:'auto'});
-        await loadNextTaskExecution(details,false);
-        details.querySelector('.next-performed-on')?.focus();
-      } else if (button.dataset['205Action'] === 'schedule' ||
-                 button.dataset['205Action'] === 'planning') {
-        if (await navigateSetupView('schedule') === false) return;
-        if (button.dataset['205Action'] === 'schedule') {
-          board205OpenScheduleDialog({kind:'task',id});
-        } else {
-          board205OpenPlanningInfoDialog(id);
-        }
-      } else if (button.dataset['205Action'] === 'day') {
-        const d = (setupBoard205State.board.work_days || []).find(x => Number(x.setup_work_day_id) === id);
-        if (await navigateSetupView('schedule') === false) return;
-        if (d) board205FocusWorkDate(d.work_date);
-      }
+      await setup205OpenManagerRecord(button.dataset["205Action"], id);
     } catch (error) {
       setAlert(error.message || String(error),'error');
     }

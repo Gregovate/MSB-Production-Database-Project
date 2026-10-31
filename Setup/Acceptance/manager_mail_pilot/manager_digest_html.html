@@ -31,7 +31,7 @@
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#e1e8ee;border-radius:5px;"><tr><td style="height:9px;width:$completion_percent%;background:#279979;border-radius:5px;"></td><td style="height:9px;"></td></tr></table></div>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f3f7fa;margin-top:12px;">
 <tr><td style="padding:14px;vertical-align:top;width:50%;"><div style="font-size:11px;font-weight:bold;color:#526a7e;">ACTUAL / REQUIRED PACE</div><div style="font-weight:bold;font-size:18px;color:#123b57;">$actual_pace <span style="font-size:12px;">/ $required_pace</span></div><div style="font-size:12px;color:#526a7e;">completed tasks/day · last 7 days vs needed</div></td>
-<td style="padding:14px;vertical-align:top;width:50%;"><div style="font-size:11px;font-weight:bold;color:#526a7e;">PROJECTED FINISH</div><div style="font-size:18px;font-weight:bold;color:#123b57;">$projected_finish</div><div style="font-size:12px;color:#526a7e;">Deadline: November 19</div></td></tr></table>
+<td style="padding:14px;vertical-align:top;width:50%;"><div style="font-size:11px;font-weight:bold;color:#526a7e;">PROJECTED FINISH</div><div style="font-size:18px;font-weight:bold;color:#123b57;">$projected_finish</div><div style="font-size:12px;color:#526a7e;">Deadline: November 17</div></td></tr></table>
 <p style="font-size:12px;color:#627588;margin:9px 0 4px;">$projection_confidence</p>
 </td></tr>
 <tr><td style="padding:12px 26px 6px;">
@@ -44,12 +44,12 @@
 <td style="width:33%;background:#edf3f8;border-radius:6px;padding:13px 8px;text-align:center;vertical-align:top;"><div style="font-size:24px;font-weight:bold;color:#123b57;">$containers_outbound</div><div style="font-size:12px;font-weight:bold;">Picked / en route</div></td>
 <td style="width:33%;background:#edf3f8;border-radius:6px;padding:13px 8px;text-align:center;vertical-align:top;"><div style="font-size:24px;font-weight:bold;color:#123b57;">$containers_returned</div><div style="font-size:12px;font-weight:bold;">Returned Home</div></td>
 </tr><tr>
-<td style="width:33%;background:#f5f7f9;border-radius:6px;padding:13px 8px;text-align:center;vertical-align:top;"><div style="font-size:24px;font-weight:bold;color:#123b57;">$containers_empty_at_park</div><div style="font-size:12px;font-weight:bold;">Empty at park*</div></td>
-<td style="width:33%;background:#f5f7f9;border-radius:6px;padding:13px 8px;text-align:center;vertical-align:top;"><div style="font-size:24px;font-weight:bold;color:#123b57;">$containers_partial_at_park</div><div style="font-size:12px;font-weight:bold;">Partly unloaded*</div></td>
+<td style="width:33%;background:#f5f7f9;border-radius:6px;padding:13px 8px;text-align:center;vertical-align:top;"><div style="font-size:24px;font-weight:bold;color:#123b57;">$containers_empty_at_park</div><div style="font-size:12px;font-weight:bold;">No Displays attached*</div></td>
+<td style="width:33%;background:#f5f7f9;border-radius:6px;padding:13px 8px;text-align:center;vertical-align:top;"><div style="font-size:24px;font-weight:bold;color:#123b57;">$containers_partial_at_park</div><div style="font-size:12px;font-weight:bold;">Some Displays detached*</div></td>
 <td style="width:33%;background:#f5f7f9;border-radius:6px;padding:13px 8px;text-align:center;vertical-align:top;"><div style="font-size:24px;font-weight:bold;color:#123b57;">$containers_no_movement</div><div style="font-size:12px;font-weight:bold;">No movement logged</div></td>
 </tr></table>
 <p style="font-size:12px;margin:6px 0 4px;color:#526a7e;">$containers_total reference Containers · $containers_location_review location/status exceptions · $containers_contents_review_history with contents-review history</p>
-<p style="font-size:11px;margin:6px 0 0;color:#66788a;">* Empty and partial are subsets of recorded park stops, inferred from Display associations—not physical empty-container inspections. PICKED does not prove arrival. RETURNED is a reported empty return Home.</p>
+<p style="font-size:11px;margin:6px 0 0;color:#66788a;">* Attachment counts are subsets of recorded park stops, based on Display associations—not physical contents inspections. PICKED does not prove arrival. RETURNED is a reported empty return Home.</p>
 <p style="font-size:11px;margin:5px 0 0;color:#66788a;">As of $containers_snapshot_as_of · Setup Session $containers_session_id</p>
 </div>
 </td></tr>
@@ -84,6 +84,7 @@ $overdue_html_rows
 $continuation_html_rows
 </table>
 </td></tr>
+<tr><td style="padding:15px 26px"><h2>Container records and review reasons</h2><p style="font-size:12px;color:#66788a;">Pickup readiness is not an actual return receipt. Home is assigned storage. Record Location supports new observations.</p><table role="presentation">$container_detail_html</table><h2>Display placement verification</h2><table role="presentation">$display_detail_html</table></td></tr>
 <tr><td style="background:#eef3f7;padding:17px 26px;color:#587085;font-size:12px;">
 Unresolved items stay in the Manager Action Center until corrected. <strong>Captain reminders are OFF</strong> in this review phase and require separate authorization later.
 <div style="margin-top:8px;">MSB Production DB · Automated notice · Replies not monitored.</div>

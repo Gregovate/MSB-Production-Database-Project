@@ -13,6 +13,27 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
+def attach_blocked_successors(tasks: list[dict], dependencies: list[dict]) -> None:
+    """Expose existing unmet edges for review, without changing any task state."""
+    by_id = {int(t['setup_session_task_id']): t for t in tasks}
+    edges = {ident: set() for ident in by_id}
+    for dep in dependencies:
+        source = dep.get('prerequisite_setup_session_task_id')
+        target = dep.get('setup_session_task_id')
+        if source not in by_id or target not in by_id or source == target:
+            continue
+        parent, child = by_id[source], by_id[target]
+        if (dep.get('prerequisite_complete') is not False or parent.get('effective_complete')
+                or parent.get('execution_status') == 'COMPLETE' or child.get('effective_complete')
+                or child.get('execution_status') in {'COMPLETE', 'DEFERRED'}):
+            continue
+        edges[source].add(target)
+    for ident, task in by_id.items():
+        task['blocked_next_tasks'] = [
+            {'id': target, 'name': by_id[target].get('task_name') or f'Task #{target}'}
+            for target in sorted(edges[ident])]
+
+
 class SetupSchedulingBoardRepositoryError(RuntimeError):
     pass
 
@@ -245,6 +266,7 @@ class SetupSchedulingBoardRepository:
                     coalesce(sched.future_assignment_count, 0) AS future_assignment_count,
                     coalesce(sched.unworked_assignment_count, 0) AS unworked_assignment_count,
                     coalesce(sched.historical_assignment_count, 0) AS historical_assignment_count,
+                    latest_report.evidence AS latest_work_report,
                     coalesce(progress.progress_entries, 0) AS progress_entries,
                     coalesce(progress.completed_quantity, 0) AS completed_quantity,
                     coalesce(progress.percent_complete, 0) AS percent_complete,
@@ -488,6 +510,26 @@ class SetupSchedulingBoardRepository:
                     FROM ops.setup_task_progress p
                     WHERE p.setup_session_task_id = st.setup_session_task_id
                 ) progress ON true
+                LEFT JOIN LATERAL (
+                    SELECT jsonb_build_object(
+                        'setup_task_progress_id', p.setup_task_progress_id,
+                        'setup_work_day_task_id', p.setup_work_day_task_id,
+                        'performed_on', p.performed_on,
+                        'percent_complete', p.percent_complete,
+                        'progress_note', p.progress_note,
+                        'recorded_at', p.recorded_at,
+                        'updated_at', p.updated_at,
+                        'recorded_by', coalesce(nullif(btrim(concat_ws(' ', a.first_name, a.last_name)), ''), a.email),
+                        'updated_by', coalesce(nullif(btrim(concat_ws(' ', u.first_name, u.last_name)), ''), u.email)
+                    ) AS evidence
+                    FROM ops.setup_task_progress p
+                    LEFT JOIN ref.person a ON a.person_id = p.created_by_person_id
+                    LEFT JOIN ref.person u ON u.person_id = p.updated_by_person_id
+                    WHERE p.setup_session_task_id = st.setup_session_task_id
+                    ORDER BY p.performed_on DESC NULLS LAST,
+                             p.recorded_at DESC, p.setup_task_progress_id DESC
+                    LIMIT 1
+                ) latest_report ON true
                 WHERE st.setup_session_id = %s
                   AND st.included_flag
                 ORDER BY
@@ -691,6 +733,7 @@ class SetupSchedulingBoardRepository:
                 (session["setup_session_id"], session["setup_session_id"]),
             )
             dependencies = [dict(row) for row in cur.fetchall()]
+            attach_blocked_successors(tasks, dependencies)
 
         return {
             "session": dict(session),

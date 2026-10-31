@@ -95,8 +95,9 @@ def movement_picture(repository, session_id: int, *, include_unobserved: bool = 
                 # Map-only inventory completeness; still in the same read snapshot.
                 cur.execute("""
                     SELECT c.container_id, c.description AS container_name,
-                           c.location_code AS home_location_code
+                           ct.container_type_name, c.location_code AS home_location_code
                     FROM ref.container c
+                    LEFT JOIN ref.container_type ct USING (container_type_id)
                     WHERE NOT EXISTS (
                         SELECT 1 FROM ops.setup_container_state cs
                         WHERE cs.container_id=c.container_id AND cs.setup_session_id=%s

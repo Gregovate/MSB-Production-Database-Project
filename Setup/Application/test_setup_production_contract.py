@@ -191,7 +191,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.95-map-return"
+    assert payload["version"] == "V0.3.101-manager-placement"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
@@ -343,7 +343,7 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "setupPopstateReplay" in production
     assert "window.history.go(-delta)" in production
     assert "window.history.go(pending.delta)" in production
-    assert "['review', 'library', 'extra-materials', 'schedule', 'perform']" in production
+    assert "['review', 'library', 'extra-materials', 'schedule', 'perform', 'action-center']" in production
     assert "navigateSetupView(button.dataset.view)" in production
     assert 'data-view="movement"' not in html
     assert 'id="movement-view"' not in html
@@ -360,8 +360,8 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert 'id="add-task-form" class="add-task-form manager-only" hidden' not in html
     assert "setReusableAddTaskFormOpen(true)" in acceptance
     assert "setReusableAddTaskFormOpen(false)" in acceptance
-    assert "setup_production.js?v=2026-10-21.87r3" in html
-    assert "setup_next_pass.js?v=2026-10-21.87r3" in html
-    assert "setup_scheduling_board.js?v=2026-10-21.87r3" in html
-    assert "Updated 2026-10-27" in html
+    assert "setup_production.js?v=2026-10-31.101" in html
+    assert "setup_next_pass.js?v=2026-10-31.101" in html
+    assert "setup_scheduling_board.js?v=2026-10-31.101" in html
+    assert "Updated 2026-10-31" in html
 

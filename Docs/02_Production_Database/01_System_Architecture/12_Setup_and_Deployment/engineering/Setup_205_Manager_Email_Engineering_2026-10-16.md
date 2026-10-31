@@ -1,0 +1,320 @@
+## October 18 — Return Home inconsistency is NOT the current status-exception counter
+
+Operator's screenshot of the October 18 received message shows **18 Returned Home; 17 Containers with historical contents-review flags; 0 location/status exceptions**. This **zero is misleading as an operational health statement**: `summarize_container_snapshot` calls the remainder of its mutually exclusive status-category partition `containers_location_review`. It never tests current returned Container ↔ attached active Display consistency. In addition, `setup_locate_assets.locate_assets` sets a returned Container's `load_state="EMPTY"` by operational rule, *even if current `ref.display` / `ops.setup_display_state` still record active Displays `WITH_CONTAINER`*. Consequently a returned-but-attached discrepancy like C052/C053 can go missing while the email says “0 exceptions”.
+
+**Required corrective design:** preserve the count but **rename it “Unclassified Container movement status”**, do not present it as zero overall exceptions. Independently calculate **Returned Home with active Displays still recorded WITH_CONTAINER** from the raw current session `movement_picture` snapshot (not `locate_assets.load_state`), distinct by `container_id` and `display_id`. For this operating rule, returned Setup Containers should not still have attached freight; count affected Containers AND distinct Display Names. Classification is **recorded contradiction / needs Manager confirmation**, not physical proof that a loaded Container was actually returned. Avoid misclassifying special Standalone/Display-pallet protected units; use governed #88 type applicability, not ad-hoc guesses. The 17 “with review history” must remain separately labeled historical until durable open/closed review dispositions are available.
+
+**Actionability acceptance:** the protected Manager Action Center needs a `Container Contents & Location Reviews` queue with a **case per Container/current violation**, direct email deep link (after protected browser review), readable Display Names and statuses, movement event IDs/occurred and received times, most recent independent Display events, contents-review flags, and source of operator field confirmation. Manager choices: `Needs field verification`; `Confirm physically installed at named park Stage/location`; `Confirm physical contents still aboard`; `Recorded state incorrect — review guarded repair`; `Resolved after new authoritative movement evidence`. Do not treat choice selection as an automatic event: correction must reuse #88 governed guarded commands and current-state protection, preserve the valid return and any later placements, and audit decision/correction actor/time. Deep links must open the exact Container's Manager review, not generic report or scanner page. Suppress duplicate daily cases once a verified resolution is current, retaining immutable event history. Until #88 provides a real correction/resolve endpoint, the email must expose current conflicts with **“Manager review required — correction not yet available”** and a read-only movement-report link, never a fake Resolve button. This is #205 consumption of #88 manager workflow under #122, not competing #88 implementation.
+
+## October 18 — Manager mail as field/movement reconciliation detector (#88 data consumer)
+
+**Operator goal and ownership:** Record Location has an active #88 field defect that can prevent unloading, so the current location projection may show installed Displays as still with a returned Container / at Workshop. This is separate from unscheduled/unreported physical Setup work. #205 owns **read-only detection, concise daily reporting and Manager Action Center follow-up**. #88 owns movement/event correctness, operator Record Location/HERE-vs-PRIOR flow and audited repair; #171 owns GIS/reference location interpretation. No new movement semantics or automatic data repair are authorized by a Manager email.
+
+**Current confirmed example (user + #88 controlled October 17–18 findings):** **C052 and C053** were reported RETURNED (events 183 and 182, Oct9), but their 16 Tree Wrap Displays each are still attached by the current recorded Display association, while the operator confirmed the wraps **physically installed at Festive Trees**. This is a **confirmed field-versus-recorded-state discrepancy affecting 32 Displays on two Containers**, not proof which person/date should have recorded unloads. Preserve valid return events, historic observations and any newer Display event; never generate arbitrary Oct9 unload events. Other #88 findings such as C216 and C034 have ambiguous or later event effects; do not present their historical state as proven current error until reconfirmed.
+
+**Data sources to reuse read-only, without schema mutations:** Use the current 2026 Setup board's annual task, Display-to-task and completion evidence as applicable; #88 `setup_production_report.movement_picture(repository,setup_session_id,include_unobserved=True)` returns a *repeatable-read* movement event-through-id snapshot, `ops.setup_container_state`, `ops.setup_display_state`, `ref.display`, and event effect rows. #171 `setup_locate_assets.locate_assets(picture)` provides current interpretation of `position_mode`, container attachment, location origin and physical confirmation uncertainty. Expose current observed `display_name` and `CONT:<id>` for human resolution. Never derive display identity from card text or infer physical position from reference Home coordinates.
+
+**Candidate daily diagnostic classifications:**
+
+1. **Field-confirmed conflict, Manager action required:** an approved/recorded field observation identifies specific Display names actually installed in the park while latest #88 attachment/location state still links them to a returned/Workshop Container. This status requires *external physical evidence*; do not manufacture it from mere task progress. C052/C053 are confirmed examples, subject to a fresh current read before publication.
+2. **Possible missing unload or stale location, verification needed:** linked annual task has credible recorded execution/completion or Container delivery evidence, yet one or more relevant Display attachment/location states remain `WITH_CONTAINER`, `RETURNED`, reference Workshop or unresolved. The task-to-Display association must be validated; one completed general Setup task is not proof a particular Display was placed. A `RETURNED` Container is **not** itself wrong; a Container may have been legitimately returned and moved independently. Purely absent movement/GPS data is **missing evidence**, not positive proof of being at Workshop or installed.
+3. **Unreported installed work, Manager scheduling reconciliation:** field observation matches an annual Setup task still `READY_TO_SCHEDULE` / lacking an actual work report. This is a *different* exception from movement discrepancy and must not be collapsed into it. Do not auto-schedule or enter fictitious elapsed time, workday, crew or percent.
+4. **Existing unresolved #88 review:** current, not merely historical, contents-review/movement-state flags needing a Manager decision. Historical review events should be counted separately, not called open unless still unresolved at the latest authoritative state.
+
+**Email composition and actions:** Add a short **Field & Location Reconciliation** section between Container totals and task exception detail. Show counts of **Containers with current mismatches**, **distinct affected Displays**, **possible missing unload/location confirmations**, and **observations needing Manager review**. These are possibly overlapping, **not additive**; label as *recorded conflicts*, not physical location totals. Group the same root Container into one line with affected Display names (use **Display Names**, not meaningless Display numeric IDs, for humans), Stage/Scene if established, current recorded Container/location/mode, field-evidence source/time, event ID, and review state. Cap email detail to a short top-N with a link to a Manager Action Center filter for full names/history; this deep link must be browser-tested before publication. Include explicit 'Review in Setup / Record Location' text without claiming uninstalled pages work. Prefer chronological age/severity priority over guessed spatial proximity.
+
+**Safeguards/acceptance:** Deduplicate by stable Container+affected Display/event identity, refresh state at each 04:00 generation, and remove items automatically from *candidate report results* only when current authoritative data and review disposition support resolution; never delete immutable observations/audit. Operator-confirmed observation is not a movement event. Fail visibly if a required data source is unavailable rather than send a falsely empty "zero discrepancies." Test a returned Container with stale 16 attached while installed, a legitimately returned empty Container, a shared Kit with multiple tasks, a Standalone/Display-Pallet, partial C034/C131 unload, a Display with a later overriding event, GPS missing and an unscheduled task with/without field confirmation. Test actual distinct counts and capture timestamps; no unsupported false positives or writes. Under #122, maintain correct PR/disposable/browser/Production separation. **This feature is specified, not yet deployed in the current bounded daily sender.**
+
+## October 18 — immediate missed digest and bounded season schedule (new governing change)
+
+The operator reports October 17's 04:00 Manager report was actually received, but October 18's was missing because the accepted timer was explicitly *one-day*. Operator now explicitly directs **send the October 18 Manager digest today** and continue **daily at 04:00 America/Chicago only until the show begins OR a user-selected earlier stop date**, never indefinitely.
+
+Current authoritative MSB 2026 show opening: **Friday, 2026-11-27**. Default last send is **Friday, Nov 27 at 04:00 Chicago**, ahead of that day's public opening. A shorter operator-configured `YYYY-MM-DD` stop date may replace it, but never silently extend past Nov 27. The scheduled dates must be bound to the **year 2026** at the systemd calendar level, not just an endless recurring timer with a runtime skip. The October 18 missing report is a distinct, explicitly authorized **immediate one-time Manager DAILY** send of the same current live report, NOT an automatic retroactive catchup, NOT a repeat of October 17, and NOT a Captain message.
+
+**Dispatch requirements:** retain exactly the reviewed seven active recipients via current `ref.person` + (People Manager OR granted Setup Manager capability) and private approved seven-email roster. Preserve Don's onboarding note and Randy's intended Setup Manager access, without editing identities or roles. Source-controlled HTML white MSB PNG in the larger left position remains. Query live 2026 board and #88/#171 Container evidence at actual send time. Display sender `MSB Production DB <no-reply@sheboyganlights.org>`, complete text alternative, per-recipient individualized message. Existing `/var/lib/msb-setup-manager-mail-pilot` ledger is the *one* durable receipt directory: per date+recipient `manager-YYYY-MM-DD-<sha>.json` and purpose `MANAGER_DAILY`; October 17 tests/daily are immutable, October 18 and following days get new keys. Create receipt BEFORE SMTP, never automatically retry unknown delivery. If today's attempt already exists, do not send it twice.
+
+**Two reviewed modes:** `--send-today` allows exactly Oct 18 local day when invoked by operator with explicit missed-day approval guard, not generic unrestricted backfill. `--daily` sends **only between 04:00 and 04:30 Chicago**, on Oct 19 through the configured stop date inclusive. Require existing Google relay/STARTTLS, protected fieldwiring credentials and existing active/authorized Manager audit. Date guard and configured end date are checked in **Python** as well as finite **year-qualified** systemd calendar entries for October/November. Timer `Persistent=false`, no reboot catch-up, no sends after stop, one active seasonal unit/timer, and audit/disable controls as systemd operations. Existing one-day pilot units are historical; do not change their Oct 17 receipts.
+
+**Implementation/authority:** engineering document and SOP first, then candidate sender/regression, **Server Management bounded deployment runbook**, exact-source CI, current-Production read-only preflight, and controlled SSH operator invocation. The ChatGPT scheduler or Gmail connector must not masquerade as Production `msb-prod-db` SMTP delivery. No Setup app restart/migration/Directus Flow/Captain emails. Report activation and delivery separately; no claims of sent until runtime receipt/inbox observed. Any inability to perform the manual send must be reported honestly without inventing deliverability.
+
+# #205 — Manager Email Engineering Authority
+
+| Document control | Value |
+| --- | --- |
+| Owner | Setup #205, subordinate to commanding #122 |
+| Status | Engineering contract for review; **not** Production deployment approval |
+| Initial audience | Active, authorized **Setup Managers only** |
+| Target schedule | October 17, 2026, **04:00 America/Chicago** for first controlled pilot |
+| Current installed application | V0.3.84 / `7740498e6602f` (operator read-only preflight) |
+| Initial Captain sending | **OFF**; zero Captain emails |
+| Runtime authority | `Gregovate/MSB-Server-Management` for systemd, protected environment and installation |
+
+## Authority and sequence
+
+Read this engineering authority together with the [Setup engineering README](README.md) and the existing [#205 KPI/reporting contract](Setup_205_Schedule_Performance_and_Daily_Accountability_Contract_2026-10-15.md). The implementation must use their shared classifications, not an independently invented definition of completion, “late,” or work reported. The [Manager Email Operator Procedure](../operatorSOP/Review_Setup_Manager_Email.md) must be reviewed next, followed by tested implementation, current-Production disposable/live-data review, and **only then a Pull Request and deployment approval**. The [Setup operatorSOP README](../operatorSOP/README.md) provides discoverability.
+
+The earlier draft [application PR #412](https://github.com/Gregovate/MSB-Production-Database-Project/pull/412) includes rejected Directus mail-flow code and incomplete PostgreSQL mail facilities. **Do not install or merge that candidate as the October 17 pilot.** The early Server Management draft PR #79 and ZIP are not accepted installation authority. Preserve the operator's already verified Google relay and live V0.3.84 application.
+
+## Existing architecture — consume it, do not rebuild it
+
+- **PostgreSQL**: source of truth for the 2026 Setup Session, work-day/assignment history, progress, readiness, and people.
+- **Existing people/authorization, corrected after live fieldwiring_app privilege STOP:** **`ref.person` is the source Manager directory** (`active_flag`, `is_manager`, normalized `email`, durable `directus_user_id`). Do **not** join/read `public.directus_users`: the accepted `fieldwiring_app` role deliberately has no SELECT there. Use only the existing `SECURITY DEFINER ref.setup_browser_capabilities(p.email)` to determine current Setup permission; it checks active Directus login and policy internally, without granting direct table access. **`ref.person.is_manager` identifies who the People table calls a Manager; it is not application authorization.** The review screen shows both the People Manager designation and current `can_manage_setup`, with separately labeled *eligible* versus *held / discrepancy* rows. Send eligibility for the initial role-restricted pilot requires an active People Manager entry, an exact unique valid MSB organizational email, a linked Person identity, and current Setup Manager permission. Explicitly HOLD unprovisioned/mismatched/unauthorized candidates for operator review; never silently add a guessed recipient or grant roles. This capability lookup does not independently prove Google Workspace mailbox delivery or provider identity; that remains an acceptance contact check. Requery before send; no Directus table join or new grants.
+- **Cloudflare Access** identifies the signed-in human for interactive actions; existing Setup authorization controls who can preview/change settings. A headless 04:00 sender does not impersonate a Cloudflare user; it uses the server's narrowly scoped read-only DB connection and approved system sender.
+- **Google Workspace SMTP relay**: the existing IP-authorized `smtp-relay.gmail.com:587` with required STARTTLS, verified public source IP `69.21.78.70`, organizational **From** `MSB Production DB <no-reply@sheboyganlights.org>`. Operator-confirmed one-message SMTP acceptance **and Gmail Inbox receipt** Oct 16. Google admin change, SMTP user/password, Synology SMTP or Directus Flow are not required.
+- **Python**: use the current `/opt/fieldwiring/.venv/bin/python` under `fieldwiring`, current protected `/etc/msb-setup/setup.env`, and existing V0.3.84 `SetupSchedulingBoardRepository(dsn).board(2026)`. No new HTTP endpoint, Docker, daemon or second notification provider.
+
+## 4:00 AM first Manager-only report
+
+Freshly compute from the authoritative board at dispatch time, matching the existing Setup KPI definition:
+- **Total / Completed / Remaining**, whole Setup, not Captain-filtered.
+- Distinct unfinished **hard-blocked or NOT READY**, separately enumerate readiness if useful.
+- Last seven calendar days actual effective task completions with verified **actual work dates**; label the task-based pace, required calendar-day pace to **Nov 19**, forecast/date only when evidence permits. Never substitute save/audit timestamps for work dates.
+- **Past scheduled occurrences without valid saved reports** (original task, date, shift, Crew, named Captain/TBD), excluding cancelled/rescheduled no-work cases per current governed history. Do **not** imply the Captain is at fault merely from absence of report.
+- **Reported partially worked tasks needing continuation**, upcoming scheduled readiness/blocker exceptions, and Captain TBD.
+- Clear Manager actions: determine whether work occurred; if no work use the existing audited **Reschedule · No work performed** without fictitious 1%/time; if actual work happened get an accurate report; if already reported partial, schedule continuation; if unknown, investigate/hold. Explain unresolved items continue appearing in Manager action summaries.
+
+Email wording is **two source-controlled editable text templates** with validated variables (subject and body; first-day pilot uses reviewed files, **not permanent user-facing strings in Python**). No hard-coded persons, contact addresses, screenshot stats, or invented links. Use the protected Setup entry `https://my.sheboyganlights.org/setup/`; an exact-assignment email deep link may be added only after browser acceptance. Show actual current Manager/recipient preview before any live test or fan-out.
+
+## Email wording and hierarchy — operator revision
+
+The first draft was rejected as too long and buried the decision-making beneath repeated instructions. **Use a short morning briefing, not a lengthy training manual.** The reviewed order is:
+
+1. **2026 Setup progress immediately:** Total / Completed / Remaining; unique Blocked / NOT READY; last-seven-calendar-day actual task-completion pace versus required pace for **November 19**; projected finish with an explicit evidence/confidence limit. Label the estimate *task-based* and do not imply reliable labor-hour data.
+2. **Manager decisions:** number of past scheduled occurrences **to verify**, started unfinished tasks **needing continuation**, upcoming readiness exceptions and assignments with Captain TBD. Do not add overlapping totals or call someone delinquent because a report is missing.
+3. **Very brief next steps:** **No work** → Manager `Reschedule · No work performed`; **work occurred / no report** → contact Captain to record actual work; **partial report already saved** → schedule continuation, no missing-report nag; **uncertain** → investigate, not guess. Never enter false labor/time/percent.
+4. **Task detail after the instructions:** retain task names and original dates/shift/Crew to make review actionable; don't bury totals beneath a long list. Use the existing authenticated Setup entry until exact task deep links pass browser acceptance.
+5. **Consequence in one neutral sentence:** unresolved items remain visible for Manager follow-up; **Captain notifications remain OFF** during the first pilot. Later Captain mail requires case-by-case Manager approval and separately enabled sending. The first-night pilot does not imply daily recurring email is already active.
+
+Keep the subject concise, body human-readable in Gmail (single-spaced plain text), with no double header, accusations, verbose legal/technical warnings, hard-coded personnel, or repeat explanations. Both `manager_digest_subject.txt` and `manager_digest_template.txt` are editable source-reviewed assets for the first pilot. This remains a reviewed wording **candidate**, not an operator-approved production email.
+
+## Administrator recipient-review interface — mandatory operator-visible acceptance
+
+A command-line recipient count is **not** the management interface. Provide a protected **Email Notifications** review screen reachable from the existing Setup **Manager Action Center** when `can_admin_setup` is true. Use an authenticated Administrator-only route and a matching JSON read endpoint, both guarded by existing trusted Cloudflare+Setup role authority; do not add a second login or new email account.
+
+The screen must show, using **fresh current PostgreSQL data**: the exact names and MSB email addresses of active **`ref.person.is_manager` People Managers**, clearly distinguishing **send-eligible** from **held for missing Setup permission/identity/email**, with an eligible-only audience count and reasons. Show current authorized Managers not designated in People as an identity/role discrepancy for operator reconciliation, never quietly include them. Display the actual SMTP From, 04:00 America/Chicago proposed schedule and category statuses: Manager auto-email **NOT ACTIVATED**, Captain auto-email **OFF**, other recipients **NONE**. Recipients not verified with current directus/capability eligibility are **not** included; never infer actual recipients from a sample or previous screenshot. A recipient review does **not** enable or schedule sends.
+
+Show a **read-only preview of the actual Manager message** generated from the current 2026 Session (whole-Setup totals and exception rows) with a captured/as-of date, so the user can review the very content to be sent. Review controls: **Refresh data**, **Open Setup Action Center**, and **Email template preview** only until the actual one-recipient server SMTP path is accepted. Do not display an active `Send test` or `Enable` button if the function is not connected to an authorized sender; no decorative working-looking controls. A current Administrator who isn't a resolved Manager recipient is not automatically added to the list. Zero eligible Managers, duplicate mailboxes, invalid identities, missing 2026 Session or DB failure must display a clear **STOP**, not a guessed roster or empty sent claim.
+
+The screen must be implemented in the protected Setup application and reviewed on the **exact-current-Production disposable browser candidate**, not substituted by a fabricated ChatGPT interface. No copy of full private Manager roster in GitHub, logs or public previews. This review is prerequisite to sending the user's accepted **one-recipient, real `msb-prod-db` SMTP test**, followed by explicit separate approval for any Manager-wide dispatch and systemd timer. GitHub/ChatGPT Gmail send does not satisfy this test.
+
+## October 17 Gmail review — readable HTML and truthful Container movement
+
+**Operator acceptance feedback:** The actual one-recipient Gmail Inbox message proved live data and SMTP transport, but the large unformatted plain-text task block is **not accepted email presentation**. The digest also omitted Containers **in the park / empty / returned**, a critical operational-progress dimension separate from Setup task completion. Reconcile these against existing #88 state; do not manufacture a new Container status model.
+
+**Delivery presentation:**
+- Deliver `multipart/alternative`: a maintained, readable plain-text fallback PLUS an independently source-reviewed **safe HTML** template. Both display **the same live values**; the HTML is the Gmail default if supported, not an image-only report or external stylesheet. Use inline CSS, approximately 600–680px wide, responsive tables, compact high-contrast headings/label/value hierarchy, adequate mobile text, accessible links and no dynamic scripts or image tracking.
+- Order: **Setup KPI banner** (Total / Complete / Remaining and visual completion rate), **pace/deadline**, **Container field movement** (all counts grounded, evidence notes), **Manager exceptions/actions**, then more detailed rows grouped into skimmable date/crew/task tables. Short guidance once; avoid repeating the same phrase on all twelve continuation rows.
+- Every dynamic personal/task/container value must be HTML-escaped; only source-controlled HTML structure or escaped data is allowed. Plain-text part must remain complete if HTML is unavailable. Never put extra Manager addresses in To/Cc; each Manager receives their individual greeting.
+- Show HTML from the *same renderer* inside the protected Administrator **Email recipients & preview** page (sandboxed preview) for operator review before any further SMTP tests. Do not claim the browser is installed until disposable-browser acceptance and approved deployment.
+
+**Container counts: use the installed #88 read projection**, `setup_production_report.movement_picture` with `include_unobserved=True`, and the existing #171 read-only `setup_locate_assets.locate_assets` interpretation. Both are session-scoped and consume recorded movement/event effects. Do not write to state, reclassify history, or invent a new source of truth.
+
+Required distinctly named, **non-additive where noted** categories:
+- **Containers with park setup-location / stop evidence:** currently `DELIVERED / UNLOADED / STAGED / PLACED / RELOCATED` or a `CONTAINER_MOVE` with a current Stage, named destination or observed coordinates. These are recorded positions, *not an assertion of independently GPS-verified current physical presence*. Exclude RETURNED, PICKED, LOADED, IN_TRANSIT and missing/unknown movement.
+- **Picked / loaded / in transit:** current `PICKED / LOADED / IN_TRANSIT` (not yet confirmed in the park); a PICKED event alone is NOT park delivery.
+- **Recorded empty at park:** a **subset** of park-location Containers with #171 association-derived `load_state=EMPTY`; no active associated Displays remain attached in current recorded state. Explicitly state **physical emptiness is unconfirmed** without a separately verified contents inspection. Never call mere zero known active assignments a confirmed empty Container.
+- **Recorded partially unloaded at park:** a second park subset with `load_state=PARTIAL`.
+- **Returned Home:** current authoritative `movement_status=RETURNED` (or corresponding latest event); separate from at-park. As #88 states, this is a reported empty return to Home, not Workshop GPS proof.
+- **No movement recorded** and **Location/status needs review**: distinguish as separate counts, not a fabricated all-containers-in-Workshop claim. Surface historical contents-review flags as a separate informational count only, not necessarily unresolved.
+- Counts use distinct `container_id`, include entire reference Container scope, show `as of` timestamp/Session and a short scope caveat. Do not sum `empty` and `partial` to the total: they are *subsets* of recorded park positions. If no current Session/read permission/projection, **STOP preview and sending** rather than omit Container progress silently.
+
+The first one-recipient **plain-text** test at 01:45 Central was **received but presentation not accepted**. Do not activate the one-day 04:00 fan-out on the basis of transport alone; Manager roster discrepancies and protected browser preview remain gating items. All Captain mail stays OFF.
+
+## Separate formatted-email test after the initial plaintext Inbox test
+
+The operator's October 17 02:16 UTC-5 live Container preview returned `PREVIEW_ONLY / sent=0`; `HTML characters: 14216` means **HTML was generated, not emailed**. The operator expects to review the formatted Gmail message and stated that no email appeared. Do not misrepresent a no-send query as delivery.
+
+Authorize a **separate, one-recipient formatted-review purpose** named `MANAGER_HTML_REVIEW_TEST`. It must:
+- explicitly select `--html-test-to gliebig@sheboyganlights.org` (an exact, allowlisted current eligible Setup Manager and the previously authorized operator mailbox); reject any other address and any date other than October 17 Central;
+- generate both the complete actual-data plain text **and** the source-controlled styled HTML and pass both to the existing Google STARTTLS relay; prefix the subject **FORMATTED TEST —** for easy separation from the previously received 01:45 `TEST —` message;
+- atomically reserve `html-test-<date>-<recipient-hash>.json` in the same protected `/var/lib/msb-setup-manager-mail-pilot` receipt directory **before SMTP** and record `MANAGER_HTML_REVIEW_TEST`, rather than deleting, resetting, bypassing, or reusing the prior `test-<date>-...` receipt. Do not retry an uncertain SMTP result;
+- require the existing explicit guard flags, never accept a test address as a broadcast recipient list, never create a Captain dispatch path or install a timer, and keep separate fan-out approval as an explicit later gate;
+- display the exact tested From/To/subject, source SHA, current Session/Container count evidence, and whether the outcome is SMTP-accepted versus verified in the operator's actual Gmail Inbox.
+
+Before the operator's single invocation: exact source regression PASS, the already-observed full 2026 live task + Container `--preview` PASS, and a pinned detached worktree. One current operator instruction should request only this separate HTML test, without another no-send preview masquerading as an email. This is not a recurring daily email or a replacement for the protected Administrator recipient interface.
+
+## Approved Setup white logo asset — October 17 visual acceptance
+
+Operator reviewed the actual formatted Gmail message and approved its appearance subject to the **single missing white MSB logo** in the navy header. The exact canonical source already exists in Setup dark-theme code (`Setup/Application/setup_theme.js`):
+
+`https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg`
+
+The operator verified its source in the existing NAS `192.168.5.4/webassets/images/branding`. Reuse this artwork; no hand-drawn/new brand variant, no alternate third-party logo site, no alteration to the approved KPI/movement/recipient/wording layout. Place it above the small “MAKING SPIRITS BRIGHT · PRODUCTION” label, left aligned in the current navy banner, with descriptive `alt`, controlled width, and padding.
+
+**Email-client constraint:** The Setup browser's public SVG is *not equivalent* to a Gmail-ready raster. Gmail image proxies do not consistently render external SVG `<img>` URLs. Prefer a verified PNG export **of that exact existing SVG** hosted on the same MSB-controlled webassets site, following approved #359 publication controls, before claiming Gmail acceptance. Do not invent a PNG URL or claim publication. A temporary source-only SVG `<img>` reference can prove branding integration in the protected browser preview, but **actual Gmail logo display is UNVERIFIED** until an operator opens a received message. Never deploy/send a made-up white PNG, external conversion service, or unapproved provider. Preserve the previously accepted HTML layout and prior delivery receipts. This logo change does not authorize a Manager-wide broadcast or Captain mail.
+
+## FINAL white PNG logo correction — operator October 17 02:55 Central
+
+Operator confirms the **PNG with the same filename stem** exists in the same MSB-owned `webassets/images/branding` folder as the approved Setup dark white SVG. Use this existing email-safe PNG in the *same* HTML email header:
+`https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.png`.
+Remove only the previous SVG `img src`; retain its position, 92px width, descriptive alt, surrounding navy banner, all Setup task/Container KPIs, and recipient logic. Do not introduce image conversion, a new hosting provider, or other email redesign. An acceptance check should verify the image URL exists with PNG media before the sender is invoked; the operator's existing file evidence establishes the intended asset.
+
+The operator asks for **one final Gmail delivery to their own `gliebig@sheboyganlights.org` mailbox**. Create separately titled `FINAL LOGO TEST —` and uniquely keyed `MANAGER_LOGO_REVIEW_TEST` / `logo-test-<date>-<recipient-hash>.json` in the original protected attempt ledger. Keep both prior `test-` and `html-test-` receipts intact; no blanket broadcast, no duplicate/retry, no Captain mail. The original received formatted HTML message is accepted in structure subject to this white-logo correction; verifying actual Gmail logo appearance remains required before later Manager-wide approval.
+
+## October 17 — first 04:00 Manager send requested; enlarged left logo
+
+Operator's final PNG email screenshot confirms branded HTML is readable; requested only **one layout refinement**: move the *same* approved white MSB PNG to the **left of the title and enlarge it**, rather than keeping a small logo above. Use a Gmail-compatible two-column presentational table inside the existing navy header. Keep the same title, subject, recipient eligibility, task/Container calculations, background, and body layout.
+
+At approximately 03:05 Chicago time, the operator explicitly requested turning on the **first 04:00 Manager-only mailing**. This is audience/send intent, **not evidence a server timer exists** or consent to suppress the recipient exceptions. The currently observed directory contains five eligible People Managers (Rick, Greg, Rich, Eric, Tom), one **People Manager held due to absent linked identity** (Don), and one **Setup-authorized person not flagged Manager** (Randy). The existing source intentionally fails closed on held People Managers. **Do not silently omit Don, add Randy, flip People flags, grant Directus privileges, or disable the safeguard.** Resolve the intended recipient scope explicitly with the operator, then compare it to a fresh Production read-only roster before any activation.
+
+To meet 04:00, the governed server runbook must still be accepted and actually executed on msb-prod-db by the authorized SSH operator; a GitHub commit, CI pass, chat promise, or ChatGPT automation cannot activate systemd. Retain the one-time timer and separate approval marker, no persistence/catch-up, no Captain dispatch. If unverified/unfinished by 04:00, fail closed and state no email was sent rather than silently mailing later.
+
+## October 17 urgent authoritative Manager recipient decision
+
+At ~03:12 Central the operator clarified: **Randy was deliberately added as a Setup Manager during launch**, and **Don's missing `ref.person.directus_user_id` is an onboarding synchronization issue expected to resolve at his next sign-in**, not disqualification from receiving the morning Manager email. Operator asks for the first Manager-only report at 04:00.
+
+**Recipient rule for this one report:** Active `ref.person` with a unique valid MSB email and (People Manager `is_manager=true` **OR** current `ref.setup_browser_capabilities(p.email).can_manage_setup=true`). The function is the granted Setup authorization source; `ref.person` is still People/email source. A Person identity link is **not necessary to receive email**: it is a separate application audit/onboarding concern. Record link mismatch as `onboarding_note` in the protected review response, **without editing it or suppressing mail**. A Setup Manager like Randy who is not People-flagged is included based on live Setup capability (operator-confirmed). A People Manager like Don can be emailed even if the Person Directus UUID link is missing; he remains flagged for onboarding. Neither permission escalation nor automatic Person/Directus edits are permitted. Never send to inactive persons, malformed/duplicate/missing mailboxes or a person with neither Manager source.
+
+The first operator-observed roster is seven: Rick (15), Greg (17), Don (18), Randy (19), Rich (22), Eric (29), Tom (31). Require **exact fresh query and explicit matching seven-email roster at dispatch**, no guessed/extra recipients; detect roster drift and fail closed. The approved roster in private systemd runtime is one-day only, not source-coded future mail preferences. No Captain/volunteer mail path. `ref.person.directus_user_id` remediation belongs to the already governed onboarding workflow, not this urgent email.
+
+## Strict safety gates
+
+1. **Manager-only:** the first runner contains no Captain dispatch path. Regardless of draft PR #412 code, do not import `DirectusSetupOutboxClient`, enable old 074 schema/Flow or send to Production Crew.
+2. **Preview first, default no-send:** read-only recipient/count/body preview. Validate current Session and real roster against the protected Setup Action Center. No email on source install or template edit.
+3. **One-recipient test:** actual email only to the authenticated operator's verified current Manager account, after seeing the rendered report and exact From/To. Verify Gmail Inbox received; SMTP `250` alone is “accepted,” not “delivered.”
+4. **Explicit fan-out approval**: only after Manager roster and content test are accepted. The test does not authorize emailing every Manager.
+5. **Single-day timer:** Oct 17 04:00 America/Chicago, not recurring/catch-up; if date or approval missed, fail closed rather than send later unexpectedly. No Captain email, even if 4AM Manager run succeeds.
+6. **No double sends:** unique date+recipient+message-purpose attempt record *before* SMTP. When a provider accepts a message, never claim Inbox delivery. If network outcome is unknown, do **not** retry automatically; preserve audit. Initial isolated pilot may use a dedicated protected on-disk attempt record because no Production schema change is authorized; full #205 system must later use native PostgreSQL outbox, preferences, audit and per-recipient idempotency.
+7. **Production preserved:** no DB write/migration, current Setup checkout update, Setup service restart, Cloudflare/Directus change, or unauthorized systemd install. Server Management must have an accepted **one-shot timer** service/runbook before any Production unit is created. The source-only Setup runbook explicitly excludes unit/environment changes. This is a **runbook gap**, not permission to improvise.
+8. Never expose `setup.env`, passwords or a full private Manager roster in GitHub logs/issues or user-facing public links. Runtime environment is consumed by `fieldwiring` only.
+
+## Acceptance evidence before PR / Production
+
+Document exact candidate SHA/blob hashes, CLI and Python regression, secure template-placeholder handling, Manager eligibility and duplicate tests, cancelled/no-work/partial classification, zero Captain recipients, 4AM timezone validation including no catch-up, protected roster/real-data preview, one Manager received-email review, and status of the Server Management one-shot timer runbook. Operator acceptance comes after exact current-data/email preview. PR merges/docs closeout and Production release approval remain separate gates under #122.
+
+## Broader #205 follow-on, not implied shipped
+
+Manager-facing Admin master and per-audience switches, editable PostgreSQL template editor/history, permanent PostgreSQL notification outbox, Manager-approved Captain follow-up and separate volunteer schedule/event communications all remain unfinished. A bounded first-night Manager pilot does **not** silently activate any of these. Preserve their ownership in the existing #205 contract without expanding the first send into an uncontrolled multi-purpose mail system.
+
+## October 31 urgent actionability repair — #205 under #122
+
+Reuse PR413 and the installed PR452 sender. PR418's migration077 and guarded
+correction UI remain separate; #430/#431 must not block this content repair.
+No schema, movement writes, SMTP/retry/timer/audience/receipt changes.
+Preserve all existing selection predicates and counts. Enrich the selected
+continuations using latest actual Report Work (performed date, then recorded
+ timestamp and progress ID), verbatim note, percentage and recorded attribution.
+Notes never determine inclusion or another task's completion. Every selected
+note is presented for Manager task-boundary review, without guessing semantics.
+
+Use #88 movement_picture and #171 locate_assets read models. Keep association
+counts unchanged but explicitly distinguish physical contents reconciliation
+from assigned membership. Parse existing contents_reconciliation event evidence;
+retain original flagged reasons and dates. No deployed review ledger means
+resolution is unverified, not automatically open or resolved. Pickup readiness consumes the existing #078 setup_container_pickup_list view,
+whose REQUEST requires an explicit empty confirmation and whose cancellation /
+later RETURNED receipt removes the request. Include source ID, actor and date.
+Recorded Standalone Display type identifies integral show equipment; other types
+do not establish integral/removable membership. Never infer readiness from type,
+Display count or park stop. Return receipt is independent.
+
+Display rows use actual movement effects and state, including WITH_CONTAINER,
+independent scans, inferred unloads, missing evidence and contradictions. A
+DISPLAY_MOVE is a location observation, not #431 final-position confirmation.
+Without deployed #431, final Setup verification is unavailable. Link existing
+Record Location asset selection for field observation and say "Manager correction
+workflow pending" for historical corrections. Do not call an unscanned Display
+missing. Do not manufacture final-position or pickup flags.
+
+Use existing Record Location ?asset=CONT:/DISP: navigation, which preselects
+but does not save. Expose annual-task/assignment parameters only with a tested
+adapter to existing Manager Action Center handlers; no new write commands.
+HTML/text share the same row detail strings and exact record URLs. Full details
+are not silently truncated. No-send preview must preserve the exact current
+23 continuation identities and include every existing note; synthetic tests
+cannot establish that Production-data acceptance. Read-only current-Production
+clone, Greg's exact preview review and existing #122 installation remain gates.
+
+Runtime gap: Server PR95's installer is October22-only and explicitly preserves
+all templates. This release changes content/templates, so that installer cannot
+be invoked unchanged. Update the existing Server Management procedure/installer
+before installation; never use its recovery/send path or bypass its guards.
+
+Validation details: existing legacy #88 V0.3.50 installer tests are restored to
+PR418's hash-asserted historical fixture (blob f74e6fe032b3d55e40698be86f0b412aa621db14),
+not changed to accept new report SQL. No installer behavior or permissions changed.
+The old activation calendar test now pins its historical base date, preserving
+its timezone/DST assertions without depending on the actual day. Delivery units
+are unchanged. New read-only SQL runs through existing ValidationPaths; it does
+not create a new runner. Full details remain available in both MIME alternatives;
+HTML safety bound is 2 MB because a complete active Display inventory can exceed
+the former 150 KB bound. Inbox clients may clip long messages; preview review
+must evaluate actual size before release, without silently dropping records.
+The report deadline is corrected to Greg's November17; task/count predicates
+remain unchanged. The shared linked Work Order exemption from PR452 is retained.
+
+CI reconciliation: parser-only tests now execute their bounded source prefix as
+a temporary script, matching the real runner BASH_SOURCE context across Bash
+versions. They still stop before runtime actions; no production runner changed.
+
+### Failed disposable review follow-up (2026-10-31)
+
+Greg's preview returned 503 and Action Center omitted work notes. CLEAN EXIT
+confirms cleanup only; candidate 4ca183d is HOLD, not accepted. The browser
+preview must use the application's configured disposable DSN, while the sender's
+production-only connection guard remains unchanged. Add safe stage diagnostics
+without exposing connection strings. The existing disposable runner must GET
+and validate the actual no-send preview before READY when the #205 read-only
+validation is selected. No email may be sent by that check.
+
+Extend the existing board read model with latest Report Work evidence using the
+same work-date/audit ordering as the digest. Display original note, date, percent
+and available attribution in every selected continuation row, with the existing
+original-report action where an assignment is recorded. Preserve all selection
+and aggregate predicates. Align the 2026 shared browser milestone to November17;
+other years retain the annual policy. Retest and publish a new exact candidate
+for disposable review; do not install or treat the failed preview as acceptance.
+
+### October31 readability review
+
+Greg confirms both views now render but requests human-readable timestamps and
+completion notes for review. Show audit instants in America/Chicago with AM/PM
+and CST/CDT; keep work dates as calendar dates without timezone shifting. Never
+label creation as a correction when audit timestamps match. Preserve original
+Report Work text and separately expose the existing annual completion_note;
+replace repeated task-boundary boilerplate with concise original-report review
+instructions. No note interpretation, state changes or new correction workflow.
+
+### Container readability follow-up
+
+Greg requests shorter Container explanations while keeping summary cards. Keep
+all rows, aggregate counts and evidence decisions. Use compact labeled facts;
+show an event once when last movement and load observation share its identity.
+Retain exact per-event review reasons and links. Put shared interpretation/action
+limits once before the list, retaining the required pending-correction wording.
+Keep HTML and text consistent; no movement or workflow changes.
+
+Greg's GPS follow-up: migration070 explicitly creates inferred unload events at
+the prior Container anchor. Expose this provenance and per-Container Display
+evidence counts, including exact shared-GPS groups. Equal coordinates alone do
+not prove misplaced Displays; neither unload nor independent scan establishes
+#431 final position. No mutation or new completion state is introduced.
+
+Relabel the unchanged association-derived empty/partial summary counts as No
+Displays attached / Some Displays detached, to avoid suggesting physical emptiness.
+
+### Blocked next-task explanation
+
+Greg requests completion notes plus explicit next-task blocking relationships in
+both views. Extend the existing board read model using its current dependency
+rows: only an explicitly incomplete prerequisite and an included, unfinished,
+non-deferred successor qualify. Deduplicate annual task IDs; do not infer edges
+from prose or task names. Show each successor and existing planning-review link.
+Do not imply completing one prerequisite clears all other gates. Preserve all
+counts, task selection, original notes and scheduler enforcement/filtering.
+
+### Accepted independent placement scans — Greg's October31 correction
+
+Supersedes the blanket #431 final-position restriction for this report. Greg
+confirms Candyland Bench Displays72/88 and Glistening Grove630/620 were separately
+scanned in position. Existing independent CAMERA_SCAN/HID_SCAN DISPLAY_MOVE
+evidence with matching single-Display DETACHED effect and current
+DETACHED state qualifies as In position for reporting. Exclude these from Display
+placement exceptions; do not create a new persisted state or require #431.
+Inferred unloads, grouped events, absent independent scan evidence, conflicting membership and
+shared GPS among Displays from one Container remain review items. Apply the same
+classification to the per-Container evidence line. Preserve all original movement
+and task/Container counts and records. This says nothing about wiring or testing.
+
+Greg further confirms: independently scanned means inferred In position. GPS
+availability alone must not disqualify an otherwise independent Display scan.

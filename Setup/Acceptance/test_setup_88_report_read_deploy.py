@@ -207,7 +207,10 @@ def test_legitimate_work_after_off_does_not_trigger_preservation_rollback(deploy
 
 
 def test_exact_validation_is_bound_to_report_statements():
-    source=Path(__file__).parents[1].joinpath('Application/setup_production_report.py').read_text()
+    # This installer is pinned to V0.3.50, not today's evolving report.
+    pinned=Path(__file__).with_name('fixtures').joinpath('setup_88_report_v0350_source.txt')
+    assert mod.git_blob(pinned.read_bytes())=='f74e6fe032b3d55e40698be86f0b412aa621db14'
+    source=pinned.read_text()
     validation=Path(__file__).with_name('setup_88_report_read_validation.sql').read_text()
     assert all(q.replace('%s',':report_session_id') in validation for q in mod.report_queries(source))
     assert mod.git_blob(Path(__file__).parents[1].joinpath('Database/071_grant_setup_container_type_report_read.sql').read_bytes())==mod.MIGRATION_BLOB
