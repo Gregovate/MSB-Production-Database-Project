@@ -2183,19 +2183,32 @@ function setup205WireManagementNavigation(root) {
 
 // Manager-only #205 Action Center: one source classifier shared by both pages.
 // No email or history writes happen from this read-only worklist.
+function setup205ReadableDate(value) {
+  // Date-only work records must not shift to the preceding Central calendar day.
+  if (!value) return 'Not recorded';
+  const raw = String(value);
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(raw);
+  if (!dateOnly && !/(Z|[+-]\d{2}:?\d{2})$/.test(raw)) return 'Time zone not recorded';
+  const instant = new Date(dateOnly ? raw + 'T12:00:00Z' : raw);
+  if (Number.isNaN(instant.getTime())) return 'Date unavailable';
+  const options = {timeZone:'America/Chicago', month:'short', day:'numeric', year:'numeric'};
+  if (!dateOnly) Object.assign(options, {hour:'numeric', minute:'2-digit', hour12:true, timeZoneName:'short'});
+  return new Intl.DateTimeFormat('en-US', options).format(instant);
+}
+
 function setup205LatestWorkReportHtml(task, button) {
   const p = task.latest_work_report || {};
   const safe = value => escapeHtml(String(value));
   const note = p.progress_note == null ? 'No Report Work note recorded' : p.progress_note;
   return '<p>Latest Report Work #' + safe(p.setup_task_progress_id ?? 'not recorded') +
-    ' · Work date: ' + safe(p.performed_on || 'Not recorded') +
+    ' · Work date: ' + safe(setup205ReadableDate(p.performed_on)) +
     ' · Reported: ' + safe(p.percent_complete ?? 'Not recorded') + '% ' +
     ' · Reported by: ' + safe(p.recorded_by || 'Attribution not recorded') +
-    ' · Recorded: ' + safe(p.recorded_at || 'Not recorded') +
-    (p.updated_by ? ' · Corrected by: ' + safe(p.updated_by) + ' at ' + safe(p.updated_at || 'Not recorded') : '') +
-    '</p><div style="white-space:pre-wrap">' + safe(note) + '</div>' +
-    '<p class="muted">Manager task-boundary review: confirm what remains within this task; ' +
-    'a note about another task does not change either task’s status.</p>' +
+    ' · Recorded: ' + safe(setup205ReadableDate(p.recorded_at)) +
+    (Date.parse(p.updated_at) > Date.parse(p.recorded_at) ? ' · Updated by: ' + safe(p.updated_by || 'Attribution not recorded') + ' · ' + safe(setup205ReadableDate(p.updated_at)) : '') +
+    '</p><div style="white-space:pre-wrap"><strong>Report Work note:</strong> ' + safe(note) + '</div>' +
+    '<div style="white-space:pre-wrap"><strong>Task completion note:</strong> ' + safe(task.completion_note || 'No task completion note recorded') + '</div>' +
+    '<p class="muted">Review the original report if the note or reported percentage needs correction.</p>' +
     (p.setup_work_day_task_id ? button('report', p.setup_work_day_task_id, 'Review original Report Work') : '');
 }
 

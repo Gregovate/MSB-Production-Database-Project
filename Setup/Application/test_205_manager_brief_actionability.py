@@ -110,3 +110,21 @@ def test_authoritative_pickup_request_is_not_actual_return_or_association_empty(
     # Cancellation / later return are removed by existing #078 view, not inferred here.
     source['pickup_requests']=[]
     assert 'Confirmed Ready for Pickup' not in mail.movement_details(source,locate_assets(source))['container_detail_lines']
+
+
+def test_readable_central_dates_completion_note_and_actual_update_only():
+    assert mail.readable_date('2026-10-31T00:40:30.485476+00:00') == 'Oct 30, 2026 at 7:40 PM CDT'
+    assert mail.readable_date('2026-11-02T00:40:30Z') == 'Nov 1, 2026 at 6:40 PM CST'
+    assert mail.readable_date('2026-10-30') == 'Oct 30, 2026'
+    assert mail.readable_date(None) == 'Not recorded'
+    row = dict(id=422, name='Tree', percent='97', completion_note='Assembly done; <power> remains.', url=mail.record_url('planning',422))
+    report = {'continuation_rows':[row]}
+    evidence = {422:dict(setup_work_day_task_id=222, progress_note='Guy wire added', recorded_by='Tom', updated_by='Tom',
+                        recorded_at='2026-10-31T00:40:30.485476+00:00', updated_at='2026-10-31T00:40:30.485476+00:00')}
+    mail.enrich_continuations(report,evidence)
+    assert 'Updated by' not in row['detail'] and 'Corrected by' not in row['detail']
+    assert 'Task completion note: Assembly done; <power> remains.' in row['detail']
+    assert row['url'] == mail.record_url('report',222)
+    evidence[422]['updated_at'] = '2026-11-02T00:40:30Z'
+    mail.enrich_continuations(report,evidence)
+    assert 'Updated by: Tom' in row['detail'] and '6:40 PM CST' in row['detail']

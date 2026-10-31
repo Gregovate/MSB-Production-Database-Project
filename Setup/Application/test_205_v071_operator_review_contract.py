@@ -47,9 +47,9 @@ def test_day_and_crew_identity_and_visible_actions():
 
 def test_version_and_asset_pins_change_together():
     html = source("production.html")
-    assert "2026-10-31.97" in html
-    assert "V0.3.97-manager-brief-preview" in source("production_backend.py")
-    assert "V0.3.97-manager-brief-preview" in source("setup_catalog_dirty_guard.js")
+    assert "2026-10-31.98" in html
+    assert "V0.3.98-manager-brief-notes" in source("production_backend.py")
+    assert "V0.3.98-manager-brief-notes" in source("setup_catalog_dirty_guard.js")
 
 
 def test_new_crew_move_preserves_captain_inside_one_guarded_transaction():

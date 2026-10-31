@@ -88,3 +88,15 @@ attribution; original report links; both email alternatives; Container/Display
 record links. Record any changed live count explicitly instead of forcing 23.
 Any 503 or missing note remains HOLD even if cleanup succeeds. No production
 installation or email is authorized by this preview.
+
+## Readability follow-up
+
+Greg's replacement preview renders both views; review remains open for date/time
+readability and completion-note visibility. V0.3.98-manager-brief-notes shows
+Central audit times (AM/PM, CST/CDT), calendar work dates, original Report Work
+notes and separate stored task completion notes. Identical creation/update audit
+times do not claim a correction. Later audit changes are labeled Updated.
+Email original-report links use the recorded assignment when available; fallback
+remains the supported annual planning screen. No new correction workflow exists.
+Check the example UTC 2026-10-31 00:40 becomes Oct30 7:40 PM CDT, and confirm original
+note text and task counts remain unchanged. Production installation stays HOLD.

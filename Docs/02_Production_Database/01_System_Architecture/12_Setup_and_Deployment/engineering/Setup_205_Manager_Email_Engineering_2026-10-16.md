@@ -264,3 +264,13 @@ original-report action where an assignment is recorded. Preserve all selection
 and aggregate predicates. Align the 2026 shared browser milestone to November17;
 other years retain the annual policy. Retest and publish a new exact candidate
 for disposable review; do not install or treat the failed preview as acceptance.
+
+### October31 readability review
+
+Greg confirms both views now render but requests human-readable timestamps and
+completion notes for review. Show audit instants in America/Chicago with AM/PM
+and CST/CDT; keep work dates as calendar dates without timezone shifting. Never
+label creation as a correction when audit timestamps match. Preserve original
+Report Work text and separately expose the existing annual completion_note;
+replace repeated task-boundary boilerplate with concise original-report review
+instructions. No note interpretation, state changes or new correction workflow.

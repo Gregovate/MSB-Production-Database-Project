@@ -160,7 +160,7 @@ def report_work_evidence(dsn: str, task_ids: list[int]) -> dict:
             cur.execute("SET LOCAL statement_timeout = '30s'")
             cur.execute("""
                 SELECT DISTINCT ON (p.setup_session_task_id)
-                       p.setup_session_task_id, p.setup_task_progress_id,
+                       p.setup_session_task_id, p.setup_task_progress_id, p.setup_work_day_task_id,
                        p.performed_on, p.percent_complete, p.progress_note,
                        p.recorded_at, p.updated_at,
                        coalesce(nullif(btrim(concat_ws(' ', a.first_name, a.last_name)),''),
@@ -177,23 +177,53 @@ def report_work_evidence(dsn: str, task_ids: list[int]) -> dict:
             return {int(r["setup_session_task_id"]):dict(r) for r in cur.fetchall()}
 
 
+def readable_date(value: object) -> str:
+    """Work dates are calendar dates; audit instants explicitly use Central time."""
+    if not value:
+        return "Not recorded"
+    try:
+        raw = str(value)
+        if len(raw) == 10:
+            d = date.fromisoformat(raw)
+            return f"{d:%b} {d.day}, {d.year}"
+        instant = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if instant.tzinfo is None:
+            return "Time zone not recorded"
+        local = instant.astimezone(CHICAGO)
+        return f"{local:%b} {local.day}, {local.year} at {local.hour % 12 or 12}:{local:%M %p %Z}"
+    except (TypeError, ValueError):
+        return "Date unavailable"
+
+
+def report_was_updated(report: dict) -> bool:
+    """Only a later audit instant supports an update label, not insert defaults."""
+    try:
+        recorded = datetime.fromisoformat(str(report.get("recorded_at")).replace("Z", "+00:00"))
+        updated = datetime.fromisoformat(str(report.get("updated_at")).replace("Z", "+00:00"))
+        return updated > recorded
+    except (TypeError, ValueError):
+        return False
+
+
 def enrich_continuations(report: dict, evidence: dict) -> None:
     """Never change selection or completion based on a note's wording."""
     for row in report["continuation_rows"]:
         p = evidence.get(row["id"], {})
+        if p.get("setup_work_day_task_id"):
+            row["url"] = record_url("report", p["setup_work_day_task_id"])
         note = p.get("progress_note")
         row["note"] = note if note is not None else "No Report Work note recorded"
         row["detail"] = (
             f"Annual task #{row['id']} · {row['percent']}% current · "
             f"Report Work #{p.get('setup_task_progress_id', 'not recorded')} · "
-            f"Work date: {p.get('performed_on') or 'Not recorded'} · "
+            f"Work date: {readable_date(p.get('performed_on'))} · "
             f"Report percentage: {p.get('percent_complete') if p.get('percent_complete') is not None else 'Not recorded'} · "
             f"Reported by: {p.get('recorded_by') or 'Attribution not recorded'} · "
-            f"Recorded: {p.get('recorded_at') or 'Not recorded'}" +
-            (f" · Corrected by: {p['updated_by']} at {p.get('updated_at')}" if p.get('updated_by') else '') +
+            f"Recorded: {readable_date(p.get('recorded_at'))}" +
+            (f" · Updated by: {p.get('updated_by') or 'Attribution not recorded'} · {readable_date(p.get('updated_at'))}" if report_was_updated(p) else '') +
             "\nReport Work note: " + row["note"] +
-            "\nManager task-boundary review: confirm what remains within this task; "
-            "a note about another task does not change either task's status."
+            "\nTask completion note: " + (row.get("completion_note") or "No task completion note recorded") +
+            "\nReview the original report if the note or reported percentage needs correction."
         )
     report["continuation_lines"] = rows_text(report["continuation_rows"])
 
@@ -208,7 +238,7 @@ def event_text(e: dict) -> str:
     if not location and e.get('gps_latitude') is not None and e.get('gps_longitude') is not None:
         location = f"GPS {e['gps_latitude']}, {e['gps_longitude']}"
     return (f"#{e.get('setup_movement_event_id', 'none')} {e.get('event_type') or 'No movement recorded'}; "
-            f"{location or 'Location not recorded'}; {e.get('occurred_at') or 'Date not recorded'}; "
+            f"{location or 'Location not recorded'}; {readable_date(e.get('occurred_at'))}; "
             f"{e.get('capture_method') or 'Source not recorded'}; "
             f"{e.get('recorded_by_name') or e.get('captured_operator_email') or 'Actor not recorded'}")
 
@@ -258,10 +288,10 @@ def movement_details(picture: dict, projected: dict) -> dict:
         pickup = pickups.get(ident)
         if pickup:
             status = (f"Confirmed Ready for Pickup — active request #{pickup['pickup_event_id']}; "
-                      f"{pickup['requested_at']}; {pickup['operator_email']}; "
+                      f"{readable_date(pickup['requested_at'])}; {pickup['operator_email']}; "
                       f"{pickup.get('stage_name') or ''} / {pickup.get('location_note') or ''}. "
                       "This is an empty/pickup confirmation, not an actual return receipt")
-            load_label += f"; pickup empty confirmation also recorded at {pickup['requested_at']}"
+            load_label += f"; pickup empty confirmation also recorded at {readable_date(pickup['requested_at'])}"
         else:
             status = 'Returned Home — actual RETURNED record' if c.get('reported_home') else 'Pickup readiness unverified — no active request'
         kind = state.get('container_type_name')
@@ -361,7 +391,7 @@ def summarize_container_snapshot(containers: list[dict], generated_at: object) -
         "containers_park_recorded","containers_outbound","containers_returned",
         "containers_no_movement","containers_location_review")) != len(containers):
         raise PilotStop("Container movement categories did not partition the inventory")
-    counts["containers_snapshot_as_of"] = str(generated_at)
+    counts["containers_snapshot_as_of"] = readable_date(generated_at)
     counts["containers_evidence_note"] = (
         "Recorded #88 movement/#171 associations. Picked is not park delivery; "
         "empty/partial are subsets of recorded park stops and not physical inspections."
@@ -491,6 +521,7 @@ def summarize(board: dict, today: date) -> dict:
             "url":record_url("planning", t["setup_session_task_id"]),
             "name":str(t.get("task_name") or "Unnamed task"),
             "stage":str(t.get("stage_name") or t.get("stage_key") or "Site-wide"),
+            "completion_note":t.get("completion_note"),
             "percent":str(t.get("percent_complete") or 0)
         } for t in continuations],
         "overdue_lines":lines([
