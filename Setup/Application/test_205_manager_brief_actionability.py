@@ -47,8 +47,8 @@ def picture():
                      dict(setup_movement_event_id=2,container_id=52,event_type='RETURNED',occurred_at='2026-10-30',notes=''),
                      dict(setup_movement_event_id=3,container_id=131,event_type='CONTAINER_MOVE',occurred_at='2026-10-30',
                           notes='contents_reconciliation={"decision":"EMPTY"}'),
-                     dict(setup_movement_event_id=4,display_id=4,event_type='DISPLAY_MOVE',movement_effect='DETACHED',occurred_at='2026-10-30',notes=''),
-                     dict(setup_movement_event_id=5,display_id=5,event_type='TASK_UNLOAD',movement_effect='DETACHED',occurred_at='2026-10-30',notes='inferred_unload=true')],
+                     dict(setup_movement_event_id=4,display_id=4,event_type='DISPLAY_MOVE',movement_effect='MOVED',occurred_at='2026-10-30',notes=''),
+                     dict(setup_movement_event_id=5,display_id=5,event_type='TASK_UNLOAD',movement_effect='UNLOADED',occurred_at='2026-10-30',notes='inferred_unload=true')],
         displays=[dict(display_id=1,display_name='Integral identity unverified',container_id=9,position_mode='WITH_CONTAINER'),
                   dict(display_id=2,display_name='Stale returned association',container_id=52,position_mode='WITH_CONTAINER'),
                   dict(display_id=3,display_name='No scan',container_id=None,position_mode='NO_ASSIGNED_CONTAINER'),
@@ -63,7 +63,7 @@ def test_movement_details_do_not_promote_associations_or_scans_to_physical_compl
     details = mail.movement_details(source,projected)
     assert source == before
     assert counts == mail.summarize_container_snapshot(projected['containers'], source['generated_at'])
-    containers = details['container_rows']; displays = details['display_rows']
+    containers = details['container_inventory_rows']; displays = details['display_rows']
     assert 'Recorded cargo remains' in containers[0]['detail']
     assert 'NOT_EMPTY without identifying remaining cargo' in containers[0]['detail']
     assert 'resolution unverified' in containers[0]['detail']
@@ -75,7 +75,7 @@ def test_movement_details_do_not_promote_associations_or_scans_to_physical_compl
     assert 'No usable placement evidence' in displays[2]['detail']
     assert 'final position unconfirmed' in displays[3]['detail']
     assert 'not a physical Display scan' in displays[4]['detail']
-    for r in containers + displays:
+    for r in displays:
         assert mail.PENDING in r['detail']
         assert '/record-location/?asset=' in r['url']
     assert 'Confirmed final' not in details['display_detail_lines']
@@ -100,14 +100,14 @@ def test_authoritative_pickup_request_is_not_actual_return_or_association_empty(
                                     operator_email='crew@example.com',stage_name='Command Center',location_note='Gate')]
     source['containers'][0]['container_type_name']='Standalone Display'
     result=mail.movement_details(source,locate_assets(source))
-    assert 'Integral show equipment' in result['container_rows'][0]['detail']
-    row=result['container_rows'][2]
+    assert 'Integral show equipment' in result['container_inventory_rows'][0]['detail']
+    row=result['container_inventory_rows'][2]
     assert 'Confirmed Ready for Pickup' in row['detail']
-    assert 'not an actual return receipt' in mail.DEFAULT_TEMPLATE.read_text()
-    assert 'not an actual return receipt' in mail.DEFAULT_HTML_TEMPLATE.read_text()
+    assert 'Only Containers needing action' in mail.DEFAULT_TEMPLATE.read_text()
+    assert 'Only Containers needing action' in mail.DEFAULT_HTML_TEMPLATE.read_text()
     assert 'request #7' in row['detail'] and 'crew@example.com' in row['detail']
     assert '/container-pickups/?asset=CONT%3A131' in row['url']
-    assert 'Returned Home' in result['container_rows'][1]['detail']
+    assert 'Returned Home' in result['container_inventory_rows'][1]['detail']
     # Cancellation / later return are removed by existing #078 view, not inferred here.
     source['pickup_requests']=[]
     assert 'Confirmed Ready for Pickup' not in mail.movement_details(source,locate_assets(source))['container_detail_lines']
@@ -135,7 +135,7 @@ def test_container_rows_do_not_repeat_event_evidence_or_shared_explanations():
     source = picture()
     source['effect_rows'][0]['recorded_by_name'] = 'Tom Shircel'
     result = mail.movement_details(source, locate_assets(source))
-    row = result['container_rows'][0]
+    row = result['container_inventory_rows'][0]
     assert row['detail'].count('Tom Shircel') == 1
     assert 'same event as last movement' in row['detail']
     assert '#1: Operator reported NOT_EMPTY without identifying remaining cargo' in row['detail']
@@ -207,7 +207,7 @@ def independently_scanned_picture():
         source['displays'].append(dict(display_id=ident, display_name=f'Display {ident}',
             container_id=container, position_mode='DETACHED', last_movement_event_id=event_id))
         source['effect_rows'].append(dict(setup_movement_event_id=event_id, display_id=ident,
-            event_type='DISPLAY_MOVE', movement_effect='DETACHED', capture_method='CAMERA_SCAN',
+            event_type='DISPLAY_MOVE', movement_effect='MOVED', capture_method='CAMERA_SCAN',
             gps_latitude=lat, gps_longitude=lon, recorded_by_name=actor, notes=''))
     return source
 
@@ -220,8 +220,8 @@ def test_independent_bench_and_emoji_scans_are_in_position_not_exceptions():
     result = mail.movement_details(source, projected)
     assert result['display_in_position_ids'] == [72,88,620,630]
     assert result['display_rows'] == []
-    assert '2 In position' in result['container_rows'][0]['detail']
-    assert 'Final positions unconfirmed' not in result['container_rows'][0]['detail']
+    assert '2 In position' in result['container_inventory_rows'][0]['detail']
+    assert 'Final positions unconfirmed' not in result['container_inventory_rows'][0]['detail']
     assert source == before
     assert counts == mail.summarize_container_snapshot(projected['containers'], source['generated_at'])
     report = mail.summarize(dict(session={'season_year':2026}, tasks=[dict(setup_session_task_id=1)]), date(2026,10,31))
@@ -253,3 +253,76 @@ def test_inferred_grouped_conflicting_and_shared_locations_stay_reviewable():
     source['effect_rows'].append({**source['effect_rows'][0], 'display_id':999})
     result = mail.movement_details(source, locate_assets(source))
     assert 72 not in result['display_in_position_ids']  # Group event is not independent.
+
+
+def test_scan_fixture_uses_actual_migration070_effect_contract():
+    sql = (Path(__file__).resolve().parents[1] / 'Database/070_reconcile_setup_container_contents.sql').read_text()
+    assert "CASE WHEN v_action='TASK_UNLOAD' THEN 'UNLOADED' ELSE 'MOVED' END" in sql
+    assert "position_mode = 'DETACHED'" in sql
+    assert {e['movement_effect'] for e in independently_scanned_picture()['effect_rows']} == {'MOVED'}
+
+
+def test_only_current_container_actions_render_and_history_counts_are_preserved():
+    source = dict(generated_at='2026-10-31', through_event_id=200, containers=[], displays=[], effect_rows=[], pickup_requests=[])
+    def add(ident, status=None, decision=None, kind='Display Pallet', flag=False):
+        source['containers'].append(dict(container_id=ident, container_name=f'Container {ident}',
+            container_type_name=kind, movement_status=status, last_movement_event_id=ident if status else None))
+        if status:
+            note = '' if decision is None else 'contents_reconciliation=' + __import__('json').dumps({'decision':decision})
+            if flag: note += '; contents_review_required=true'
+            source['effect_rows'].append(dict(setup_movement_event_id=ident, container_id=ident,
+                event_type=status, occurred_at='2026-10-31', notes=note, stage_name='Park',
+                gps_latitude=43.7, gps_longitude=-87.7))
+    add(1)  # No movement is not a fault.
+    add(2, 'RETURNED', 'EMPTY')
+    source['effect_rows'].insert(0, dict(setup_movement_event_id=100, container_id=2, event_type='CONTAINER_MOVE',
+        occurred_at='2026-10-29', notes='contents_reconciliation={"decision":"NOT_SURE"}; contents_review_required=true'))
+    add(3, 'CONTAINER_MOVE', 'NOT_EMPTY', kind='Standalone Display')
+    add(4, 'CONTAINER_MOVE', 'NOT_SURE', flag=True)
+    add(5, 'CONTAINER_MOVE', 'EMPTY')
+    source['pickup_requests'] = [dict(container_id=5, pickup_event_id=200, requested_at='2026-10-31',operator_email='crew@example.com')]
+    add(6, 'CONTAINER_MOVE', 'EMPTY')
+    add(7, 'CONTAINER_MOVE')  # No physical observation alone is not an exception.
+    add(8, 'CONTAINER_MOVE', 'NOT_EMPTY')
+    # Display verification is separate and must not turn the returned Container into a problem.
+    source['displays'] = [dict(display_id=50, display_name='Unverified Display', container_id=2, position_mode='WITH_CONTAINER')]
+    before = deepcopy(source)
+    projected = locate_assets(source)
+    counts = mail.summarize_container_snapshot(projected['containers'], source['generated_at'])
+    result = mail.movement_details(source, projected)
+    assert [r['name'].split(' — ')[0] for r in result['container_rows']] == ['C004','C005','C006','C008']
+    assert len(result['container_inventory_rows']) == 8
+    assert counts['containers_contents_review_history'] == 2
+    assert counts == mail.summarize_container_snapshot(projected['containers'], source['generated_at'])
+    assert source == before
+    assert 'Manager correction workflow pending' not in result['container_rows'][1]['detail']
+    assert 'Arrange pickup' in result['container_rows'][1]['detail']
+    assert 'Review pickup readiness' in result['container_rows'][2]['detail']
+    assert 'resolution unverified' in result['container_rows'][0]['detail']
+    assert 'contents-review' not in result['container_inventory_rows'][1]['detail']
+    report = mail.summarize(dict(session={'season_year':2026}, tasks=[dict(setup_session_task_id=1)]), date(2026,10,31))
+    report.update(fixture_containers()); report.update(result)
+    text = mail.render(mail.DEFAULT_TEMPLATE.read_text(), {'display_name':'Greg'}, report)
+    html = mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(), {'display_name':'Greg'}, report)
+    for ident in (1,2,3,7):
+        assert f'C{ident:03d} — Container' not in text and f'C{ident:03d} — Container' not in html
+    for ident in (4,5,6,8):
+        assert f'C{ident:03d} — Container' in text and f'C{ident:03d} — Container' in html
+
+
+def test_return_alone_does_not_clear_cargo_or_uncertain_contents():
+    source = picture()
+    source['effect_rows'][0]['notes'] = 'contents_reconciliation={"decision":"NOT_EMPTY","identify_remaining":true}'
+    source['effect_rows'].append(dict(setup_movement_event_id=900, container_id=9,
+        event_type='RETURNED',occurred_at='2026-10-31',notes=''))
+    source['containers'][0].update(last_movement_event_id=900,movement_status='RETURNED')
+    result = mail.movement_details(source,locate_assets(source))
+    row = next(r for r in result['container_rows'] if r['name'].startswith('C009'))
+    assert 'Returned to shop; cargo last reported — verify contents' in row['detail']
+    assert 'Recorded cargo remains' in row['detail']
+    source['effect_rows'][0]['notes'] = 'contents_reconciliation={"decision":"NOT_SURE"}; contents_review_required=true'
+    result = mail.movement_details(source,locate_assets(source))
+    assert any(r['name'].startswith('C009') and 'Operator selected NOT_SURE' in r['detail'] for r in result['container_rows'])
+    source['effect_rows'][-1]['notes'] = 'contents_reconciliation={"decision":"EMPTY"}'
+    result = mail.movement_details(source,locate_assets(source))
+    assert not any(r['name'].startswith('C009') for r in result['container_rows'])

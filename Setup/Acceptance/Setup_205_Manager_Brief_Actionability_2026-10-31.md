@@ -122,3 +122,24 @@ this report and are omitted from placement exceptions. Review Displays72/88 and
 No individual scan is fabricated, and no movement state is written. Inferred
 unloads, shared-GPS groups and conflicting/missing scan evidence remain reviewable.
 Per-Container evidence uses the same accepted scan classification.
+
+V0.3.102-manager-actions: the supplied report incorrectly listed all236 Containers
+(42 returned,98 without movement) and applied pending-correction wording broadly.
+The email now selects only specific current Container actions; aggregate totals
+and historical review counts are unchanged. Returned/routine/unobserved/integral
+records are not automatically problems, and Display gaps stay in their section.
+A later explicit contents answer supersedes earlier uncertainty only for
+current reporting; no database history is resolved or edited.
+
+Also corrected a real vocabulary mismatch: migration070 writes MOVED for a direct
+Display scan and UNLOADED for TASK_UNLOAD; DETACHED is position_mode. Tests now use
+these actual effect values and check the SQL contract. Recheck bench72/88 and
+emoji630/620 omission against the current clone, not only synthetic fixtures.
+Previous preview is HOLD; no Production installation or send is authorized.
+
+Greg reports Containers were returned before pickup workflow existed and some
+still held needed items. A return alone must NOT clear cargo/contents uncertainty.
+Retain review for last-reported cargo or unsuperseded uncertainty after return;
+only explicit contents evidence clears earlier uncertainty. Do not invent cargo
+for otherwise routine returns or alter movement history. Return summary labels
+must not claim an empty inspection.

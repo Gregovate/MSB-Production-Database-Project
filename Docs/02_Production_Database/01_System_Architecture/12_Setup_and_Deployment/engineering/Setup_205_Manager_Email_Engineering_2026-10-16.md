@@ -318,3 +318,29 @@ and task/Container counts and records. This says nothing about wiring or testing
 
 Greg further confirms: independently scanned means inferred In position. GPS
 availability alone must not disqualify an otherwise independent Display scan.
+
+### October31 actual-report correction: inventory is not an exception list
+
+Greg supplied all236 Container rows, including42 returned Home and98 unobserved.
+These cannot all be treated as problems. Keep full aggregate inventory counts,
+but render Container rows only for a specific action: active pickup request,
+reported empty at park needing pickup-readiness review, remaining transport cargo,
+current contents-review evidence, or recorded location/status exception. Routine
+returned, unobserved and integral equipment records do not qualify automatically.
+Display placement gaps stay in the Display section and never make a Container bad.
+A later explicit contents answer supersedes earlier contents
+uncertainty for this current-action report; historical review counts stay intact
+and no history is marked resolved or edited. Pending-correction text applies to
+actual review/correction rows, not every inventory record.
+
+Critical defect found: migration070 stores movement effects MOVED/UNLOADED while
+DETACHED is a position_mode. Correct independent-scan and conflict tests to the
+actual SQL contract, and replace wrong synthetic effect values. Preserve Greg's
+independent-scan inference and verify supplied bench/emoji examples again.
+
+Greg reports Containers were returned before pickup workflow existed and some
+still held needed items. A return alone must NOT clear cargo/contents uncertainty.
+Retain review for last-reported cargo or unsuperseded uncertainty after return;
+only explicit contents evidence clears earlier uncertainty. Do not invent cargo
+for otherwise routine returns or alter movement history. Return summary labels
+must not claim an empty inspection.

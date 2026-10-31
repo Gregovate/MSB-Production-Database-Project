@@ -279,7 +279,7 @@ def display_placement_sets(picture: dict, events: dict) -> tuple[set, set]:
         if (d.get('position_mode') == 'DETACHED' and event.get('event_type') == 'DISPLAY_MOVE'
                 and event.get('capture_method') in {'CAMERA_SCAN', 'HID_SCAN'}
                 and 'inferred_unload=true' not in (event.get('notes') or '')
-                and memberships.get(event_id) == {(ident, 'DETACHED')}):
+                and memberships.get(event_id) == {(ident, 'MOVED')}):
             candidates.add(ident)
     shared = set().union(*(ids for ids in groups.values() if len(ids) > 1)) if groups else set()
     return candidates - shared, shared
@@ -329,7 +329,7 @@ def movement_details(picture: dict, projected: dict) -> dict:
     containers = {c['container_id']:c for c in picture['containers']}
     pickups = {p['container_id']:p for p in picture.get('pickup_requests', [])}
     in_position, shared_gps = display_placement_sets(picture, events)
-    container_rows = []
+    container_rows, inventory_rows = [], []
     for c in projected['containers']:
         ident = c['container_id']
         state = containers[ident]
@@ -343,7 +343,15 @@ def movement_details(picture: dict, projected: dict) -> dict:
                       'NOT_EMPTY':'Recorded cargo remains',
                       'NOT_SURE':'Physical contents unknown / review required'}.get(decision,
                       'No usable physical load observation')
-        flags = [e for e in trail if 'contents_review_required=true' in (e.get('notes') or '')]
+        # History remains intact; only unsuperseded uncertainty needs current review.
+        cleared_through = -1
+        for index, event in enumerate(trail):
+            answer = contents_observation(event)
+            if (answer.get('decision') == 'EMPTY' or
+                    answer.get('decision') == 'NOT_EMPTY' and answer.get('identify_remaining') is True):
+                cleared_through = index
+        flags = [e for index, e in enumerate(trail) if index > cleared_through
+                 and 'contents_review_required=true' in (e.get('notes') or '')]
         reasons = []
         for e in flags:
             v = contents_observation(e)
@@ -363,20 +371,38 @@ def movement_details(picture: dict, projected: dict) -> dict:
             status = 'Returned Home — actual RETURNED record' if c.get('reported_home') else 'Pickup readiness unverified — no active request'
         kind = state.get('container_type_name')
         role = ('Integral show equipment (Standalone Display)' if kind == 'Standalone Display'
-                else f"{kind or 'Type not recorded'}; equipment role unverified")
+                else f"{kind or 'Type not recorded'}")
         # Avoid repeating the same actor, GPS and timestamp for the same event.
         same_event = bool(load_event) and load_event.get('setup_movement_event_id') == last.get('setup_movement_event_id')
         load_source = 'same event as last movement' if same_event else event_text(load_event) if load_event else 'no observation recorded'
-        detail = (f"Status: {status}\n"
+        actions = []
+        category = summarize_container_snapshot([c], picture.get('generated_at'))
+        if pickup:
+            actions.append('Arrange pickup — confirmed ready')
+        if reasons:
+            actions.append('Review recorded contents uncertainty')
+        if c.get('reported_home') and decision == 'NOT_EMPTY' and kind != 'Standalone Display':
+            actions.append('Returned to shop; cargo last reported — verify contents')
+        if category['containers_location_review']:
+            actions.append('Review recorded location/status')
+        if not c.get('reported_home') and category['containers_park_recorded'] and kind != 'Standalone Display':
+            if decision == 'EMPTY' and not pickup:
+                actions.append('Review pickup readiness — empty reported')
+            elif decision == 'NOT_EMPTY':
+                actions.append('Review remaining cargo')
+        detail = (('Action: ' + '; '.join(actions) + '\n' if actions else '') + f"Status: {status}\n"
                   f"Last movement: {event_text(last)}\n"
                   f"Load: {load_label} ({load_source})\n"
                   f"Home: {c.get('home_location_code') or 'Not recorded'} · Type: {role}\n" +
                   container_display_evidence(ident, picture, events, last, in_position) + "\n" +
                   ("Contents review — resolution unverified: " + ' | '.join(reasons) if reasons else
                    'Contents review: no flag recorded.') +
-                  f"\n{PENDING}.")
-        container_rows.append({'name':f"C{ident:03d} — {c.get('name') or 'Description not recorded'}",
-                               'detail':detail, 'url':(SETUP_URL + f'container-pickups/?asset=CONT%3A{ident}&season_year=2026' if pickup else record_url('CONT', ident))})
+                  (f"\n{PENDING}." if reasons or category['containers_location_review'] else ''))
+        row = {'name':f"C{ident:03d} — {c.get('name') or 'Description not recorded'}",
+                               'detail':detail, 'url':(SETUP_URL + f'container-pickups/?asset=CONT%3A{ident}&season_year=2026' if pickup else record_url('CONT', ident))}
+        inventory_rows.append(row)
+        if actions:
+            container_rows.append(row)
     display_rows = []
     for d in picture['displays']:
         if d['display_id'] in in_position:
@@ -388,7 +414,7 @@ def movement_details(picture: dict, projected: dict) -> dict:
         effects = [x for x in picture['effect_rows'] if x.get('display_id') == d['display_id']
                    and x.get('setup_movement_event_id') == d.get('last_movement_event_id')]
         conflict = (bool(e and not effects) or
-                    (mode == 'DETACHED' and any(x.get('movement_effect') != 'DETACHED' for x in effects)) or
+                    (mode == 'DETACHED' and any(x.get('movement_effect') not in {'MOVED', 'UNLOADED'} for x in effects)) or
                     (mode == 'WITH_CONTAINER' and bool(parent.get('movement_status') == 'RETURNED')))
         if conflict:
             label = 'Conflicting observations — review required'
@@ -414,7 +440,7 @@ def movement_details(picture: dict, projected: dict) -> dict:
             'detail':f"{label}. {reason}\nScan the Display in position using Record Location. "
                      f"Historical corrections: {PENDING}.",
             'url':record_url('DISP', d['display_id'])})
-    return {'container_rows':container_rows, 'display_rows':display_rows,
+    return {'container_rows':container_rows, 'container_inventory_rows':inventory_rows, 'display_rows':display_rows,
             'display_in_position_ids':sorted(in_position),
             'container_detail_lines':rows_text(container_rows), 'display_detail_lines':rows_text(display_rows)}
 
