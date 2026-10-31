@@ -1,27 +1,23 @@
-MSB PC Preview Updater — first-time setup
-Revision 2026-10-27 — comparison-only pilot
+MSB PC Preview Updater 1.1.2 — October 31, 2026
 
-Use only the installer package supplied by the MSB administrator. This pilot
-checks previews but cannot install preview changes. It is not the general release.
+Requires Light-O-Rama 6.6.12 Pro using C:\LOR as its data folder.
 
-1. Sign into the Windows account you normally use for Light-O-Rama.
-2. Light-O-Rama must use C:\LOR as its data folder. Open it once, then close it.
-3. Open https://my.sheboyganlights.org/lor2db/ and click
-   "Update this PC's MSB Previews", then "Install / Repair PC Updater".
-   Installation does not need the G: drive.
-4. Extract all files to a folder on this PC.
-5. Double-click "Setup MSB PC Preview Updater.vbs" in the extracted folder.
-6. Require the message "MSB PC Preview Updater installed. A shortcut is on your
-   Desktop. No previews were changed." If blocked or another error appears, contact the administrator.
-7. Double-click "MSB PC Preview Updater" on your Desktop, or open
-   https://my.sheboyganlights.org/lor2db/ to launch it from the website.
-8. If using the website, click "Update this PC's MSB Previews", then
-   "Open PC Preview Updater". Both entry points run the same updater.
-9. Allow the requested app launch and complete your normal MSB sign-in.
-10. Review the result and send it, including any error, to the MSB administrator.
+1. Close Light-O-Rama.
+2. Visit https://my.sheboyganlights.org/lor2db/pc/
+3. Click Install / Update PC Updater. Save the ZIP in Downloads.
+4. In Downloads, right-click the ZIP and choose Extract All. Keep the
+   suggested folder inside Downloads, then click Extract.
+5. Open the extracted folder and double-click Setup MSB PC Preview Updater.vbs.
+6. Wait for the installation confirmation.
+7. On https://my.sheboyganlights.org/lor2db/pc/ click Open PC Preview Updater.
+   Allow the browser to open the app if prompted, then return to the updater.
+8. Select each preview to review its pending changes. Show full details is
+   available if needed. Leave Match master Revision unchecked.
+9. Confirm Light-O-Rama is closed and approve the listed changes, then click
+   Update PC Previews. Wait for the success message before reopening LOR.
 
-The check still needs access to the shared MSB master files. Your personal,
-imported and store previews must be preserved. Do not manually replace your
-preview library. Each Windows user needs their own first-time installation.
-
-If nothing opens, contact the MSB administrator for installation or repair.
+Linked backgrounds stay external files; no images are embedded. Google Drive
+must be running and the shared files synced before updating. A missing or
+changed image blocks the update and identifies the file to check.
+Personal/imported/store previews are preserved. A backup is made before writes.
+Use the same webpage for later updates, or the Desktop shortcut.
