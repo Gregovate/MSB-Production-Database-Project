@@ -185,3 +185,44 @@ Document exact candidate SHA/blob hashes, CLI and Python regression, secure temp
 ## Broader #205 follow-on, not implied shipped
 
 Manager-facing Admin master and per-audience switches, editable PostgreSQL template editor/history, permanent PostgreSQL notification outbox, Manager-approved Captain follow-up and separate volunteer schedule/event communications all remain unfinished. A bounded first-night Manager pilot does **not** silently activate any of these. Preserve their ownership in the existing #205 contract without expanding the first send into an uncontrolled multi-purpose mail system.
+
+## October 31 urgent actionability repair — #205 under #122
+
+Reuse PR413 and the installed PR452 sender. PR418's migration077 and guarded
+correction UI remain separate; #430/#431 must not block this content repair.
+No schema, movement writes, SMTP/retry/timer/audience/receipt changes.
+Preserve all existing selection predicates and counts. Enrich the selected
+continuations using latest actual Report Work (performed date, then recorded
+ timestamp and progress ID), verbatim note, percentage and recorded attribution.
+Notes never determine inclusion or another task's completion. Every selected
+note is presented for Manager task-boundary review, without guessing semantics.
+
+Use #88 movement_picture and #171 locate_assets read models. Keep association
+counts unchanged but explicitly distinguish physical contents reconciliation
+from assigned membership. Parse existing contents_reconciliation event evidence;
+retain original flagged reasons and dates. No deployed review ledger means
+resolution is unverified, not automatically open or resolved. Integral role and
+pickup readiness must be explicit authoritative evidence, never inferred from
+Container type, Display count or park stop. Return receipt is independent.
+
+Display rows use actual movement effects and state, including WITH_CONTAINER,
+independent scans, inferred unloads, missing evidence and contradictions. A
+DISPLAY_MOVE is a location observation, not #431 final-position confirmation.
+Without deployed #431, final Setup verification is unavailable. Link existing
+Record Location asset selection for field observation and say "Manager correction
+workflow pending" for historical corrections. Do not call an unscanned Display
+missing. Do not manufacture final-position or pickup flags.
+
+Use existing Record Location ?asset=CONT:/DISP: navigation, which preselects
+but does not save. Expose annual-task/assignment parameters only with a tested
+adapter to existing Manager Action Center handlers; no new write commands.
+HTML/text share the same row detail strings and exact record URLs. Full details
+are not silently truncated. No-send preview must preserve the exact current
+23 continuation identities and include every existing note; synthetic tests
+cannot establish that Production-data acceptance. Read-only current-Production
+clone, Greg's exact preview review and existing #122 installation remain gates.
+
+Runtime gap: Server PR95's installer is October22-only and explicitly preserves
+all templates. This release changes content/templates, so that installer cannot
+be invoked unchanged. Update the existing Server Management procedure/installer
+before installation; never use its recovery/send path or bypass its guards.
