@@ -98,6 +98,32 @@ def same_database_contract(baseline, current):
 
 
 def capture_backgrounds(root):
+    """Check every reference; retain scene ownership even for a shared bad path."""
+    result, problems = {}, []
+    parents = {child: parent for parent in root.iter() for child in parent}
+    for node in root.iter():
+        raw = node.get('BackgroundFile', '').strip()
+        if not raw:
+            continue
+        owner = node
+        while owner is not root and owner.tag != 'Scene':
+            owner = parents[owner]
+        scene = owner.get('Name', '(unnamed)') if owner.tag == 'Scene' else '(preview background)'
+        # Validate one reference at a time so one failure cannot hide later ones.
+        probe = ET.Element('PreviewClass', EmbedBackgrounds=root.get('EmbedBackgrounds', 'False'), BackgroundFile=raw)
+        try:
+            for asset in _capture_backgrounds(probe):
+                result[asset['path'].casefold()] = asset
+        except ValueError as error:
+            problems.append('Scene: ' + scene + '\nImage: ' + raw + '\nReason: ' + str(error))
+    if str(root.get('EmbedBackgrounds', 'False')).lower() != 'false' and not problems:
+        problems.append('Scene: (preview)\nImage: (embedded)\nReason: Embedded preview backgrounds are not permitted; use external file links')
+    if problems:
+        raise ValueError('\n\n'.join(problems))
+    return sorted(result.values(), key=lambda asset: asset['path'].casefold())
+
+
+def _capture_backgrounds(root):
     from pathlib import PureWindowsPath
     if str(root.get('EmbedBackgrounds', 'False')).lower() != 'false':
         raise ValueError('Embedded preview backgrounds are not permitted; use external file links')
@@ -140,6 +166,7 @@ def background_changes(previous, current):
 
 def capture(folder):
     files = []
+    background_errors = []
     paths = sorted(folder.glob('*.lorprev'), key=lambda p: p.name.casefold())
     if not paths:
         raise ValueError('Master preview set is empty')
@@ -167,9 +194,16 @@ def capture(folder):
             if prop.get('MasterDimmable') not in (None, 'True', 'False'):
                 raise ValueError('Unsupported master-dimming flag')
         metadata = {p.get('id'): {k: p.get(k) for k in ('Name', 'MasterDimmable')} for p in root if p.tag == 'PropClass'}
+        try:
+            assets = capture_backgrounds(root)
+        except ValueError as error:
+            background_errors.append('Preview file: ' + path.name + '\nPreview: ' + root.get('Name', '') + '\n' + str(error))
+            assets = []
         files.append(dict(filename=path.name, preview_id=identity, name=root.get('Name'), revision=root.get('Revision'),
                           sha256=hashlib.sha256(raw).hexdigest(), contract_sha256=digest(contract_node(root)),
-                          metadata=metadata, sequencing_contract_sha256=digest(sequencing_contract_node(root)), comparison_policy=COMPARISON_POLICY, background_assets=capture_backgrounds(root)))
+                          metadata=metadata, sequencing_contract_sha256=digest(sequencing_contract_node(root)), comparison_policy=COMPARISON_POLICY, background_assets=assets))
+    if background_errors:
+        raise ValueError('Background image problems — publication blocked. Fix all listed references, export the affected previews, then review again.\n\n' + '\n\n'.join(background_errors))
     return files
 
 

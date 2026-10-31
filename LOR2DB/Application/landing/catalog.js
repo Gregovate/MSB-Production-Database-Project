@@ -45,7 +45,7 @@
       if (proposal.parent_publication_id) lines.push('Current published catalog: ' + proposal.parent_publication_id);
       if (!proposal.changes.length) lines.push('', proposal.parent_publication_id ? 'No changes since the current published catalog.' : 'Master matches the registered database baseline. Initial registration is ready.');
       details.textContent = lines.join('\n');
-    } catch (error) { proposal = null; status.textContent = error.message; }
+    } catch (error) { proposal = null; status.textContent = 'Catalog review blocked. See all problems below.'; details.textContent = error.message; details.hidden = false; }
     finally { busy = false; controls(); }
   });
   publish.addEventListener('click', async () => {

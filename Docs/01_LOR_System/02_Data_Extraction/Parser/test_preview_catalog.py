@@ -240,3 +240,30 @@ class BackgroundTests(CatalogTests):
                 with self.assertRaises(ValueError):capture_backgrounds(ET.fromstring(raw))
         self.image=b''
         with self.assertRaisesRegex(ValueError,'empty'):capture_backgrounds(ET.fromstring(self.image_raw))
+
+
+class AllBackgroundProblemTests(CatalogTests):
+    def test_reports_every_bad_scene_across_previews_without_writing_evidence(self):
+        import io
+        original_open = Path.open
+        attempted = []
+        def reader(path, *args, **kwargs):
+            if str(path).startswith('G:'):
+                attempted.append(str(path))
+                if str(path).endswith('valid.png'):
+                    return io.BytesIO(b'valid linked bytes')
+                raise FileNotFoundError(str(path))
+            return original_open(path, *args, **kwargs)
+        prefix = 'G:\\Shared drives\\Display Folders\\'
+        scenes = ''.join('<Scene id="s'+str(i)+'" Name="'+name+'" BackgroundFile="'+prefix+file+'"/>' for i, (name,file) in enumerate([('Mega Tree','missing.png'),("Fred’s Stars",'missing.png'),('Good scene','valid.png')]))
+        self.file.write_text(RAW.replace('<Scene id="scene" Name="Stage"/>', scenes))
+        second = self.folder/'Second.lorprev'
+        second.write_text(RAW.replace('id="preview"','id="second"',1).replace('<Scene id="scene" Name="Stage"/>','<Scene id="other" Name="Tunnel" BackgroundFile="'+prefix+'other.png"/>'))
+        with patch.object(Path, 'open', reader):
+            with self.assertRaises(ValueError) as raised:
+                capture(self.folder)
+        report = str(raised.exception)
+        for label in [self.file.name, 'Second.lorprev', 'Mega Tree', 'Fred’s Stars', 'Tunnel', 'missing.png', 'other.png', 'publication blocked']:
+            self.assertIn(label, report)
+        self.assertEqual(len(attempted), 4)
+        self.assertNotIn('Scene: Good scene', report)
