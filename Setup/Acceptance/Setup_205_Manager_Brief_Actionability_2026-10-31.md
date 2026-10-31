@@ -143,3 +143,14 @@ Retain review for last-reported cargo or unsuperseded uncertainty after return;
 only explicit contents evidence clears earlier uncertainty. Do not invent cargo
 for otherwise routine returns or alter movement history. Return summary labels
 must not claim an empty inspection.
+
+V0.3.103-manager-brief-summary addresses the4395-line output, not just test counts.
+Check C062: its Oct28 pickup empty confirmation supersedes Oct19 cargo evidence;
+it must not simultaneously instruct pickup and cargo review. A newer contrary
+contents observation must instead flag a pickup conflict. A newer named pickup
+location also supersedes missing location in older movement for current action.
+Container rows omit repetitive inventory/Display/correction boilerplate. Display
+exceptions are grouped by Container with reason counts and the existing
+locate/?container_id= review link; unassociated Displays keep their own links.
+Check group totals against all affected Display IDs: nothing is truncated.
+No Production-data size or usability acceptance is claimed by synthetic tests.

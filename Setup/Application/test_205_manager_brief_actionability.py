@@ -298,14 +298,15 @@ def test_only_current_container_actions_render_and_history_counts_are_preserved(
     assert 'Manager correction workflow pending' not in result['container_rows'][1]['detail']
     assert 'Arrange pickup' in result['container_rows'][1]['detail']
     assert 'Review pickup readiness' in result['container_rows'][2]['detail']
-    assert 'resolution unverified' in result['container_rows'][0]['detail']
+    assert 'Operator selected NOT_SURE' in result['container_rows'][0]['detail']
     assert 'contents-review' not in result['container_inventory_rows'][1]['detail']
     report = mail.summarize(dict(session={'season_year':2026}, tasks=[dict(setup_session_task_id=1)]), date(2026,10,31))
     report.update(fixture_containers()); report.update(result)
     text = mail.render(mail.DEFAULT_TEMPLATE.read_text(), {'display_name':'Greg'}, report)
     html = mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(), {'display_name':'Greg'}, report)
     for ident in (1,2,3,7):
-        assert f'C{ident:03d} — Container' not in text and f'C{ident:03d} — Container' not in html
+        assert f'C{ident:03d} — Container' not in text.split('DISPLAY LOCATION REVIEW BY CONTAINER')[0]
+        assert f'C{ident:03d} — Container' not in html.split('Display location review by Container')[0]
     for ident in (4,5,6,8):
         assert f'C{ident:03d} — Container' in text and f'C{ident:03d} — Container' in html
 
@@ -326,3 +327,41 @@ def test_return_alone_does_not_clear_cargo_or_uncertain_contents():
     source['effect_rows'][-1]['notes'] = 'contents_reconciliation={"decision":"EMPTY"}'
     result = mail.movement_details(source,locate_assets(source))
     assert not any(r['name'].startswith('C009') for r in result['container_rows'])
+
+
+def test_newer_pickup_empty_confirmation_supersedes_old_cargo_but_not_later_conflict():
+    source = picture()
+    source['pickup_requests'] = [dict(container_id=9, pickup_event_id=11, requested_at='2026-10-30T10:00:00-05:00',
+        operator_email='rhoffmann@sheboyganlights.org', stage_name='Polar Bear Playground', location_note='Polar Bear Playground')]
+    result = mail.movement_details(source, locate_assets(source))
+    row = next(r for r in result['container_rows'] if r['name'].startswith('C009'))
+    assert 'Arrange pickup' in row['detail']
+    assert 'Empty confirmed for pickup' in row['detail']
+    assert 'Review remaining cargo' not in row['detail'] and 'Recorded cargo remains' not in row['detail']
+    assert 'NOT_EMPTY without identifying' not in row['detail']
+    assert len(row['detail'].splitlines()) <= 4
+    source['effect_rows'][0]['occurred_at'] = '2026-10-31T11:00:00-05:00'
+    result = mail.movement_details(source, locate_assets(source))
+    row = next(r for r in result['container_rows'] if r['name'].startswith('C009'))
+    assert 'contents conflict' in row['detail'] and 'Arrange pickup' not in row['detail']
+
+
+def test_display_brief_groups_all_1014_gaps_without_silently_dropping_records():
+    containers = {i:dict(container_name=f'Container {i}') for i in range(1,11)}
+    rows = [dict(display_id=i, container_id=(i%10)+1, name=f'Display {i}', detail='Long original source detail',
+                 review_reason='inferred unload — placement unverified', url=mail.record_url('DISP',i)) for i in range(1,1015)]
+    original = deepcopy(rows)
+    grouped = mail.grouped_display_reviews(rows,containers)
+    assert len(grouped) == 10
+    assert sum(r['count'] for r in grouped) == 1014
+    assert sorted(i for row in grouped for i in row['display_ids']) == list(range(1,1015))
+    assert rows == original
+    for row in grouped:
+        assert 'locate/?container_id=' in row['url']
+        assert len(row['detail'].splitlines()) == 1
+    route_source = (Path(__file__).resolve().parent / 'setup_locate_assets.js').read_text()
+    assert ".get('container_id')" in route_source and 'Assigned displays' in route_source
+    assert len(mail.rows_text(grouped)) < len(mail.rows_text(rows)) / 15
+    no_parent = dict(display_id=9999,container_id=None,name='Loose Display',detail='Original',review_reason='no placement observation',url=mail.record_url('DISP',9999))
+    single = mail.grouped_display_reviews([no_parent],containers)
+    assert single[0]['url'] == mail.record_url('DISP',9999) and single[0]['count'] == 1

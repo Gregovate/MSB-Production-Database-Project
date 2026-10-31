@@ -323,6 +323,36 @@ def container_display_evidence(ident: int, picture: dict, events: dict, last: di
              '.' if counts['In position'] == total else '. Final positions unconfirmed.'))
 
 
+def evidence_time(value: object):
+    """Compare recorded instants across sources; invalid dates do not establish order."""
+    try:
+        instant = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        return instant.replace(tzinfo=CHICAGO) if instant.tzinfo is None else instant
+    except (ValueError, TypeError):
+        return None
+
+
+def grouped_display_reviews(rows: list[dict], containers: dict) -> list[dict]:
+    """One existing Container review link per group; account for every Display."""
+    groups, output = {}, []
+    for row in rows:
+        parent = row.get('container_id')
+        if parent not in containers:
+            output.append({**row, 'count':1, 'detail':row['review_reason']})
+        else:
+            groups.setdefault(parent, []).append(row)
+    for parent, members in sorted(groups.items()):
+        reasons = {}
+        for row in members:
+            reason = row['review_reason']
+            reasons[reason] = reasons.get(reason, 0) + 1
+        output.append({'name':f"C{parent:03d} — {containers[parent].get('container_name') or 'Container'}",
+                       'detail':f"{len(members)} {'Display' if len(members) == 1 else 'Displays'}: " + '; '.join(f'{n} {reason}' for reason,n in reasons.items()),
+                       'count':len(members), 'display_ids':[r['display_id'] for r in members],
+                       'url':SETUP_URL + f'locate/?container_id={parent}'})
+    return output
+
+
 def movement_details(picture: dict, projected: dict) -> dict:
     """Read-only explanation of #88 evidence; no #077/#430/#431 dependency."""
     events = {e['setup_movement_event_id']:e for e in picture['effect_rows']}
@@ -359,6 +389,22 @@ def movement_details(picture: dict, projected: dict) -> dict:
                       'Operator reported NOT_EMPTY without identifying remaining cargo' if v.get('decision') == 'NOT_EMPTY' else
                       'Recorded contents_review_required=true; structured reason unavailable')
             reasons.append(f"#{e.get('setup_movement_event_id')}: {reason}")
+        pickup = pickups.get(ident)
+        pickup_time = evidence_time(pickup.get('requested_at')) if pickup else None
+        load_time = evidence_time(load_event.get('occurred_at'))
+        pickup_conflict = bool(pickup and decision in {'NOT_EMPTY', 'NOT_SURE'} and
+                               (not pickup_time or not load_time or load_time > pickup_time))
+        pickup_current = bool(pickup and pickup_time and not pickup_conflict and
+                              (not load_event or load_time and pickup_time >= load_time))
+        if pickup_current:
+            decision = 'EMPTY'
+            load_label = 'Empty confirmed for pickup'
+            load_event = {'setup_movement_event_id':f"pickup:{pickup['pickup_event_id']}",
+                          'event_type':'Pickup confirmation', 'occurred_at':pickup['requested_at'],
+                          'capture_method':'Pickup request', 'recorded_by_name':pickup['operator_email'],
+                          'stage_name':pickup.get('stage_name'), 'destination_location_note':pickup.get('location_note')}
+            reasons = [reason for event, reason in zip(flags, reasons)
+                       if not evidence_time(event.get('occurred_at')) or evidence_time(event.get('occurred_at')) > pickup_time]
         # #078 requests require an explicit empty confirmation and are removed
         # by cancellation or a later actual RETURNED record. Never infer readiness.
         pickup = pickups.get(ident)
@@ -366,10 +412,13 @@ def movement_details(picture: dict, projected: dict) -> dict:
             status = (f"Confirmed Ready for Pickup — active request #{pickup['pickup_event_id']}; "
                       f"{readable_date(pickup['requested_at'])}; {pickup['operator_email']}; "
                       f"{pickup.get('stage_name') or ''} / {pickup.get('location_note') or ''}")
-            load_label += "; pickup request also confirms empty"
+            if pickup_conflict:
+                status = "Pickup request conflicts with newer or undated contents evidence"
         else:
             status = 'Returned Home — actual RETURNED record' if c.get('reported_home') else 'Pickup readiness unverified — no active request'
         kind = state.get('container_type_name')
+        if kind == 'Standalone Display':
+            reasons = []  # Integral equipment is not transport cargo to empty.
         role = ('Integral show equipment (Standalone Display)' if kind == 'Standalone Display'
                 else f"{kind or 'Type not recorded'}")
         # Avoid repeating the same actor, GPS and timestamp for the same event.
@@ -377,18 +426,22 @@ def movement_details(picture: dict, projected: dict) -> dict:
         load_source = 'same event as last movement' if same_event else event_text(load_event) if load_event else 'no observation recorded'
         actions = []
         category = summarize_container_snapshot([c], picture.get('generated_at'))
-        if pickup:
+        location_review = bool(category['containers_location_review'] and not
+                               (pickup_current and (pickup.get('location_note') or pickup.get('stage_name'))))
+        if pickup_conflict:
+            actions.append('Review pickup request — contents conflict')
+        elif pickup:
             actions.append('Arrange pickup — confirmed ready')
         if reasons:
             actions.append('Review recorded contents uncertainty')
         if c.get('reported_home') and decision == 'NOT_EMPTY' and kind != 'Standalone Display':
             actions.append('Returned to shop; cargo last reported — verify contents')
-        if category['containers_location_review']:
+        if location_review:
             actions.append('Review recorded location/status')
         if not c.get('reported_home') and category['containers_park_recorded'] and kind != 'Standalone Display':
             if decision == 'EMPTY' and not pickup:
                 actions.append('Review pickup readiness — empty reported')
-            elif decision == 'NOT_EMPTY':
+            elif decision == 'NOT_EMPTY' and not pickup:
                 actions.append('Review remaining cargo')
         detail = (('Action: ' + '; '.join(actions) + '\n' if actions else '') + f"Status: {status}\n"
                   f"Last movement: {event_text(last)}\n"
@@ -397,12 +450,26 @@ def movement_details(picture: dict, projected: dict) -> dict:
                   container_display_evidence(ident, picture, events, last, in_position) + "\n" +
                   ("Contents review — resolution unverified: " + ' | '.join(reasons) if reasons else
                    'Contents review: no flag recorded.') +
-                  (f"\n{PENDING}." if reasons or category['containers_location_review'] else ''))
+                  (f"\n{PENDING}." if reasons or location_review else ''))
         row = {'name':f"C{ident:03d} — {c.get('name') or 'Description not recorded'}",
                                'detail':detail, 'url':(SETUP_URL + f'container-pickups/?asset=CONT%3A{ident}&season_year=2026' if pickup else record_url('CONT', ident))}
         inventory_rows.append(row)
         if actions:
-            container_rows.append(row)
+            brief = 'Action: ' + '; '.join(actions)
+            brief += '\nContents: ' + load_label + ' · ' + readable_date(load_event.get('occurred_at'))
+            actor = load_event.get('recorded_by_name') or load_event.get('captured_operator_email')
+            if actor:
+                brief += ' · ' + actor
+            if load_event:
+                brief += f" · {load_event.get('capture_method') or 'Source not recorded'} #{load_event.get('setup_movement_event_id', 'not recorded')}"
+            if pickup:
+                brief += '\nPickup location: ' + (pickup.get('location_note') or pickup.get('stage_name') or 'Not recorded')
+            brief += '\nLast movement: ' + event_text(last)
+            if reasons:
+                brief += '\nReason: ' + '; '.join(reasons) + f'. {PENDING}.'
+            elif pickup_conflict or location_review:
+                brief += f'\n{PENDING}.'
+            container_rows.append({**row, 'detail':brief})
     display_rows = []
     for d in picture['displays']:
         if d['display_id'] in in_position:
@@ -436,13 +503,22 @@ def movement_details(picture: dict, projected: dict) -> dict:
         else:
             label = 'No usable placement evidence'
             reason = event_text(e)
+        review_reason = ('conflicting records' if conflict else
+                         'shared GPS — placement unverified' if d['display_id'] in shared_gps else
+                         'location inherited from Container' if mode == 'WITH_CONTAINER' and parent_event else
+                         'inferred unload — placement unverified' if 'inferred_unload=true' in (e.get('notes') or '') else
+                         'location observation needs review' if mode == 'DETACHED' and e else
+                         'no placement observation')
         display_rows.append({'name':f"{d['display_name']} — Display {d['display_id']}",
+            'display_id':d['display_id'], 'container_id':d.get('container_id'), 'review_reason':review_reason,
             'detail':f"{label}. {reason}\nScan the Display in position using Record Location. "
                      f"Historical corrections: {PENDING}.",
             'url':record_url('DISP', d['display_id'])})
+    summaries = grouped_display_reviews(display_rows, containers)
     return {'container_rows':container_rows, 'container_inventory_rows':inventory_rows, 'display_rows':display_rows,
+            'display_summary_rows':summaries,
             'display_in_position_ids':sorted(in_position),
-            'container_detail_lines':rows_text(container_rows), 'display_detail_lines':rows_text(display_rows)}
+            'container_detail_lines':rows_text(container_rows), 'display_detail_lines':rows_text(summaries)}
 
 
 def summarize_container_snapshot(containers: list[dict], generated_at: object) -> dict:
@@ -676,7 +752,7 @@ def render_html(template: str, person: dict, report: dict) -> str:
     for key in ('container', 'display'):
         values[key + '_detail_html'] = rows_or_none([
             '<tr>' + linked_cell(r['name'] + '\n' + r['detail'], r['url']) + '</tr>'
-            for r in report.get(key + '_rows', [])])
+            for r in (report.get('display_summary_rows', report.get('display_rows', [])) if key == 'display' else report.get('container_rows', []))])
     past = []
     for row in report.get("past_rows") or []:
         # Restrict markup to known table tags; stage and names are escaped by td.

@@ -344,3 +344,19 @@ Retain review for last-reported cargo or unsuperseded uncertainty after return;
 only explicit contents evidence clears earlier uncertainty. Do not invent cargo
 for otherwise routine returns or alter movement history. Return summary labels
 must not claim an empty inspection.
+
+### Morning brief, not evidence inventory
+
+Greg's next output is4395 lines with36 Containers and1014 Display rows. Replace
+repeated Display details in both email alternatives with one counted review row
+per Container and reason counts, linking the existing locate/?container_id=
+record/assigned-Display view. Unassociated Displays retain individual links.
+Every affected Display remains accounted for; no arbitrary top-N cutoff.
+Container rows show action, current contents evidence, last movement and precise
+review reason only. Full evidence stays in the read model and existing screens.
+
+Reconcile pickup empty confirmation by timestamp against movement contents:
+a newer active pickup supersedes older cargo/uncertainty. Later contradictory
+contents require request review, not simultaneous pickup and unloading commands.
+Unknown ordering must be reviewed. Routine integral-equipment contents do not
+create transport-cargo exceptions. Preserve all historical aggregate counts.

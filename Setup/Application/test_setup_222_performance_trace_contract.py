@@ -96,4 +96,4 @@ def test_setup_performance_trace_summarizes_fast_gets_and_keeps_exceptions() -> 
 
 def test_setup_performance_trace_version_is_distinct() -> None:
     text = source()
-    assert 'PRODUCTION_VERSION = "V0.3.102-manager-actions"' in text
+    assert 'PRODUCTION_VERSION = "V0.3.103-manager-brief-summary"' in text

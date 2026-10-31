@@ -43,7 +43,7 @@ Only Containers needing action appear below. Routine records stay in the summary
 
 $container_detail_lines
 
-DISPLAY PLACEMENT VERIFICATION
+DISPLAY LOCATION REVIEW BY CONTAINER
 $display_detail_lines
 
 Open Setup → Manager Action Center:
