@@ -192,3 +192,64 @@ def test_blocked_next_task_evidence_uses_real_edges_and_preserves_counts_and_not
     tasks[0]['effective_complete'] = True
     attach_blocked_successors(tasks, deps)
     assert not tasks[0]['blocked_next_tasks']
+
+
+def independently_scanned_picture():
+    # Reconstruct Greg's supplied examples; this is not a live database check.
+    source = picture()
+    source['displays'] = []
+    source['effect_rows'] = []
+    examples = [(72,603,43.776852,-87.747217,'Greg Liebig',9),
+                (88,604,43.776865,-87.747208,'Greg Liebig',9),
+                (630,508,43.775758,-87.743643,'Rich Neerhof',52),
+                (620,525,43.775782,-87.743801,'Rich Neerhof',52)]
+    for ident, event_id, lat, lon, actor, container in examples:
+        source['displays'].append(dict(display_id=ident, display_name=f'Display {ident}',
+            container_id=container, position_mode='DETACHED', last_movement_event_id=event_id))
+        source['effect_rows'].append(dict(setup_movement_event_id=event_id, display_id=ident,
+            event_type='DISPLAY_MOVE', movement_effect='DETACHED', capture_method='CAMERA_SCAN',
+            gps_latitude=lat, gps_longitude=lon, recorded_by_name=actor, notes=''))
+    return source
+
+
+def test_independent_bench_and_emoji_scans_are_in_position_not_exceptions():
+    source = independently_scanned_picture()
+    before = deepcopy(source)
+    projected = locate_assets(source)
+    counts = mail.summarize_container_snapshot(projected['containers'], source['generated_at'])
+    result = mail.movement_details(source, projected)
+    assert result['display_in_position_ids'] == [72,88,620,630]
+    assert result['display_rows'] == []
+    assert '2 In position' in result['container_rows'][0]['detail']
+    assert 'Final positions unconfirmed' not in result['container_rows'][0]['detail']
+    assert source == before
+    assert counts == mail.summarize_container_snapshot(projected['containers'], source['generated_at'])
+    report = mail.summarize(dict(session={'season_year':2026}, tasks=[dict(setup_session_task_id=1)]), date(2026,10,31))
+    report.update(fixture_containers()); report.update(result)
+    text = mail.render(mail.DEFAULT_TEMPLATE.read_text(), {'display_name':'Greg'}, report)
+    html = mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(), {'display_name':'Greg'}, report)
+    for ident in (72,88,620,630):
+        assert f'Display {ident}' not in text and f'Display {ident}' not in html
+
+
+def test_inferred_grouped_conflicting_and_shared_locations_stay_reviewable():
+    source = independently_scanned_picture()
+    source['effect_rows'][0]['notes'] = 'inferred_unload=true'
+    source['effect_rows'][1]['movement_effect'] = 'ATTACHED'
+    # Explicit mismatched effect must never certify placement.
+    result = mail.movement_details(source, locate_assets(source))
+    assert result['display_in_position_ids'] == [620,630]
+    assert len(result['display_rows']) == 2
+    source = independently_scanned_picture()
+    source['effect_rows'][1]['gps_latitude'] = source['effect_rows'][0]['gps_latitude']
+    source['effect_rows'][1]['gps_longitude'] = source['effect_rows'][0]['gps_longitude']
+    result = mail.movement_details(source, locate_assets(source))
+    assert result['display_in_position_ids'] == [620,630]
+    assert all('Shared GPS' in row['detail'] for row in result['display_rows'])
+    source = independently_scanned_picture()
+    source['effect_rows'][0].update(gps_latitude=None, gps_longitude=None)
+    result = mail.movement_details(source, locate_assets(source))
+    assert 72 in result['display_in_position_ids']  # Greg's independent-scan rule.
+    source['effect_rows'].append({**source['effect_rows'][0], 'display_id':999})
+    result = mail.movement_details(source, locate_assets(source))
+    assert 72 not in result['display_in_position_ids']  # Group event is not independent.

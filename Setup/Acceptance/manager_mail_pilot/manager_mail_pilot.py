@@ -258,9 +258,38 @@ def contents_observation(event: dict) -> dict:
         return {}
 
 
-def container_display_evidence(ident: int, picture: dict, events: dict, last: dict) -> str:
+def display_placement_sets(picture: dict, events: dict) -> tuple[set, set]:
+    """Accepted existing placement scans; never upgrade inferred unload evidence."""
+    from setup_locate_assets import geographic_position
+    parents = {c['container_id']: c for c in picture['containers']}
+    memberships = {}
+    for effect in picture['effect_rows']:
+        if effect.get('display_id') is not None:
+            memberships.setdefault(effect['setup_movement_event_id'], set()).add(
+                (effect['display_id'], effect.get('movement_effect')))
+    groups, candidates = {}, set()
+    for d in picture['displays']:
+        ident = d['display_id']
+        event_id = d.get('last_movement_event_id')
+        event = events.get(event_id, {})
+        location = events.get(parents.get(d.get('container_id'), {}).get('last_movement_event_id'), {}) if d.get('position_mode') == 'WITH_CONTAINER' else event
+        point = geographic_position(location)
+        if point is not None and d.get('container_id') is not None:
+            groups.setdefault((d['container_id'], *point), set()).add(ident)
+        if (d.get('position_mode') == 'DETACHED' and event.get('event_type') == 'DISPLAY_MOVE'
+                and event.get('capture_method') in {'CAMERA_SCAN', 'HID_SCAN'}
+                and 'inferred_unload=true' not in (event.get('notes') or '')
+                and memberships.get(event_id) == {(ident, 'DETACHED')}):
+            candidates.add(ident)
+    shared = set().union(*(ids for ids in groups.values() if len(ids) > 1)) if groups else set()
+    return candidates - shared, shared
+
+
+def container_display_evidence(ident: int, picture: dict, events: dict, last: dict, in_position=None) -> str:
     """Classify recorded provenance only; equal GPS never proves final placement."""
-    counts = {"Container-linked": 0, "inferred unload": 0, "Display observation": 0,
+    if in_position is None:
+        in_position, _ = display_placement_sets(picture, events)
+    counts = {"In position": 0, "Container-linked": 0, "inferred unload": 0, "Display observation": 0,
               "unload only": 0, "no usable location": 0}
     positions = {}
     for d in picture['displays']:
@@ -268,7 +297,9 @@ def container_display_evidence(ident: int, picture: dict, events: dict, last: di
             continue
         e = last if d.get('position_mode') == 'WITH_CONTAINER' else events.get(d.get('last_movement_event_id'), {})
         usable = e.get('gps_latitude') is not None and e.get('gps_longitude') is not None
-        if not usable and not (e.get('stage_name') or e.get('destination_location_note')):
+        if d['display_id'] in in_position:
+            key = 'In position'
+        elif not usable and not (e.get('stage_name') or e.get('destination_location_note')):
             key = 'no usable location'
         elif d.get('position_mode') == 'WITH_CONTAINER':
             key = 'Container-linked'
@@ -288,7 +319,8 @@ def container_display_evidence(ident: int, picture: dict, events: dict, last: di
     shared = max(positions.values(), default=0)
     return ('Displays: ' + ', '.join(f'{n} {key}' for key, n in counts.items() if n) +
             (f'; {shared}/{total} share recorded GPS — placement review required' if shared > 1 else '') +
-            '. Final positions unconfirmed.')
+            ('. Other positions unconfirmed.' if counts['In position'] and counts['In position'] < total else
+             '.' if counts['In position'] == total else '. Final positions unconfirmed.'))
 
 
 def movement_details(picture: dict, projected: dict) -> dict:
@@ -296,6 +328,7 @@ def movement_details(picture: dict, projected: dict) -> dict:
     events = {e['setup_movement_event_id']:e for e in picture['effect_rows']}
     containers = {c['container_id']:c for c in picture['containers']}
     pickups = {p['container_id']:p for p in picture.get('pickup_requests', [])}
+    in_position, shared_gps = display_placement_sets(picture, events)
     container_rows = []
     for c in projected['containers']:
         ident = c['container_id']
@@ -338,7 +371,7 @@ def movement_details(picture: dict, projected: dict) -> dict:
                   f"Last movement: {event_text(last)}\n"
                   f"Load: {load_label} ({load_source})\n"
                   f"Home: {c.get('home_location_code') or 'Not recorded'} · Type: {role}\n" +
-                  container_display_evidence(ident, picture, events, last) + "\n" +
+                  container_display_evidence(ident, picture, events, last, in_position) + "\n" +
                   ("Contents review — resolution unverified: " + ' | '.join(reasons) if reasons else
                    'Contents review: no flag recorded.') +
                   f"\n{PENDING}.")
@@ -346,16 +379,25 @@ def movement_details(picture: dict, projected: dict) -> dict:
                                'detail':detail, 'url':(SETUP_URL + f'container-pickups/?asset=CONT%3A{ident}&season_year=2026' if pickup else record_url('CONT', ident))})
     display_rows = []
     for d in picture['displays']:
+        if d['display_id'] in in_position:
+            continue  # Existing independent placement scan: not an exception.
         e = events.get(d.get('last_movement_event_id'), {})
         parent = containers.get(d.get('container_id'), {})
         parent_event = events.get(parent.get('last_movement_event_id'), {})
         mode = d.get('position_mode')
         effects = [x for x in picture['effect_rows'] if x.get('display_id') == d['display_id']
                    and x.get('setup_movement_event_id') == d.get('last_movement_event_id')]
-        conflict = bool(e and not effects) or (mode == 'WITH_CONTAINER' and bool(parent.get('movement_status') == 'RETURNED'))
+        conflict = (bool(e and not effects) or
+                    (mode == 'DETACHED' and any(x.get('movement_effect') != 'DETACHED' for x in effects)) or
+                    (mode == 'WITH_CONTAINER' and bool(parent.get('movement_status') == 'RETURNED')))
         if conflict:
             label = 'Conflicting observations — review required'
             reason = 'Current Display state conflicts with event membership or returned-Home Container association.'
+        elif d['display_id'] in shared_gps:
+            label = 'Shared GPS with other Displays from this Container — placement review required'
+            reason = event_text(parent_event if mode == 'WITH_CONTAINER' else e)
+            if 'inferred_unload=true' in (e.get('notes') or ''):
+                reason += '; location inherited from Container, not an independent scan'
         elif mode == 'WITH_CONTAINER' and parent_event:
             label = 'Last location inferred from a Container'
             reason = f"C{d['container_id']:03d}: {event_text(parent_event)}; not an independent Display observation."
@@ -369,11 +411,11 @@ def movement_details(picture: dict, projected: dict) -> dict:
             label = 'No usable placement evidence'
             reason = event_text(e)
         display_rows.append({'name':f"{d['display_name']} — Display {d['display_id']}",
-            'detail':f"{label}. {reason}\nFinal Setup position verification unavailable (#431 not deployed); "
-                     f"this does not mean physically missing. {PENDING}. "
-                     'Use Record Location for an actual field observation; it does not certify final Setup placement.',
+            'detail':f"{label}. {reason}\nScan the Display in position using Record Location. "
+                     f"Historical corrections: {PENDING}.",
             'url':record_url('DISP', d['display_id'])})
     return {'container_rows':container_rows, 'display_rows':display_rows,
+            'display_in_position_ids':sorted(in_position),
             'container_detail_lines':rows_text(container_rows), 'display_detail_lines':rows_text(display_rows)}
 
 

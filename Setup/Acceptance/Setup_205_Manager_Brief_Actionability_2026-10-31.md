@@ -114,3 +114,11 @@ actual dependency. Follow its existing planning-review link. Completed/deferred
 successors must not appear; duplicates appear once. Other blockers may remain.
 No scheduler filtering or dependency enforcement is changed. Synthetic graph,
 HTML/text parity and navigation tests pass; live identities need Greg's review.
+
+V0.3.101-manager-placement: Greg's independent-scan rule supersedes blanket #431
+verification warnings. Existing independent Display scans imply In position for
+this report and are omitted from placement exceptions. Review Displays72/88 and
+630/620 against the supplied examples; confirm they no longer appear as gaps.
+No individual scan is fabricated, and no movement state is written. Inferred
+unloads, shared-GPS groups and conflicting/missing scan evidence remain reviewable.
+Per-Container evidence uses the same accepted scan classification.

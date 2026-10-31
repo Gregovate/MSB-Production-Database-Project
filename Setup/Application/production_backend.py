@@ -42,7 +42,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.100-manager-next-task"
+PRODUCTION_VERSION = "V0.3.101-manager-placement"
 
 # #222 lightweight Production request instrumentation.
 #

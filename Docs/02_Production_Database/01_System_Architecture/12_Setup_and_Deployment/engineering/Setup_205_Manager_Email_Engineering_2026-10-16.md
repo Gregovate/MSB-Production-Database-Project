@@ -302,3 +302,19 @@ non-deferred successor qualify. Deduplicate annual task IDs; do not infer edges
 from prose or task names. Show each successor and existing planning-review link.
 Do not imply completing one prerequisite clears all other gates. Preserve all
 counts, task selection, original notes and scheduler enforcement/filtering.
+
+### Accepted independent placement scans — Greg's October31 correction
+
+Supersedes the blanket #431 final-position restriction for this report. Greg
+confirms Candyland Bench Displays72/88 and Glistening Grove630/620 were separately
+scanned in position. Existing independent CAMERA_SCAN/HID_SCAN DISPLAY_MOVE
+evidence with matching single-Display DETACHED effect and current
+DETACHED state qualifies as In position for reporting. Exclude these from Display
+placement exceptions; do not create a new persisted state or require #431.
+Inferred unloads, grouped events, absent independent scan evidence, conflicting membership and
+shared GPS among Displays from one Container remain review items. Apply the same
+classification to the per-Container evidence line. Preserve all original movement
+and task/Container counts and records. This says nothing about wiring or testing.
+
+Greg further confirms: independently scanned means inferred In position. GPS
+availability alone must not disqualify an otherwise independent Display scan.
