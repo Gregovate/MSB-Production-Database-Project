@@ -289,3 +289,6 @@ the prior Container anchor. Expose this provenance and per-Container Display
 evidence counts, including exact shared-GPS groups. Equal coordinates alone do
 not prove misplaced Displays; neither unload nor independent scan establishes
 #431 final position. No mutation or new completion state is introduced.
+
+Relabel the unchanged association-derived empty/partial summary counts as No
+Displays attached / Some Displays detached, to avoid suggesting physical emptiness.

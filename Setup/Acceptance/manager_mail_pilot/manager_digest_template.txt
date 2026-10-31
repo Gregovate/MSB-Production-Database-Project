@@ -11,8 +11,8 @@ CONTAINERS — RECORDED FIELD MOVEMENT
 Reference Containers: $containers_total
 Park setup stop recorded: $containers_park_recorded
 Picked / loaded / on the way: $containers_outbound
-Empty at park (recorded Display associations, not physically verified): $containers_empty_at_park
-Partly unloaded at park (recorded associations): $containers_partial_at_park
+No Displays attached at park (associations, not physical contents): $containers_empty_at_park
+Some Displays detached at park (associations): $containers_partial_at_park
 Returned Home (reported empty return): $containers_returned
 No movement recorded: $containers_no_movement
 Location / status needs review: $containers_location_review
