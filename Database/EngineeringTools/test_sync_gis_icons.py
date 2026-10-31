@@ -125,13 +125,31 @@ class ProcessTests(unittest.TestCase):
         # Display scaling used to crowd the long Step 5 label alongside web
         # publication controls, making installation hard to identify.
         gui = (Path(__file__).parent / 'icon_library_manager.pyw').read_text()
-        self.assertIn('local_controls = ttk.Frame(root,', gui)
-        self.assertIn('publication_controls = ttk.Frame(root,', gui)
+        self.assertIn('local_controls = ttk.Frame(action_dock,', gui)
+        self.assertIn('publication_controls = ttk.Frame(action_dock,', gui)
         self.assertIn('self.local_png_btn.pack(side="left")', gui)
         self.assertIn('self.web_publish_btn.pack(side="left"', gui)
         self.assertIn('self.web_png_btn.pack(side="left")', gui)
-        self.assertLess(gui.index('local_controls = ttk.Frame(root,'),
-                        gui.index('footer = ttk.Frame(root,'))
+        self.assertLess(gui.index('publication_controls = ttk.Frame(action_dock,'),
+                        gui.index('local_controls = ttk.Frame(action_dock,'))
+
+    def test_compact_laptop_layout_reserves_visible_actions_and_footer(self):
+        # #171 real 15-inch laptop: the old 785px window and expanding
+        # preview hid Step 6/status and/or Close under Windows DPI scaling.
+        # Reserve a bottom dock before the preview consumes flexible space.
+        gui = (Path(__file__).parent / 'icon_library_manager.pyw').read_text()
+        self.assertIn('self.root.geometry("930x615")', gui)
+        self.assertIn('self.root.minsize(800, 500)', gui)
+        self.assertIn('footer.pack(side="bottom", fill="x")', gui)
+        self.assertIn('action_dock.pack(side="bottom", fill="x")', gui)
+        self.assertLess(gui.index('footer.pack(side="bottom", fill="x")'),
+                        gui.index('body.pack(fill="both", expand=True'))
+        self.assertLess(gui.index('action_dock.pack(side="bottom", fill="x")'),
+                        gui.index('body.pack(fill="both", expand=True'))
+        for name in ('publication_controls', 'local_controls', 'profile_controls'):
+            self.assertIn(name + ' = ttk.Frame(action_dock,', gui)
+        self.assertIn('ttk.Label(action_dock, textvariable=self.profile_release_status,', gui)
+        self.assertIn('ttk.Button(footer, text="Close"', gui)
 
     def test_verified_shared_cache_does_not_require_inkscape(self):
         # First authoring PC validated the G: release-history cache.

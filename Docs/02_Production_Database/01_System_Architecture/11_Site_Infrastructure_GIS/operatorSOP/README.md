@@ -4,6 +4,8 @@ This is the task guide for installing and using the **MSB Icon Library Manager**
 
 ## What do you need to do?
 
+- [Garmin GPSMAP 66sr — record a cable route and clear old tracks (DRAFT)](Garmin_66sr_Record_and_Clear_Tracks.md) — simple button-by-button field instructions; device test required before issuing to technicians.
+
 - [Install or update the MSB Icon Library Manager](Install_or_Update_MSB_Icon_Library_Manager.md) — prepare an authorized Windows checkout, create the one-time Desktop shortcut, and get current program changes.
 - [Review icons and update your local ExpertGPS symbols](Review_MSB_Icons_and_Update_Local_ExpertGPS.md) — work with approved Plain SVGs and canonical PNGs; no public web publishing.
 - [Publish approved Plain SVGs to the web — administrator only](Publish_Approved_MSB_SVGs_to_Web.md) — controlled review, explicit confirmation, backups, and public URL verification.

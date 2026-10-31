@@ -1,0 +1,483 @@
+"""#428 source-only safeguards. Run: python -m unittest test_gis_track_intake.py"""
+import tempfile
+import unittest
+from pathlib import Path
+from gis_track_intake import parse, nearest, type_hint, propose, save, source_digest, mercator, aerial_image, AERIAL_URL, fit_zoom
+
+GPX = '<gpx xmlns="http://www.topografix.com/GPX/1/1"><wpt lat="43.1" lon="-87.1"><name>FE-00</name><type>Panel</type></wpt><wpt lat="43.101" lon="-87.102"><name>FE-07</name><type>OUT-Combo</type></wpt><trk><name>2026-10-20 NET</name><type>Network</type><trkseg><trkpt lat="43.1" lon="-87.1"/><trkpt lat="43.101" lon="-87.102"/></trkseg></trk></gpx>'
+
+class IntakeTests(unittest.TestCase):
+    def test_infrastructure_reference_filter_and_voltage_variants(self):
+        import xml.etree.ElementTree as ET
+        from gis_track_intake import infrastructure_waypoint, reference_track, road_or_trail
+        for kind in ("Display Anchor","Light Pole","LP-Combo","LP_Power","Out-Combo",
+                     "Outlet Power","Panel","Panel Auxiliary","WiFi AP","Transformer"):
+            node=ET.fromstring('<wpt xmlns="http://www.topografix.com/GPX/1/1"><type>'+kind+'</type></wpt>')
+            self.assertTrue(infrastructure_waypoint(node),kind)
+        for kind in ("Stage","Camera","Hydrant","Trailhead","Waypoint","Building"):
+            node=ET.fromstring('<wpt xmlns="http://www.topografix.com/GPX/1/1"><type>'+kind+'</type></wpt>')
+            self.assertFalse(infrastructure_waypoint(node),kind)
+        stage=ET.fromstring('<wpt xmlns="http://www.topografix.com/GPX/1/1"><name>Panel stage</name><type>Stage</type></wpt>')
+        self.assertFalse(infrastructure_waypoint(stage))
+        for kind in ("High Voltage","High Voltage 12-2","High Voltage 12-3","High Voltage Custom",
+                     "Network","Primary","Abandoned","Road","Trail"):
+            self.assertTrue(reference_track({"type":kind}),kind)
+        self.assertFalse(reference_track({"type":"GPS Tracklog"}))
+        self.assertTrue(road_or_trail({"type":"Road"}))
+        self.assertTrue(road_or_trail({"type":"Trails"}))
+        self.assertFalse(road_or_trail({"type":"Network"}))
+        self.assertEqual(type_hint("High Voltage 12-2"),"High Voltage 12-2")
+        self.assertEqual(type_hint("HV 12-3"),"High Voltage 12-3")
+        self.assertEqual(type_hint("Maybe Abandoned/Dead"),"Maybe Abandoned/Dead")
+
+    def test_close_zoom_preserves_registration_and_published_tile_limit(self):
+        import io
+        from PIL import Image
+        from gis_track_intake import unproject, inches_per_pixel
+        point=(43.778,-87.742)
+        x,y=mercator(*point,24)
+        lat,lon=unproject(x,y,24)
+        self.assertAlmostEqual(lat,point[0])
+        self.assertAlmostEqual(lon,point[1])
+        self.assertLess(inches_per_pixel(point[0],24),.3)
+        tile=io.BytesIO();Image.new("RGB",(256,256)).save(tile,format="PNG")
+        calls=[]
+        def fetch(url):
+            calls.append(url);return tile.getvalue()
+        image,(ox,oy)=aerial_image([point],560,320,24,fetch,center=point)
+        self.assertEqual(image.size,(560,320))
+        self.assertAlmostEqual(x-ox,280)
+        self.assertAlmostEqual(y-oy,160)
+        self.assertTrue(all("/20/" in url for url in calls))
+
+    def test_waypoint_suggestion_and_type(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/"raw.gpx";p.write_text(GPX)
+            tracks,waypoints=parse(p)
+            self.assertEqual(len(tracks),1)
+            self.assertEqual(nearest(tracks[0][2][0],waypoints)[0][0],"FE-00")
+            self.assertEqual(nearest(tracks[0][2][-1],waypoints)[0][0],"FE-07")
+            self.assertEqual(type_hint(tracks[0][1]),"Network")
+            self.assertEqual(propose("NET","FE-00","FE-07"),"NET FE-00 to FE-07")
+    def test_save_archives_original_and_preserves_bytes(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);source=root/"raw.gpx";source.write_text(GPX)
+            before=source.read_bytes();digest=source_digest(source)
+            reviewed=save(root/"Field-Recordings",source,1,"NET FE-00 to FE-07","NET","FE-00","FE-07")
+            self.assertTrue(reviewed.is_file())
+            self.assertEqual(source.read_bytes(),before)
+            self.assertEqual(len(list((root/"Field-Recordings").glob("*/Originals/*.gpx"))),1)
+            self.assertEqual(source_digest(source),digest)
+            save(root/"Field-Recordings",source,1,"NET FE-00 to FE-07","NET","FE-00","FE-07")
+            self.assertEqual(len(list((root/"Field-Recordings").glob("*/Originals/*.gpx"))),1)
+    def test_existing_aerial_xyz_calibration(self):
+        import io
+        from PIL import Image
+        self.assertIn("evergreen-2019-v1/{z}/{x}/{y}.jpg", AERIAL_URL)
+        origin=mercator(0,0,1)
+        self.assertAlmostEqual(origin[0],256)
+        self.assertAlmostEqual(origin[1],256)
+        tile=io.BytesIO()
+        Image.new("RGB",(256,256),(110,120,130)).save(tile,format="JPEG")
+        called=[]
+        def fetch(url):
+            called.append(url)
+            return tile.getvalue()
+        rendered,offset=aerial_image([(43.778,-87.742),(43.77801,-87.74201)],256,256,zoom=19,fetch=fetch)
+        self.assertEqual(rendered.size,(256,256))
+        self.assertTrue(called)
+        self.assertTrue(all("/maps/evergreen-2019-v1/19/" in u for u in called))
+    def test_fit_zoom_keeps_full_track_visible(self):
+        pts=[(43.778,-87.742),(43.779,-87.743)]
+        z=fit_zoom(pts,550,290)
+        self.assertGreaterEqual(z,14)
+        self.assertLessEqual(z,20)
+        xy=[mercator(*p,z) for p in pts]
+        self.assertLessEqual(abs(xy[0][0]-xy[1][0]),550*0.82)
+        self.assertLessEqual(abs(xy[0][1]-xy[1][1]),290*0.82)
+
+    def test_unknown_type_not_forced(self):
+        self.assertEqual(type_hint("2026-10-20 08:00"),"Unknown")
+        self.assertEqual(type_hint("2026-10-14 11:19:07 Hvfe00 tfe04&02"),"High Voltage")
+        self.assertEqual(type_hint("2026-10-14 11:26:10 Netfe00tfe15"),"Network")
+        self.assertEqual(type_hint("New run 2026 lpfc01"),"Unknown")
+
+    def test_source_and_master_change_block_review_before_archive(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); source=root/'raw.gpx'; master=root/'master.gpx'
+            source.write_text(GPX); master.write_text(GPX)
+            digest=source_digest(source); md=source_digest(master)
+            source.write_text(GPX.replace('NET','HV'))
+            with self.assertRaisesRegex(ValueError,'Recording changed'):
+                save(root/'intake',source,1,'route','NET','A','B',expected_digest=digest)
+            self.assertFalse((root/'intake').exists())
+            source.write_text(GPX); master.write_text(GPX.replace('FE-00','FE-01'))
+            with self.assertRaisesRegex(ValueError,'Master changed'):
+                save(root/'intake',source,1,'route','NET','A','B',expected_digest=digest,
+                     master=master,master_digest=md)
+            self.assertFalse((root/'intake').exists())
+
+    def test_segment_gaps_are_preserved_and_bad_coordinates_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            source=Path(d)/'raw.gpx'
+            source.write_text(GPX.replace('<trkpt lat="43.101"', '</trkseg><trkseg><trkpt lat="43.101"'))
+            tracks,_=parse(source)
+            self.assertEqual([len(s) for s in tracks[0][2].segments],[1,1])
+            source.write_text(GPX.replace('43.101','nan'))
+            with self.assertRaisesRegex(ValueError,'Invalid GPX'):
+                parse(source)
+
+    def test_uneven_sampling_does_not_clip_extreme_endpoint(self):
+        import io
+        from PIL import Image
+        points=[(43.778,-87.742)]*100+[(43.779,-87.743)]
+        width,height=550,290
+        zoom=fit_zoom(points,width,height)
+        tile=io.BytesIO(); Image.new('RGB',(256,256)).save(tile,format='JPEG')
+        _,(ox,oy)=aerial_image(points,width,height,zoom,fetch=lambda _:tile.getvalue())
+        for lat,lon in points:
+            x,y=mercator(lat,lon,zoom)
+            self.assertTrue(0 <= x-ox <= width)
+            self.assertTrue(0 <= y-oy <= height)
+
+    def test_unrenderable_extent_stops_instead_of_clipping(self):
+        with self.assertRaisesRegex(ValueError,'extends beyond'):
+            fit_zoom([(0,0),(45,45)],550,290)
+
+    def test_tk_read_save_next_and_reopen(self):
+        import tkinter as tk
+        import time
+        from tkinter import ttk
+        from unittest.mock import patch
+        from PIL import Image
+        from gis_track_intake import open_intake
+        def walk(w):
+            yield w
+            for child in w.winfo_children():
+                yield from walk(child)
+        def fake_map(points,width,height,zoom,center=None):
+            x,y=mercator(*(center or points[0]),zoom)
+            return Image.new('RGB',(width,height)),(x-width/2,y-height/2)
+        with tempfile.TemporaryDirectory() as d:
+            rootdir=Path(d); raw=rootdir/'Garmin'; raw.mkdir()
+            master=rootdir/'master.gpx'; master.write_text(GPX)
+            source=raw/'raw.gpx'; source.write_text(GPX)
+            intake=rootdir/'Field-Recordings'; intake.mkdir()
+            from gis_garmin_downloads import download, inventory
+            download(raw,intake,inventory(raw,intake))
+            detached=raw.rename(rootdir/'Disconnected-Garmin')
+            source=detached/'raw.gpx'
+            before=(source.read_bytes(), master.read_bytes())
+            root=tk.Tk(); root.withdraw()
+            self.addCleanup(root.destroy)
+            errors=[]
+            with patch('gis_track_intake.find_garmin_gpx_dirs',return_value=[]), \
+                 patch('gis_track_intake.aerial_image',side_effect=fake_map) as map_fetch, \
+                 patch('gis_track_intake.messagebox.showinfo') as notices, \
+                 patch('gis_track_intake.messagebox.showerror',side_effect=lambda *a,**k:errors.append(a)):
+                win=open_intake(root); root.update()
+                self.assertEqual(next(w for w in walk(win) if isinstance(w,tk.Listbox)).cget("selectmode"),"extended")
+                entries=[w for w in walk(win) if type(w) is ttk.Entry]
+                for entry,value in zip(entries,[str(raw),str(master),str(intake)]):
+                    entry.delete(0,'end'); entry.insert(0,value)
+                buttons={w.cget('text'):w for w in walk(win) if isinstance(w,ttk.Button)}
+                for label in ['Read downloaded tracks','Save identification only']:
+                    button=buttons[label]
+                    self.assertTrue(button.winfo_ismapped(),label)
+                    self.assertLessEqual(button.winfo_rooty()+button.winfo_height(),
+                                         win.winfo_rooty()+win.winfo_height(),label)
+                # Enlarging the map must never hide identification or save tools.
+                buttons['Hide folders'].invoke(); root.update()
+                for entry in entries[3:]:
+                    self.assertTrue(entry.winfo_ismapped())
+                for label in ['Save identification only','Suggest name from selected endpoints',
+                              'Match and name from master','Export GPX for ExpertGPS']:
+                    self.assertTrue(buttons[label].winfo_ismapped(),label)
+                self.assertFalse(entries[0].winfo_ismapped())
+                buttons['Show folders'].invoke(); root.update()
+                self.assertTrue(entries[0].winfo_ismapped())
+                buttons['Hide folders'].invoke(); root.update()
+                buttons['Read downloaded tracks'].invoke()
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update(); time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
+                        break
+                entries[-1].delete(0,'end');entries[-1].insert(0,'Operator corrected name')
+                canvas=next(w for w in walk(win) if isinstance(w,tk.Canvas))
+                plates=canvas.find_withtag('label-background')
+                self.assertTrue(plates)
+                self.assertEqual(canvas.itemcget(plates[0],'fill'),'#ffffff')
+                image_item=canvas.find_withtag('map-content')[0]
+                position=canvas.coords(image_item)
+                canvas.event_generate('<ButtonPress-1>',x=150,y=150)
+                canvas.event_generate('<B1-Motion>',x=200,y=175)
+                self.assertEqual(canvas.coords(image_item),[position[0]+50,position[1]+25])
+                canvas.event_generate('<ButtonRelease-1>',x=200,y=175)
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
+                        break
+                buttons['6-inch detail'].invoke()
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('zoom 24' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
+                        break
+                self.assertEqual(entries[-1].get(),'Operator corrected name')
+                self.assertTrue(any('zoom 24' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)))
+                prior_call=map_fetch.call_args
+                win.geometry('1300x850')
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if (canvas.image_ref.width(),canvas.image_ref.height()) == (canvas.winfo_width(),canvas.winfo_height()):
+                        break
+                self.assertEqual((canvas.image_ref.width(),canvas.image_ref.height()),
+                                 (canvas.winfo_width(),canvas.winfo_height()))
+                self.assertEqual(map_fetch.call_args.kwargs['zoom'],24)
+                self.assertEqual(map_fetch.call_args.kwargs['center'],prior_call.kwargs['center'])
+                self.assertEqual(entries[-1].get(),'Operator corrected name')
+                type_control=next(w for w in walk(win) if isinstance(w,ttk.Combobox))
+                type_control.set('Network')
+                recording_list=next(w for w in walk(win) if isinstance(w,tk.Listbox))
+                recording_list.event_generate('<<ListboxSelect>>');root.update()
+                self.assertEqual(type_control.get(),'Network')
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):break
+                buttons['Save identification only'].invoke();root.update()
+                self.assertTrue(recording_list.curselection())
+                self.assertEqual(type_control.get(),'Network')
+                self.assertFalse(errors)
+                receipt=next((intake/'Reviews').glob('*.json'))
+                import json
+                saved=json.loads(receipt.read_text())
+                self.assertEqual(saved['working_name'],'Operator corrected name')
+                self.assertEqual(saved['master_sha256'],source_digest(master))
+                buttons['Read downloaded tracks'].invoke();root.update()
+                self.assertEqual(entries[-1].get(),'Operator corrected name')
+                self.assertEqual((source.read_bytes(),master.read_bytes()),before)
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
+                        break
+                self.assertFalse(errors)
+                self.assertTrue(next(w for w in walk(win) if isinstance(w,tk.Listbox)).curselection())
+                buttons['Match and name from master'].invoke();root.update()
+                review=next(w for w in walk(win) if w.winfo_name()=="run_review")
+                self.assertFalse(any(isinstance(w,ttk.Treeview) for w in walk(review)))
+                self.assertFalse(isinstance(review,tk.Toplevel))
+                metadata=next(w for w in walk(review) if isinstance(w,tk.Text) and str(w.cget("state"))=="disabled")
+                self.assertIn("Master track #",metadata.get("1.0","end"))
+                combo=next(w for w in walk(review) if isinstance(w,tk.Listbox))
+                combo.selection_set(0);combo.event_generate('<<ListboxSelect>>');root.update()
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
+                        break
+                note=next(w for w in walk(review) if isinstance(w,tk.Text) and str(w.cget('state'))=='normal')
+                note.insert('1.0','Disposable fixture: verified matching track')
+                networks=[w for w in walk(review) if isinstance(w,tk.Listbox)][-1]
+                reg=list(networks.get(0,'end')).index('REG')
+                networks.selection_set(reg);networks.event_generate('<<ListboxSelect>>');root.update()
+                next(w for w in walk(review) if isinstance(w,ttk.Checkbutton)).invoke()
+                next(w for w in walk(review) if isinstance(w,ttk.Button) and w.cget('text')=='Save match & Next').invoke()
+                root.update()
+                import gis_track_reconcile as reconcile
+                self.assertEqual(len(reconcile.decisions(intake,source_digest(master))),1)
+                self.assertEqual(recording_list.size(),0)  # accepted recording leaves pending queue
+                buttons['Read downloaded tracks'].invoke();root.update()
+                self.assertEqual(recording_list.size(),0)
+                next(w for w in walk(win) if isinstance(w,ttk.Checkbutton) and w.cget('text')=='Show processed').invoke();root.update()
+                self.assertEqual(recording_list.size(),1)
+                output=rootdir/'ExpertGPS-working.gpx'
+                with patch('gis_track_intake.filedialog.asksaveasfilename',return_value=str(output)), patch('gis_track_intake.messagebox.askyesno',return_value=True):
+                    buttons['Export GPX for ExpertGPS'].invoke();root.update()
+                self.assertTrue(output.is_file())
+                self.assertEqual(parse(output)[0][0][1],"Operator corrected name")
+                self.assertEqual(parse(output)[0][0][2],parse(master)[0][0][2])
+                self.assertEqual(parse(output)[1],[])
+                self.assertTrue(any(call.args[0]=="GPX exported" for call in notices.call_args_list))
+                self.assertTrue(output.with_suffix('.gpx.review.json').is_file())
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):break
+                buttons['Review as new run'].invoke();root.update()
+                review=next(w for w in walk(win) if w.winfo_name()=="run_review")
+                install=next(w for w in walk(review) if isinstance(w,ttk.LabelFrame))
+                evidence_entries=[w for w in walk(install) if type(w) is ttk.Entry]
+                self.assertEqual(len(evidence_entries),1)  # year only; no freeform network field
+                evidence_entries[0].insert(0,'2026')
+                networks=next(w for w in walk(install) if isinstance(w,tk.Listbox))
+                for code in ('REG','E1.31','SPARE-1'):
+                    networks.selection_set(list(networks.get(0,'end')).index(code))
+                networks.event_generate('<<ListboxSelect>>');root.update()
+                next(w for w in walk(review) if isinstance(w,ttk.Button) and w.cget('text')=='Save draft (no acceptance)').invoke()
+                draft_file=next((intake/'Drafts').glob('*.json'))
+                self.assertEqual(json.loads(draft_file.read_text())['year'],'2026')
+                next(w for w in walk(review) if isinstance(w,ttk.Button) and w.cget('text')=='Close review').invoke();root.update()
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):break
+                buttons['Review as new run'].invoke();root.update()
+                review=next(w for w in walk(win) if w.winfo_name()=="run_review")
+                install=next(w for w in walk(review) if isinstance(w,ttk.LabelFrame))
+                evidence_entries=[w for w in walk(install) if type(w) is ttk.Entry]
+                self.assertEqual(evidence_entries[0].get(),'2026')
+                networks=next(w for w in walk(install) if isinstance(w,tk.Listbox))
+                self.assertEqual({networks.get(i) for i in networks.curselection()},{'REG','E1.31','SPARE-1'})
+                type_control.set('High Voltage');root.update()
+                self.assertFalse(networks.winfo_ismapped())
+                type_control.set('Network');root.update()
+                self.assertTrue(networks.winfo_ismapped())
+                self.assertEqual(len(reconcile.decisions(intake,source_digest(master))),1)
+                self.assertFalse(errors)
+                self.assertEqual((source.read_bytes(),master.read_bytes()),before)
+
+
+    def test_review_retains_displayed_recording_after_release_below_rows(self):
+        import tkinter as tk
+        import time
+        from tkinter import ttk
+        from unittest.mock import patch
+        from PIL import Image
+        from gis_track_intake import open_intake
+        retention = patch('gis_track_intake.downloads.retained', side_effect=lambda root: sorted(raw.glob('*.gpx')))
+        retention.start(); self.addCleanup(retention.stop)
+        def walk(w):
+            yield w
+            for child in w.winfo_children():yield from walk(child)
+        def fake_map(points,width,height,zoom,center=None):
+            x,y=mercator(*(center or points[0]),zoom)
+            return Image.new('RGB',(width,height)),(x-width/2,y-height/2)
+        with tempfile.TemporaryDirectory() as d:
+            folder=Path(d); raw=folder/'Garmin';raw.mkdir()
+            (raw/'first.gpx').write_text(GPX)
+            (raw/'last.gpx').write_text(GPX)
+            master=folder/'master.gpx';master.write_text(GPX)
+            intake=folder/'Intake';intake.mkdir()
+            root=tk.Tk();root.withdraw();self.addCleanup(root.destroy)
+            with patch('gis_track_intake.find_garmin_gpx_dirs',return_value=[]), patch('gis_track_intake.aerial_image',side_effect=fake_map):
+                win=open_intake(root);root.update()
+                entries=[w for w in walk(win) if type(w) is ttk.Entry]
+                for entry,value in zip(entries,[raw,master,intake]):
+                    entry.delete(0,'end');entry.insert(0,str(value))
+                buttons={w.cget('text'):w for w in walk(win) if isinstance(w,ttk.Button)}
+                buttons['Read downloaded tracks'].invoke();root.update()
+                queue=next(w for w in walk(win) if isinstance(w,tk.Listbox))
+                queue.selection_set(0,1)
+                queue.event_generate('<<ListboxSelect>>');root.update()
+                queue.event_generate('<ButtonRelease-1>',x=10,y=queue.winfo_height()-5);root.update()
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):break
+                self.assertTrue(any(str(w.cget('text')).startswith('first.gpx —') for w in walk(win) if isinstance(w,ttk.Label)))
+                buttons['Match and name from master'].invoke();root.update()
+                self.assertTrue(any(w.winfo_name()=='run_review' for w in walk(win)))
+                self.assertEqual(queue.curselection(),(0,1))
+                self.assertTrue(any(str(w.cget('text')).startswith('first.gpx —') for w in walk(win) if isinstance(w,ttk.Label)))
+
+
+    def test_reload_master_preserves_review_and_rebinds_reordered_match(self):
+        import tkinter as tk
+        import time, json
+        from tkinter import ttk
+        from unittest.mock import patch
+        from PIL import Image
+        import gis_track_reconcile as reconcile
+        from gis_track_intake import open_intake
+        retention = patch('gis_track_intake.downloads.retained', side_effect=lambda root: sorted(raw.glob('*.gpx')))
+        retention.start(); self.addCleanup(retention.stop)
+        def walk(w):
+            yield w
+            for child in w.winfo_children():yield from walk(child)
+        def fake_map(points,width,height,zoom,center=None):
+            x,y=mercator(*(center or points[0]),zoom)
+            return Image.new('RGB',(width,height)),(x-width/2,y-height/2)
+        with tempfile.TemporaryDirectory() as d:
+            folder=Path(d);raw=folder/'Garmin';raw.mkdir()
+            source=raw/'first.gpx';source.write_text(GPX)
+            (raw/'second.gpx').write_text(GPX)
+            master=folder/'master.gpx';master.write_text(GPX)
+            intake=folder/'Intake';intake.mkdir()
+            root=tk.Tk();root.withdraw();self.addCleanup(root.destroy)
+            errors=[]
+            with patch('gis_track_intake.find_garmin_gpx_dirs',return_value=[]), patch('gis_track_intake.aerial_image',side_effect=fake_map), patch('gis_track_intake.messagebox.showerror',side_effect=lambda *a,**k:errors.append(a)), patch('gis_track_intake.messagebox.showinfo'):
+                win=open_intake(root);root.update()
+                def button(text):return next(w for w in walk(win) if isinstance(w,ttk.Button) and w.cget('text')==text)
+                def wait_map():
+                    deadline=time.monotonic()+3
+                    while time.monotonic()<deadline:
+                        root.update();time.sleep(.02)
+                        if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):return
+                    self.fail('Map did not finish')
+                entries=[w for w in walk(win) if type(w) is ttk.Entry]
+                for entry,value in zip(entries,[raw,master,intake]):
+                    entry.delete(0,'end');entry.insert(0,str(value))
+                button('Read downloaded tracks').invoke();wait_map()
+                source.rename(raw/'temporarily-disconnected.gpx')
+                button('Review as new run').invoke();root.update()
+                self.assertEqual(errors[-1][0],'Recording unavailable')
+                self.assertFalse(any(w.winfo_name()=='run_review' for w in walk(win)))
+                errors.clear()
+                (raw/'temporarily-disconnected.gpx').rename(source)
+                button('Match and name from master').invoke();wait_map()
+                review=next(w for w in walk(win) if w.winfo_name()=='run_review')
+                year=next(w for w in walk(review) if type(w) is ttk.Entry)
+                year.insert(0,'2026')
+                networks=[w for w in walk(review) if isinstance(w,tk.Listbox)][-1]
+                for code in ('REG','E1.31','SPARE-1'):
+                    networks.selection_set(list(networks.get(0,'end')).index(code))
+                networks.event_generate('<<ListboxSelect>>');root.update()
+                note=next(w for w in walk(review) if isinstance(w,tk.Text) and str(w.cget('state'))=='normal')
+                note.insert('1.0','Keep this field note')
+                entries[-1].delete(0,'end');entries[-1].insert(0,'Reviewed route')
+                queue=next(w for w in walk(win) if isinstance(w,tk.Listbox))
+                queue.selection_clear(0,'end');queue.selection_set(1);queue.event_generate('<<ListboxSelect>>');root.update()
+                self.assertTrue(review.winfo_exists());self.assertEqual(queue.curselection(),(0,))
+                self.assertEqual(year.get(),'2026');self.assertEqual(entries[-1].get(),'Reviewed route')
+                # Another track is inserted before our match, as an ExpertGPS save can do.
+                added='<trk><name>Unrelated route</name><type>Network</type><trkseg><trkpt lat="44" lon="-88"/><trkpt lat="44.1" lon="-88.1"/></trkseg></trk>'
+                master.write_text(GPX.replace('<trk>',added+'<trk>',1).replace('FE-07','FE-07-CORRECTED'))
+                button('Reload saved master').invoke();wait_map()
+                self.assertTrue(review.winfo_exists());self.assertEqual(year.get(),'2026')
+                self.assertEqual(note.get('1.0','end').strip(),'Keep this field note')
+                self.assertEqual(entries[-1].get(),'Reviewed route')
+                self.assertEqual({networks.get(i) for i in networks.curselection()},{'REG','E1.31','SPARE-1'})
+                next(w for w in walk(review) if isinstance(w,ttk.Checkbutton)).invoke()
+                button('Save run; choose another').invoke();root.update()
+                self.assertFalse(errors)
+                decisions=reconcile.decisions(intake,source_digest(master))
+                self.assertEqual(len(decisions),1)
+                output=folder/'reviewed.gpx'
+                reconcile.export_candidate(intake,master,source_digest(master),output,selected_run=decisions[0])
+                exported=reconcile.tracks(output)[0]
+                self.assertEqual(exported['name'],'Reviewed route')
+                self.assertEqual(exported['points'],parse(source)[0][0][2])
+                self.assertIn('Networks: E1.31, REG, SPARE-1',exported['description'])
+                self.assertFalse(review.winfo_exists())
+                queue.selection_clear(0,'end');queue.selection_set(1);queue.event_generate('<<ListboxSelect>>');wait_map()
+                self.assertEqual(queue.curselection(),(1,))
+                self.assertTrue(any(str(w.cget('text')).startswith('second.gpx —') for w in walk(win) if isinstance(w,ttk.Label)))
+                button('Review as new run').invoke();wait_map()
+                review=next(w for w in walk(win) if w.winfo_name()=='run_review')
+                year=next(w for w in walk(review) if type(w) is ttk.Entry);year.insert(0,'2025')
+                master.write_text(master.read_text().replace('FE-07-CORRECTED','FE-07-NEW'))
+                button('Reload saved master').invoke();wait_map()
+                self.assertEqual(year.get(),'2025');self.assertTrue(review.winfo_exists())
+                self.assertFalse(errors)
+                # Invalid master must not destroy current review or edited values.
+                master.write_text('<broken')
+                button('Reload saved master').invoke();root.update()
+                self.assertEqual(errors[-1][0],'Master not reloaded')
+                self.assertEqual(year.get(),'2025');self.assertTrue(review.winfo_exists())
+
+if __name__=="__main__":unittest.main()

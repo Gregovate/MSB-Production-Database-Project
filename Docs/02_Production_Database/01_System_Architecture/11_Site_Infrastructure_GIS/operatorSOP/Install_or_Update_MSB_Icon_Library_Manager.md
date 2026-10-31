@@ -27,7 +27,7 @@ Install the **MSB Icon Library Manager** on a Windows computer that has access t
 
 - Your computer must have an authorized checkout of `Gregovate/MSB-Production-Database-Project`, including `Database\EngineeringTools`. If there is no authorized checkout, ask the MSB project administrator to provision one. Do not copy somebody else's GitHub credentials.
 - Windows Python with **Tkinter** is required. Inkscape with `inkscape.com` is necessary **only when an approved Plain SVG cannot be served from the SHA-256-verified Shared Drive preview cache** and must be rendered. For artwork editing or any changed/missing source derivative, Inkscape must be installed. The launcher selects a Python `pythonw.exe` from the checkout's `.venv` or known Windows Python locations.
-- The current approved icon source must be accessible on the Google Shared Drive: `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain`. Permissions to that source and to the optional canonical PNG destination are separate from web-server permissions.
+- The current approved icon source must be accessible on the Google Shared Drive: `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbol Library\Plain`. Permissions to that source and to the optional canonical PNG destination are separate from web-server permissions.
 - **No Synology administrator access is needed** to install the shortcut, preview artwork, or update your own permitted ExpertGPS files. Only the administrator may publish anything to `\\192.168.5.4\webassets`.
 
 ## Install the Desktop Shortcut — Once Per Computer / Checkout
