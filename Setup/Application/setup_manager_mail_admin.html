@@ -142,7 +142,7 @@
         }
         $('content').hidden=false;$('message').textContent='Actual live-data preview loaded. No emails sent.';
       } catch(e) {
-        $('stop').textContent='STOP — '+String(e.message||e);
+        $('stop').textContent=String(e.message||e);
         $('stop').hidden=false;$('message').textContent='Preview unavailable. No emails sent.';
       } finally {$('refresh').disabled=false;}
     };

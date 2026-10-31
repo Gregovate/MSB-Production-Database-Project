@@ -246,3 +246,21 @@ remain unchanged. The shared linked Work Order exemption from PR452 is retained.
 CI reconciliation: parser-only tests now execute their bounded source prefix as
 a temporary script, matching the real runner BASH_SOURCE context across Bash
 versions. They still stop before runtime actions; no production runner changed.
+
+### Failed disposable review follow-up (2026-10-31)
+
+Greg's preview returned 503 and Action Center omitted work notes. CLEAN EXIT
+confirms cleanup only; candidate 4ca183d is HOLD, not accepted. The browser
+preview must use the application's configured disposable DSN, while the sender's
+production-only connection guard remains unchanged. Add safe stage diagnostics
+without exposing connection strings. The existing disposable runner must GET
+and validate the actual no-send preview before READY when the #205 read-only
+validation is selected. No email may be sent by that check.
+
+Extend the existing board read model with latest Report Work evidence using the
+same work-date/audit ordering as the digest. Display original note, date, percent
+and available attribution in every selected continuation row, with the existing
+original-report action where an assignment is recorded. Preserve all selection
+and aggregate predicates. Align the 2026 shared browser milestone to November17;
+other years retain the annual policy. Retest and publish a new exact candidate
+for disposable review; do not install or treat the failed preview as acceptance.

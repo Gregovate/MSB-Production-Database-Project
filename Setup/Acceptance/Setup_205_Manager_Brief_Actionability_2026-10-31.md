@@ -71,3 +71,20 @@ update /opt/msb-setup-manager-pilot. Production installation remains HOLD.
 No Production access was available from the engineering environment (private
 192.168.5.9 network unreachable). No current-Production disposable, Greg preview,
 installation, real23 acceptance or Inbox acceptance is claimed.
+
+## Failed review disposition and repaired candidate
+
+The 4ca183d disposable review is HOLD: notifications returned 503 and the Action
+Center lacked original notes. CLEAN EXIT confirms cleanup, not acceptance.
+V0.3.97-manager-brief-preview uses the app's isolated DSN for browser previews;
+the production sender guard is unchanged. Latest Report Work evidence is now
+visible in the existing Action Center, with original-report actions, and its
+2026 deadline is November17. Selection/count predicates are unchanged.
+
+When this validation is selected, the existing runner must successfully render
+the actual no-send API before BROWSER REVIEW READY. Check both the Action Center
+and notifications: all current 23 identities/notes, dates, percentages and
+attribution; original report links; both email alternatives; Container/Display
+record links. Record any changed live count explicitly instead of forcing 23.
+Any 503 or missing note remains HOLD even if cleanup succeeds. No production
+installation or email is authorized by this preview.

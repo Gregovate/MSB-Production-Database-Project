@@ -245,6 +245,7 @@ class SetupSchedulingBoardRepository:
                     coalesce(sched.future_assignment_count, 0) AS future_assignment_count,
                     coalesce(sched.unworked_assignment_count, 0) AS unworked_assignment_count,
                     coalesce(sched.historical_assignment_count, 0) AS historical_assignment_count,
+                    latest_report.evidence AS latest_work_report,
                     coalesce(progress.progress_entries, 0) AS progress_entries,
                     coalesce(progress.completed_quantity, 0) AS completed_quantity,
                     coalesce(progress.percent_complete, 0) AS percent_complete,
@@ -488,6 +489,26 @@ class SetupSchedulingBoardRepository:
                     FROM ops.setup_task_progress p
                     WHERE p.setup_session_task_id = st.setup_session_task_id
                 ) progress ON true
+                LEFT JOIN LATERAL (
+                    SELECT jsonb_build_object(
+                        'setup_task_progress_id', p.setup_task_progress_id,
+                        'setup_work_day_task_id', p.setup_work_day_task_id,
+                        'performed_on', p.performed_on,
+                        'percent_complete', p.percent_complete,
+                        'progress_note', p.progress_note,
+                        'recorded_at', p.recorded_at,
+                        'updated_at', p.updated_at,
+                        'recorded_by', coalesce(nullif(btrim(concat_ws(' ', a.first_name, a.last_name)), ''), a.email),
+                        'updated_by', coalesce(nullif(btrim(concat_ws(' ', u.first_name, u.last_name)), ''), u.email)
+                    ) AS evidence
+                    FROM ops.setup_task_progress p
+                    LEFT JOIN ref.person a ON a.person_id = p.created_by_person_id
+                    LEFT JOIN ref.person u ON u.person_id = p.updated_by_person_id
+                    WHERE p.setup_session_task_id = st.setup_session_task_id
+                    ORDER BY p.performed_on DESC NULLS LAST,
+                             p.recorded_at DESC, p.setup_task_progress_id DESC
+                    LIMIT 1
+                ) latest_report ON true
                 WHERE st.setup_session_id = %s
                   AND st.included_flag
                 ORDER BY

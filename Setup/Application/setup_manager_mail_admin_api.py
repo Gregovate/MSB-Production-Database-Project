@@ -12,7 +12,8 @@ from pathlib import Path
 from string import Template
 from zoneinfo import ZoneInfo
 
-from flask import Blueprint, jsonify, make_response, send_from_directory
+from flask import Blueprint, jsonify, make_response, send_from_directory, g, current_app
+from uuid import uuid4
 
 from setup_api import (
     SetupAuthenticationError, SetupCommandError, require_admin, setup_database_dsn,
@@ -56,17 +57,25 @@ def manager_email_admin_screen():
 def manager_email_preview():
     """Current authorized Manager roster plus 2026 report; NO SMTP, no writes."""
     _repo, authenticated, _access = require_admin()
+    g.manager_preview_stage = "load digest source"
     pilot = _piloted_digest_module()
-    dsn = pilot.accepted_setup_dsn()
+    g.manager_preview_stage = "read Manager directory"
+    # Browser follows the app connection, including the isolated disposable clone.
+    # The scheduled sender retains its separate production-only DSN guard.
+    dsn = setup_database_dsn()
     roster = pilot.manager_directory(dsn)
     managers = [p for p in roster if p["send_eligible"]]
     if not managers:
         raise RuntimeError("No eligible Manager recipients; review People directory")
+    g.manager_preview_stage = "read scheduling board"
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     now = datetime.now(CHICAGO)
     report = pilot.summarize(board, now.date())
+    g.manager_preview_stage = "read Report Work evidence"
     pilot.enrich_continuations(report, pilot.report_work_evidence(dsn, [r["id"] for r in report["continuation_rows"]]))
+    g.manager_preview_stage = "read Container and Display evidence"
     report.update(pilot.container_summary(dsn, season_year=2026))
+    g.manager_preview_stage = "render preview"
     subject = Template((_PILOT_DIR / "manager_digest_subject.txt").read_text(encoding="utf-8")).substitute(report).strip()
     if not subject or len(subject) > 250 or any(c in subject for c in "\r\n\x00"):
         raise RuntimeError("Email subject validation failed")
@@ -128,7 +137,12 @@ def _not_authorized(_exc):
 
 @setup_manager_mail_admin_api.errorhandler(Exception)
 def _preview_stop(_exc):
-    # Do not leak database/identity exceptions at the HTTP boundary.
+    # Exception text/tracebacks can contain credentials; log only safe metadata.
+    reference = uuid4().hex[:12]
+    stage = getattr(g, "manager_preview_stage", "open preview")
+    current_app.logger.error("Manager preview failed reference=%s stage=%s type=%s",
+                             reference, stage, type(_exc).__name__)
     return _no_store(jsonify(
-        error="STOP: Email recipient/report preview unavailable. No messages sent."
+        error=f"STOP: Preview failed at {stage}. Reference {reference}. No messages sent.",
+        failure_stage=stage, reference=reference,
     )), 503

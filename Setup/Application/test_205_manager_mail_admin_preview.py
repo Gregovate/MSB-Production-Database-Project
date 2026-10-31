@@ -53,7 +53,7 @@ def client(monkeypatch):
         enrich_continuations=lambda report,evidence: None,
         report_work_evidence=lambda dsn,ids: {},
         manager_directory=lambda dsn: fake_managers,
-        accepted_setup_dsn=lambda:"isolated-readonly",
+        accepted_setup_dsn=lambda: (_ for _ in ()).throw(AssertionError("Browser must not call production sender guard")),
         summarize=fake_report,
         container_summary=lambda dsn,season_year:{
             "containers_total":8,"containers_park_recorded":3,
@@ -141,3 +141,69 @@ def test_no_post_actions_or_send_routes(client,monkeypatch):
     monkeypatch.setattr(m,"require_admin",lambda:(None,"admin@sheboyganlights.org",{}))
     assert client.post("/api/setup/notifications/manager-preview",json={}).status_code==405
     assert client.post("/api/setup/notifications/send",json={}).status_code==404
+
+
+def test_disposable_dsn_is_preserved_and_sender_guard_stays_strict(client, monkeypatch):
+    from setup_api import setup_database_dsn
+    # Load the actual sender module; only DB reads in the browser fixture are fake.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("actual_sender_guard", m._PILOT_DIR / "manager_mail_pilot.py")
+    pilot = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pilot)
+    clone_dsn = "host=172.18.0.2 port=5432 dbname=msb_disposable user=fieldwiring_app"
+    monkeypatch.setenv("SETUP_DATABASE_DSN", clone_dsn)
+    assert setup_database_dsn() == clone_dsn
+    with pytest.raises(pilot.PilotStop):
+        pilot.accepted_setup_dsn()
+    monkeypatch.setattr(m, "setup_database_dsn", setup_database_dsn)
+    monkeypatch.setattr(m, "require_admin", lambda: (None, "admin@sheboyganlights.org", {}))
+    class CloneRepo:
+        def __init__(self, dsn):
+            assert dsn == clone_dsn
+        def board(self, year):
+            return {"session": {"season_year": year}, "tasks": []}
+    monkeypatch.setattr(m, "SetupSchedulingBoardRepository", CloneRepo)
+    assert client.get("/api/setup/notifications/manager-preview").status_code == 200
+
+
+def test_safe_failure_stage_and_reference(client, monkeypatch, caplog):
+    monkeypatch.setattr(m, "require_admin", lambda: (None, "admin@sheboyganlights.org", {}))
+    monkeypatch.setattr(m, "setup_database_dsn", lambda: (_ for _ in ()).throw(RuntimeError("password=secret")))
+    response = client.get("/api/setup/notifications/manager-preview")
+    assert response.status_code == 503
+    data = response.get_json()
+    assert data["failure_stage"] == "read Manager directory"
+    assert data["reference"] in caplog.text
+    assert "password=secret" not in caplog.text + response.get_data(as_text=True)
+
+
+def test_actual_templates_render_23_notes_through_disposable_endpoint(client, monkeypatch):
+    from test_205_manager_mail_pilot import mail, fixture_containers
+    from html import unescape
+    import re
+    tasks = [dict(setup_session_task_id=i, task_name=f'Task {i}', execution_status='IN_PROGRESS',
+                  percent_complete=50, future_assignment_count=0) for i in range(1, 24)]
+    evidence = {i:dict(setup_task_progress_id=100+i, performed_on='2026-10-30', percent_complete=50,
+                      progress_note=f'Original work {i}\nOther task owns <wiring>.', recorded_by='Greg')
+                for i in range(1, 24)}
+    roster = m._piloted_digest_module().manager_directory('isolated-readonly')
+    monkeypatch.setattr(m, '_piloted_digest_module', lambda: mail)
+    monkeypatch.setattr(mail, 'manager_directory', lambda dsn: roster)
+    monkeypatch.setattr(mail, 'report_work_evidence', lambda dsn, ids: evidence)
+    monkeypatch.setattr(mail, 'container_summary', lambda dsn, season_year: fixture_containers())
+    monkeypatch.setattr(m, 'require_admin', lambda: (None, 'admin@sheboyganlights.org', {}))
+    class Board:
+        def __init__(self, dsn):
+            assert dsn == 'isolated-readonly'
+        def board(self, year):
+            return dict(session={'season_year': year}, tasks=tasks)
+    monkeypatch.setattr(m, 'SetupSchedulingBoardRepository', Board)
+    response = client.get('/api/setup/notifications/manager-preview')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['metrics']['continuation_needed'] == len(data['continuation_evidence']) == 23
+    html_text = unescape(re.sub('<[^>]*>', '', data['body_html']))
+    for row in data['continuation_evidence']:
+        assert row['note'] == evidence[row['id']]['progress_note']
+        assert row['detail'] in data['body_text'] and row['detail'] in html_text
+    assert 'https://my.sheboyganlights.org/setup/' not in data['body_html']

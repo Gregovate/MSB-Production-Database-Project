@@ -41,6 +41,7 @@ jobs:
         run: |
           node Setup/Application/test_205_deadline_action_kpis.cjs
           node Setup/Application/test_205_action_center_navigation.cjs
+          node Setup/Application/test_205_continuation_evidence.cjs
           node Setup/Application/test_205_captain_crew_autosave.cjs
           node Setup/Application/test_205_nullable_crew_duration.cjs
           node Setup/Application/test_205_sticky_day_search.cjs

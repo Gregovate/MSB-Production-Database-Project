@@ -195,6 +195,7 @@ function setupAnnualMilestoneDates(seasonYear) {
 
   const setupComplete = new Date(thanksgiving);
   setupComplete.setUTCDate(setupComplete.getUTCDate() - 7);
+  if (year === 2026) setupComplete.setUTCDate(17);
 
   const foodBankRunWalk = new Date(thanksgiving);
   foodBankRunWalk.setUTCDate(foodBankRunWalk.getUTCDate() - 5);
@@ -2182,6 +2183,22 @@ function setup205WireManagementNavigation(root) {
 
 // Manager-only #205 Action Center: one source classifier shared by both pages.
 // No email or history writes happen from this read-only worklist.
+function setup205LatestWorkReportHtml(task, button) {
+  const p = task.latest_work_report || {};
+  const safe = value => escapeHtml(String(value));
+  const note = p.progress_note == null ? 'No Report Work note recorded' : p.progress_note;
+  return '<p>Latest Report Work #' + safe(p.setup_task_progress_id ?? 'not recorded') +
+    ' · Work date: ' + safe(p.performed_on || 'Not recorded') +
+    ' · Reported: ' + safe(p.percent_complete ?? 'Not recorded') + '% ' +
+    ' · Reported by: ' + safe(p.recorded_by || 'Attribution not recorded') +
+    ' · Recorded: ' + safe(p.recorded_at || 'Not recorded') +
+    (p.updated_by ? ' · Corrected by: ' + safe(p.updated_by) + ' at ' + safe(p.updated_at || 'Not recorded') : '') +
+    '</p><div style="white-space:pre-wrap">' + safe(note) + '</div>' +
+    '<p class="muted">Manager task-boundary review: confirm what remains within this task; ' +
+    'a note about another task does not change either task’s status.</p>' +
+    (p.setup_work_day_task_id ? button('report', p.setup_work_day_task_id, 'Review original Report Work') : '');
+}
+
 function setup205ActionCenterHtml(board, model) {
   if (!appState.access?.can_manage_setup) return '';
   const k = model || setup205DeadlineKpiModel(board, appState.seasonYear);
@@ -2221,6 +2238,7 @@ function setup205ActionCenterHtml(board, model) {
   const continuations = k.needsRescheduling.map(t => '<strong>' + safe(t.task_name) +
     '</strong> · ' + safe(context(t)) + ' · ' + safe(t.percent_complete ?? 0) +
     '% reported; no current/future continuation. ' +
+    setup205LatestWorkReportHtml(t, button) +
     button('schedule',t.setup_session_task_id,'Plan continuation'));
   const imminent = (board.assignments || []).filter(a => {
     const d = dayById.get(Number(a.setup_work_day_id));
