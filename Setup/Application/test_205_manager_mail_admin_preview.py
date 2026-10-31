@@ -23,7 +23,7 @@ def client(monkeypatch):
     def fake_report(board, today):
         assert board["session"]["season_year"] == 2026
         return {
-            "report_date": today.isoformat(), "completion_percent":"30.4",
+            "continuation_rows": [], "report_date": today.isoformat(), "completion_percent":"30.4",
             "total_tasks": 296, "completed_tasks":90, "remaining_tasks":206,
             "blocked_tasks":140, "actual_pace":"7.86","required_pace":"6.06",
             "projected_finish":"INSUFFICIENT DATA",
@@ -49,6 +49,9 @@ def client(monkeypatch):
     monkeypatch.setattr(m,"setup_database_dsn",lambda:"isolated-readonly")
     monkeypatch.setattr(m,"SetupSchedulingBoardRepository",FakeRepo)
     monkeypatch.setattr(m,"_piloted_digest_module",lambda:SimpleNamespace(
+        SETUP_URL="https://my.sheboyganlights.org/setup/",
+        enrich_continuations=lambda report,evidence: None,
+        report_work_evidence=lambda dsn,ids: {},
         manager_directory=lambda dsn: fake_managers,
         accepted_setup_dsn=lambda:"isolated-readonly",
         summarize=fake_report,
@@ -85,7 +88,7 @@ def test_manager_roster_preview_only_with_auth(client,monkeypatch):
     assert data["held_count"] == 1
     assert [x["status"] for x in data["recipients"]] == ["ELIGIBLE","ELIGIBLE","HELD"]
     assert "no-reply@sheboyganlights.org" in data["sender"]
-    assert data["automatic_status"]=="NOT ACTIVATED"
+    assert "preview does not inspect or change delivery" in data["automatic_status"]
     assert data["captain_status"]=="OFF"
     assert data["metrics"]["total_tasks"]==296
     assert data["metrics"]["containers_park_recorded"]==3

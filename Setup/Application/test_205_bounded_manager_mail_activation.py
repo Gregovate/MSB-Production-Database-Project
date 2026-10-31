@@ -47,7 +47,7 @@ def test_finite_timers_explicit_year_and_chicago_dst():
         ("2026-10-19..31 04:00:00 America/Chicago","2026-10-19 09:00:00 UTC"),
         ("2026-11-01..27 04:00:00 America/Chicago","2026-11-01 10:00:00 UTC"),
     ]:
-        out=subprocess.run(["systemd-analyze","calendar",expression],
+        out=subprocess.run(["systemd-analyze","calendar","--base-time=2026-10-18 00:00:00 UTC",expression],
                            check=True,text=True,capture_output=True).stdout
         assert day in out
 

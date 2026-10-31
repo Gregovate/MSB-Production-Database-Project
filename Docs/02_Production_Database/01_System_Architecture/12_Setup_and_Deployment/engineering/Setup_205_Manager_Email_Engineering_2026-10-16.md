@@ -226,3 +226,16 @@ Runtime gap: Server PR95's installer is October22-only and explicitly preserves
 all templates. This release changes content/templates, so that installer cannot
 be invoked unchanged. Update the existing Server Management procedure/installer
 before installation; never use its recovery/send path or bypass its guards.
+
+Validation details: existing legacy #88 V0.3.50 installer tests are restored to
+PR418's hash-asserted historical fixture (blob f74e6fe032b3d55e40698be86f0b412aa621db14),
+not changed to accept new report SQL. No installer behavior or permissions changed.
+The old activation calendar test now pins its historical base date, preserving
+its timezone/DST assertions without depending on the actual day. Delivery units
+are unchanged. New read-only SQL runs through existing ValidationPaths; it does
+not create a new runner. Full details remain available in both MIME alternatives;
+HTML safety bound is 2 MB because a complete active Display inventory can exceed
+the former 150 KB bound. Inbox clients may clip long messages; preview review
+must evaluate actual size before release, without silently dropping records.
+The report deadline is corrected to Greg's November17; task/count predicates
+remain unchanged. The shared linked Work Order exemption from PR452 is retained.

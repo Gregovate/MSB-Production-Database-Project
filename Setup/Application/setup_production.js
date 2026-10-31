@@ -850,7 +850,7 @@ async function applyRequestedRoute() {
     appState.pendingExtraMaterialRequirementId = requestedExtraMaterialRequirementId;
   }
 
-  const allowedViews = ['review', 'library', 'extra-materials', 'schedule', 'perform'];
+  const allowedViews = ['review', 'library', 'extra-materials', 'schedule', 'perform', 'action-center'];
   if (requestedView && allowedViews.includes(requestedView)) {
     await setupRestoreRoute({ view: requestedView });
   }
@@ -859,6 +859,17 @@ async function applyRequestedRoute() {
       showView('review');
     }
     selectTask(requestedTaskId);
+  }
+
+  // Read-only navigation to existing annual planning / original report screens.
+  // Consume once so later view changes never reopen the email target.
+  const managerAction = params.get('manager_action');
+  if (managerAction) {
+    const recordId = Number(params.get('record_id'));
+    params.delete('manager_action');
+    params.delete('record_id');
+    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+    await setup205OpenManagerRecord(managerAction, recordId);
   }
 
   // The URL request is one-shot, but the pending correction state survives

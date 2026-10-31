@@ -479,3 +479,7 @@ Collapse for each entry path. At Panel42-00, retain Bottom Panel Outlets
 then clear a designation and confirm notes/circuits remain. No extra devices or
 waypoints. End with CLEAN EXIT and retain the report. Production deployment and
 live Scan acceptance remain separate gates.
+
+## #205 October31 Manager brief actionability
+
+[Candidate and exact no-send acceptance gates](Setup_205_Manager_Brief_Actionability_2026-10-31.md). Reuses the existing disposable browser runner; no migration or SMTP action.

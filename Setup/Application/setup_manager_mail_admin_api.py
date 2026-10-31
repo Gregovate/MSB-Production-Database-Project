@@ -65,6 +65,7 @@ def manager_email_preview():
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     now = datetime.now(CHICAGO)
     report = pilot.summarize(board, now.date())
+    pilot.enrich_continuations(report, pilot.report_work_evidence(dsn, [r["id"] for r in report["continuation_rows"]]))
     report.update(pilot.container_summary(dsn, season_year=2026))
     subject = Template((_PILOT_DIR / "manager_digest_subject.txt").read_text(encoding="utf-8")).substitute(report).strip()
     if not subject or len(subject) > 250 or any(c in subject for c in "\r\n\x00"):
@@ -75,6 +76,10 @@ def manager_email_preview():
     preview_manager = next((p for p in managers if p["email"] == authenticated), managers[0])
     body = pilot.render((_PILOT_DIR / "manager_digest_template.txt").read_text(encoding="utf-8"), preview_manager, report)
     html_body = pilot.render_html((_PILOT_DIR / "manager_digest_html.html").read_text(encoding="utf-8"), preview_manager, report)
+    from flask import request
+    prefix = (request.script_root.rstrip("/") + "/") if request.host.split(":")[0] in {"localhost", "127.0.0.1"} else pilot.SETUP_URL
+    html_body = html_body.replace(pilot.SETUP_URL, prefix)
+    body = body.replace(pilot.SETUP_URL, prefix)
     recipients = [
         {"person_id":int(p["person_id"]), "name":p["display_name"], "email":p["email"],
          "status":p["review_status"], "reason":p["review_reason"],
@@ -86,13 +91,14 @@ def manager_email_preview():
         mode="READ_ONLY_NO_SEND",
         generated_at_chicago=now.isoformat(),
         sender="MSB Production DB <no-reply@sheboyganlights.org>",
-        intended_schedule="October 17, 2026, 4:00 AM America/Chicago (not installed)",
-        automatic_status="NOT ACTIVATED",
+        intended_schedule="Existing 4:00 AM America/Chicago Manager brief",
+        automatic_status="Existing scheduled sender; preview does not inspect or change delivery",
         captain_status="OFF",
         audience="Current authorized Setup Managers",
         recipient_count=len(managers), held_count=len(roster) - len(managers),
         reviewed_count=len(roster), recipients=recipients,
         subject=subject, body_text=body, body_html=html_body,
+        continuation_evidence=report["continuation_rows"],
         preview_for=preview_manager["display_name"],
         report_date=report["report_date"],
         metrics={key:report[key] for key in (

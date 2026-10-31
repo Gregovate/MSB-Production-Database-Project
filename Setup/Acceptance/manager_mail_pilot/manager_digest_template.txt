@@ -3,7 +3,7 @@ Good morning $recipient_name,
 2026 SETUP — $report_date
 TOTAL $total_tasks  |  COMPLETED $completed_tasks  |  REMAINING $remaining_tasks
 Blocked / NOT READY: $blocked_tasks
-Task pace: $actual_pace completed/day (last 7 days) vs $required_pace needed/day by November 19
+Task pace: $actual_pace completed/day (last 7 days) vs $required_pace needed/day by November 17
 Task-based projected finish: $projected_finish
 $projection_confidence
 
@@ -38,9 +38,15 @@ $overdue_lines
 STARTED TASKS NEEDING CONTINUATION
 $continuation_lines
 
+CONTAINER RECORDS AND REVIEW REASONS
+$container_detail_lines
+
+DISPLAY PLACEMENT VERIFICATION
+$display_detail_lines
+
 Open Setup → Manager Action Center:
 https://my.sheboyganlights.org/setup/
 
-Unresolved items remain in the Manager Action Center until corrected. No Captain reminders are being sent during this pilot; any future Captain reminder requires Manager review and separate activation.
+Unresolved items remain in the Manager Action Center until corrected. Captain reminders remain OFF; activation requires separate Manager approval.
 
 MSB Production DB — automated message; replies are not monitored.

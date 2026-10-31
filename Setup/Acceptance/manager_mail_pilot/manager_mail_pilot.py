@@ -28,7 +28,7 @@ FIRST_RECURRING = date(2026, 10, 19)
 SHOW_OPENING = date(2026, 11, 27)
 SEASON_SEND_GUARD = "APPROVED_OCT_18_TO_SHOW_START_MANAGER_ONLY"
 MISSED_DAY_SEND_GUARD = "APPROVED_OCT_18_IMMEDIATE_MANAGER_ONLY"
-DEADLINE = date(2026, 11, 19)
+DEADLINE = date(2026, 11, 17)
 FROM = "no-reply@sheboyganlights.org"
 GOOGLE_RELAY = "smtp-relay.gmail.com"
 DEFAULT_TEMPLATE = Path(__file__).with_name("manager_digest_template.txt")
@@ -134,6 +134,170 @@ def people_managers(dsn: str) -> list[dict]:
     return people
 
 
+# Content release only; delivery gates and receipts remain owned by #97.
+CONTENT_VERSION = "2026.10.31-actionability-1"
+SETUP_URL = "https://my.sheboyganlights.org/setup/"
+PENDING = "Manager correction workflow pending"
+
+
+def record_url(kind: str, ident: int) -> str:
+    from urllib.parse import urlencode
+    if kind in {"CONT", "DISP"}:
+        return SETUP_URL + "record-location/?" + urlencode({"asset":f"{kind}:{int(ident)}", "season_year":2026})
+    return SETUP_URL + "?" + urlencode({"view":"schedule", "manager_action":kind,
+                                        "record_id":int(ident)})
+
+
+def report_work_evidence(dsn: str, task_ids: list[int]) -> dict:
+    """One bounded read; latest actual work date, then audit order breaks ties."""
+    if not task_ids:
+        return {}
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    with psycopg2.connect(dsn) as conn:
+        conn.set_session(readonly=True)
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SET LOCAL statement_timeout = '30s'")
+            cur.execute("""
+                SELECT DISTINCT ON (p.setup_session_task_id)
+                       p.setup_session_task_id, p.setup_task_progress_id,
+                       p.performed_on, p.percent_complete, p.progress_note,
+                       p.recorded_at, p.updated_at,
+                       coalesce(nullif(btrim(concat_ws(' ', a.first_name, a.last_name)),''),
+                                a.email) AS recorded_by,
+                       coalesce(nullif(btrim(concat_ws(' ', u.first_name, u.last_name)),''),
+                                u.email) AS updated_by
+                FROM ops.setup_task_progress p
+                LEFT JOIN ref.person a ON a.person_id=p.created_by_person_id
+                LEFT JOIN ref.person u ON u.person_id=p.updated_by_person_id
+                WHERE p.setup_session_task_id = ANY(%s)
+                ORDER BY p.setup_session_task_id, p.performed_on DESC NULLS LAST,
+                         p.recorded_at DESC, p.setup_task_progress_id DESC
+            """, (task_ids,))
+            return {int(r["setup_session_task_id"]):dict(r) for r in cur.fetchall()}
+
+
+def enrich_continuations(report: dict, evidence: dict) -> None:
+    """Never change selection or completion based on a note's wording."""
+    for row in report["continuation_rows"]:
+        p = evidence.get(row["id"], {})
+        note = p.get("progress_note")
+        row["note"] = note if note is not None else "No Report Work note recorded"
+        row["detail"] = (
+            f"Annual task #{row['id']} · {row['percent']}% current · "
+            f"Report Work #{p.get('setup_task_progress_id', 'not recorded')} · "
+            f"Work date: {p.get('performed_on') or 'Not recorded'} · "
+            f"Report percentage: {p.get('percent_complete') if p.get('percent_complete') is not None else 'Not recorded'} · "
+            f"Reported by: {p.get('recorded_by') or 'Attribution not recorded'} · "
+            f"Recorded: {p.get('recorded_at') or 'Not recorded'}" +
+            (f" · Corrected by: {p['updated_by']} at {p.get('updated_at')}" if p.get('updated_by') else '') +
+            "\nReport Work note: " + row["note"] +
+            "\nManager task-boundary review: confirm what remains within this task; "
+            "a note about another task does not change either task's status."
+        )
+    report["continuation_lines"] = rows_text(report["continuation_rows"])
+
+
+def rows_text(rows: list[dict]) -> str:
+    return "\n\n".join(f"- {r['name']} | {r.get('stage', '')}\n{r['detail']}\nReview record: {r['url']}"
+                         for r in rows) or "- None"
+
+
+def event_text(e: dict) -> str:
+    location = e.get('destination_location_note') or e.get('stage_name')
+    if not location and e.get('gps_latitude') is not None and e.get('gps_longitude') is not None:
+        location = f"GPS {e['gps_latitude']}, {e['gps_longitude']}"
+    return (f"#{e.get('setup_movement_event_id', 'none')} {e.get('event_type') or 'No movement recorded'}; "
+            f"{location or 'Location not recorded'}; {e.get('occurred_at') or 'Date not recorded'}; "
+            f"{e.get('capture_method') or 'Source not recorded'}; "
+            f"{e.get('recorded_by_name') or e.get('captured_operator_email') or 'Actor not recorded'}")
+
+
+def contents_observation(event: dict) -> dict:
+    """Decode the installed #070 event envelope, never membership-derived EMPTY."""
+    note = event.get('notes') or ''
+    marker = 'contents_reconciliation='
+    if marker not in note:
+        return {}
+    try:
+        value, _ = json.JSONDecoder().raw_decode(note.rsplit(marker, 1)[1].lstrip())
+        return value if isinstance(value, dict) else {}
+    except (ValueError, TypeError):
+        return {}
+
+
+def movement_details(picture: dict, projected: dict) -> dict:
+    """Read-only explanation of #88 evidence; no #077/#430/#431 dependency."""
+    events = {e['setup_movement_event_id']:e for e in picture['effect_rows']}
+    containers = {c['container_id']:c for c in picture['containers']}
+    container_rows = []
+    for c in projected['containers']:
+        ident = c['container_id']
+        state = containers[ident]
+        trail = [e for e in events.values() if e.get('container_id') == ident]
+        last = events.get(state.get('last_movement_event_id'), {})
+        observed = [(e, contents_observation(e)) for e in trail]
+        observed = [(e, v) for e, v in observed if v]
+        load_event, load = observed[-1] if observed else ({}, {})
+        decision = load.get('decision')
+        load_label = {'EMPTY':'Recorded physical EMPTY observation',
+                      'NOT_EMPTY':'Recorded cargo remains',
+                      'NOT_SURE':'Physical contents unknown / review required'}.get(decision,
+                      'No usable physical load observation')
+        flags = [e for e in trail if 'contents_review_required=true' in (e.get('notes') or '')]
+        reasons = []
+        for e in flags:
+            v = contents_observation(e)
+            reason = ('Operator selected NOT_SURE' if v.get('decision') == 'NOT_SURE' else
+                      'Operator reported NOT_EMPTY without identifying remaining cargo' if v.get('decision') == 'NOT_EMPTY' else
+                      'Recorded contents_review_required=true; structured reason unavailable')
+            reasons.append(f"{event_text(e)}: {reason}. Original note: {e.get('notes') or ''}")
+        # Installed model has no authoritative readiness/integral-role field.
+        # Do not label any type/association-derived empty Container ready to pick up.
+        status = 'Returned Home — actual RETURNED record' if c.get('reported_home') else 'Pickup readiness unverified'
+        detail = (f"{status}. Last movement: {event_text(last)}\n"
+                  f"Permanent Home: {c.get('home_location_code') or 'Not recorded'} (not current location proof).\n"
+                  f"Load: {load_label}; {event_text(load_event)}\n"
+                  f"Recorded Display associations: {c.get('load_state')}; not physical contents proof. "
+                  "Integral show equipment: classification unverified; do not infer return eligibility.\n" +
+                  ("Contents review evidence (resolution unverified): " + ' | '.join(reasons) if reasons else
+                   'No recorded contents-review flag; this is not proof of verified contents.') +
+                  f"\n{PENDING}. Existing Record Location supports a new field observation; "
+                  "opening the link records nothing. Pickup readiness and actual return are separate.")
+        container_rows.append({'name':f"C{ident:03d} — {c.get('name') or 'Description not recorded'}",
+                               'detail':detail, 'url':record_url('CONT', ident)})
+    display_rows = []
+    for d in picture['displays']:
+        e = events.get(d.get('last_movement_event_id'), {})
+        parent = containers.get(d.get('container_id'), {})
+        parent_event = events.get(parent.get('last_movement_event_id'), {})
+        mode = d.get('position_mode')
+        effects = [x for x in picture['effect_rows'] if x.get('display_id') == d['display_id']
+                   and x.get('setup_movement_event_id') == d.get('last_movement_event_id')]
+        conflict = bool(e and not effects) or (mode == 'WITH_CONTAINER' and bool(parent.get('movement_status') == 'RETURNED'))
+        if conflict:
+            label = 'Conflicting observations — review required'
+            reason = 'Current Display state conflicts with event membership or returned-Home Container association.'
+        elif mode == 'WITH_CONTAINER' and parent_event:
+            label = 'Last location inferred from a Container'
+            reason = f"C{d['container_id']:03d}: {event_text(parent_event)}; not an independent Display observation."
+        elif mode == 'DETACHED' and e:
+            label = 'Unloaded / independent location recorded; final position unconfirmed'
+            reason = event_text(e)
+            if 'inferred_unload=true' in (e.get('notes') or ''):
+                reason += '; inferred prior unload, not a physical Display scan'
+        else:
+            label = 'No usable placement evidence'
+            reason = event_text(e)
+        display_rows.append({'name':f"{d['display_name']} — Display {d['display_id']}",
+            'detail':f"{label}. {reason}\nFinal Setup position verification unavailable (#431 not deployed); "
+                     f"this does not mean physically missing. {PENDING}. "
+                     'Use Record Location for an actual field observation; it does not certify final Setup placement.',
+            'url':record_url('DISP', d['display_id'])})
+    return {'container_rows':container_rows, 'display_rows':display_rows,
+            'container_detail_lines':rows_text(container_rows), 'display_detail_lines':rows_text(display_rows)}
+
+
 def summarize_container_snapshot(containers: list[dict], generated_at: object) -> dict:
     """#88 movement + #171 read-only association projection, not physical proof."""
     if not containers:
@@ -210,6 +374,7 @@ def container_summary(dsn: str, season_year: int = 2026) -> dict:
         projected["containers"], picture.get("generated_at")
     )
     counts["containers_session_id"] = int(session_id)
+    counts.update(movement_details(picture, projected))
     return counts
 
 
@@ -256,6 +421,7 @@ def summarize(board: dict, today: date) -> dict:
             "crew":str(crew.get("crew_code") or a.get("crew_lane") or "TBD"),
             "captain":str(crew.get("captain_display_name") or "Captain TBD"),
             "id":int(a["setup_work_day_task_id"]),
+            "url":record_url("report", a["setup_work_day_task_id"]),
         }
         # A completed Work Order satisfies its Setup gate without a second
         # Setup report; stored execution_status may correctly remain PLANNED.
@@ -307,13 +473,15 @@ def summarize(board: dict, today: date) -> dict:
                                  else "Not reliable; completion-date evidence/sample insufficient"),
         "past_rows":past,
         "continuation_rows":[{
+            "id":int(t["setup_session_task_id"]),
+            "url":record_url("planning", t["setup_session_task_id"]),
             "name":str(t.get("task_name") or "Unnamed task"),
             "stage":str(t.get("stage_name") or t.get("stage_key") or "Site-wide"),
             "percent":str(t.get("percent_complete") or 0)
         } for t in continuations],
         "overdue_lines":lines([
             f"- {r['name']} | {r['stage']} | {r['date']} {r['shift']} | "
-            f"Crew {r['crew']} | {r['captain']} | original #{r['id']}"
+            f"Crew {r['crew']} | {r['captain']} | original #{r['id']} | {r['url']}"
             for r in past
         ]),
         "continuation_lines":lines([
@@ -327,7 +495,7 @@ def summarize(board: dict, today: date) -> dict:
 
 def render(template: str, person: dict, report: dict) -> str:
     try:
-        return Template(template).substitute(dict(report, recipient_name=person["display_name"]))
+        return Template(template).substitute(dict({"container_detail_lines":"Not loaded", "display_detail_lines":"Not loaded"}, **report, recipient_name=person["display_name"]))
     except (KeyError, ValueError) as exc:
         raise PilotStop("Template contains an unsupported placeholder") from exc
 
@@ -350,19 +518,26 @@ def render_html(template: str, person: dict, report: dict) -> str:
             'None recorded</td></tr>'
         )
 
+    def linked_cell(text: str, url: str) -> str:
+        return '<td style="padding:9px 8px;border-bottom:1px solid #e6edf2;vertical-align:top;white-space:pre-wrap">' + html_escape(text, quote=True) + '<br><a target="_blank" rel="noopener" href="' + html_escape(url, quote=True) + '">Review record</a></td>'
+
+    for key in ('container', 'display'):
+        values[key + '_detail_html'] = rows_or_none([
+            '<tr>' + linked_cell(r['name'] + '\n' + r['detail'], r['url']) + '</tr>'
+            for r in report.get(key + '_rows', [])])
     past = []
     for row in report.get("past_rows") or []:
         # Restrict markup to known table tags; stage and names are escaped by td.
         task = str(row["name"]) + " — " + str(row["stage"])
         crew = "Crew " + str(row["crew"]) + " / " + str(row["captain"])
         original = str(row["date"]) + " " + str(row["shift"])
-        past.append("<tr>" + td(original) + td(task) + td(crew) + "</tr>")
+        past.append("<tr>" + td(original) + linked_cell(task, row["url"]) + td(crew) + "</tr>")
     values["overdue_html_rows"] = rows_or_none(past)
 
     continuation = []
     for row in report.get("continuation_rows") or []:
         task = str(row["name"]) + " — " + str(row["stage"])
-        continuation.append("<tr>" + td(task) + td(str(row["percent"]) + "%",right=True) + "</tr>")
+        continuation.append("<tr>" + linked_cell(task + "\n" + row.get("detail", "Report Work evidence not loaded"), row["url"]) + td(str(row["percent"]) + "%",right=True) + "</tr>")
     values["continuation_html_rows"] = rows_or_none(continuation).replace(
         'colspan="3"', 'colspan="2"'
     )
@@ -371,7 +546,7 @@ def render_html(template: str, person: dict, report: dict) -> str:
         body = Template(template).substitute(values)
     except (KeyError, ValueError) as exc:
         raise PilotStop("HTML template contains an unsupported placeholder") from exc
-    if len(body) > 150000:
+    if len(body) > 2000000:
         raise PilotStop("HTML email unexpectedly large")
     return body
 
@@ -519,6 +694,7 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         enforce_approved_manager_audience(managers, roster)
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     report = summarize(board, today)
+    enrich_continuations(report, report_work_evidence(dsn, [r["id"] for r in report["continuation_rows"]]))
     report.update(container_summary(dsn, season_year=2026))
     template = path.read_text(encoding="utf-8")
     if not template.strip() or len(template) > 25000:
