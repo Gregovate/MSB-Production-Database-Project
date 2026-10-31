@@ -48,3 +48,9 @@ assert(!originalHtml.includes('Updated by') && !originalHtml.includes('Corrected
 assert(originalHtml.includes('Finished &lt;assembly&gt;; wiring belongs to another task.'));
 original.latest_work_report.updated_at = '2026-11-02T00:40:30Z';
 assert(context.setup205LatestWorkReportHtml(original,()=> '').includes('Updated by: Tom'));
+const nextHtml = context.setup205LatestWorkReportHtml({completion_note:'Setup scope done', blocked_next_tasks:[{id:42,name:'Power <tree>'}]},
+ (action,id,label) => `${action}:${id}:${label}`);
+assert(nextHtml.includes('Next task: Power &lt;tree&gt;'));
+assert(nextHtml.includes('blocked because this task is incomplete.'));
+assert(nextHtml.includes('planning:42:Review next task'));
+assert(nextHtml.includes('Setup scope done'));

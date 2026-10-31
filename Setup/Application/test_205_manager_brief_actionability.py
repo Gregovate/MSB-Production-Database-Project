@@ -156,3 +156,39 @@ def test_shared_gps_does_not_certify_final_positions_or_fabricate_scans():
     text = mail.container_display_evidence(9, source, events, {})
     assert '1 Display observation' in text and '2 inferred unload' in text
     assert 'Final positions unconfirmed' in text
+
+
+def test_blocked_next_task_evidence_uses_real_edges_and_preserves_counts_and_notes():
+    from setup_scheduling_board_repository import attach_blocked_successors
+    tasks = [dict(setup_session_task_id=1, task_name='Setup tree', execution_status='IN_PROGRESS',
+                  percent_complete=97, completion_note='Assembly finished; power is separate.'),
+             dict(setup_session_task_id=2, task_name='Power <tree>', execution_status='NOT_STARTED'),
+             dict(setup_session_task_id=3, task_name='Completed successor', effective_complete=True),
+             dict(setup_session_task_id=4, task_name='Deferred successor', execution_status='DEFERRED'),
+             dict(setup_session_task_id=5, task_name='Unrelated task', execution_status='NOT_STARTED')]
+    original = deepcopy(tasks)
+    edge = dict(prerequisite_setup_session_task_id=1, setup_session_task_id=2, prerequisite_complete=False)
+    deps = [edge, dict(edge), {**edge, 'setup_session_task_id':3}, {**edge, 'setup_session_task_id':4},
+            {**edge, 'setup_session_task_id':5, 'prerequisite_complete':True},
+            {**edge, 'setup_session_task_id':99}]
+    board = dict(session={'season_year':2026}, tasks=tasks, dependencies=deps)
+    before = mail.summarize(board, date(2026,10,31))
+    attach_blocked_successors(tasks, deps)
+    assert tasks[0]['blocked_next_tasks'] == [{'id':2, 'name':'Power <tree>'}]
+    assert [{k:v for k,v in t.items() if k != 'blocked_next_tasks'} for t in tasks] == original
+    report = mail.summarize(board, date(2026,10,31))
+    for key in ('total_tasks','completed_tasks','remaining_tasks','continuation_needed','blocked_tasks'):
+        assert report[key] == before[key]
+    mail.enrich_continuations(report, {1:{'progress_note':'Guy wire done; power remains.'}})
+    report.update(fixture_containers())
+    text = mail.render(mail.DEFAULT_TEMPLATE.read_text(), {'display_name':'Greg'}, report)
+    html = mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(), {'display_name':'Greg'}, report)
+    phrase = 'Next task: Power <tree> — blocked because this task is incomplete.'
+    assert phrase in text and phrase in unescape(re.sub('<[^>]*>', '', html))
+    assert 'Assembly finished; power is separate.' in text and 'Guy wire done; power remains.' in text
+    url = mail.record_url('planning',2)
+    assert url in text and f'href="{url.replace("&", "&amp;")}"' in html
+    assert 'Power &lt;tree&gt;' in html and '<tree>' not in html
+    tasks[0]['effective_complete'] = True
+    attach_blocked_successors(tasks, deps)
+    assert not tasks[0]['blocked_next_tasks']

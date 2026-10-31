@@ -107,3 +107,10 @@ Display evidence per Container distinguishes inferred unloads, Container-linked
 positions, Display observations and absent location evidence. A shared-GPS group
 is explicitly flagged for placement review; it does not establish final position
 or physical absence. Verify actual group counts on the current disposable clone.
+
+V0.3.100-manager-next-task: beside original work/completion notes, verify each
+"Next task: ... — blocked because this task is incomplete" against the board's
+actual dependency. Follow its existing planning-review link. Completed/deferred
+successors must not appear; duplicates appear once. Other blockers may remain.
+No scheduler filtering or dependency enforcement is changed. Synthetic graph,
+HTML/text parity and navigation tests pass; live identities need Greg's review.

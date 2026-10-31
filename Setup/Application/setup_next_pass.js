@@ -2208,6 +2208,8 @@ function setup205LatestWorkReportHtml(task, button) {
     (Date.parse(p.updated_at) > Date.parse(p.recorded_at) ? ' · Updated by: ' + safe(p.updated_by || 'Attribution not recorded') + ' · ' + safe(setup205ReadableDate(p.updated_at)) : '') +
     '</p><div style="white-space:pre-wrap"><strong>Report Work note:</strong> ' + safe(note) + '</div>' +
     '<div style="white-space:pre-wrap"><strong>Task completion note:</strong> ' + safe(task.completion_note || 'No task completion note recorded') + '</div>' +
+    (task.blocked_next_tasks || []).map(n => '<p><strong>Next task: ' + safe(n.name) +
+      '</strong> — blocked because this task is incomplete. ' + button('planning', n.id, 'Review next task') + '</p>').join('') +
     '<p class="muted">Review the original report if the note or reported percentage needs correction.</p>' +
     (p.setup_work_day_task_id ? button('report', p.setup_work_day_task_id, 'Review original Report Work') : '');
 }

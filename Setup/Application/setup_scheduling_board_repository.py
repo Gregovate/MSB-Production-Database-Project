@@ -13,6 +13,27 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
+def attach_blocked_successors(tasks: list[dict], dependencies: list[dict]) -> None:
+    """Expose existing unmet edges for review, without changing any task state."""
+    by_id = {int(t['setup_session_task_id']): t for t in tasks}
+    edges = {ident: set() for ident in by_id}
+    for dep in dependencies:
+        source = dep.get('prerequisite_setup_session_task_id')
+        target = dep.get('setup_session_task_id')
+        if source not in by_id or target not in by_id or source == target:
+            continue
+        parent, child = by_id[source], by_id[target]
+        if (dep.get('prerequisite_complete') is not False or parent.get('effective_complete')
+                or parent.get('execution_status') == 'COMPLETE' or child.get('effective_complete')
+                or child.get('execution_status') in {'COMPLETE', 'DEFERRED'}):
+            continue
+        edges[source].add(target)
+    for ident, task in by_id.items():
+        task['blocked_next_tasks'] = [
+            {'id': target, 'name': by_id[target].get('task_name') or f'Task #{target}'}
+            for target in sorted(edges[ident])]
+
+
 class SetupSchedulingBoardRepositoryError(RuntimeError):
     pass
 
@@ -712,6 +733,7 @@ class SetupSchedulingBoardRepository:
                 (session["setup_session_id"], session["setup_session_id"]),
             )
             dependencies = [dict(row) for row in cur.fetchall()]
+            attach_blocked_successors(tasks, dependencies)
 
         return {
             "session": dict(session),

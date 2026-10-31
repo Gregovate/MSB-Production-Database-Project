@@ -223,13 +223,15 @@ def enrich_continuations(report: dict, evidence: dict) -> None:
             (f" · Updated by: {p.get('updated_by') or 'Attribution not recorded'} · {readable_date(p.get('updated_at'))}" if report_was_updated(p) else '') +
             "\nReport Work note: " + row["note"] +
             "\nTask completion note: " + (row.get("completion_note") or "No task completion note recorded") +
-            "\nReview the original report if the note or reported percentage needs correction."
+            "\nReview the original report if the note or reported percentage needs correction." +
+            "".join(f"\nNext task: {n['name']} — blocked because this task is incomplete." for n in row.get("blocked_next_tasks", []))
         )
     report["continuation_lines"] = rows_text(report["continuation_rows"])
 
 
 def rows_text(rows: list[dict]) -> str:
-    return "\n\n".join(f"- {r['name']} | {r.get('stage', '')}\n{r['detail']}\nReview record: {r['url']}"
+    return "\n\n".join(f"- {r['name']} | {r.get('stage', '')}\n{r['detail']}\nReview record: {r['url']}" +
+                         ''.join(f"\nReview next task #{n['id']}: {n['url']}" for n in r.get('blocked_next_tasks', []))
                          for r in rows) or "- None"
 
 
@@ -557,6 +559,7 @@ def summarize(board: dict, today: date) -> dict:
             "name":str(t.get("task_name") or "Unnamed task"),
             "stage":str(t.get("stage_name") or t.get("stage_key") or "Site-wide"),
             "completion_note":t.get("completion_note"),
+            "blocked_next_tasks":[{**n, "url":record_url("planning", n["id"])} for n in t.get("blocked_next_tasks", [])],
             "percent":str(t.get("percent_complete") or 0)
         } for t in continuations],
         "overdue_lines":lines([
@@ -598,8 +601,9 @@ def render_html(template: str, person: dict, report: dict) -> str:
             'None recorded</td></tr>'
         )
 
-    def linked_cell(text: str, url: str) -> str:
-        return '<td style="padding:9px 8px;border-bottom:1px solid #e6edf2;vertical-align:top;white-space:pre-wrap">' + html_escape(text, quote=True) + '<br><a target="_blank" rel="noopener" href="' + html_escape(url, quote=True) + '">Review record</a></td>'
+    def linked_cell(text: str, url: str, next_tasks=()) -> str:
+        links = ''.join('<br><a target="_blank" rel="noopener" href="' + html_escape(n["url"], quote=True) + '">Review next task: ' + html_escape(n["name"], quote=True) + '</a>' for n in next_tasks)
+        return '<td style="padding:9px 8px;border-bottom:1px solid #e6edf2;vertical-align:top;white-space:pre-wrap">' + html_escape(text, quote=True) + '<br><a target="_blank" rel="noopener" href="' + html_escape(url, quote=True) + '">Review record</a>' + links + '</td>'
 
     for key in ('container', 'display'):
         values[key + '_detail_html'] = rows_or_none([
@@ -617,7 +621,7 @@ def render_html(template: str, person: dict, report: dict) -> str:
     continuation = []
     for row in report.get("continuation_rows") or []:
         task = str(row["name"]) + " — " + str(row["stage"])
-        continuation.append("<tr>" + linked_cell(task + "\n" + row.get("detail", "Report Work evidence not loaded"), row["url"]) + td(str(row["percent"]) + "%",right=True) + "</tr>")
+        continuation.append("<tr>" + linked_cell(task + "\n" + row.get("detail", "Report Work evidence not loaded"), row["url"], row.get("blocked_next_tasks", [])) + td(str(row["percent"]) + "%",right=True) + "</tr>")
     values["continuation_html_rows"] = rows_or_none(continuation).replace(
         'colspan="3"', 'colspan="2"'
     )

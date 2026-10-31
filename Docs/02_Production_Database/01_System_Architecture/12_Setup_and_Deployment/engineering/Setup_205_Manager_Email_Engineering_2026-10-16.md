@@ -292,3 +292,13 @@ not prove misplaced Displays; neither unload nor independent scan establishes
 
 Relabel the unchanged association-derived empty/partial summary counts as No
 Displays attached / Some Displays detached, to avoid suggesting physical emptiness.
+
+### Blocked next-task explanation
+
+Greg requests completion notes plus explicit next-task blocking relationships in
+both views. Extend the existing board read model using its current dependency
+rows: only an explicitly incomplete prerequisite and an included, unfinished,
+non-deferred successor qualify. Deduplicate annual task IDs; do not infer edges
+from prose or task names. Show each successor and existing planning-review link.
+Do not imply completing one prerequisite clears all other gates. Preserve all
+counts, task selection, original notes and scheduler enforcement/filtering.
