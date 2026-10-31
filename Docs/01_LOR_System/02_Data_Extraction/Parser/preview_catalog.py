@@ -48,6 +48,52 @@ def contract_node(node, depth=0):
             (node.tail or '').strip()]
 
 
+COMPARISON_POLICY = 'MSB_SEQUENCING_CONTRACT_V2'
+# Filled from a reviewed, exact published export; never from current master bytes.
+LEGACY_SEQUENCING_ANCHORS = {'02e0e910e1987c37363b570d9b546bb740c6b27502c7fd512c2081fee4bf3c26': '726ef2ccef80a7660812f3a3a1418015b0b6a81f49d4f939e5f959554c393c53'}
+
+
+def preview_stage(name):
+    # Same StageID patterns as parser V7.0.11. A label rename must not reassign
+    # a physical preview to another stage. Actual parity is covered by tests.
+    for pattern in (r'^\s*(\d{1,2})([a-z]?)\s*[-_]\s*',
+                    r'\bstage\s*0*(\d{1,2})([a-z]?)\b',
+                    r'\bshow\s+animation\b.*?\b0*(\d{1,2})\b'):
+        match = re.search(pattern, name or '', re.I)
+        if match:
+            return f"{int(match.group(1)):02d}" + (match.group(2).lower() if len(match.groups()) > 1 else '')
+    return None
+
+
+def sequencing_contract_node(node, depth=0):
+    # Narrow sequencing-only branches. Unexpected descendants remain protected:
+    # in particular never hide parser-visible PropClass/Scene under a group.
+    ignored_trees = {'PropGroup': {'PropGroup', 'member', 'MotionRowDefaults', 'MotionRowDefault'},
+                     'PropViews': {'PropViews', 'PropView', 'ViewMember'},
+                     'MotionRowDefaults': {'MotionRowDefaults', 'MotionRowDefault'}}
+    ignored = {'Revision', 'Brightness', 'LastSelectedSceneId', 'Name'} if depth == 0 else set()
+    if depth == 1 and node.tag == 'PropClass':
+        ignored = {'MasterDimmable'}
+        if (node.get('Comment') or '').strip(): ignored.add('Name')
+    children = []
+    for child in node:
+        allowed = ignored_trees.get(child.tag)
+        is_sequencing = ((depth == 0 and child.tag in {'PropGroup', 'PropViews'})
+                         or (depth == 1 and node.tag == 'PropClass' and child.tag == 'MotionRowDefaults'))
+        if is_sequencing and allowed and all(n.tag in allowed for n in child.iter()):
+            continue
+        children.append(sequencing_contract_node(child, depth + 1))
+    attrs = sorted((k,v) for k,v in node.attrib.items() if k not in ignored)
+    if depth == 0: attrs.append(('__parser_stage_id__', preview_stage(node.get('Name'))))
+    return [node.tag, attrs, (node.text or '').strip(), children, (node.tail or '').strip()]
+
+
+def same_database_contract(baseline, current):
+    if baseline['contract_sha256'] == current['contract_sha256']: return True
+    anchor = baseline.get('sequencing_contract_sha256') or LEGACY_SEQUENCING_ANCHORS.get(baseline['sha256'])
+    return bool(anchor and anchor == current['sequencing_contract_sha256'])
+
+
 def capture(folder):
     files = []
     paths = sorted(folder.glob('*.lorprev'), key=lambda p: p.name.casefold())
@@ -79,7 +125,7 @@ def capture(folder):
         metadata = {p.get('id'): {k: p.get(k) for k in ('Name', 'MasterDimmable')} for p in root if p.tag == 'PropClass'}
         files.append(dict(filename=path.name, preview_id=identity, name=root.get('Name'), revision=root.get('Revision'),
                           sha256=hashlib.sha256(raw).hexdigest(), contract_sha256=digest(contract_node(root)),
-                          metadata=metadata))
+                          metadata=metadata, sequencing_contract_sha256=digest(sequencing_contract_node(root))))
     return files
 
 
@@ -141,27 +187,54 @@ class Catalog:
         self.write(path, value)
         return value
 
+    def comparison_baseline(self, directory, baseline_files, current):
+        # Append-only policy anchors supplement legacy hash-only evidence. Only
+        # exact old bytes or an independently reviewed export can establish one.
+        result = {}
+        for identity, original in baseline_files.items():
+            base = dict(original)
+            if not base.get('sequencing_contract_sha256'):
+                binding = dict(comparison_policy=COMPARISON_POLICY, preview_id=identity,
+                               baseline_sha256=base['sha256'])
+                path = directory / 'comparison-anchors' / (digest(binding) + '.json')
+                if path.exists():
+                    record = self.read(path)
+                    if any(record.get(k) != v for k,v in binding.items()):
+                        raise ValueError('Sequencing comparison anchor binding mismatch')
+                    base['sequencing_contract_sha256'] = record['sequencing_contract_sha256']
+                else:
+                    fingerprint = LEGACY_SEQUENCING_ANCHORS.get(base['sha256'])
+                    live = current.get(identity)
+                    if live and live['sha256'] == base['sha256']:
+                        fingerprint = live['sequencing_contract_sha256']
+                    if fingerprint:
+                        self.write(path, dict(binding, sequencing_contract_sha256=fingerprint))
+                        base['sequencing_contract_sha256'] = fingerprint
+            result[identity] = base
+        return result
+
     def review(self, accepted, actor):
         baseline = self.baseline(accepted, actor)
         files = self.scan()
         directory = self.context(accepted)
         pointer = directory / 'current.json'
         parent = self.parent(directory)
-        baseline_files = {f['filename']: f for f in baseline['files']}
+        baseline_files = {f['preview_id']: f for f in baseline['files']}
         old = baseline_files
         if parent:
             published = self.read(directory / 'publications' / (parent + '.json'))
             old_review = self.read(directory / 'reviews' / (published['review_id'] + '.json'))
-            old = {f['filename']: f for f in old_review['files']}
-        new = {f['filename']: f for f in files}
+            old = {f['preview_id']: f for f in old_review['files']}
+        new = {f['preview_id']: f for f in files}
+        baseline_files = self.comparison_baseline(directory, baseline_files, new)
         protected = set(baseline_files) != set(new)
         changes = []
         for name in sorted(set(old) | set(new)):
             a, b = old.get(name), new.get(name)
-            if a == b:
+            if a and b and a['sha256'] == b['sha256'] and a['filename'] == b['filename']:
                 continue
             base = baseline_files.get(name)
-            requires_review = not base or not b or base['contract_sha256'] != b['contract_sha256']
+            requires_review = not base or not b or not same_database_contract(base, b)
             protected |= requires_review
             details = []
             if a and b:
@@ -170,10 +243,12 @@ class Catalog:
                         before, after = a['metadata'][prop][field], b['metadata'][prop][field]
                         if before != after:
                             details.append(dict(prop_id=prop, field=field, before=before, after=after))
-            changes.append(dict(filename=name, database_contract_review_required=bool(requires_review),
+            changes.append(dict(filename=b['filename'] if b else a['filename'], preview_id=name,
+                                previous_filename=a['filename'] if a else None, previous_name=a['name'] if a else None,
+                                name=b['name'] if b else None, database_contract_review_required=bool(requires_review),
                                 before_sha256=a['sha256'] if a else None, after_sha256=b['sha256'] if b else None,
                                 metadata_changes=details))
-        proposal = dict(policy=POLICY, baseline_evidence_id=accepted['evidence_id'], parent_publication_id=parent,
+        proposal = dict(policy=POLICY, comparison_policy=COMPARISON_POLICY, baseline_evidence_id=accepted['evidence_id'], parent_publication_id=parent,
                         source_manifest_sha256=source_digest(files), files=files, changes=changes,
                         database_contract_review_required=bool(protected), reviewed_by=actor)
         proposal_id = digest(proposal)
@@ -227,3 +302,4 @@ class Catalog:
         if (digest(unsigned) != publication_id or document['database_baseline_evidence_id'] != accepted['evidence_id']):
             raise ValueError('Published catalog does not match current database baseline')
         return document
+

@@ -150,3 +150,56 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(self.catalog.current(self.accepted),published)
 
 if __name__=='__main__':unittest.main()
+
+
+class SequencingPolicyTests(CatalogTests):
+    def test_sequencing_rows_groups_views_and_uuid_filename_rename(self):
+        self.register()
+        source=RAW.replace('Revision="57"','Revision="58"').replace('Stage 00 Test','Stage 00 Renamed')
+        source=source.replace('</PropClass>','</PropClass>')  # fixture is self-closing
+        source=source.replace('DeviceType="LOR"/>','DeviceType="LOR"><MotionRowDefaults><MotionRowDefault id="row" name="Cave Door" type="custom" subc="0,0"/></MotionRowDefaults></PropClass>')
+        source=source.replace('</PreviewClass>','<PropGroup id="group" Name="Sequencer"><member id="prop"/></PropGroup><PropViews><PropView id="view"><ViewMember id="prop"/></PropView></PropViews></PreviewClass>')
+        self.file.unlink();self.file=self.folder/'Renamed.lorprev';self.file.write_text(source)
+        review=self.register();self.assertTrue(review['can_publish'])
+        self.assertEqual(review['changes'][0]['previous_filename'],'Test.lorprev')
+        doc=self.catalog.publish(self.accepted,self.actor,review['review_id'])
+        self.assertEqual(len(doc['previews']),1);self.assertEqual(doc['previews'][0]['preview_id'],'preview')
+        self.assertEqual(doc['previews'][0]['filename'],'Renamed.lorprev')
+
+    def test_stage_reassignment_and_hidden_database_nodes_still_block(self):
+        self.register()
+        for change in [RAW.replace('Stage 00','Stage 01'),RAW.replace('</PreviewClass>','<PropGroup id="g"><Scene id="hidden" Name="Other"/></PropGroup></PreviewClass>')]:
+            self.file.write_text(change);self.assertFalse(self.register()['can_publish'])
+
+    def test_legacy_baseline_not_silently_rebased_to_changed_master(self):
+        self.register();directory=self.catalog.context(self.accepted)
+        baseline=self.catalog.read(directory/'baseline.json')
+        baseline['files'][0].pop('sequencing_contract_sha256')
+        self.catalog.write(directory/'baseline.json',baseline)
+        self.file.write_text(RAW.replace('Stage 00 Test','Stage 00 Renamed'))
+        self.assertFalse(self.register()['can_publish'])
+
+    def test_actual_published_export_anchor_allows_actual_october_export(self):
+        import os
+        fixture=os.environ.get('MSB_PREVIEW_FIXTURE_DIR')
+        if not fixture:self.skipTest('Private operator fixtures not in repository')
+        old=Path(fixture)/'2026 Master Musical Preview v6.6.12 2026-08-20.lorprev'
+        new=Path(fixture)/'2026 Master Musical Preview v6.6.12 2026-10-30.lorprev'
+        self.file.write_bytes(old.read_bytes());files=capture(self.folder)
+        self.accepted.update(source_manifest_sha256=source_digest(files),previews=[{k:files[0][k] for k in ('filename','preview_id','name','revision')}])
+        self.register();directory=self.catalog.context(self.accepted)
+        baseline=self.catalog.read(directory/'baseline.json');baseline['files'][0].pop('sequencing_contract_sha256')
+        self.catalog.write(directory/'baseline.json',baseline)
+        self.file.unlink();self.file=self.folder/new.name;self.file.write_bytes(new.read_bytes())
+        result=self.register();self.assertTrue(result['can_publish']);self.assertEqual(len(result['changes']),1)
+        published=self.catalog.publish(self.accepted,self.actor,result['review_id'])
+        self.assertEqual(published['previews'][0]['revision'],'142')
+        self.assertEqual(self.catalog.current(self.accepted),published)
+
+    def test_legacy_unchanged_bytes_register_anchor_for_later_edit(self):
+        self.register();directory=self.catalog.context(self.accepted)
+        baseline=self.catalog.read(directory/'baseline.json');baseline['files'][0].pop('sequencing_contract_sha256')
+        self.catalog.write(directory/'baseline.json',baseline)
+        self.register()  # still exact original bytes: safe policy adoption
+        self.file.write_text(RAW.replace('Stage 00 Test','Stage 00 New Date'))
+        self.assertTrue(self.register()['can_publish'])
