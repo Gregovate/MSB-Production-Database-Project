@@ -40,9 +40,15 @@
         : 'The master matches the current published catalog. No publication is needed.';
       const lines = ['Source master folder: ' + (proposal.source_folder || 'Not reported'), 'Catalog evidence destination: ' + (proposal.catalog_evidence_folder || 'Not reported'), '', 'Database baseline: Run ' + proposal.baseline_run_id, 'Reviewed master digest: ' + proposal.master_digest];
       if (proposal.minimum_updater_version) lines.push('Required PC updater: ' + proposal.minimum_updater_version);
+      const registrations = proposal.changes.filter(change => change.image_registration_only);
+      if (registrations.length) lines.push('', 'Existing image evidence registered for ' + registrations.length + ' unchanged previews. No preview content changed in these entries.');
       for (const change of proposal.changes) {
-        lines.push('', change.filename, change.database_contract_review_required ? 'Database-contract review required' : 'Sequencing / presentation change — database contract unchanged');
-        for (const item of (change.background_changes || [])) lines.push(item.action.replaceAll('_', ' ') + ': ' + item.path);
+        if (change.image_registration_only) continue;
+        lines.push('', change.filename, change.database_contract_review_required ? (change.comparison_status === 'BASELINE_EVIDENCE_MISSING' ? 'STOP: original comparison evidence unavailable; no field change has been proven.' : 'STOP: protected content differs from the original baseline.') : 'Sequencing / presentation change — database contract unchanged');
+        const images = change.background_changes || [];
+        const existing = images.filter(item => item.action === 'VERIFY_LINKED_BACKGROUND');
+        if (existing.length) lines.push('Linked images verified: ' + existing.length);
+        for (const item of images.filter(item => item.action !== 'VERIFY_LINKED_BACKGROUND')) lines.push(item.action.replaceAll('_', ' ') + ': ' + item.path);
         for (const item of change.metadata_changes) lines.push(item.prop_id + ' · ' + item.field + ': ' + JSON.stringify(item.before) + ' → ' + JSON.stringify(item.after));
       }
       if (proposal.parent_publication_id) lines.push('Current published catalog: ' + proposal.parent_publication_id);

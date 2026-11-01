@@ -48,9 +48,9 @@ def contract_node(node, depth=0):
             (node.tail or '').strip()]
 
 
-COMPARISON_POLICY = 'MSB_SEQUENCING_CONTRACT_V3'
+COMPARISON_POLICY = 'MSB_SEQUENCING_CONTRACT_V4'
 # Filled from a reviewed, exact published export; never from current master bytes.
-LEGACY_SEQUENCING_ANCHORS = {'02e0e910e1987c37363b570d9b546bb740c6b27502c7fd512c2081fee4bf3c26': 'f20022f1efa0d53a0b40a80df19f668fd7d369fa9f61989916e3a4b60aa3a3af', '76501d972e5e739b8ab8f9c2c6736b633912b14fb17b4b80c7376a4cbbd86c53': 'b8bc082bd7e6718bec1b3f370bb045cbd5cd52b175b2c6c61997733a097fd555', '6874537a9b97b8b239005af3ad209bbe4de055b8defd457ab63fbf13ceaa66c5': '77e0534b628681c0984ea6694d6774d548c204d1ea86336d3e51d61d9d15068c'}
+LEGACY_SEQUENCING_ANCHORS = {'76501d972e5e739b8ab8f9c2c6736b633912b14fb17b4b80c7376a4cbbd86c53': '2214411939cf1fdcb37e8b187ce05b568d6527a10bdbe779e7aa57dbbe7aa3db', '02e0e910e1987c37363b570d9b546bb740c6b27502c7fd512c2081fee4bf3c26': '9febbbaf330b4b5cf3202559f6320136570db35c2a9a6ad576722f08e9641de9', '6874537a9b97b8b239005af3ad209bbe4de055b8defd457ab63fbf13ceaa66c5': 'b731f969831ee28037c1a1a8f66486e8ced93c31c890bc4169d095c2416c5dd8'}
 
 
 def preview_stage(name):
@@ -73,7 +73,7 @@ def sequencing_contract_node(node, depth=0):
                      'MotionRowDefaults': {'MotionRowDefaults', 'MotionRowDefault'}}
     ignored = {'Revision', 'Brightness', 'LastSelectedSceneId', 'Name'} if depth == 0 else set()
     if node.tag in {'PreviewClass', 'Scene'}: ignored.add('BackgroundFile')
-    if depth == 2 and node.tag == 'shape': ignored.update({'OffsetX', 'OffsetY'})
+    if depth == 2 and node.tag == 'shape': ignored.update({'OffsetX', 'OffsetY', 'ScaleX', 'ScaleY'})
     if depth == 3 and node.tag == 'point': ignored.update({'x', 'y'})
     if depth == 1 and node.tag == 'PropClass':
         ignored = {'MasterDimmable'}
@@ -89,6 +89,42 @@ def sequencing_contract_node(node, depth=0):
     attrs = sorted((k,v) for k,v in node.attrib.items() if k not in ignored)
     if depth == 0: attrs.append(('__parser_stage_id__', preview_stage(node.get('Name'))))
     return [node.tag, attrs, (node.text or '').strip(), children, (node.tail or '').strip()]
+
+
+# A legacy record retains its complete V1 contract hash. Reconstruct only the
+# documented old background links; trust the result ONLY if that full hash
+# matches. This cannot authorize a prop, scene, wiring or unknown-field edit.
+LEGACY_BACKGROUND_LINKS = {
+    '5e632dd68b6928f9acb0572d531813856c0652b5391da754331254ba253e4c60': {
+        'Who House': r'G:\Shared drives\Display Folders\07-Whoville-WV\PreviewBackground\Show Background Stage 07 WhoHouse Mt Crumpet.png',
+    },
+    'eeff994d6454abf8d1fdce9a1329ad45fb6245bdad6e18baf608ac16c0291f0e': {
+        'BurceTheSpruce': r'G:\Shared drives\Display Folders\24-Traditional Christmas-TC\Bruce the Spruce\Bruce The Spruce-background.jpg',
+        '24-FryingSanta': r'G:\Shared drives\Display Folders\24-Traditional Christmas-TC\FryingSanta\PreviewBackground\FryingSantaStage.jpg',
+        '24-SnowFamily and 10YrStocking': r'G:\Shared drives\Display Folders\24-Traditional Christmas-TC\Snow Family\PreviewBackground\Snowman Family.jpg',
+    },
+}
+
+
+def recover_legacy_background_contract(baseline, root, links=None):
+    from copy import deepcopy
+    from itertools import product
+    links = LEGACY_BACKGROUND_LINKS.get(baseline['sha256']) if links is None else links
+    if not links:
+        return None
+    scenes = {node.get('Name'): node for node in root.iter('Scene')}
+    if any(name not in scenes for name in links):
+        return None
+    # LOR exports use either single or doubled backslashes in BackgroundFile.
+    for doubled in product((False, True), repeat=len(links)):
+        candidate = deepcopy(root)
+        nodes = {node.get('Name'): node for node in candidate.iter('Scene')}
+        for (name, path), double in zip(links.items(), doubled):
+            nodes[name].set('BackgroundFile', path.replace(chr(92), chr(92)*2) if double else path)
+        if digest(contract_node(candidate)) == baseline['contract_sha256']:
+            return dict(sequencing_contract_sha256=digest(sequencing_contract_node(candidate)),
+                        proof='EXACT_LEGACY_CONTRACT_MATCH', legacy_contract_tree=contract_node(candidate))
+    return None
 
 
 def same_database_contract(baseline, current):
@@ -290,8 +326,18 @@ class Catalog:
                     live = current.get(identity)
                     if live and live['sha256'] == base['sha256']:
                         fingerprint = live['sequencing_contract_sha256']
+                    recovered = None
+                    if not fingerprint and live and base['sha256'] in LEGACY_BACKGROUND_LINKS:
+                        # The two-pass scan already bound these current bytes.
+                        source = self.folder / live['filename']
+                        raw = source.read_bytes()
+                        if hashlib.sha256(raw).hexdigest() != live['sha256']:
+                            raise ValueError('Master changed during legacy evidence recovery')
+                        recovered = recover_legacy_background_contract(base, ET.fromstring(raw))
+                        if recovered:
+                            fingerprint = recovered['sequencing_contract_sha256']
                     if fingerprint:
-                        self.write(path, dict(binding, sequencing_contract_sha256=fingerprint))
+                        self.write(path, dict(binding, sequencing_contract_sha256=fingerprint, **({k:v for k,v in recovered.items() if k != 'sequencing_contract_sha256'} if recovered else {})))
                         base['sequencing_contract_sha256'] = fingerprint
             if base.get('sequencing_contract_sha256'): base['comparison_policy'] = COMPARISON_POLICY
             result[identity] = base
@@ -319,6 +365,10 @@ class Catalog:
                 continue
             base = baseline_files.get(name)
             requires_review = not base or not b or not same_database_contract(base, b)
+            comparison_status = ('PREVIEW_IDENTITY_CHANGED' if not base or not b else
+                                 'DATABASE_CONTRACT_UNCHANGED' if not requires_review else
+                                 'BASELINE_EVIDENCE_MISSING' if not base.get('sequencing_contract_sha256') and base['sha256'] not in LEGACY_SEQUENCING_ANCHORS else
+                                 'PROTECTED_CONTENT_DIFFERS')
             protected |= requires_review
             details = []
             if a and b:
@@ -328,7 +378,7 @@ class Catalog:
                         if before != after:
                             details.append(dict(prop_id=prop, field=field, before=before, after=after))
             asset_notes = background_changes(a.get('background_assets') if a else None, b.get('background_assets') if b else [])
-            changes.append(dict(background_changes=asset_notes, filename=b['filename'] if b else a['filename'], preview_id=name,
+            changes.append(dict(comparison_status=comparison_status, image_registration_only=bool(a and b and a['sha256'] == b['sha256'] and a['filename'] == b['filename'] and a.get('background_assets') is None), background_changes=asset_notes, filename=b['filename'] if b else a['filename'], preview_id=name,
                                 previous_filename=a['filename'] if a else None, previous_name=a['name'] if a else None,
                                 name=b['name'] if b else None, database_contract_review_required=bool(requires_review),
                                 before_sha256=a['sha256'] if a else None, after_sha256=b['sha256'] if b else None,

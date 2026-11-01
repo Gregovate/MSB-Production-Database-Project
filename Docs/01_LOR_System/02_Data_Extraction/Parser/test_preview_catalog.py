@@ -282,3 +282,33 @@ class BackgroundErrorReasonTests(unittest.TestCase):
                 self.assertIn(reason, message)
                 self.assertIn('errno=' + str(error.errno), message)
                 self.assertEqual(message.count('one.png'), 1)
+
+
+class BackgroundPolicyRecoveryTests(unittest.TestCase):
+    def test_legacy_recovery_requires_exact_complete_old_contract(self):
+        import preview_catalog as m
+        import xml.etree.ElementTree as ET
+        old = ET.fromstring(RAW.replace('Name="Stage"', 'Name="Stage" BackgroundFile="G:\\old.png"'))
+        current = ET.fromstring(RAW.replace('Name="Stage"', 'Name="Stage" BackgroundFile="G:\\new.png"'))
+        baseline = dict(sha256='f'*64, contract_sha256=m.digest(m.contract_node(old)))
+        result = m.recover_legacy_background_contract(baseline, current, {'Stage': 'G:\\old.png'})
+        self.assertEqual(result['proof'], 'EXACT_LEGACY_CONTRACT_MATCH')
+        self.assertEqual(result['sequencing_contract_sha256'], m.digest(m.sequencing_contract_node(old)))
+        for attribute in ('Comment', 'ChannelGrid', 'id'):
+            changed = ET.fromstring(ET.tostring(current))
+            prop = changed.find('PropClass');prop.set(attribute, 'UNAPPROVED')
+            self.assertIsNone(m.recover_legacy_background_contract(baseline, changed, {'Stage': 'G:\\old.png'}))
+        changed = ET.fromstring(ET.tostring(current));changed.find('Scene').set('Name','Changed scene')
+        self.assertIsNone(m.recover_legacy_background_contract(baseline, changed, {'Stage':'G:\\old.png'}))
+
+    def test_actual_master_only_scale_diff_is_presentation(self):
+        import os, preview_catalog as m
+        import xml.etree.ElementTree as ET
+        folder = Path(os.environ.get('MSB_PREVIEW_FIXTURE_DIR','nonexistent'))
+        current = folder.parent/'review-current/2026 Master Musical Preview v6.6.12 2026-10-30.lorprev'
+        original = folder/'2026 Master Musical Preview v6.6.12 2026-08-20.lorprev'
+        if not current.exists() or not original.exists():self.skipTest('Optional private fixtures unavailable')
+        old,new = ET.parse(original).getroot(),ET.parse(current).getroot()
+        self.assertEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(new))
+        prop = next(new.iter('PropClass'));prop.set('ChannelGrid','Changed')
+        self.assertNotEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(new))
