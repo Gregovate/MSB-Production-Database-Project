@@ -280,7 +280,7 @@ Check ((Get-UpdaterVersionDecision '1.1.3' $null).Status -eq 'CHECK_FAILED') 'mi
 $release.installer_url='https://other.example/setup.zip'
 Check ((Get-UpdaterVersionDecision '1.0.9' $release).Status -eq 'CHECK_FAILED') 'release check rejects unapproved installer origin'
 
-if ($PSVersionTable.PSEdition -ne 'Core') {
+if ($PSVersionTable.PSEdition -ne 'Core' -and [Environment]::UserInteractive) {
     $script:AppIcon=$null
     $uiCheck=[pscustomobject]@{Failure=$null;Checked=$false;Title="MSB PC Preview Updater $ApplicationVersion | $ApplicationReleaseDate | Review changes"}
     $uiTimer=New-Object System.Windows.Forms.Timer
@@ -311,3 +311,5 @@ if ($PSVersionTable.PSEdition -ne 'Core') {
     } finally {$uiTimer.Stop();$uiTimer.Dispose()}
     Check ($uiCheck.Checked -and -not $uiCheck.Failure) ('approval starts compact and Show changes expands safely: '+$uiCheck.Failure)
 }
+
+if (-not [Environment]::UserInteractive) { Write-Output 'SKIP: visible review dialog requires the local Windows desktop; run Test-Updater113-UI.ps1 there.' }

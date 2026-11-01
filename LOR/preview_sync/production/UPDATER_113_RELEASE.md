@@ -31,3 +31,7 @@ Windows-native results are not claimed until Greg runs the exact candidate and s
 5. Install 1.1.3 once on each PC/Windows account used for LOR; confirm setup and runtime version. Check real browser version handoff and compact approval, then approved apply and repeat ADD 0 / REPLACE 0.
 
 Source owner: PR300 / issue299. Current deployed runner policy remains V5 and runner V1.8.0; updater1.1.2 is the last published installer until release receipts establish otherwise.
+
+## Windows validation checkpoint
+
+Greg ran candidate b1edd42d1d384cf7a25fdca9ec69774250cae35c through SSH under Print Service. All comparison, preservation, background, version-gate and focus-timer checks passed. The last modal review test could not execute because that SSH session is not UserInteractive. This is recorded as a GUI acceptance gap, not a passing UI check. The harness now reports that step as SKIP under noninteractive Windows. Test-Updater113-UI.ps1 loads only the real review/timer/count functions and supplies synthetic in-memory rows on a local interactive desktop; it performs no network calls, real preview reads, installation or approved writes. Its result is still pending.
