@@ -3,7 +3,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const source=fs.readFileSync(__dirname+'/setup_next_pass.js','utf8');
-const start=source.indexOf('function setup205WireActionCenter(root) {');
+const start=source.indexOf('async function setup205OpenManagerRecord(action, id) {');
 const end=source.indexOf('\nfunction renderNextExecution()',start);
 assert(start>=0 && end>start,'Action Center handler exists');
 let callback;
@@ -77,6 +77,19 @@ async function click(action,id){
  assert.equal(opened.at(-1)[1],202);
  await click('day',9);
  assert.equal(opened.at(-1)[1],'2026-10-14');
+ // Actual startup URL handler delegates the exact record, then consumes parameters.
+ const production=fs.readFileSync(__dirname+'/setup_production.js','utf8');
+ const routeStart=production.indexOf('async function applyRequestedRoute() {');
+ const routeEnd=production.indexOf('\nasync function initialize()',routeStart);
+ ctx.URLSearchParams=URLSearchParams;
+ ctx.window={location:{pathname:'/setup/',search:'?view=schedule&manager_action=planning&record_id=202'},history:{replaceState:(_s,_t,url)=>{ctx.window.location.search=url.slice(url.indexOf('?'));}}};
+ ctx.setupRestoreRoute=async route=>visited.push(route.view);
+ ctx.taskById=()=>null;
+ vm.runInContext(production.slice(routeStart,routeEnd),ctx);
+ await ctx.applyRequestedRoute();
+ assert.deepEqual(opened.at(-1),['planning',202]);
+ assert(!ctx.window.location.search.includes('manager_action'));
+ await assert.rejects(()=>ctx.setup205OpenManagerRecord('planning',0),/Invalid/);
  const visits=visited.length;
  appState.access.can_manage_setup=false;
  await click('report',101);

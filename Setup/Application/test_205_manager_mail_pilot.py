@@ -61,6 +61,7 @@ def fixture_containers():
 
 
 def setup_fakes(monkeypatch):
+    monkeypatch.setattr(mail, "report_work_evidence", lambda dsn, ids: {})
     class BoardRepo:
         def __init__(self, dsn):
             assert dsn == "fixture"
@@ -186,7 +187,7 @@ def test_template_is_external_reviewable_and_no_fake_reporting():
     body = mail.render(source,{"display_name":"Manager One"},a)
     assert "Good morning Manager One" in body
     assert "Reschedule" in body and "Do not enter fictitious" in body
-    assert "No Captain reminders are being sent" in body
+    assert "Captain reminders remain OFF" in body
     assert "$" not in body
 
 
@@ -200,8 +201,8 @@ def test_manager_email_leads_with_kpis_not_training_or_a_long_task_list():
     assert body.index("TOTAL 3") < body.index("MANAGER DECISIONS")
     assert body.index("MANAGER DECISIONS") < body.index("WHAT TO DO")
     assert body.index("WHAT TO DO") < body.index("PAST ASSIGNMENTS TO VERIFY")
-    assert "Task pace:" in body and "November 19" in body
-    assert "No Captain reminders are being sent" in body
+    assert "Task pace:" in body and "November 17" in body
+    assert "Captain reminders remain OFF" in body
     assert "Unresolved items remain in the Manager Action Center" in body
     assert "tomorrow's Manager-only report" not in body
     assert len(body.split()) < 300, "Template briefing must stay concise with small fixture"

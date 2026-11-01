@@ -1050,6 +1050,28 @@ print("PASS: Scheduling Board 2026 disposable response, "
     exit 25
 fi
 
+# #205 review must render the actual no-send endpoint on this isolated clone.
+if [[ " ${VALIDATIONS[*]} " == *" Setup/Acceptance/setup_205_manager_brief_readonly_validation.sql "* ]]; then
+    echo "--- Manager no-send preview disposable endpoint preflight ---"
+    if ! curl -fsS --max-time 120 "http://127.0.0.1:$PREVIEW_PORT/api/setup/notifications/manager-preview" |
+        sudo -u fieldwiring -H "$PYTHON" -c '
+import json, sys
+p = json.load(sys.stdin)
+assert p.get("mode") == "READ_ONLY_NO_SEND", "No-send mode missing"
+assert p.get("body_html") and p.get("body_text"), "Rendered alternatives missing"
+rows = p.get("continuation_evidence")
+assert isinstance(rows, list), "Report Work evidence missing"
+assert len(rows) == int(p["metrics"]["continuation_needed"]), "Continuation count mismatch"
+assert all(r.get("detail") and r.get("url") and "note" in r for r in rows), "Incomplete continuation evidence"
+assert all(r["detail"] in p["body_text"] for r in rows), "Plain-text evidence mismatch"
+print("PASS: Actual Manager no-send preview rendered; " + str(len(rows)) + " continuation rows. Greg review still required.")
+'; then
+        echo "FAIL: Manager no-send preview failed before operator browser review"
+        tail -n 75 "$PREVIEW_LOG" || true
+        exit 26
+    fi
+fi
+
 write_resume_state
 echo "Reconnect state: $STATE_FILE"
 

@@ -30,7 +30,7 @@ def installer(tmp_path, drift=False, failed_health=False):
         if args[:2] == ('checkout', '--detach'):
             obj.head = args[2]
         if args[0] == 'show' and args[1].endswith('setup_production_report.py'):
-            return Path(__file__).parents[1].joinpath('Application/setup_production_report.py').read_text()
+            return Path(__file__).with_name('fixtures').joinpath('setup_88_report_v0350_source.txt').read_text()
         if args[0] == 'show':
             return ('PRODUCTION_VERSION = "' + m.VERSION + '"' if 'backend' in args[1]
                     else "CLIENT_BUILD = '" + m.VERSION + "'")
