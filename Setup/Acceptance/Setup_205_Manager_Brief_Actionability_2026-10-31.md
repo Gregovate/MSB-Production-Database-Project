@@ -154,3 +154,22 @@ exceptions are grouped by Container with reason counts and the existing
 locate/?container_id= review link; unassociated Displays keep their own links.
 Check group totals against all affected Display IDs: nothing is truncated.
 No Production-data size or usability acceptance is claimed by synthetic tests.
+
+## November 1 — accepted preview and release preparation
+
+Greg accepted the latest preview as better than Production, reported reusable
+CLEAN EXIT, and requested production release preparation. Earlier presentation
+HOLD statements are superseded by this review. Accepted application remains
+4ca12ff45eeafcf568b68da6835f3e81fed7a47b / V0.3.103-manager-brief-summary;
+this documentation change does not change that deployed target. Main refreshed
+cfde519487e933bfa8e49f80c509f81921fd6f91, unchanged since acceptance.
+
+[Server PR104](https://github.com/Gregovate/MSB-Server-Management/pull/104)
+implements the documented extension to the existing digest installer: pinned
+Setup source-only profile, sender plus three templates, no-send preview,
+backups and receipt/configuration preservation. 18 simulated installer tests
+pass. Use its [release procedure](https://github.com/Gregovate/MSB-Server-Management/blob/fix/205-brief-release/docs/server/Setup_Manager_Brief_Release_2026-11-01.md).
+
+Pending: read-only live baseline preflight; Production authorization; required
+merge ancestry; installation and real protected-route closeout. No deployment
+or email send is claimed. #430/#431 remain independent and open.
