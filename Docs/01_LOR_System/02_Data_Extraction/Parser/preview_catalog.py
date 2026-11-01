@@ -48,9 +48,9 @@ def contract_node(node, depth=0):
             (node.tail or '').strip()]
 
 
-COMPARISON_POLICY = 'MSB_SEQUENCING_CONTRACT_V4'
+COMPARISON_POLICY = 'MSB_SEQUENCING_CONTRACT_V5'
 # Filled from a reviewed, exact published export; never from current master bytes.
-LEGACY_SEQUENCING_ANCHORS = {'76501d972e5e739b8ab8f9c2c6736b633912b14fb17b4b80c7376a4cbbd86c53': '2214411939cf1fdcb37e8b187ce05b568d6527a10bdbe779e7aa57dbbe7aa3db', '02e0e910e1987c37363b570d9b546bb740c6b27502c7fd512c2081fee4bf3c26': '9febbbaf330b4b5cf3202559f6320136570db35c2a9a6ad576722f08e9641de9', '6874537a9b97b8b239005af3ad209bbe4de055b8defd457ab63fbf13ceaa66c5': 'b731f969831ee28037c1a1a8f66486e8ced93c31c890bc4169d095c2416c5dd8'}
+LEGACY_SEQUENCING_ANCHORS = {'76501d972e5e739b8ab8f9c2c6736b633912b14fb17b4b80c7376a4cbbd86c53': 'e43ce72274b9ce5d93dc4788278b754d114a6f23542ea346e206f8a3ed7ea49d', '02e0e910e1987c37363b570d9b546bb740c6b27502c7fd512c2081fee4bf3c26': 'c6a893c190c9a3898e9134dbff559890ed43d750a8330df91b5a79d51d194fd9', '6874537a9b97b8b239005af3ad209bbe4de055b8defd457ab63fbf13ceaa66c5': 'abc8f01134c7ff5ae6b12babd19fc01e7d6dc8caf9c8a74d6f5859c8b3842a83', '5e632dd68b6928f9acb0572d531813856c0652b5391da754331254ba253e4c60': '6f544a109fbe490db423b94549fdcbbbdc289cdfabeaa7b9508a334b8bcd9c0d'}
 
 
 def preview_stage(name):
@@ -65,7 +65,7 @@ def preview_stage(name):
     return None
 
 
-def sequencing_contract_node(node, depth=0):
+def sequencing_contract_node_v4(node, depth=0):
     # Narrow sequencing-only branches. Unexpected descendants remain protected:
     # in particular never hide parser-visible PropClass/Scene under a group.
     ignored_trees = {'PropGroup': {'PropGroup', 'member', 'MotionRowDefaults', 'MotionRowDefault'},
@@ -85,10 +85,47 @@ def sequencing_contract_node(node, depth=0):
                          or (depth == 1 and node.tag == 'PropClass' and child.tag == 'MotionRowDefaults'))
         if is_sequencing and allowed and all(n.tag in allowed for n in child.iter()):
             continue
-        children.append(sequencing_contract_node(child, depth + 1))
+        children.append(sequencing_contract_node_v4(child, depth + 1))
     attrs = sorted((k,v) for k,v in node.attrib.items() if k not in ignored)
     if depth == 0: attrs.append(('__parser_stage_id__', preview_stage(node.get('Name'))))
     return [node.tag, attrs, (node.text or '').strip(), children, (node.tail or '').strip()]
+
+
+def sequencing_contract_node(node, depth=0):
+    """V5 keeps wiring/identity; Traditional line drawings are programming aids.
+
+    Parm1/Parm2 here control the drawn line representation. Parsed approximate
+    Lights is not authority for MSB physical counts. No RGB/pixel parameters are
+    exempted. Preserve unexpected descendants rather than suppressing them.
+    """
+    value = sequencing_contract_node_v4(node, depth)
+    def project(item):
+        tag, attrs, text, children, tail = item
+        attrs = dict(attrs)
+        children = [project(child) for child in children]
+        if tag == 'Scene':
+            for key in ('HScroll', 'VScroll', 'Zoom'):
+                attrs.pop(key, None)
+        if (tag == 'PropClass' and attrs.get('DeviceType') == 'LOR'
+                and attrs.get('StringType') == 'Traditional'
+                and attrs.get('TraditionalType') == 'Multicolor_string_1_ch'):
+            shapes = [child for child in children if child[0] == 'shape']
+            if shapes and all(dict(shape[1]).get('ShapeName') == 'Lines-Connected'
+                              and all(child[0] == 'point' and not child[3] for child in shape[3]) for shape in shapes):
+                attrs.pop('Parm1', None); attrs.pop('Parm2', None)
+                children = [child for child in children if child[0] != 'shape']
+        if tag == 'PreviewClass':
+            # Declaration order of physical props is not Scene membership/order.
+            props = iter(sorted((child for child in children if child[0] == 'PropClass'), key=lambda child:dict(child[1]).get('id', '')))
+            children = [next(props) if child[0] == 'PropClass' else child for child in children]
+        return [tag, sorted(attrs.items()), text, children, tail]
+    return project(value)
+
+
+# Stage 24 original V4 fingerprint was computed on Linux only after its raw
+# SHA256 matched the immutable baseline. Equality under V4 proves equality under
+# the narrower V5 contract; this is not a current-source self-approval.
+VERIFIED_V4_BRIDGES = {'eeff994d6454abf8d1fdce9a1329ad45fb6245bdad6e18baf608ac16c0291f0e': '9d2ae2bfa41c901661d65b598e268e671d1f532b357dfa1c1b4059d91dfad572'}
 
 
 # A legacy record retains its complete V1 contract hash. Reconstruct only the
@@ -241,7 +278,7 @@ def capture(folder):
             assets = []
         files.append(dict(filename=path.name, preview_id=identity, name=root.get('Name'), revision=root.get('Revision'),
                           sha256=hashlib.sha256(raw).hexdigest(), contract_sha256=digest(contract_node(root)),
-                          metadata=metadata, sequencing_contract_sha256=digest(sequencing_contract_node(root)), comparison_policy=COMPARISON_POLICY, background_assets=assets))
+                          metadata=metadata, sequencing_contract_sha256=digest(sequencing_contract_node(root)), comparison_policy=COMPARISON_POLICY, previous_policy_contract_sha256=digest(sequencing_contract_node_v4(root)), background_assets=assets))
     if background_errors:
         raise ValueError('Background files could not be read on PRINT-SERVER under Print Service. Publication blocked. Check the errors below before changing any preview links.\n\n' + '\n\n'.join(background_errors))
     return files
@@ -325,6 +362,8 @@ class Catalog:
                     fingerprint = LEGACY_SEQUENCING_ANCHORS.get(base['sha256'])
                     live = current.get(identity)
                     if live and live['sha256'] == base['sha256']:
+                        fingerprint = live['sequencing_contract_sha256']
+                    if not fingerprint and live and VERIFIED_V4_BRIDGES.get(base['sha256']) == live.get('previous_policy_contract_sha256'):
                         fingerprint = live['sequencing_contract_sha256']
                     recovered = None
                     if not fingerprint and live and base['sha256'] in LEGACY_BACKGROUND_LINKS:

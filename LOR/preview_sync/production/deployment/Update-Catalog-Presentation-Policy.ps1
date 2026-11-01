@@ -9,7 +9,7 @@ $relative='Docs/01_LOR_System/02_Data_Extraction/Parser/preview_catalog.py'
 $target=Join-Path $repo $relative
 $preflightRelative='LOR/preview_sync/production/deployment/Preflight-Catalog-Presentation-Policy.py'
 $expectedOld='f8298dc201c29c1912172e460969283313a3f80014b0c5d3d80815c92496110e'
-$expectedNew='e2c6a5d27451ead0431d33e0ce5a474aa02d9ca12ba2cbb94fc1922d337dac00'
+$expectedNew='2c758dbb43b174f67155d3491f3d79fd376e26a257fec66cada2bad52910d82d'
 $taskName='MSB LOR Operator Runner'
 function Require($value,$reason) { if (-not $value) { throw $reason } }
 function Hash($path) { (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() }

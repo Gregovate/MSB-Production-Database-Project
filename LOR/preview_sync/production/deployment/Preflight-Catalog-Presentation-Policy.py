@@ -38,6 +38,8 @@ def main():
             continue
         actual = module.digest(module.sequencing_contract_node(root))
         expected = module.LEGACY_SEQUENCING_ANCHORS.get(old['sha256'])
+        if not expected and module.VERIFIED_V4_BRIDGES.get(old['sha256']) == module.digest(module.sequencing_contract_node_v4(root)):
+            expected = actual
         recovered = None if expected else module.recover_legacy_background_contract(old, root)
         if recovered:
             expected = recovered['sequencing_contract_sha256']

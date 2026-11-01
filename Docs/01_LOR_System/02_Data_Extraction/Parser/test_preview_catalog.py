@@ -312,3 +312,26 @@ class BackgroundPolicyRecoveryTests(unittest.TestCase):
         self.assertEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(new))
         prop = next(new.iter('PropClass'));prop.set('ChannelGrid','Changed')
         self.assertNotEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(new))
+
+
+class TraditionalDrawingPolicyTests(unittest.TestCase):
+    def test_actual_repaired_stage07_matches_but_new_identity_does_not(self):
+        import os, preview_catalog as m
+        import xml.etree.ElementTree as ET
+        root = Path(os.environ.get('MSB_PREVIEW_FIXTURE_DIR','nonexistent'))
+        original = root/'LOR-Original-Stage07.lorprev'
+        repaired = root.parent/'deliverables/Show Background Stage 07 WhoHouse Mt Crumpit.lorprev'
+        if not original.exists() or not repaired.exists():self.skipTest('Optional private fixtures unavailable')
+        old,new=ET.parse(original).getroot(),ET.parse(repaired).getroot()
+        self.assertEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(new))
+        for field in ('id','Comment','ChannelGrid','MasterPropId'):
+            changed=ET.fromstring(ET.tostring(new));prop=next(p for p in changed.iter('PropClass') if p.get('Comment')=='WV-MtCrumpitPanel-01');prop.set(field,'DIFFERENT')
+            self.assertNotEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(changed))
+
+    def test_rgb_parameters_and_scene_membership_remain_protected(self):
+        import preview_catalog as m, xml.etree.ElementTree as ET
+        old=ET.fromstring('<PreviewClass id="p" Name="Stage 07"><PropClass id="x" StringType="RGB" DeviceType="LOR" Parm1="10"><shape ShapeName="Lines-Connected"><point x="0"/></shape></PropClass><Scene id="s"><member id="x"/></Scene></PreviewClass>')
+        changed=ET.fromstring(ET.tostring(old));changed.find('PropClass').set('Parm1','20')
+        self.assertNotEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(changed))
+        changed=ET.fromstring(ET.tostring(old));changed.find('Scene/member').set('id','other')
+        self.assertNotEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(changed))
