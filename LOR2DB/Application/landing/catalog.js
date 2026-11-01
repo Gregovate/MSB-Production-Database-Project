@@ -10,6 +10,10 @@
   // Preserve scene-by-scene diagnostics even when shared CSS resets pre tags.
   details.style.whiteSpace = 'pre-wrap';
   details.style.overflowWrap = 'anywhere';
+  const disclosure = document.createElement('details');
+  const disclosureTitle = document.createElement('summary');
+  disclosureTitle.textContent = 'Show changes and support details';
+  details.replaceWith(disclosure); disclosure.append(disclosureTitle, details);
   const complete = document.getElementById('catalog-complete');
   const completeMessage = document.getElementById('catalog-complete-message');
   const receipt = document.getElementById('catalog-receipt');
@@ -31,13 +35,15 @@
   review.addEventListener('click', async () => {
     proposal = null; approve.checked = false; busy = true; controls();
     status.textContent = 'Checking the master files against the accepted database contract…';
-    details.textContent = ''; details.hidden = false; complete.hidden = true;
+    details.textContent = ''; details.hidden = false; disclosure.open = false; complete.hidden = true;
     try {
       proposal = await api('catalog/review', {});
       status.textContent = proposal.database_contract_review_required
         ? 'STOP: changes outside the permitted preview metadata require database-contract review. Nothing published.'
         : proposal.can_publish ? 'Review ready. Publication updates preview distribution evidence only; no database ingest.'
         : 'The master matches the current published catalog. No publication is needed.';
+      disclosure.open = !!proposal.database_contract_review_required;
+      if (proposal.can_publish) status.textContent = 'Ready to publish. No blockers. Database contract unchanged. No database ingest required.';
       const lines = ['Source master folder: ' + (proposal.source_folder || 'Not reported'), 'Catalog evidence destination: ' + (proposal.catalog_evidence_folder || 'Not reported'), '', 'Database baseline: Run ' + proposal.baseline_run_id, 'Reviewed master digest: ' + proposal.master_digest];
       if (proposal.minimum_updater_version) lines.push('Required PC updater: ' + proposal.minimum_updater_version);
       const registrations = proposal.changes.filter(change => change.image_registration_only);
@@ -54,7 +60,7 @@
       if (proposal.parent_publication_id) lines.push('Current published catalog: ' + proposal.parent_publication_id);
       if (!proposal.changes.length) lines.push('', proposal.parent_publication_id ? 'No changes since the current published catalog.' : 'Master matches the registered database baseline. Initial registration is ready.');
       details.textContent = lines.join('\n');
-    } catch (error) { proposal = null; status.textContent = 'Catalog review blocked. See all problems below.'; details.textContent = error.message; details.hidden = false; }
+    } catch (error) { proposal = null; status.textContent = 'Catalog review blocked. See all problems below.'; details.textContent = error.message; details.hidden = false; disclosure.open = true; }
     finally { busy = false; controls(); }
   });
   publish.addEventListener('click', async () => {

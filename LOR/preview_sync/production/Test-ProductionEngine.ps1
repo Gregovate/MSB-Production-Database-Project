@@ -179,10 +179,12 @@ $digestAfter=(Get-MasterRecords -Folder $viewFolder -ProgressWindow $null).Sourc
 Check ($digestBefore -ne $digestAfter) 'accepted-master byte digest still detects presentation edits to master'
 
 # New catalog acceptance is distinct from the inherited database baseline.
+$ApplicationVersion='1.1.3'
 $script:BrowserSourceForTest=$null
 function Receive-BrowserSource { return $script:BrowserSourceForTest }
 $CurrentSourceUrl='https://example.org/current-source'
 $doc=[ordered]@{schema_version=2;status='ACCEPTED';validation='PASSED';acceptance_kind='PREVIEW_CATALOG';catalog_policy='MSB_PREVIEW_CATALOG_V1';database_baseline_evidence_id=('a'*64);published_by='publisher@example.org';published_at='2026-10-28T12:00:00Z';source_manifest_sha256=('b'*64);evidence_id=('c'*64);report_sha256=('d'*64);source_sqlite_sha256=('e'*64);run_id=32;import_run_id=74;preview_count=1;lor_version='6.6.12';source_folder=(Join-Path $fixture 'Database Previews V6.6.12');report_url='https://example.org/report';previews=@(@{filename='Test.lorprev';preview_id='test';name='Test';revision='58'})}
+$doc.updater_release=[pscustomobject]@{schema_version=1;latest_version='1.1.3';minimum_version='1.1.3';installer_sha256=('a'*64);installer_url='https://my.sheboyganlights.org/lor2db/pc/downloads/MSB-PC-Preview-Updater-1.1.3-pilot.zip'}
 $script:BrowserSourceForTest=$doc|ConvertTo-Json -Depth 8
 $catalogSource=Get-CurrentAcceptedSource
 Check ($catalogSource.RunId -eq 32 -and $catalogSource.EvidenceId -eq ('c'*64) -and $catalogSource.AuthorityLabel.Contains('catalog') -and $catalogSource.Rows[0].Revision -eq '58') 'accepted preview catalog uses independent evidence and updated inventory with database baseline label'
@@ -250,4 +252,62 @@ Check ($assetSource.BackgroundAssets.Count -eq 0) 'schema3 validates image-aware
     Blocks {Test-BackgroundAssets -Assets @($asset)} 'unsynced or changed background blocks before approval'
     $script:assetHash='a'*64
     Blocks {Test-BackgroundAssets -Assets @($asset,$asset)} 'duplicate background evidence blocks'
+}
+
+# The focus timer must retain its owner after the creating function has returned.
+# Pump only a disposable WinForms timer; no visible form or real preview writes.
+if ($PSVersionTable.PSEdition -ne 'Core') {
+    Add-Type -AssemblyName System.Windows.Forms
+    $timerOwner=New-Object System.Windows.Forms.Form
+    $timerOwner.TopMost=$true
+    $scopeTimer=New-FocusReleaseTimer -Window $timerOwner -Interval 30
+    $scopeTimer.Start()
+    $deadline=[DateTime]::UtcNow.AddSeconds(2)
+    while ($timerOwner.TopMost -and [DateTime]::UtcNow -lt $deadline) {
+        [System.Windows.Forms.Application]::DoEvents()
+        Start-Sleep -Milliseconds 10
+    }
+    Check (-not $timerOwner.TopMost -and -not $scopeTimer.Enabled) 'focus timer releases owner after helper scope returns'
+    $scopeTimer.Dispose();$timerOwner.Dispose()
+}
+
+
+$release=[pscustomobject]@{schema_version=1;latest_version='1.1.10';minimum_version='1.1.3';installer_sha256=('a'*64);installer_url='https://my.sheboyganlights.org/lor2db/pc/downloads/MSB-PC-Preview-Updater-1.1.10-pilot.zip'}
+Check ((Get-UpdaterVersionDecision '1.0.9' $release).Status -eq 'UPDATE_REQUIRED') 'old updater requires installation before preview scan'
+Check ((Get-UpdaterVersionDecision '1.1.9' $release).Status -eq 'UPDATE_AVAILABLE') 'version comparison is numeric, not lexical'
+Check ((Get-UpdaterVersionDecision '1.1.10' $release).Status -eq 'CURRENT') 'latest installed updater passes startup version gate'
+Check ((Get-UpdaterVersionDecision '1.1.3' $null).Status -eq 'CHECK_FAILED') 'missing release metadata reports version-check failure'
+$release.installer_url='https://other.example/setup.zip'
+Check ((Get-UpdaterVersionDecision '1.0.9' $release).Status -eq 'CHECK_FAILED') 'release check rejects unapproved installer origin'
+
+if ($PSVersionTable.PSEdition -ne 'Core') {
+    $script:AppIcon=$null
+    $uiCheck=[pscustomobject]@{Failure=$null;Checked=$false;Title="MSB PC Preview Updater $ApplicationVersion | $ApplicationReleaseDate | Review changes"}
+    $uiTimer=New-Object System.Windows.Forms.Timer
+    $uiTimer.Interval=100;$uiTimer.Tag=$uiCheck
+    $uiTimer.Add_Tick({
+        $dialog=@([System.Windows.Forms.Application]::OpenForms | Where-Object {$_.Text -eq $this.Tag.Title}) | Select-Object -First 1
+        if ($null -eq $dialog) { return }
+        $this.Stop()
+        try {
+            $all=New-Object 'System.Collections.Generic.List[System.Windows.Forms.Control]'
+            $pending=New-Object 'System.Collections.Generic.Queue[System.Windows.Forms.Control]'
+            $pending.Enqueue($dialog)
+            while ($pending.Count) { $control=$pending.Dequeue();$all.Add($control);foreach ($child in $control.Controls) {$pending.Enqueue($child)} }
+            $table=@($all | Where-Object {$_ -is [System.Windows.Forms.DataGridView]})[0]
+            if ($table.Visible) {throw 'Routine grid is visible before operator chooses Show changes'}
+            $link=@($all | Where-Object {$_.Text -eq 'Show changes'})[0]
+            # Invoke the real event handler through the native control.
+            $event=[System.Windows.Forms.LinkLabel].GetMethod('OnLinkClicked',[Reflection.BindingFlags]'Instance,NonPublic')
+            $event.Invoke($link,@(([System.Windows.Forms.LinkLabelLinkClickedEventArgs]::new($link.Links[0])))) | Out-Null
+            if (-not $table.Visible) {throw 'Show changes did not reveal the preview grid'}
+            $this.Tag.Checked=$true
+        } catch { $this.Tag.Failure=$_.Exception.Message }
+        finally { $dialog.Close() }
+    })
+    try {
+        $uiTimer.Start()
+        $null=Show-ReviewDialog -AcceptedReport $catalogSource -Build $build -MasterRecords $master.Records -LocalPath $local -ExpectedOriginalHash (Get-FileSha256 $local) -CandidatePath $candidate -ReportPath (Join-Path $fixture 'ui-report.csv') -CandidateHash ('a'*64)
+    } finally {$uiTimer.Stop();$uiTimer.Dispose()}
+    Check ($uiCheck.Checked -and -not $uiCheck.Failure) ('approval starts compact and Show changes expands safely: '+$uiCheck.Failure)
 }

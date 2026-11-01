@@ -41,7 +41,7 @@ try {
     if (-not (Test-Path $metadata)) { throw 'Missing committed-release deployment identity. Administrator preparation is required.' }
     $release = Get-Content $metadata -Raw | ConvertFrom-Json
     if ($release.apply_enabled -isnot [bool]) { throw 'Installer apply permission must be an explicit boolean.' }
-    if ($release.version -ne '1.1.2' -or $release.source_commit -notmatch '^[a-f0-9]{40}$' -or
+    if ($release.version -ne '1.1.3' -or $release.source_commit -notmatch '^[a-f0-9]{40}$' -or
         $release.files.'Update_MSB_Previews.ps1' -ine (Get-FileHash $source -Algorithm SHA256).Hash) { throw 'Updater release identity/hash mismatch.' }
     $destination = Join-Path $env:LOCALAPPDATA ('MSB\LOR2PC\' + $release.source_commit)
     New-Item -ItemType Directory -Path $destination -Force | Out-Null
@@ -61,8 +61,12 @@ try {
     New-Item -Path ($protocol + '\DefaultIcon') -Force | Out-Null
     Set-Item -Path ($protocol + '\DefaultIcon') -Value ('"' + $icon + '",0')
     Install-MSBDesktopShortcut -PowerShellPath $powershell -InstalledScript $installed -Desktop ([Environment]::GetFolderPath('DesktopDirectory')) -IconPath $icon -ApplyEnabled $release.apply_enabled
+    $registered=(Get-ItemProperty -LiteralPath ($protocol + '\shell\open\command')).'(default)'
+    if (-not $registered.Contains($installed)) { throw 'Installed browser launch path verification failed.' }
+    $verify=Get-Content -LiteralPath (Join-Path $destination 'DEPLOYMENT.json') -Raw | ConvertFrom-Json
+    if ($verify.version -cne $release.version) { throw 'Installed version verification failed.' }
     Add-Type -AssemblyName System.Windows.Forms
-    [void][Windows.Forms.MessageBox]::Show('MSB PC Preview Updater installed. A shortcut is on your Desktop. No previews were changed.', 'MSB LOR2PC')
+    [void][Windows.Forms.MessageBox]::Show('MSB PC Preview Updater 1.1.3 installed and verified. A shortcut is on your Desktop. No previews were changed.', 'MSB LOR2PC')
 } catch {
     Add-Type -AssemblyName System.Windows.Forms
     [void][Windows.Forms.MessageBox]::Show($_.Exception.Message, 'MSB LOR2PC setup blocked')

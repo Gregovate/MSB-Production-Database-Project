@@ -1,4 +1,4 @@
-# MSB LOR Preview Sync - Production Candidate v1.1.2
+# MSB LOR Preview Sync - Production Candidate v1.1.3
 # Programmer-facing MASTER -> LOCAL synchronization tool.
 #
 # Normal operators launch this through:
@@ -613,9 +613,11 @@ if (Test-Path -LiteralPath $AppIconPath -PathType Leaf) {
 
 $LogFolder = Join-Path $Root 'logs'
 $DeploymentPath = Join-Path $Root 'DEPLOYMENT.json'
-$ApplicationVersion = '1.1.2'
-$ApplicationReleaseDate = '2026-10-31'
+$ApplicationVersion = '1.1.3'
+$ApplicationReleaseDate = '2026-11-01'
 $script:SessionLogPath = $null
+$script:VersionGate = $null
+$script:VersionStatus = $null
 $CandidateXml = Join-Path $localParent 'LORPreviews.MSB_SYNC_CANDIDATE.xml'
 $CandidateCsv = Join-Path $localParent 'LORPreviews.MSB_SYNC_REPORT.csv'
 
@@ -685,7 +687,7 @@ function Receive-BrowserSource {
     $connections = 0; $preflights = 0; $rejections = 0
     try {
         Write-HandoffTrace -Event 'LISTENING' -Port $port
-        Start-Process ($origin + '/lor2db/pc/#port=' + $port + '&nonce=' + $nonce)
+        Start-Process ($origin + '/lor2db/pc/?updater=' + $ApplicationVersion + '#port=' + $port + '&nonce=' + $nonce + '&updater=' + $ApplicationVersion)
         while ([DateTime]::UtcNow -lt $deadline) {
             Invoke-SyncEvents
             if (-not $listener.Pending()) { Start-Sleep -Milliseconds 100; continue }
@@ -794,6 +796,45 @@ function Test-BackgroundReferences {
     if ($referenced.Count -ne $approved.Count) { throw 'Catalog background inventory does not match the actual preview references.' }
 }
 
+function Get-UpdaterVersionDecision {
+    param([string]$InstalledVersion, $Release)
+    $fallback='https://my.sheboyganlights.org/lor2db/pc/'
+    try {
+        if ($null -eq $Release -or $Release.schema_version -ne 1 -or
+            $InstalledVersion -notmatch '^\d+\.\d+\.\d+$' -or
+            $Release.latest_version -notmatch '^\d+\.\d+\.\d+$' -or
+            $Release.minimum_version -notmatch '^\d+\.\d+\.\d+$' -or
+            $Release.installer_sha256 -cnotmatch '^[a-f0-9]{64}$') { throw 'Invalid release metadata' }
+        $expected='https://my.sheboyganlights.org/lor2db/pc/downloads/MSB-PC-Preview-Updater-' + $Release.latest_version + '-pilot.zip'
+        if ($Release.installer_url -cne $expected -or [version]$Release.minimum_version -gt [version]$Release.latest_version) { throw 'Invalid installer URL or version range' }
+        $status=$(if ([version]$InstalledVersion -lt [version]$Release.minimum_version) {'UPDATE_REQUIRED'} elseif ([version]$InstalledVersion -lt [version]$Release.latest_version) {'UPDATE_AVAILABLE'} else {'CURRENT'})
+        return [pscustomobject]@{Status=$status; Installed=$InstalledVersion;Latest=$Release.latest_version;Minimum=$Release.minimum_version;InstallerUrl=$expected}
+    } catch {
+        return [pscustomobject]@{Status='CHECK_FAILED';Installed=$InstalledVersion;Latest='Unavailable';Minimum='Unavailable';InstallerUrl=$fallback}
+    }
+}
+
+function Show-UpdaterVersionGate {
+    param($Decision)
+    $window=New-Object System.Windows.Forms.Form
+    $window.Text=$(if ($Decision.Status -eq 'CHECK_FAILED') {'Could not check updater version'} else {'MSB updater update required'})
+    $window.StartPosition='CenterScreen';$window.Size=New-Object Drawing.Size(570,260)
+    $window.FormBorderStyle='FixedDialog';$window.MaximizeBox=$false
+    $label=New-Object System.Windows.Forms.Label
+    $label.Location=New-Object Drawing.Point(18,18);$label.Size=New-Object Drawing.Size(525,135)
+    $label.Text="Installed updater: $($Decision.Installed)`r`nLatest available: $($Decision.Latest)`r`n`r`n" + $(if ($Decision.Status -eq 'CHECK_FAILED') {'Could not check the published updater version. Check your connection and retry, or open the updater download page. No previews were read or changed.'} else {'Install the latest updater in this Windows account, then reopen it. No previews were read or changed.'})
+    $window.Controls.Add($label)
+    $install=New-Object System.Windows.Forms.Button
+    $install.Text='Install latest updater';$install.Size=New-Object Drawing.Size(180,34);$install.Location=New-Object Drawing.Point(18,164)
+    $install.Tag=$Decision.InstallerUrl
+    $install.Add_Click({Start-Process -FilePath ([string]$this.Tag);$this.FindForm().Close()})
+    $window.Controls.Add($install)
+    $cancel=New-Object System.Windows.Forms.Button
+    $cancel.Text='Close';$cancel.DialogResult='Cancel';$cancel.Location=New-Object Drawing.Point(220,164)
+    $window.Controls.Add($cancel);$window.CancelButton=$cancel
+    try {[void]$window.ShowDialog()} finally {$window.Dispose()}
+}
+
 function Get-CurrentAcceptedSource {
     # The #81 service selects the current completed run. No archive scanning,
     # copied report, static CSV or missing-hash fallback is permitted.
@@ -803,6 +844,12 @@ function Get-CurrentAcceptedSource {
     # document crosses a nonce-bound, temporary loopback handoff.
     $json = Receive-BrowserSource
     $doc = $json | ConvertFrom-Json
+    $release=$(if ($doc.PSObject.Properties['updater_release']) {$doc.updater_release} else {$null})
+    $script:VersionStatus=Get-UpdaterVersionDecision -InstalledVersion $ApplicationVersion -Release $release
+    if ($script:VersionStatus.Status -in @('UPDATE_REQUIRED','CHECK_FAILED')) {
+        $script:VersionGate=$script:VersionStatus
+        throw 'Updater version check stopped this run before preview scanning.'
+    }
     $supported = ($doc.schema_version -eq 1 -and $doc.status -ceq 'COMPLETED')
     if ($doc.schema_version -in @(2,3)) {
         $supported = ($doc.status -ceq 'ACCEPTED' -and $doc.acceptance_kind -ceq 'PREVIEW_CATALOG' -and
@@ -813,14 +860,19 @@ function Get-CurrentAcceptedSource {
         $doc.source_manifest_sha256 -cnotmatch '^[a-f0-9]{64}$' -or $doc.evidence_id -cnotmatch '^[a-f0-9]{64}$' -or
         $doc.report_sha256 -cnotmatch '^[a-f0-9]{64}$' -or $doc.source_sqlite_sha256 -cnotmatch '^[a-f0-9]{64}$' -or
         $doc.run_id -le 0 -or $doc.import_run_id -le 0 -or $doc.preview_count -le 0 -or
-        @($doc.previews).Count -ne $doc.preview_count) { throw 'Accepted-source contract is incomplete or unsupported.' }
+        @($doc.previews).Count -ne $doc.preview_count) { throw ('Accepted-source contract rejected by updater {0}: schema={1}; status={2}; validation={3}; inventory={4}/{5}. Use Install / Update PC Updater under this Windows account, or retain this diagnostic if already current.' -f $ApplicationVersion,$doc.schema_version,$doc.status,$doc.validation,@($doc.previews).Count,$doc.preview_count) }
     if (-not [IO.Path]::IsPathRooted([string]$doc.source_folder) -or
         (Split-Path -Leaf $doc.source_folder) -cne ('Database Previews V' + $doc.lor_version)) {
         throw 'Accepted source is not the exact versioned master folder.'
     }
     $assets = @()
     if ($doc.schema_version -eq 3) {
-        if ($doc.minimum_updater_version -cne '1.1.2' -or $null -eq $doc.PSObject.Properties['background_assets']) { throw 'Background-aware catalog is incomplete.' }
+        if ($doc.minimum_updater_version -notmatch '^\d+\.\d+\.\d+$' -or $null -eq $doc.PSObject.Properties['background_assets']) { throw 'Background-aware catalog is incomplete.' }
+        if ([version]$doc.minimum_updater_version -gt [version]$ApplicationVersion) {
+            $script:VersionGate=$script:VersionStatus
+            $script:VersionGate.Status='UPDATE_REQUIRED';$script:VersionGate.Minimum=$doc.minimum_updater_version
+            throw 'This catalog requires a newer PC updater. No previews were scanned.'
+        }
         $assets = @($doc.background_assets)
         Test-BackgroundAssets -Assets $assets
     }
@@ -1437,6 +1489,26 @@ function Set-StartupStatus {
 }
 
 
+function New-FocusReleaseTimer {
+    param([System.Windows.Forms.Form]$Window, [int]$Interval = 350)
+    $timer = New-Object System.Windows.Forms.Timer
+    $timer.Interval = $Interval
+    $timer.Tag = $Window
+    $timer.Add_Tick({
+        $this.Stop()
+        if ($null -ne $this.Tag -and -not $this.Tag.IsDisposed) {
+            $this.Tag.TopMost = $false
+        }
+    })
+    $releaseTimer = $timer
+    $Window.Add_FormClosed({
+        $releaseTimer.Stop()
+        $releaseTimer.Dispose()
+    }.GetNewClosure())
+    return $timer
+}
+
+
 function Prepare-SyncWithStartup {
     $script:StartupPrepared = $null
     $script:StartupException = $null
@@ -1456,13 +1528,7 @@ function Prepare-SyncWithStartup {
         $this.Activate()
         $this.BringToFront()
 
-        $bringForwardTimer = New-Object System.Windows.Forms.Timer
-        $bringForwardTimer.Interval = 750
-        $bringForwardTimer.Add_Tick({
-            $this.Stop()
-            $form.TopMost = $false
-            $this.Dispose()
-        })
+        $bringForwardTimer = New-FocusReleaseTimer -Window $this -Interval 750
         $bringForwardTimer.Start()
     })
     $form.TopMost = $true
@@ -1526,16 +1592,6 @@ function Prepare-SyncWithStartup {
             )
             $originalHash = Get-FileSha256 -Path $LocalXml
             $build = Build-SyncCandidate -MasterRecords $master.Records -LocalPath $LocalXml -ProgressWindow $this
-            if ($accepted.BackgroundAssets.Count -gt 0) {
-                foreach ($row in $build.Rows) {
-                    $previewXml = [xml]$master.Records[$row.Preview_ID].Raw
-                    $imagePaths = @($previewXml.SelectNodes('//*[@BackgroundFile]') | ForEach-Object { $_.GetAttribute('BackgroundFile') } | Where-Object { $_ } | Sort-Object -Unique)
-                    foreach ($imagePath in $imagePaths) {
-                        $row.Change_Summary += "`r`nLinked background verified: $imagePath"
-                    }
-                }
-            }
-
             Set-StartupStatus -Window $this -Text 'Preparing and freezing the update review...'
             Write-CandidateFile -Build $build -Path $CandidateXml
             Write-ActionReport -Rows $build.Rows -Path $CandidateCsv
@@ -1592,7 +1648,7 @@ function New-ReviewPlan {
 function Show-ReviewDialog {
     param($AcceptedReport, $Build, $MasterRecords, [string]$LocalPath, [string]$ExpectedOriginalHash,
           [string]$CandidatePath, [string]$ReportPath, [string]$CandidateHash, [switch]$ReviewOnly)
-    $state = [pscustomobject]@{ Build=$Build; CandidateHash=$CandidateHash; Failed=$false; Approved=$false; ShowFull=$false }
+    $state = [pscustomobject]@{ Build=$Build; CandidateHash=$CandidateHash; Failed=$false; Approved=$false; ShowFull=$false; ShowChanges=$false }
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "MSB PC Preview Updater $ApplicationVersion | $ApplicationReleaseDate | Review changes"
     $form.StartPosition = 'CenterScreen'
@@ -1689,10 +1745,11 @@ function Show-ReviewDialog {
     $populate={
         $grid.Rows.Clear()
         $counts=Get-ActionCounts $state.Build.Rows
-        $summary.Text=$(if ($ReviewOnly) { "REVIEW ONLY - apply disabled.`r`n" } else { '' }) +
-            ("{0} | ADD {1} | REPLACE {2} | Match Revision {3} | Revision-only unchanged {4} | Personal preserved {5}" -f
-             $AcceptedReport.AuthorityLabel,$counts.Add,$counts.Replace,$counts.AlignRevision,$counts.RevisionOnly,$state.Build.UnmanagedCount)
+        $summary.Text=$(if ($ReviewOnly) { "Review only - updates are disabled." } elseif ($state.Failed) { "BLOCKED: cancel and restart the updater." } else {
+            "Ready to update. No blockers found.`r`nUpdater $ApplicationVersion; latest available: $($script:VersionStatus.Latest).`r`nPreviews to add: $($counts.Add); previews to update: $($counts.Replace).`r`nPersonal previews preserved: $($state.Build.UnmanagedCount)."
+        })
         foreach ($row in @($state.Build.Rows | Sort-Object @{Expression={if ($_.Action -eq 'REPLACE_IN_CANDIDATE'){0}elseif($_.Action -eq 'ADD_IN_CANDIDATE'){1}elseif($_.Action -in @('NOOP_REVISION_ONLY','ALIGN_REVISION_IN_CANDIDATE')){2}else{3}}},Approved_Filename)) {
+            if (-not $state.ShowFull -and $row.Action -notin @('REPLACE_IN_CANDIDATE','ADD_IN_CANDIDATE','ALIGN_REVISION_IN_CANDIDATE')) { continue }
             $action=switch ($row.Action) {
                 'REPLACE_IN_CANDIDATE' {'Replace content'}
                 'ADD_IN_CANDIDATE' {'Add preview'}
@@ -1713,8 +1770,9 @@ function Show-ReviewDialog {
     [void]$buttons.Controls.Add($fullDetails)
     $fullDetails.Add_LinkClicked({
         $state.ShowFull=-not $state.ShowFull
+        $state.ShowChanges=$true; & $setChangesVisibility
         $fullDetails.Text=$(if ($state.ShowFull) {'Show summary'} else {'Show full details'})
-        & $showDetails
+        & $populate
     })
     $grid.Add_SelectionChanged($showDetails)
     $closed.Add_CheckedChanged($refreshButtons); $ack.Add_CheckedChanged($refreshButtons)
@@ -1732,19 +1790,35 @@ function Show-ReviewDialog {
         }
         & $refreshButtons
     })
-    $update.Add_Click({$state.Approved=$true;$form.Close()})
+    $update.Add_Click({$state.Approved=$true;$this.FindForm().Close()})
     $form.Add_Resize({
-        $width=[Math]::Max(250,$form.ClientSize.Width-40)
+        $width=[Math]::Max(250,$this.ClientSize.Width-40)
         foreach ($control in @($summary,$detailLabel,$align,$ack)) { $control.MaximumSize=New-Object Drawing.Size($width,0) }
     })
     $form.CancelButton=$cancel
     # Request focus once after startup closes. Release topmost promptly so the
     # operator can switch applications normally; never poll or steal focus again.
-    $focusTimer=New-Object System.Windows.Forms.Timer
-    $focusTimer.Interval=350
-    $focusTimer.Add_Tick({ $form.TopMost=$false; $focusTimer.Stop() })
-    $form.Add_Shown({ $this.TopMost=$true; $this.BringToFront(); $this.Activate(); $focusTimer.Start() })
-    $form.Add_FormClosed({ $focusTimer.Stop(); $focusTimer.Dispose() })
+    $focusTimer=New-FocusReleaseTimer -Window $form -Interval 350
+    $form.Add_Shown({ $this.TopMost=$true; $this.BringToFront(); $this.Activate(); $focusTimer.Start() }.GetNewClosure())
+    # Default approval view contains readiness/blockers and acknowledgements.
+    # Routine per-preview changes and raw diffs remain opt-in.
+    $setChangesVisibility={
+        $grid.Visible=$state.ShowChanges; $detailLabel.Visible=$state.ShowChanges; $details.Visible=$state.ShowChanges
+        foreach ($index in @(2,4)) {
+            $layout.RowStyles[$index].SizeType=$(if ($state.ShowChanges) {'Percent'} else {'Absolute'})
+            $layout.RowStyles[$index].Height=$(if ($state.ShowChanges) {if ($index -eq 2) {35} else {65}} else {0})
+        }
+        $changesLink.Text=$(if ($state.ShowChanges) {'Hide changes'} else {'Show changes'})
+        $align.Visible=$state.ShowFull
+        $minimumHeight=$(if ($state.ShowChanges) {620} else {360})
+        $form.MinimumSize=New-Object Drawing.Size([Math]::Min(800,[int]($area.Width*0.85)),[Math]::Min($minimumHeight,[int]($area.Height*0.80)))
+        $form.Height=$(if ($state.ShowChanges) {[Math]::Min(800,[int]($area.Height*0.90))} else {[Math]::Min(420,[int]($area.Height*0.80))})
+    }
+    $changesLink=New-Object System.Windows.Forms.LinkLabel
+    $changesLink.Text='Show changes'; $changesLink.AutoSize=$true
+    [void]$buttons.Controls.Add($changesLink)
+    $changesLink.Add_LinkClicked({ $state.ShowChanges=-not $state.ShowChanges; & $setChangesVisibility })
+    & $setChangesVisibility
     & $populate
     [void]$form.ShowDialog(); $form.Dispose()
     return [pscustomobject]@{Approved=$state.Approved;Build=$state.Build;CandidateHash=$state.CandidateHash}
@@ -1893,7 +1967,7 @@ try {
             -SourceStateHash $prepared.SourceStateHash -OriginalHash $prepared.OriginalHash `
             -CandidateHash $prepared.CandidateHash
         Show-Message (
-            "Your MSB previews are already current.`r`n`r`n" +
+            "Your MSB previews are already current.`r`nUpdater $ApplicationVersion; latest available: $($script:VersionStatus.Latest).`r`n`r`n" +
             "$($accepted.AuthorityLabel)`r`n" +
             "Master source: $($accepted.SourceFolder)`r`n" +
             "Controlled previews: $($build.Rows.Count)`r`n" +
@@ -1988,6 +2062,10 @@ try {
 }
 
 catch {
+    if ($null -ne $script:VersionGate) {
+        Show-UpdaterVersionGate -Decision $script:VersionGate
+        exit 20
+    }
     $message = $_.Exception.Message
     try {
         New-Item -ItemType Directory -Path $LogFolder -Force | Out-Null

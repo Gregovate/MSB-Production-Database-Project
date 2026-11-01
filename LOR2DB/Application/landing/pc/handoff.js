@@ -37,6 +37,13 @@
     diagnostic.sourceHttpStatus = response.status;
     if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error('Your login or Production Crew access could not be verified.');
     const doc = await response.json();
+    // Version metadata travels through the signed-in browser. Native PowerShell
+    // must not reuse browser cookies or treat a sign-in HTML page as a release.
+    try {
+      const releaseResponse = await fetch('downloads/updater-release.json?t=' + Date.now(), {credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000)});
+      diagnostic.releaseHttpStatus = releaseResponse.status;
+      doc.updater_release = releaseResponse.ok && releaseResponse.headers.get('content-type')?.includes('application/json') ? await releaseResponse.json() : null;
+    } catch (_) { doc.updater_release = null; }
     // Escape Unicode to keep HTTP byte count equal to the relay character count.
     const body = JSON.stringify(doc).replace(/[\u007f-\uffff]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
     diagnostic.phase = 'loopback-request';
@@ -45,7 +52,13 @@
     if (!delivered.ok) throw new Error('The PC updater did not accept the handoff.');
     diagnostic.phase = 'complete';
     if (details) details.textContent = JSON.stringify(diagnostic, null, 2);
-    status.textContent = 'Access confirmed. Return to the PC updater to review the results. You may close this tab.';
+    const installed = args.get('updater');
+    const latest = doc.updater_release?.latest_version;
+    status.textContent = !installed
+      ? 'Your installed updater does not report its version and needs updating. Close it, then use Install / Update PC Updater below in this Windows account.'
+      : latest && installed !== latest
+      ? `Installed updater: ${installed}. Latest available: ${latest}. Return to the updater for version-check results.`
+      : 'Access confirmed. Updater version checked. Return to the PC updater to review the results. You may close this tab.';
   } catch (error) {
     const step = diagnostic.phase === 'loopback-request' ? 'The browser could not complete the connection to the PC updater.' : 'The browser could not obtain accepted MSB source evidence.';
     status.textContent = `${step} No preview update was authorized. Retain Support details below and the updater diagnostic log for the MSB administrator.`;
