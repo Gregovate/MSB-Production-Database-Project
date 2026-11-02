@@ -8,14 +8,16 @@ $repo='C:\MSB_LORRunner'
 $relative='Docs/01_LOR_System/02_Data_Extraction/Parser/lor_version_checker.py'
 $target=Join-Path $repo $relative
 $testRelative='Docs/01_LOR_System/02_Data_Extraction/Parser/test_lor_version_checker_sharedid.py'
-$expectedOld='418b032da7be4f541d6c158bf0c7ad1e982f99f01921dbab0878097e26e64cbd'
+# Git on Windows may check out this exact approved source with CRLF.
+$approvedOldHashes=@('418b032da7be4f541d6c158bf0c7ad1e982f99f01921dbab0878097e26e64cbd','3fc5071af343dd83f0a402e3c66971f21e2b3448b8c5eb2a4ea2177d711d3768')
 $expectedNew='026b9bb414d03bbc6bd0dca9db75004274b2f4c907b7604ec5986bf91338510b'
 $taskName='MSB LOR Operator Runner'
 function Require($value,$reason) { if (-not $value) { throw $reason } }
 function Hash($path) { (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() }
 Require ($env:COMPUTERNAME -ieq 'PRINT-SERVER') 'Run on PRINT-SERVER'
 Require (([Security.Principal.WindowsIdentity]::GetCurrent().Name) -ieq 'PRINT-SERVER\Print Service') 'Use existing Print Service account'
-Require ((Hash $target) -in @($expectedOld,$expectedNew)) 'Installed catalog source differs; no replacement'
+$expectedOld=Hash $target
+Require ($expectedOld -in ($approvedOldHashes + @($expectedNew))) 'Installed compatibility checker differs; no replacement'
 if ((Hash $target) -eq $expectedNew) { Write-Host 'Compatibility fix is already installed.'; return }
 $task=Get-ScheduledTask -TaskName $taskName
 Require ($task.Principal.UserId -in @('Print Service','PRINT-SERVER\Print Service')) 'Task identity changed'
