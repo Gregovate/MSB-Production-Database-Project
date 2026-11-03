@@ -6,6 +6,8 @@ The Server Management launcher must supply an isolated current-Production clone.
 from __future__ import annotations
 
 import os
+import re
+from urllib.parse import urlsplit
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
@@ -32,6 +34,25 @@ class WorkManagementError(RuntimeError):
 # SQL performs deadline selection before LIMIT, never on a truncated browser list.
 DUE_SQL = "(SELECT (to_jsonb(dw)->>'due_by')::date FROM ops.work_order dw WHERE dw.work_order_id=t.wo_id)"
 TODAY_SQL = "(CURRENT_TIMESTAMP AT TIME ZONE 'America/Chicago')::date"
+
+
+def photo_references(*values: str | None) -> list[str]:
+    """Expose existing HTTPS photo links; never fetch files or grant file access.
+
+    Form exports can separate multiple upload links with commas or whitespace.
+    Keep both WO and intake references so promotion cannot hide original evidence.
+    """
+    links = []
+    for value in values:
+        for token in re.split(r"[,\s]+", value or ""):
+            try:
+                url = urlsplit(token)
+                if (url.scheme == "https" and url.hostname and not url.username
+                        and not url.password and token not in links):
+                    links.append(token)
+            except ValueError:
+                continue
+    return links
 
 
 def deadline_condition(value: str) -> str:
@@ -261,7 +282,15 @@ class WorkManagementRepository:
             row['due_date_required'] = open_work and not row['due_by']
             row['overdue'] = bool(open_work and row['due_by'] and
                                   row['due_by'] < deadline['today'])
+        # Communication state is independent of repair/completion status.
+        cur.execute(
+            "SELECT DISTINCT ON (ticket_key) ticket_key,event_kind "
+            "FROM " + self.activity_table + " WHERE ticket_key=ANY(%s) "
+            "AND event_kind IN ('clarify','reply') ORDER BY ticket_key,activity_id DESC",
+            (keys,))
+        followups = {r["ticket_key"]: r["event_kind"] for r in cur.fetchall()}
         for row in rows:
+            row["followup_state"] = followups.get(row["ticket"])
             finding = canceled.get(row["ticket"])
             if finding:
                 row["state"] = "CANCELLED_NO_ACTION"
@@ -274,10 +303,13 @@ class WorkManagementRepository:
         if not intake:
             return
         cur.execute(
-            "SELECT DISTINCT ON (ticket_key) ticket_key,event_kind,details "
-            "FROM " + self.activity_table + " WHERE ticket_key = ANY(%s) "
-            "AND event_kind IN ('clarify','reply','resolve','promoted_source') "
-            "ORDER BY ticket_key,activity_id DESC", (intake,))
+            "SELECT DISTINCT ON (a.ticket_key) a.ticket_key,a.event_kind,a.details,a.note,a.created_at, "
+            "coalesce(nullif(btrim(concat_ws(' ',coalesce(nullif(p.preferred_name,''),p.first_name),p.last_name)),''), "
+            "'Person #' || a.actor_person_id) AS handled_by "
+            "FROM " + self.activity_table + " a LEFT JOIN ref.person p ON p.person_id=a.actor_person_id "
+            "WHERE a.ticket_key = ANY(%s) "
+            "AND a.event_kind IN ('clarify','reply','resolve','promoted_source') "
+            "ORDER BY a.ticket_key,a.activity_id DESC", (intake,))
         latest = {r["ticket_key"]: r for r in cur.fetchall()}
         cur.execute(
             "SELECT a.ticket_key, a.target_person_id, "
@@ -292,13 +324,36 @@ class WorkManagementRepository:
         for item in cur.fetchall():
             owners.setdefault(item["ticket_key"], item["owner"])
             owner_ids.setdefault(item["ticket_key"], item["target_person_id"])
+        # Native relationship is authoritative even for legacy promotions.
+        cur.execute(
+            "SELECT w.source_intake_id,w.work_order_id, "
+            "(SELECT string_agg(coalesce(nullif(btrim(concat_ws(' ', "
+            "coalesce(nullif(p.preferred_name,''),p.first_name),p.last_name)),''), "
+            "'Person #' || a.person_id), ', ' ORDER BY a.person_id) "
+            "FROM ops.work_order_assignment a JOIN ref.person p ON p.person_id=a.person_id "
+            "WHERE a.work_order_id=w.work_order_id AND a.active_flag) AS assignees "
+            "FROM ops.work_order w WHERE ('INTAKE-' || w.source_intake_id)=ANY(%s) ORDER BY w.work_order_id",
+            (intake,))
+        linked = {}
+        linked_details = {}
+        for item in cur.fetchall():
+            linked_details.setdefault("INTAKE-" + str(item["source_intake_id"]), []).append({
+                "ticket": "WO-" + str(item["work_order_id"]),
+                "assignees": item.get("assignees") or "Unassigned"})
+            linked.setdefault("INTAKE-" + str(item["source_intake_id"]), []).append(
+                "WO-" + str(item["work_order_id"]))
         for row in rows:
             if row["type"] not in ("TASK_FEEDBACK", "INTAKE_REQUEST"):
                 continue
+            row["linked_work_orders"] = linked.get(row["ticket"], [])
+            row["linked_work_order_details"] = linked_details.get(row["ticket"], [])
             if row["ticket"] in owners:
                 row["owners"] = owners[row["ticket"]]
                 row["correction_owner_id"] = owner_ids[row["ticket"]]
             info = latest.get(row["ticket"])
+            if info and info["event_kind"] in ("resolve", "promoted_source"):
+                row["handled"] = {key: info.get(key) for key in
+                                  ("handled_by", "created_at", "note", "event_kind")}
             if info and info["event_kind"] == "resolve":
                 row["state"] = str(info["details"].get("disposition", "resolved")).upper()
                 row["state_from"] = "PERSISTENT_CORRECTION_ACTIVITY" if self.activity_table == "ops.work_management_activity" else "DISPOSABLE_CORRECTION_ACTIVITY"
@@ -311,6 +366,8 @@ class WorkManagementRepository:
             elif info and info["event_kind"] == "reply":
                 row["state"] = "RESPONSE_RECEIVED"
             elif info and info["event_kind"] == "promoted_source":
+                row["state"] = "PROMOTED_TO_WO"
+            if row["linked_work_orders"]:
                 row["state"] = "PROMOTED_TO_WO"
 
     def tickets(
@@ -505,6 +562,22 @@ class WorkManagementRepository:
             return {"public_intake": int(row["public_intake"] or 0),
                     "task_feedback": int(row["task_feedback"] or 0)}
 
+    def related_work(self, actor: dict, search: str) -> list[dict]:
+        """Manager review across historical Stage identifiers; never auto-match."""
+        if not actor.get("can_manage"):
+            raise WorkManagementError("Manager review required.", 403)
+        search = search.strip()
+        if not 2 <= len(search) <= 160:
+            raise WorkManagementError("Enter 2 to 160 characters or a Work Order number.")
+        pattern = "%" + search + "%"
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT work_order_id,problem,notes,is_active,date_completed,stage_id "
+                "FROM ops.work_order WHERE problem ILIKE %s OR notes ILIKE %s "
+                "OR work_order_id::text=%s ORDER BY work_order_id DESC LIMIT 50",
+                (pattern, pattern, search.upper().removeprefix("WO-").removeprefix("WO")))
+            return [dict(row) for row in cur.fetchall()]
+
     def ticket(self, *, actor: dict[str, Any], ticket_key: str) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -536,7 +609,11 @@ class WorkManagementRepository:
                     SELECT w.stage_id, w.work_area_id, w.task_type_id, w.urgency_id,
                            w.target_year, w.is_active, w.notes,
                            w.problem, w.source_form_name, w.completion_notes,
-                           w.display_test_session_id
+                           w.display_test_session_id,
+                           to_jsonb(w)->>'photo_url' AS photo_url,
+                           (SELECT to_jsonb(i)->>'photo_url_raw'
+                            FROM stage.work_order_intake i
+                            WHERE i.intake_id=w.source_intake_id) AS intake_photo_url
                     FROM ops.work_order w WHERE w.work_order_id = %s
                     """,
                     (row["wo_id"],),
@@ -548,6 +625,7 @@ class WorkManagementRepository:
                     """
                     SELECT i.stage_id, i.work_area_id, i.problem_raw, i.notes_raw,
                            i.source_form_name, i.source_payload,
+                           to_jsonb(i)->>'photo_url_raw' AS photo_url,
                            to_jsonb(i)->>'priority_raw' AS priority_raw,
                            to_jsonb(i)->>'task_type_raw' AS task_type_raw,
                            to_jsonb(i)->>'stage_raw' AS stage_raw,
@@ -579,6 +657,21 @@ class WorkManagementRepository:
                             k: proc.get(k) for k in ("status", "scope_type", "summary", "documents")
                         }
                 detail = raw
+            # Ticket authorization above also protects its photo references.
+            row["photos"] = photo_references(
+                detail.pop("photo_url", None), detail.pop("intake_photo_url", None))
+            # Old read-only clones may not yet have migration005.
+            cur.execute("SELECT to_regclass('ops.work_management_duplicate_link') AS relation")
+            duplicate_relation = cur.fetchone() or {}
+            row["duplicate_of"] = None
+            if duplicate_relation.get("relation"):
+                cur.execute(
+                    "SELECT 'WO-'||target_work_order_id AS ticket "
+                    "FROM ops.work_management_duplicate_link WHERE source_ticket=%s",
+                    (ticket_key,))
+                duplicate = cur.fetchone()
+                if duplicate:
+                    row["duplicate_of"] = duplicate["ticket"]
             row["detail"] = detail
             row["setup_context"] = context
             return row

@@ -2,9 +2,9 @@
 
 Owner: #205 under #122. Status: source-tested candidate; protected current-clone
 browser/operator acceptance and Production release pending.
-Build: `V0.3.104-completed-task-followup`.
+Build: `V0.3.105-inline-captain`.
 Branch: `fix/205-completed-task-late-warnings`.
-Base main: `0506d4bbd6a21931e0fcc45a84bf63bc31e96975`.
+Base main: `5d0dca5f (refreshed main; unrelated Work Order updates merged)`.
 
 [Design authority](../../Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_205_Schedule_Performance_and_Daily_Accountability_Contract_2026-10-15.md#november-3-correction--completed-tasks-leave-active-missing-report-queues).
 
@@ -29,7 +29,7 @@ No schema migration, database repair, SMTP, timer, recipient or receipt changes.
 
 ## Source verification
 
-- Full Setup/Application + Setup/Acceptance: **1215 passed, 8 skipped** (optional
+- Full Setup/Application + Setup/Acceptance: **1226 passed, 8 skipped** (optional
   environment-dependent checks). Full history was fetched for pinned historical
   deployment-tool fixtures before the passing run.
 - FieldWiring/Application + Procedures/Application: **286 passed**.
@@ -73,3 +73,23 @@ candidate manifest and fresh baseline after acceptance. The old November 1
 package is pinned to V0.3.103 and must not be rerun for this candidate. Separate
 Production approval, merged ancestry, exact-source promotion, no-send preview,
 receipt preservation and controlled deployment closeout remain required.
+
+## Inline Captain addition — operator review follow-up
+
+Greg identified the Plan / Schedule left-hand **Needs rescheduling → Schedule…**
+flow during V0.3.104 review. V0.3.105 adds **+ Add captain to this day** to its Crew
+picker. Choose the Captain from existing eligible people and Save Assignment.
+The crew, Captain and continuation placement commit together through the existing
+atomic API. A Captain already listed on the day uses their existing crew.
+No new Person or work report is created. Selecting a Captain for a new crew defaults crew size to 1 (Captain included); the Manager can increase it. Save writes that period’s count with Captain and assignment. Existing crew counts remain authoritative.
+
+Browser checks: schedule a partial task onto a day without its Captain; verify
+Captain, AM/PM and task after reload, with existing progress unchanged. Repeat
+with an existing Captain and verify no additional crew. Cancel adds nothing.
+Move an eligible unreported assignment with a different AM/PM period; reported
+assignments remain locked. Review a day without any crews and day changes inside
+the dialog. Existing multi-task day-drop shifts remain unchanged.
+
+Source tests cover single-assignment shift override, group override rejection,
+Captain assignment and report-lock failure without commit, and executable dialog
+continuation/new/existing crew paths. Protected browser review is still pending.

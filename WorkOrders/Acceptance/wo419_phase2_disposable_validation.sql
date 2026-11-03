@@ -109,13 +109,14 @@ BEGIN
     RAISE EXCEPTION 'Manager cannot see uncertain delivery';
   END IF;
 
-  SELECT i.intake_id INTO v_intake FROM stage.work_order_intake i
-    WHERE NOT EXISTS(SELECT 1 FROM ops.work_order WHERE source_intake_id=i.intake_id)
-      AND NOT EXISTS(SELECT 1 FROM ops.work_management_activity WHERE ticket_key='INTAKE-'||i.intake_id)
-    ORDER BY i.intake_id LIMIT 1;
-  IF v_intake IS NULL THEN RAISE EXCEPTION 'Unpromoted clarification fixture absent'; END IF;
-  -- Change reporter identity in the clone only; outer ROLLBACK restores all evidence.
-  UPDATE stage.work_order_intake SET submitter_person_id=v_actor.person_id WHERE intake_id=v_intake;
+  -- Do not depend on or change any restored intake's state or reporter.
+  -- This row and its captured notification intents roll back with the test.
+  INSERT INTO stage.work_order_intake
+    (source_system,source_form_name,submitter_person_id,submitter_email_raw,
+     priority_raw,task_type_raw,problem_raw,triage_dropdown)
+  VALUES ('GOOGLE_FORM','WO475_DISPOSABLE',v_actor.person_id,v_email,
+          '3','Repair','Disposable public intake clarification acceptance only','1')
+  RETURNING intake_id INTO v_intake;
   BEGIN
     PERFORM ops.work_management_v1_command(v_email,'reply','INTAKE-'||v_intake,
       '{"response":"Unsolicited reply must not be accepted"}',gen_random_uuid());

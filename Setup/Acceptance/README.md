@@ -1,6 +1,6 @@
 ## November 3 completed-task follow-up candidate
 
-[Review scope and gates](Setup_205_Completed_Task_Followup_2026-11-03.md): completed tasks leave active late/report queues, partial tasks show progress, history stays intact. V0.3.104 source-tested; protected browser acceptance and Production release pending. No migration or email send.
+[Review scope and gates](Setup_205_Completed_Task_Followup_2026-11-03.md): completed tasks leave active late/report queues, partial tasks show progress, history stays intact. V0.3.105 adds inline Captain selection while scheduling; source-tested; protected browser acceptance and Production release pending. No migration or email send.
 
 ## PR470 October 27 map-label review
 

@@ -256,7 +256,7 @@ function board205TaskHasReusableCaptain(task, personId) {
   );
 }
 
-function board205PlacementWarnings(task, crewId, shift) {
+function board205PlacementWarnings(task, crewId, shift, newCrewCount = null) {
   const warnings = [];
   if (!task) return warnings;
 
@@ -268,7 +268,7 @@ function board205PlacementWarnings(task, crewId, shift) {
   }
 
   const crew = board205CrewRow(crewId);
-  const planned = board205PlacementCrewCount(crewId, shift);
+  const planned = crewId == null ? newCrewCount : board205PlacementCrewCount(crewId, shift);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   if (planned != null && minCrew != null && planned < minCrew) {
     const period = shift === 'MORNING' ? 'AM' : shift === 'AFTERNOON' ? 'PM' : 'selected';
@@ -323,9 +323,9 @@ function board205ReschedulingLabel(task) {
     : 'NEEDS RESCHEDULING — WORK INCOMPLETE';
 }
 
-function board205ConfirmPlacement(task, crewId, shift) {
+function board205ConfirmPlacement(task, crewId, shift, newCrewCount = null) {
   if (!board205RequireEstimates(task)) return false;
-  const warnings = board205PlacementWarnings(task, crewId, shift);
+  const warnings = board205PlacementWarnings(task, crewId, shift, newCrewCount);
   if (!warnings.length) return true;
   return window.confirm(`${warnings.join('\n\n')}\n\nSchedule this task anyway?`);
 }
@@ -3292,8 +3292,34 @@ function board205PopulateCrewSelect(dayId, selectedCrewId = null) {
   const crews = board205CrewsForDay(dayId);
   crewSelect.innerHTML = crews.map((crew) => (
     `<option value="${crew.setup_work_day_crew_id}">Crew ${board205Esc(crew.crew_code)} · ${board205Esc(crew.captain_display_name || 'Captain not assigned')}</option>`
-  )).join('');
+  )).join('') + '<option value="NEW_CREW">+ Add captain to this day</option>';
   if (selectedCrewId != null) crewSelect.value = String(selectedCrewId);
+  board205ScheduleCaptainVisibility();
+}
+
+// Keep staffing inside the task dialog; nothing is written until Save Assignment.
+function board205ScheduleCaptainVisibility() {
+  const adding = document.getElementById('setup-board205-schedule-crew')?.value === 'NEW_CREW';
+  const row = document.getElementById('setup-board205-schedule-captain-row');
+  const select = document.getElementById('setup-board205-schedule-captain');
+  if (!row || !select) return;
+  row.hidden = !adding;
+  select.disabled = !adding;
+  select.required = adding;
+  const size = document.getElementById('setup-board205-schedule-size');
+  const note = document.getElementById('setup-board205-schedule-size-note');
+  if (!size || !note) return;
+  const dayId = Number(document.getElementById('setup-board205-schedule-day').value || 0);
+  const shift = document.getElementById('setup-board205-schedule-shift').value;
+  const crewId = document.getElementById('setup-board205-schedule-crew').value;
+  const crew = adding ? board205CrewsForDay(dayId).find(
+    item => Number(item.captain_person_id) === Number(select.value || 0))
+    : board205CrewsForDay(dayId).find(item => String(item.setup_work_day_crew_id) === crewId);
+  size.readOnly = Boolean(crew);
+  size.value = crew ? (board205PlannedCrewForShift(crew, shift) ?? '') : (select.value ? '1' : '');
+  note.textContent = crew
+    ? 'Current crew size for this period. Change shared crew staffing on the board.'
+    : 'Total people, including the Captain. Starts at 1; increase for additional crew.';
 }
 
 function board205PopulateScenes() {
@@ -3312,6 +3338,8 @@ function board205OpenScheduleDialog(target) {
   const dialog = document.getElementById('setup-board205-schedule-dialog');
   if (!dialog) return;
   setupBoard205State.scheduleTarget = target;
+  document.getElementById('setup-board205-schedule-captain').innerHTML =
+    board205CaptainOptions().replace('>TBD</option>', '>Choose Captain</option>');
   board205PopulateDialogSelects();
 
   const daySelect = document.getElementById('setup-board205-schedule-day');
@@ -3324,17 +3352,34 @@ function board205OpenScheduleDialog(target) {
   } else {
     board205PopulateCrewSelect(Number(daySelect.value || 0));
   }
+  board205ScheduleCaptainVisibility();
   dialog.showModal();
 }
 
 async function board205SubmitScheduleDialog(event) {
   event.preventDefault();
   const target = setupBoard205State.scheduleTarget;
-  if (!target) return;
+  if (!target || !appState.access?.can_manage_setup) return;
   const dayId = Number(document.getElementById('setup-board205-schedule-day').value || 0);
   const shift = document.getElementById('setup-board205-schedule-shift').value;
-  const crewId = Number(document.getElementById('setup-board205-schedule-crew').value || 0);
-  if (!dayId || !crewId) return;
+  const crewChoice = document.getElementById('setup-board205-schedule-crew').value;
+  const addingCaptain = crewChoice === 'NEW_CREW';
+  const captainId = addingCaptain
+    ? Number(document.getElementById('setup-board205-schedule-captain').value || 0) : null;
+  if (!dayId || (addingCaptain && !board205CaptainCandidate(captainId))) return;
+  // Reuse a Captain's existing day crew when selected through the add picker.
+  const existingCrew = addingCaptain ? board205CrewsForDay(dayId).find(
+    crew => Number(crew.captain_person_id) === captainId) : null;
+  let crewId = existingCrew ? Number(existingCrew.setup_work_day_crew_id)
+    : addingCaptain ? null : Number(crewChoice || 0);
+  const creatingCrew = addingCaptain && !existingCrew;
+  if (!creatingCrew && !crewId) return;
+  const sizeValue = document.getElementById('setup-board205-schedule-size').value;
+  const crewSize = creatingCrew && sizeValue !== '' ? Number(sizeValue) : null;
+  if (crewSize != null && (!Number.isInteger(crewSize) || crewSize < 1)) {
+    setAlert('Crew size must be a whole number of at least 1, or blank if unknown.', 'error');
+    return;
+  }
 
   const item = target.kind === 'assignment' ? board205Assignment(target.id) : null;
   const task = target.kind === 'task'
@@ -3348,12 +3393,24 @@ async function board205SubmitScheduleDialog(event) {
       || Number(item.setup_work_day_crew_id) !== Number(crewId)
     )
   );
-  if (changedPlacement && !board205ConfirmPlacement(task, crewId, shift)) return;
+  if (changedPlacement && !board205ConfirmPlacement(task, crewId, shift, crewSize)) return;
 
   try {
     setBusy(true);
     const sortOrder = board205EndSort(dayId, shift, crewId);
-    if (target.kind === 'task') {
+    if (creatingCrew) {
+      const payload = {
+        captain_person_id: captainId,
+        am_planned_crew_count: shift === 'MORNING' ? crewSize : null,
+        pm_planned_crew_count: shift === 'AFTERNOON' ? crewSize : null,
+        items: [{kind: target.kind, id: Number(target.id), shift}]
+      };
+      // Group drag retains original shifts; only this explicit single move overrides it.
+      if (target.kind === 'assignment') payload.assignment_shift = shift;
+      const result = await api(`api/setup/scheduling-board/work-days/${dayId}/crews/with-tasks`,
+        commandOptions('POST', payload));
+      crewId = Number(result.crew.setup_work_day_crew_id);
+    } else if (target.kind === 'task') {
       await api('api/setup/scheduling-board/assignments', commandOptions('POST', {
         setup_work_day_id: dayId,
         setup_session_task_id: target.id,
@@ -3369,7 +3426,7 @@ async function board205SubmitScheduleDialog(event) {
         sort_order: sortOrder
       }));
     }
-    if (task) await board205MaybeLearnCaptainForTask(task, crewId);
+    if (task) await board205MaybeLearnCaptainForTask(task, crewId, captainId);
     document.getElementById('setup-board205-schedule-dialog').close();
     await board205Load();
   } catch (error) {
@@ -4090,7 +4147,9 @@ function board205InstallView() {
           <label>Setup Day<select id="setup-board205-schedule-day" required></select></label>
           <label>Work period<select id="setup-board205-schedule-shift"><option value="MORNING">Morning</option><option value="AFTERNOON">Afternoon</option></select></label>
           <label>Crew<select id="setup-board205-schedule-crew" required></select></label>
+          <label id="setup-board205-schedule-captain-row" hidden>Captain<select id="setup-board205-schedule-captain" disabled></select><span class="muted">Adds this Captain to the selected day when you save. </span></label>
         </div>
+        <label>Crew size<input id="setup-board205-schedule-size" type="number" min="1" step="1" placeholder="Unknown"><span id="setup-board205-schedule-size-note" class="muted"></span></label>
         <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Assignment</button></menu>
       </form>
     </dialog>
@@ -4290,6 +4349,9 @@ function board205InstallView() {
   document.getElementById('setup-board205-add-season-only')?.addEventListener('click', board205ChooseSeasonOnlyTask);
   document.getElementById('setup-board205-delete-season-task')?.addEventListener('click', () => { void board205DeleteSeasonTask(); });
   document.getElementById('setup-board205-schedule-dialog-form').addEventListener('submit', board205SubmitScheduleDialog);
+  document.getElementById('setup-board205-schedule-crew').addEventListener('change', board205ScheduleCaptainVisibility);
+  document.getElementById('setup-board205-schedule-shift').addEventListener('change', board205ScheduleCaptainVisibility);
+  document.getElementById('setup-board205-schedule-captain').addEventListener('change', board205ScheduleCaptainVisibility);
   document.getElementById('setup-board205-schedule-day').addEventListener('change', (event) => {
     board205PopulateCrewSelect(Number(event.currentTarget.value || 0));
   });

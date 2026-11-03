@@ -160,8 +160,17 @@ def api_setup_scheduling_board_crew_with_tasks(
             # Existing assignment shifts are read authoritatively by the server.
             "shift": shift if item["kind"] == "task" else None,
         })
+    assignment_shift = payload.get("assignment_shift")
+    if assignment_shift is not None and (
+        assignment_shift not in ("MORNING", "AFTERNOON")
+        or len(normalized) != 1 or normalized[0]["kind"] != "assignment"
+    ):
+        raise SetupCommandError("Choose AM or PM for one existing assignment")
     result = repo().add_crew_with_tasks(
         email=email, work_day_id=setup_work_day_id, items=normalized,
+        assignment_shift=assignment_shift,
+        am_planned_crew_count=nullable_int(payload.get("am_planned_crew_count"), "am_planned_crew_count"),
+        pm_planned_crew_count=nullable_int(payload.get("pm_planned_crew_count"), "pm_planned_crew_count"),
         captain_person_id=nullable_int(payload.get("captain_person_id"), "captain_person_id"),
     )
     return jsonify(result), 201

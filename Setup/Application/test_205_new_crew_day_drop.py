@@ -30,6 +30,8 @@ class FakeCursor:
             self.result = {"setup_session_id":2,"day_status":"CANCELLED" if self.cancelled else "PLANNED"}
         elif "ops.add_setup_work_day_crew" in sql:
             self.result = {"setup_work_day_crew_id":99,"crew_code":"C","crew_number":3}
+        elif "ops.update_setup_work_day_crew" in sql:
+            self.result = {"setup_work_day_crew_id":99,"crew_code":"C", "captain_person_id":params[4]}
         elif "SELECT shift_code FROM ops.setup_work_day_task" in sql:
             self.result = {"shift_code": {41:"MORNING",42:"AFTERNOON"}.get(params[0],"ALL_DAY")}
         elif "ops.update_setup_work_day_assignment" in sql:
@@ -142,3 +144,63 @@ def test_operator_controls_and_access_checks():
     assert "repo().add_crew_with_tasks(" in code
     assert "Choose one to 25" in code
     assert "item[\"kind\"] == \"task\"" in code
+
+
+def test_dialog_assigns_captain_and_selected_period_in_one_commit():
+    cur = FakeCursor()
+    repo, conn = fake_repository(cur)
+    result = repo.add_crew_with_tasks(
+        email="manager@sheboyganlights.org", work_day_id=17,
+        items=[{"kind":"assignment", "id":41}],
+        captain_person_id=8, assignment_shift="AFTERNOON",
+    )
+    assert conn.commits == 1
+    assert result["crew"]["captain_person_id"] == 8
+    moves = [args for sql,args in cur.calls if "ops.update_setup_work_day_assignment" in sql]
+    assert moves[0][3] == "AFTERNOON"
+
+
+@pytest.mark.parametrize("items,shift", [
+    ([{"kind":"task","id":23}], "MORNING"),
+    ([{"kind":"assignment","id":41},{"kind":"assignment","id":42}], "MORNING"),
+    ([{"kind":"assignment","id":41}], "ALL_DAY"),
+])
+def test_dialog_shift_override_rejects_invalid_scope_before_creating_crew(items, shift):
+    cur = FakeCursor()
+    repo, conn = fake_repository(cur)
+    with pytest.raises(SetupSchedulingBoardRepositoryError, match="one existing assignment"):
+        repo.add_crew_with_tasks(email="manager@sheboyganlights.org", work_day_id=17,
+            items=items, assignment_shift=shift)
+    assert cur.calls == []
+    assert conn.commits == 0
+
+
+def test_dialog_report_lock_does_not_commit_captain_or_crew():
+    cur = FakeCursor(fail_on_update=1)
+    repo, conn = fake_repository(cur)
+    with pytest.raises(RuntimeError, match="real work"):
+        repo.add_crew_with_tasks(email="manager@sheboyganlights.org", work_day_id=17,
+            items=[{"kind":"assignment","id":41}], captain_person_id=8,
+            assignment_shift="AFTERNOON")
+    assert conn.commits == 0
+
+
+def test_new_crew_size_is_set_with_captain_before_task_placement():
+    cur = FakeCursor()
+    repo, conn = fake_repository(cur)
+    repo.add_crew_with_tasks(email="manager@sheboyganlights.org", work_day_id=17,
+        items=[{"kind":"task","id":23,"shift":"AFTERNOON"}],
+        captain_person_id=8, pm_planned_crew_count=4)
+    updates = [args for sql,args in cur.calls if "ops.update_setup_work_day_crew" in sql]
+    assert updates == [("manager@sheboyganlights.org",99,None,4,8)]
+    assert conn.commits == 1
+
+
+@pytest.mark.parametrize("count", [-1, 0, 1.5, True])
+def test_invalid_new_crew_size_writes_nothing(count):
+    cur = FakeCursor()
+    repo, conn = fake_repository(cur)
+    with pytest.raises(SetupSchedulingBoardRepositoryError, match="Crew size"):
+        repo.add_crew_with_tasks(email="manager@sheboyganlights.org", work_day_id=17,
+            items=[{"kind":"task","id":23,"shift":"MORNING"}], am_planned_crew_count=count)
+    assert cur.calls == []
