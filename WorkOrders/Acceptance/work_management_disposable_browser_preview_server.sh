@@ -24,7 +24,8 @@ fi
 if [[ ! "$PREVIEW_EMAIL" =~ ^[a-zA-Z0-9._%+-]+@sheboyganlights[.]org$ ]]; then
   echo "HOLD: approved MSB human reviewer email required"; exit 2
 fi
-if [[ "$CANDIDATE_REF" != "fix/work-orders-identity-reconciliation" ]]; then
+if [[ "$CANDIDATE_REF" != "fix/work-orders-identity-reconciliation" &&
+      "$CANDIDATE_REF" != "fix/419-work-order-clarification" ]]; then
   echo "HOLD: #419 source branch changed; review target ancestry first"; exit 2
 fi
 if [[ "$MODE" != "start" && "$MODE" != "resume" && "$MODE" != "validate_v1" &&
@@ -582,6 +583,7 @@ WO447_INSTALLED_PHASE2
     # before the existing identity installation and functional validation.
     cat "$WORKTREE/WorkOrders/Acceptance/wo447_release_transaction_rehearsal.sql"
     cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
+    cat "$WORKTREE/WorkOrders/Database/005_work_management_wo_followup.sql"
   } | psql_clone
   echo "PASS: V1 proposed native schema/functions installed on disposable clone"
   # The fixture tests real manager-only Create, idempotency, Crew Progress +
@@ -593,7 +595,7 @@ WO447_INSTALLED_PHASE2
     cat "$WORKTREE/WorkOrders/Acceptance/wo447_identity_disposable_validation.sql"
   } | psql_clone
   IDENTITY_RESULT="PASS"
-  for validation in wo419_v1_disposable_validation.sql wo419_phase2_disposable_validation.sql; do
+  for validation in wo419_v1_disposable_validation.sql wo419_phase2_disposable_validation.sql wo419_followup_disposable_validation.sql; do
     if [[ "$validation" == wo419_v1_disposable_validation.sql ]]; then V1_RESULT="FAILED"; else PHASE2_RESULT="FAILED"; fi
     {
       printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
@@ -640,6 +642,7 @@ END
 $wo447$;
 WO447_INSTALLED_PHASE2
     cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
+    cat "$WORKTREE/WorkOrders/Database/005_work_management_wo_followup.sql"
   } | psql_clone
   echo "PASS: V1 native SQL installed inside private restored clone only"
   {

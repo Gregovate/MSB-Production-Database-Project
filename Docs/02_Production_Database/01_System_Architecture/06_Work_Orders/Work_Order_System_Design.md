@@ -1171,3 +1171,146 @@ clear only the clone reviewer's link, then prove real HTTP entry commits the
 repair and repeat entry does not update audit. This avoids another clone/dump
 solely for identity SQL assertions. A discovered old runner bug required Manager
 scope=all even for Crew: use scope=mine and assert all returns 403 for Crew.
+
+
+### November 3 — active Work Order reporter clarification (#419 / DBG-2026-020)
+
+WO-429 demonstrates that promotion must preserve reporter communication. An
+active assignee or Manager may ask the original reporter a question on the active
+WO. Only that reporter may answer the latest unanswered question. Both actions
+retain the assignment, deadline, original finding and completion state. Questions
+and replies use existing clarify/reply activity and the reviewed mail trigger:
+question to original reporter; reply to the question author. Waiting on Reporter
+is a communication state, not a replacement repair status. Missing/ineligible
+contact remains an actionable exception; no new account or role is granted.
+
+Use a narrow SECURITY DEFINER command with exact actor verification, WO row lock,
+transactional activity/mail intent, request-key replay protection and current
+open-state checks. Promoted Intake becomes history with an exact native WO link;
+its old clarification/promotion/closure actions must not be offered. Keep the
+existing SQL prohibition. Map known lifecycle rejection to a safe conflict
+message rather than database-unavailable. No generic database text is exposed.
+
+Normal ticket pages show only actionable plain-language mail exceptions; raw
+SMTP evidence stays in administrator audit storage. Recipient templates retain
+protected ticket links and no transport diagnostics. No mail retry is introduced.
+
+This first correction unblocks text questions and replies. Photo attachments
+remain a required separate unfinished slice: authenticated ticket-scoped storage,
+image validation/size limits, authorized retrieval and deletion/retention must be
+specified and tested before upload controls are exposed. Inbound email ingestion
+is not implied. Neither text nor photo correction is deployed by this design.
+
+Acceptance reuses `work_management_disposable_browser_preview_server.sh` and its
+existing validate_v1 / native browser profiles, same owned Production-derived
+clone, existing port/identity/no-send boundary. Apply migration005 after the
+installed identity migration and run its rollback-only follow-up SQL fixture in
+that clone. Do not introduce a separate runner or replay migrations002/003.
+
+
+#### November 3 — old notification links and concurrent Manager triage
+
+Read current authoritative Intake state before exposing its action form. Handled
+requests show attributed outcome/time/reason and native linked WO/current
+assignees. Preserve history; pending queue excludes handled requests. A retained
+email is notification history, never a current action assignment. Refresh visible
+Intake status every 15 seconds and on focus, and recheck before confirmation/save.
+When another Manager handles it, disable the stale controls and keep entered text
+visible for copying. A failed status read blocks submission until revalidated.
+Database row locks and duplicate-promotion checks remain the final race guard.
+No polling refresh may replace unsaved input or silently promote a request.
+
+
+### November 3 — consolidated correction: shared triage and reporter communication
+
+**Controlling scope for #419 / #122 DBG-2026-020.** Greg requests one evaluated
+correction covering the discussion, one integration candidate and one acceptance
+checklist. Earlier text-first implementation is a partial candidate, not complete
+acceptance. Keep existing Intake/WO identities, history, actor authority, email
+owner and deployment infrastructure. Do not create a second ticket or mail system.
+
+| Requirement | Required behavior | Current evidence/state |
+|---|---|---|
+| Shared Manager triage | All five Managers may receive new Intake/feedback notices; the live pending queue is authoritative. Clearly distinguish request notice from assignment. | Existing new-request capture selects active Managers. Installed routing needs verification. |
+| Already handled | Resolve current state before displaying actions; show handler, time, outcome and original-to-WO link/current assignees. Preserve drafts when another Manager acts. | Local candidate implemented; native/browser acceptance pending. |
+| One promotion | Retain row lock and existing linked-WO rejection; stale save gets understandable conflict. | Source guard verified; user log proves linked-WO rejection. Concurrency test still required. |
+| Clarification after promotion | Active assignee/Manager asks original reporter on the WO; reporter answers on same history. Keep assignment/due date/completion unchanged. | Text candidate implemented; real PostgreSQL and two-actor browser acceptance pending. |
+| Photos | Question/response can include validated ticket-scoped images with authorized retrieval and defined limits/retention. | Not implemented; remains part of the consolidated correction. |
+| Related/duplicate repair | Before promotion, allow Manager search/review of existing WO descriptions and notes across years and Stage identifiers; explicitly link duplicate to retained original with reason, no false repair completion. | Not implemented. WO-156/WO-422 overlap is evidence for review, not authority to cancel or merge. |
+| Recipient accuracy | Intake to Managers; assignment to actual assignees; question to original reporter; answer to recorded question author (existing correction-owner rule retained for feedback); outcome to reporter. Preserve missing-contact exceptions. | Source assignment trigger selects NEW.person_id only. Greg reports all five receive same emails; live outbox/headers/group routing required before identifying cause. |
+| Clear emails | Lead with problem/display, type of action and ID. Assignment identifies source Intake where present. Link opens current state. No SMTP jargon or misleading email-reply promise. | Wording partly implemented; subject/source-Intake correlation unfinished. |
+| Operational clarity | Ordinary screens show human status and actionable communication failures, not raw receipt dumps. Technical receipts remain administrator evidence. | Local candidate implemented, not deployed. |
+
+#### Evidence and non-assumptions
+
+- INTAKE-75 / WO-429 is a confirmed single lifecycle: Greg needs to clarify Rick's
+  Sledders wiring request after another Manager promoted/assigned it.
+- WO-156 is historical and uses the old Stage identifier, per Greg. Do not call it
+  corrupt or rewrite its Stage automatically. Its notes contain the P/R repair
+  history relevant to WO-422. Similarity does not authorize automatic closure.
+- WO-424's text describing a test is not permission to cancel it.
+- Repeated notifications, multiple submissions for one physical repair, and
+  repeat promotion of one Intake are distinct questions. Do not conflate them.
+- All-manager assignment delivery is operator-reported, not independently proven.
+  Inspect event/recipient records and actual message headers/routing. Do not
+  change recipient policy or disable a Flow based solely on subject lines.
+- Existing no-reply mailbox behavior remains: responses use the protected ticket.
+  This correction does not introduce inbound email ingestion.
+
+#### One acceptance checklist before calling the correction ready
+
+1. Five-manager scenario: one shared request, one Manager handles it; all other
+   old links immediately show outcome/current owner, no obsolete action form.
+2. Concurrent/stale scenario: two open screens, retained draft, one valid
+   promotion; losing save shows conflict and link, never a generic outage.
+3. WO-429-shaped disposable scenario: different reporter/assignee identities,
+   question plus image, reporter answer plus image, correct authorized visibility,
+   notification recipient and unchanged repair/assignment state.
+4. Duplicate scenario: older WO under historical Stage identifiers found by
+   notes; Manager explicitly links newer request/WO; history preserved and no
+   fabricated completion. Permission/cycle/self-link/invalid-target checks apply.
+5. Mail scenario: verify actual intended recipients for each event, match Intake
+   to WO in content, idempotent intent and no repeated notification on reload.
+   Verify missing/ineligible reporter and failed/uncertain delivery visibility.
+6. Existing approved current-Production clone/native/browser gates and CI, then
+   one reviewed migration/source/template release under #122 and Server #81/#97.
+   No live sends, reassignments, cancellations or historical repairs as tests.
+
+Native SQL/browser/recipient/photo/duplicate acceptance and deployment tooling
+are outstanding. 212 local tests cover the implemented subset, not the whole
+scope. Publication is separately blocked by the prior automatic approval review;
+no successful push/PR or deployment is claimed. If urgent text-only release is
+later requested, describe the reduced scope explicitly rather than calling this
+consolidated correction complete.
+
+
+#### Duplicate implementation boundary
+
+Manager explicitly selects an existing canonical WO and supplies a substantive
+reason. A narrow command composes existing Intake resolve(duplicate) or native WO
+cancel (no repair completion) with one immutable source-ticket-to-target-WO link
+in the same transaction. Existing Testing-linked cancellation restrictions remain.
+Reject self-links, missing targets, duplicate-of-duplicate targets, targets already
+used as a canonical original for another duplicate when attempting to close them,
+and mismatched request-key replay. Serialize duplicate graph edits; retain the
+existing native source row locks. No automatic merging, history deletion, Stage
+rewrite or inferred duplicate resolution. Candidate search is Manager-only and
+searches title/notes across all Stages/years; matches require human judgment.
+
+
+### November 3 clarification: existing public-form photos
+
+The public form already accepts photos (operator confirmation). The retained
+August 8 schema shows `stage.p_process_work_order_intake` copying
+`photo_url_raw` into `ops.work_order.photo_url`. Native migration002 promotion
+omits that copy, and the new ticket projection omitted both fields. This is
+source evidence of missing reference propagation/display, not proof that live
+files were deleted. The candidate reads both WO and linked Intake references,
+removes duplicate HTTPS URLs and exposes them only after ticket authorization.
+It opens existing files without copying, embedding or changing host permissions.
+This supports already-promoted records without rewriting production data.
+
+Validate the current form export format, actual retained references and host
+permissions on the established clone/browser path. Do not invent a second file
+store or claim new follow-up uploads work before the existing storage contract
+is verified. New clarification photos remain an acceptance requirement.

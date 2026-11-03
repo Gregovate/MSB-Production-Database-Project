@@ -9,6 +9,7 @@
   const model = { actor: null, ticket: null, options: null, selected: new Set(), csrf: "", runtime: "disposable", pendingSignature: null, pendingKey: null };
   const isLive = () => model.runtime === "production";
   const actions = {
+    duplicate: "Mark duplicate of an existing Work Order",
     create: "Create · New Internal Work Order",
     link_setup: "Manager · Add this Work Order to seasonal Setup",
     assign: "Assign / Reassign · Multiple volunteers",
@@ -20,10 +21,84 @@
     promote: "Public Intake · Promote & Assign",
     // Public Intake also supports non-destructive clarification/disposition.
     correction_owner: "Task Feedback · Choose correction owner",
-    clarify: "Task Feedback · Request clarification",
+    clarify: "Ask original reporter for information",
     resolve: "Task Feedback · Verified disposition",
-    reply: "Task Feedback · Respond to clarification",
+    reply: "Reply to clarification",
   };
+
+  function intakeHandled(ticket) {
+    return ticket && ticket.type !== "WORK_ORDER" &&
+      ((ticket.linked_work_orders || []).length > 0 ||
+       ["PROMOTED_TO_WO", "RESOLVED", "DEFERRED", "REJECTED", "DUPLICATE"].includes(ticket.state));
+  }
+
+  function showIntakeStatus(ticket, message = "") {
+    const notice = byId("intake-state-notice");
+    notice.replaceChildren();
+    if (message) notice.append(document.createTextNode(message + " "));
+    if (!intakeHandled(ticket)) return;
+    const handled = ticket.handled || {};
+    const text = document.createElement("p");
+    text.textContent = "Already handled — " +
+      (ticket.state === "PROMOTED_TO_WO" ? "promoted to a Work Order" : ticket.state.toLowerCase()) +
+      (handled.handled_by ? " · " + handled.handled_by : " · Handler not recorded") +
+      (handled.created_at ? " · " + new Date(handled.created_at).toLocaleString() : "") +
+      (handled.note ? " · " + handled.note : "");
+    notice.append(text);
+    for (const item of ticket.linked_work_order_details || []) {
+      if (!/^WO-[1-9][0-9]*$/.test(item.ticket)) continue;
+      const line = document.createElement("p");
+      const link = document.createElement("a");
+      link.href = appBase + "/?ticket=" + encodeURIComponent(item.ticket);
+      link.textContent = "Open " + item.ticket;
+      line.append(link, document.createTextNode(" · Assigned to: " + item.assignees));
+      notice.append(line);
+    }
+  }
+
+  // Refresh metadata only: never redraw forms or replace the user's draft.
+  let intakeRefresh = null;
+  async function refreshIntakeStatus() {
+    const ticket = model.ticket;
+    if (!ticket || ticket.type === "WORK_ORDER") return true;
+    if (intakeRefresh) {
+      await intakeRefresh;
+      if (model.ticket?.ticket !== ticket.ticket) return false;
+    }
+    const key = ticket.ticket;
+    const work = (async () => {
+      try {
+        const response = await fetch(appBase + "/api/work-orders/tickets/" + encodeURIComponent(key), {
+          credentials: "same-origin", cache: "no-store", headers: {Accept: "application/json"}
+        });
+        if (!response.ok) throw new Error("Current request status could not be checked.");
+        const data = await response.json();
+        if (model.ticket?.ticket !== key) return false;
+        model.ticket = data.ticket;
+        model.intakeStatusVerified = true;
+        const blocked = Boolean(intakeHandled(data.ticket));
+        showIntakeStatus(data.ticket, blocked ? "This request no longer needs triage. Your unsaved entries are preserved below." : "");
+        byId("review-submit").disabled = blocked;
+        if (blocked) {
+          byId("review-action").disabled = true;
+          byId("review-action-form").querySelectorAll("fieldset").forEach(el => { el.disabled = true; });
+          document.querySelectorAll(".review-action-button").forEach(el => { el.disabled = true; });
+        }
+        return !blocked;
+      } catch (_) {
+        if (model.ticket?.ticket === key) {
+          model.intakeStatusVerified = false;
+          byId("review-submit").disabled = true;
+          showIntakeStatus(model.ticket, "Cannot verify current request status. Saving is paused; your entries are preserved.");
+        }
+        return false;
+      }
+    })();
+    intakeRefresh = work;
+    try { return await work; } finally { if (intakeRefresh === work) intakeRefresh = null; }
+  }
+  window.setInterval(() => { if (!document.hidden) refreshIntakeStatus(); }, 15000);
+  window.addEventListener("focus", () => refreshIntakeStatus());
 
   function option(select, value, name) {
     const item = document.createElement("option");
@@ -48,6 +123,11 @@
       if (actor.can_manage) result.push("create");
       return result;
     }
+    // A promoted/disposed Intake is retained history, not a second work item.
+    if (ticket.type !== "WORK_ORDER" &&
+        ((ticket.linked_work_orders || []).length ||
+         ["PROMOTED_TO_WO", "RESOLVED", "DEFERRED", "REJECTED", "DUPLICATE"].includes(ticket.state)))
+      return result;
     // The accepted V1 native command contract does not yet include the
     // optional seasonal Setup link. Do not render a button that would 409.
     // Preserve the existing clone-only link test until the governed native
@@ -63,21 +143,28 @@
         if (ticket.test_id || ticket.detail?.display_test_session_id) {
           if (model.runtime !== "disposable") result.push("due_date");
         } else result.push("edit", "cancel");
+        if (!ticket.test_id && !ticket.detail?.display_test_session_id && model.runtime !== "disposable")
+          result.push("duplicate");
       }
       if (actor.can_manage ||
           (ticket.assignee_ids || []).some((id) => Number(id) === Number(actor.person_id))) {
         result.push("progress", "complete");
+        if (model.runtime !== "disposable" && ticket.followup_state !== "clarify")
+          result.push("clarify");
       }
+      if (model.runtime !== "disposable" && ticket.followup_state === "clarify" &&
+          Number(ticket.reporter_id) === Number(actor.person_id)) result.push("reply");
     } else if (ticket.type === "INTAKE_REQUEST") {
       if (actor.can_manage) {
         result.push("promote", "resolve");
+        if (model.runtime !== "disposable") result.push("duplicate");
         result.push("clarify");
       }
       if (["WAITING_ON_REPORTER", "REPORTER_CONTACT_NEEDED"].includes(ticket.state) &&
           Number(ticket.reporter_id) === Number(actor.person_id))
         result.push("reply");
     } else if (ticket.type === "TASK_FEEDBACK") {
-      if (actor.can_manage) result.push("correction_owner", "clarify", "resolve", "promote");
+      if (actor.can_manage) result.push("correction_owner", "clarify", "resolve", "promote", ...(model.runtime !== "disposable" ? ["duplicate"] : []));
       if (["WAITING_ON_REPORTER", "REPORTER_CONTACT_NEEDED"].includes(ticket.state) &&
           Number(ticket.reporter_id) === Number(actor.person_id)) result.push("reply");
     }
@@ -126,6 +213,7 @@
       ticket.type === "TASK_FEEDBACK" ? "Review Task Feedback" : "Review Public Intake";
 
     const labels = {
+      duplicate: "Mark Duplicate",
       progress: "Add Work Note",
       complete: "Complete Work Order",
       assign: "Assign / Reassign",
@@ -173,7 +261,9 @@
         : ticket.type === "WORK_ORDER" && !visible.length
           ? "Only the Manager or an active assignee can update this Work Order."
           : ticket.type === "WORK_ORDER"
-            ? "Record what was done, or mark the work complete with required notes."
+            ? "Ask the reporter for details, reply to a question, or record work using the available actions."
+            : ticket.state === "PROMOTED_TO_WO"
+              ? "This request became a Work Order. Continue on the linked Work Order below."
             : ticket.type === "INTAKE_REQUEST"
               ? "This is a submitted request, not an assigned Work Order. Managers triage it here."
               : "Manager correction review and original-reporter follow-up.";
@@ -367,6 +457,9 @@
     const kind = byId("review-action").value;
     const form = byId("review-action-form");
     form.hidden = !kind;
+    byId("review-duplicate-fields").hidden = kind !== "duplicate";
+    byId("duplicate-review").hidden = !model.actor?.can_manage || !model.ticket;
+    if (kind === "promote" || kind === "duplicate") byId("duplicate-review").open = true;
     byId("review-create-fields").hidden = !["create", "promote", "edit"].includes(kind);
     byId("review-work-order-legend").textContent =
       kind === "promote" ? "Proposed Work Order · Review before promotion" :
@@ -384,6 +477,11 @@
     byId("review-complete-fields").hidden = kind !== "complete";
     byId("review-feedback-fields").hidden = !["clarify", "resolve", "reply"].includes(kind);
     byId("review-disposition").disabled = kind !== "resolve";
+    byId("review-disposition").hidden = kind !== "resolve";
+    document.querySelector('label[for="review-disposition"]').hidden = kind !== "resolve";
+    document.querySelector('label[for="review-response"]').textContent =
+      kind === "clarify" ? "Question for the original reporter" :
+      kind === "reply" ? "Your reply" : "Resolution or disposition reason";
     byId("review-result").textContent = "";
     byId("review-cancel-create").hidden = kind !== "create";
     byId("review-cancel-edit").hidden = kind !== "edit";
@@ -397,6 +495,7 @@
     }));
     const submit = byId("review-submit");
     const submitNames = {
+      duplicate: "Confirm Duplicate · No Repair Completion",
       create: "Create Work Order",
       edit: "Save Work Order Corrections",
       due_date: "Save Due by",
@@ -499,7 +598,25 @@
   async function saveAction() {
     const kind = byId("review-action").value;
     if (!model.csrf || !model.actor) throw new Error("Approved disposable login is missing.");
-    const summary = validate();
+    if (!await refreshIntakeStatus())
+      throw new Error("This request is already handled or its current status cannot be verified. Your entries have been preserved.");
+    if (!permitted().includes(kind)) throw new Error("This action is no longer available. Review the current ticket status.");
+    if (kind === "duplicate" && (!/^WO-[1-9][0-9]{0,8}$/.test(byId("duplicate-original").value.trim().toUpperCase()) ||
+        byId("duplicate-reason").value.trim().length < 10))
+      throw new Error("Enter the original WO number and a reason of at least 10 characters.");
+    let summary = validate();
+    if (kind === "duplicate") {
+      const originalKey = byId("duplicate-original").value.trim().toUpperCase();
+      const response = await fetch(appBase + "/api/work-orders/tickets/" + originalKey,
+        {credentials:"same-origin",cache:"no-store"});
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Original Work Order could not be verified.");
+      const original = data.ticket;
+      if (!original || original.ticket === model.ticket?.ticket || original.duplicate_of)
+        throw new Error("Choose a different original Work Order that is not itself a duplicate.");
+      summary = "Mark " + model.ticket.ticket + " as a duplicate of " + originalKey +
+        " — " + original.title + ". The duplicate will close without recording repair completion. Original history is retained.";
+    }
     if (!window.confirm(
       summary + (isLive()
         ? "\n\nSave this change to the PRODUCTION Work Orders database?\n" +
@@ -528,7 +645,8 @@
       work_area_id: location === "area" ? byId("review-area").value : null,
       progress_note: byId("review-progress-note").value.trim(),
       completion_notes: byId("review-completion-notes").value.trim(),
-      response: byId("review-response").value.trim(),
+      duplicate_of: byId("duplicate-original").value.trim().toUpperCase(),
+      response: kind === "duplicate" ? byId("duplicate-reason").value.trim() : byId("review-response").value.trim(),
       edit_reason: byId("review-edit-reason").value.trim(),
       cancel_reason: byId("review-cancel-reason").value.trim(),
       disposition: byId("review-disposition").value,
@@ -636,6 +754,10 @@
   });
   document.addEventListener("wo419:ticket", (event) => {
     model.ticket = event.detail;
+    model.intakeStatusVerified = true;
+    byId("review-action-form").querySelectorAll("fieldset").forEach(el => { el.disabled = false; });
+    byId("review-submit").disabled = false;
+    showIntakeStatus(model.ticket);
     byId("detail-content").classList.remove("create-mode");
     byId("create-work-order").setAttribute("aria-expanded", "false");
     byId("review-action").value = "";
@@ -679,6 +801,32 @@
   byId("review-urgency").addEventListener("change", () => { planningChanged(); updateIntakeComparison(); });
   byId("review-setup-mode").addEventListener("change", setupModeChanged);
   byId("review-person-filter").addEventListener("input", drawPeople);
+  let relatedSearchSerial = 0;
+  byId("duplicate-search-button").addEventListener("click", async () => {
+    const serial = ++relatedSearchSerial;
+    const key = model.ticket?.ticket;
+    const results = byId("duplicate-results");
+    results.textContent = "Searching all years and Stages…";
+    try {
+      const response = await fetch(appBase + "/api/work-orders/related-work?q=" +
+        encodeURIComponent(byId("duplicate-search").value.trim()), {credentials:"same-origin",cache:"no-store"});
+      const data = await response.json();
+      if (serial !== relatedSearchSerial || model.ticket?.ticket !== key) return;
+      if (!response.ok) throw new Error(data.error || "Search unavailable.");
+      results.replaceChildren();
+      for (const item of data.work_orders || []) {
+        const line = document.createElement("p");
+        const link = document.createElement("a");
+        link.href = appBase + "/?ticket=WO-" + item.work_order_id;
+        link.target = "_blank"; link.rel = "noopener";
+        link.textContent = "WO-" + item.work_order_id + " · " + item.problem;
+        line.append(link, document.createTextNode(" · " + (item.date_completed ? "Completed" : item.is_active ? "Open" : "Inactive") +
+          (item.notes ? " · " + item.notes : "")));
+        results.append(line);
+      }
+      if (!results.childNodes.length) results.textContent = "No matches. Try another word or the original WO number.";
+    } catch (error) { if (serial === relatedSearchSerial && model.ticket?.ticket === key) results.textContent = error.message; }
+  });
   byId("review-action-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const box = byId("review-result");
@@ -697,7 +845,7 @@
             : "") +
           (saved.notifications === "MISSING_RECIPIENT"
             ? ". REPORTER CONTACT MISSING — Manager follow-up required. No email sent."
-            : isLive() ? ". Saved. Check Email delivery status; saving does not prove delivery."
+            : isLive() ? ". Saved. Any email problem requiring attention appears on this ticket."
             : ". Notification: NO SEND. This change disappears at cleanup.");
         box.dataset.valid = "true";
       }
@@ -705,7 +853,8 @@
       box.textContent = error.message || "Save failed; no success recorded.";
       box.dataset.valid = "false";
     } finally {
-      if (submit) submit.disabled = false;
+      if (submit) submit.disabled = Boolean(intakeHandled(model.ticket)) ||
+        (model.ticket?.type !== "WORK_ORDER" && model.intakeStatusVerified === false);
     }
   });
 })();

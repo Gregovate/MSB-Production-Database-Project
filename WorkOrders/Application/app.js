@@ -499,7 +499,27 @@
       (row.type === "WORK_ORDER" ? " · " + (row.due_by ? "Due by " + row.due_by +
         (row.overdue ? " · OVERDUE" : "") : row.due_date_required ? "Due date required" : "No due date recorded") : "") +
       (row.urgency ? " · Urgency " + row.urgency : " · Urgency not recorded"));
-    setText("detail-owner", row.owners || "Unassigned");
+    setText("detail-owner", row.owners === "CORRECTION_OWNER_NOT_TRACKED"
+      ? "No owner assigned" : row.owners || "Unassigned");
+    const followup = $("detail-followup");
+    followup.replaceChildren();
+    if (row.type === "WORK_ORDER" && row.followup_state)
+      followup.textContent = row.followup_state === "clarify"
+        ? "Waiting for the original reporter to answer. Assignment remains unchanged."
+        : "Reporter replied — review the recorded activity below.";
+    for (const key of row.linked_work_orders || []) {
+      if (!/^WO-[1-9][0-9]*$/.test(key)) continue;
+      const link = document.createElement("a");
+      link.href = appBase + "/?ticket=" + encodeURIComponent(key);
+      link.textContent = "Open " + key;
+      followup.append(link, document.createTextNode(" "));
+    }
+    if (/^WO-[1-9][0-9]*$/.test(row.duplicate_of || "")) {
+      const link = document.createElement("a");
+      link.href = appBase + "/?ticket=" + encodeURIComponent(row.duplicate_of);
+      link.textContent = "Duplicate — open original " + row.duplicate_of;
+      followup.append(link);
+    }
     setText("detail-reporter", row.reported_by || "Not recorded");
     setText("detail-source", row.source || "Not recorded");
     const detail = row.detail || {};
@@ -507,7 +527,49 @@
     const extra = detail.notes_raw || detail.notes || "";
     $("detail-extra-note").hidden = !extra;
     setText("detail-extra-note", extra);
+    const photos = $("ticket-photo-links");
+    photos.replaceChildren();
+    for (const href of row.photos || []) {
+      // Defense in depth: API references are external links, never HTML or embeds.
+      let url;
+      try { url = new URL(href); } catch (_) { continue; }
+      if (url.protocol !== "https:" || url.username || url.password) continue;
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = url.href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Open submitted photo " + (photos.children.length + 1);
+      item.append(link);
+      photos.append(item);
+    }
+    $("ticket-photos").hidden = !photos.children.length;
     document.dispatchEvent(new CustomEvent("wo419:ticket", { detail: row }));
+  }
+
+  function activityHeading(event) {
+    // Audit codes remain unchanged in storage; the page uses operator language.
+    const labels = {
+      create: "Work Order created", assign: "Assignment updated",
+      progress: "Work note added", complete: "Work Order completed",
+      promote: "Request promoted to Work Order", promoted_source: "Request promoted to Work Order",
+      correction_owner: "Follow-up owner assigned", clarify: "More information requested",
+      reply: "Reporter replied", resolve: "Request closed", edit: "Work Order updated",
+      cancel: "Work Order cancelled", due_date: "Due date updated",
+      link_setup: "Setup task linked",
+    };
+    return (event.details?.duplicate_of ? "Marked as duplicate" : labels[event.event_kind] || "Activity recorded") + " · " +
+      (event.actor_name?.trim() || "Name unavailable");
+  }
+
+  function activityDate(value) {
+    if (!value) return "Date unavailable";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Date unavailable";
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago", month: "short", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit", timeZoneName: "short",
+    }).format(date);
   }
 
   async function loadActivity(key) {
@@ -521,17 +583,16 @@
       if (state.selected !== key) return;
       const events = result.activity || [];
       status.textContent = events.length ?
-        events.length + " attributed event(s)" +
+        events.length + (events.length === 1 ? " activity entry" : " activity entries") +
           (state.actor.runtime_mode === "production" ? "" : " · Disposable review · No emails sent") :
         "No recorded activity for this ticket.";
       events.forEach((event) => {
         const box = document.createElement("div");
         box.className = "activity-entry";
         const top = document.createElement("strong");
-        top.textContent = (event.event_kind || "Action").replaceAll("_", " ") +
-          " · Person #" + (event.actor_person_id || "?");
+        top.textContent = activityHeading(event);
         const date = document.createElement("small");
-        date.textContent = event.created_at ? new Date(event.created_at).toLocaleString() : "";
+        date.textContent = activityDate(event.created_at);
         const note = document.createElement("p");
         note.textContent = event.note || "No additional notes";
         box.append(top, date, note);
@@ -553,15 +614,31 @@
       const data = await getJson("/api/work-orders/tickets/" + encodeURIComponent(key) + "/notifications");
       if (state.selected !== key) return;
       entries.replaceChildren();
+      const problems = {
+        MISSING_RECIPIENT: "Reporter could not be notified. Check their contact and access, or contact them directly.",
+        FAILED_BEFORE_DATA: "Email could not be sent. Administrator review is needed.",
+        REJECTED: "Email was rejected. Administrator review is needed.",
+        UNKNOWN: "Email outcome is uncertain. Administrator review is needed before another attempt.",
+        FAILED: "Email could not be sent. Administrator review is needed.",
+        SENDING: "Email delivery is being processed. An administrator can check if this persists.",
+      };
+      const messages = new Set();
       for (const receipt of data.notifications || []) {
+        if (problems[receipt.status]) messages.add(problems[receipt.status]);
+        else if (!["SMTP_ACCEPTED", "QUEUED", "PENDING_CUTOVER", "SENT", "NO_SEND"].includes(receipt.status))
+          messages.add("Email needs administrator review.");
+      }
+      for (const message of messages) {
         const line = document.createElement("p");
-        line.textContent = (receipt.message_kind || "Historical held notification") +
-          " · " + receipt.status + (receipt.evidence ? " · " + receipt.evidence : "");
+        line.textContent = message;
         entries.appendChild(line);
       }
-      if (!entries.childNodes.length) entries.textContent = data.notice || "No notification recorded.";
+      panel.hidden = !messages.size;
     } catch (exc) {
-      if (state.selected === key) entries.textContent = "Delivery status unavailable. Do not assume email was sent.";
+      if (state.selected === key) {
+        panel.hidden = false;
+        entries.textContent = "Email status could not be checked. Do not assume the reporter was notified.";
+      }
     }
   }
 
@@ -569,6 +646,8 @@
     if (!/^(WO|INTAKE)-[1-9]\d{0,12}$/.test(key || "")) return;
     if (!options.noHistory) writeNavigation("replace");
     state.selected = key;
+    // Never expose the previous ticket's controls while the new record loads.
+    $("detail-content").hidden = true;
     state.createMode = false;
     renderList();
     const serial = ++state.fetchId;
@@ -680,7 +759,7 @@
         $("preview-tag").textContent =
           "Work Orders V1 · Production records";
         $("review-workbench").querySelector(".section-header p").textContent =
-          "Actions save to the authoritative Work Orders database. Managers can review notification outcomes under Email delivery status.";
+          "Actions save to the authoritative Work Orders database. Any email problem requiring attention appears on this ticket.";
       } else if (state.actor.runtime_mode === "v1_disposable") {
         $("preview-tag").textContent =
           "Work Orders V1 NATIVE · Disposable database · No emails sent";
@@ -688,7 +767,7 @@
           "V1 PostgreSQL commands on an isolated clone. Test edits are discarded at cleanup.";
       }
       $("follow-up-runtime-note").textContent = state.actor.runtime_mode === "production"
-        ? "Available actions save to this ticket. Managers can review notification outcomes under Email delivery status. Email replies are not captured."
+        ? "Available actions save to this ticket. Any email problem requiring attention appears on this ticket. Email replies are not captured."
         : "Disposable review: actions affect only the isolated clone. No emails are sent and Production Flows are unchanged.";
       $("manager-utilities-button").hidden = !state.actor.can_manage;
       $("home-heading").textContent = state.actor.can_manage

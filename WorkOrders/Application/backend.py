@@ -18,7 +18,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from repository import WorkManagementError, WorkManagementRepository
 from commands import CloneCommands
 
-APP_VERSION = "V1.1.3-identity-reconciliation"
+APP_VERSION = "V1.1.4-wo-reporter-followup"
 BASE_DIR = Path(__file__).resolve().parent
 CLOUDFLARE_HEADER = "Cf-Access-Authenticated-User-Email"
 TICKET_KEY = re.compile(r"^(?:WO|INTAKE)-[1-9][0-9]{0,12}$")
@@ -288,6 +288,11 @@ def tickets() -> Response:
                    include_planning=include_planning, read_only=True)
 
 
+@app.get("/api/work-orders/related-work")
+def related_work() -> Response:
+    return jsonify(work_orders=store().related_work(actor(), request.args.get("q", "")))
+
+
 @app.get("/api/work-orders/tickets/<key>")
 def ticket(key: str) -> Response:
     result = store().ticket(
@@ -311,7 +316,7 @@ def work_error(exc: WorkManagementError) -> tuple[Response, int]:
 
 @app.errorhandler(psycopg2.Error)
 def database_error(exc: psycopg2.Error) -> tuple[Response, int]:
-    app.logger.exception("Work Management disposable query failed")
+    app.logger.exception("Work Management database operation failed")
     return jsonify(error="Work Management data is temporarily unavailable."), 503
 
 

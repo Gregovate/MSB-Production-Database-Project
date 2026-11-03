@@ -213,6 +213,15 @@
         <select id="review-action" hidden disabled aria-hidden="true" tabindex="-1"><option value="">Choose a ticket or sign in</option></select>
         <p id="review-action-guidance" class="review-action-guidance" role="status"></p>
         <p id="review-context" class="subtle">Select a Work Order or Intake item to review the available actions.</p>
+        <details id="duplicate-review" hidden>
+          <summary>Find related Work Orders before promoting or marking a duplicate</summary>
+          <p>Search descriptions and notes across all years and Stages, including old Stage identifiers. Review the original before deciding.</p>
+          <label for="duplicate-search">Words or Work Order number</label>
+          <input id="duplicate-search" type="search" maxlength="160">
+          <button id="duplicate-search-button" type="button">Find related work</button>
+          <div id="duplicate-results" role="status"></div>
+        </details>
+        <div id="intake-state-notice" role="status" aria-live="polite"></div>
         <form id="review-action-form" hidden>
           <fieldset id="review-deadline-fields" hidden>
             <legend>Manager · Set Due by</legend>
@@ -313,6 +322,14 @@
             <label for="review-disposition">Outcome (only for closing feedback)</label>
             <select id="review-disposition"><option value="">Choose outcome</option><option value="resolved">Resolved / Verified</option><option value="deferred">Deferred</option><option value="rejected">Rejected / No Action</option><option value="duplicate">Duplicate / Linked</option></select>
           </fieldset>
+          <fieldset id="review-duplicate-fields" hidden>
+            <legend>Mark duplicate — no repair completion</legend>
+            <label for="duplicate-original">Original Work Order number (for example WO-156)</label>
+            <input id="duplicate-original" type="text" maxlength="12">
+            <label for="duplicate-reason">Why this is the same repair</label>
+            <textarea id="duplicate-reason" rows="3"></textarea>
+            <p>This closes this request as duplicate/no action and preserves its history. The original Work Order stays unchanged.</p>
+          </fieldset>
           <button id="review-submit" type="submit" class="primary-button">Save to disposable database</button>
           <button id="review-cancel-create" type="button" class="quiet-button" hidden>Cancel · Discard unsaved Work Order</button>
           <button id="review-cancel-edit" type="button" class="quiet-button" hidden>Cancel Edit · Return to Work Order</button>
@@ -322,10 +339,10 @@
       </div>
     </section>
             <section id="notification-review" hidden>
-              <h4>Email delivery status</h4>
-              <p>SMTP accepted does not prove Inbox delivery. Missing contact needs manual follow-up. Failed or uncertain attempts require operator review; they are not retried automatically.</p>
+              <h4>Email needs attention</h4>
               <div id="notification-entries" role="status"></div>
             </section>
+            <p id="detail-followup" role="status"></p>
             <div class="detail-fields">
               <div><span class="tiny-label">Assigned to</span><p id="detail-owner"></p></div>
               <div><span class="tiny-label">Reported by</span><p id="detail-reporter"></p></div>
@@ -336,6 +353,12 @@
               <p id="detail-description"></p>
               <div id="detail-extra-note" class="multiline-note" hidden></div>
             </div>
+
+            <section id="ticket-photos" hidden aria-label="Submitted photos">
+              <h4>Submitted photos</h4>
+              <p class="subtle">Photos from the original request. File access is controlled by the existing photo host.</p>
+              <ul id="ticket-photo-links"></ul>
+            </section>
 
             <section id="ticket-activity" class="ticket-activity" aria-label="Recorded ticket activity">
               <h4>Recorded activity and reporter communication</h4>
@@ -359,14 +382,14 @@
 
             <div class="next-actions">
               <h4>Follow-up actions</h4>
-              <p>Managers can use <strong>Request More Information</strong> or <strong>Promote &amp; Assign</strong> when available for this ticket.</p>
+              <p>Use the actions shown on this ticket. Questions and replies are retained in its activity history.</p>
               <p id="follow-up-runtime-note">Loading action information…</p>
             </div>
           </div>
         </div>
       </section>
     </div>
-    <p class="footer-note">Work Management V1.1.2-manager-utilities · Updated 2026-10-21 · Connecting to verified runtime</p>
+    <p class="footer-note">Work Management V1.1.4-wo-reporter-followup · Updated 2026-11-03 · Connecting to verified runtime</p>
   </main>
   <section id="manager-utilities-page" class="app-shell" aria-labelledby="utilities-title" hidden>
     <div class="utilities-heading">

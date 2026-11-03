@@ -471,8 +471,8 @@ def test_419_read_projection_remains_immutable_and_related_information_optional(
         'scope=person',
         "My Work",
         "Include completed / cancelled / inactive",
-        "Request More Information",
-        "Promote &amp; Assign",
+        "Questions and replies are retained",
+        "Use the actions shown on this ticket",
     ):
         if required != "scope=person":
             assert required in html + js, required

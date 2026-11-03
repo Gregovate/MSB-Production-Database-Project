@@ -14,7 +14,7 @@ import re
 
 TEMPLATE_ROOT = Path(__file__).with_name('email_templates')
 FIELDS = frozenset({'ticket', 'title', 'reporter', 'assignees', 'due_by',
-                    'question', 'outcome', 'reason', 'ticket_url', 'task_name'})
+                    'question', 'outcome', 'reason', 'ticket_url', 'task_name', 'title_short', 'source_request'})
 KINDS = frozenset({'new_request', 'assignment', 'outcome', 'more_info', 'reporter_reply'})
 
 
@@ -45,6 +45,11 @@ def render_email(kind: str, values: dict[str, str], *,
     document = json.loads(raw)
     if not isinstance(document, dict) or set(document) != {'subject', 'text', 'html'}:
         raise ValueError('Template must contain only subject, text and html')
+    # Retain compatibility with queued messages that predate source correlation.
+    values = dict(values)
+    title = " ".join(str(values.get("title", "")).split())
+    values["title_short"] = title[:96] + ("…" if len(title) > 96 else "")
+    values.setdefault("source_request", "Source request not recorded in this notification")
     rendered = {}
     for part, source in document.items():
         if not isinstance(source, str) or not source.strip():

@@ -667,7 +667,10 @@ class CloneCommands:
                 if not item or item["submitter_person_id"] != actor["person_id"]:
                     raise WorkManagementError("Ticket history not authorized.", 403)
             cur.execute(
-                "SELECT event_kind,actor_person_id,target_person_id,note,details,created_at "
-                "FROM wo419_preview.activity WHERE ticket_key=%s "
-                "ORDER BY activity_id", (ticket,))
+                "SELECT a.event_kind,a.actor_person_id,a.target_person_id,a.note,a.details,a.created_at, nullif(btrim(concat_ws(' ', "
+                "coalesce(nullif(btrim(p.preferred_name),''), p.first_name), "
+                "p.last_name)), '') AS actor_name "
+                "FROM wo419_preview.activity a "
+                "LEFT JOIN ref.person p ON p.person_id=a.actor_person_id "
+                "WHERE a.ticket_key=%s ORDER BY a.activity_id", (ticket,))
             return [dict(row) for row in cur.fetchall()]
