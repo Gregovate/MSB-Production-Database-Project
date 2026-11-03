@@ -174,3 +174,18 @@ def test_activity_presentation_uses_names_plain_labels_and_central_time():
     assert.equal(activityDate('invalid'), 'Date unavailable');
     """
     subprocess.run(['node', '-e', script], check=True)
+
+
+def test_progress_copies_hidden_only_when_exact_activity_is_loaded():
+    source = (HERE / 'app.js').read_text()
+    fn = source[source.index('  function originalNotesWithoutRecordedProgress'):source.index('  function activityHeading')]
+    script = "const assert=require('node:assert/strict');\n" + fn + r"""
+    const entry='[2026-11-03 12:00 UTC | Person #17] First line\nSecond line';
+    const event={event_kind:'progress',actor_person_id:17,created_at:'2026-11-03T12:00:14Z',note:'First line\nSecond line'};
+    assert.equal(originalNotesWithoutRecordedProgress('Original notes\n'+entry,[event]),'Original notes');
+    assert.equal(originalNotesWithoutRecordedProgress(entry,[]),entry);
+    assert.equal(originalNotesWithoutRecordedProgress(entry,[{...event,actor_person_id:15}]),entry);
+    assert.equal(originalNotesWithoutRecordedProgress(entry+'\nUnmatched history',[event]),entry+'\nUnmatched history');
+    assert.equal(originalNotesWithoutRecordedProgress(entry,[{...event,created_at:'2026-11-03T12:01:14Z'}]),entry);
+    """
+    subprocess.run(['node','-e',script],check=True)

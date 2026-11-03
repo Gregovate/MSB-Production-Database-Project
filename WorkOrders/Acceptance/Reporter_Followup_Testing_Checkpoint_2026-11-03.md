@@ -127,3 +127,14 @@ V1 promotion and Phase2 clarification now each INSERT their own uniquely
 identified public-shaped intake inside the existing guarded rollback transaction.
 No restored intake is selected, reopened or assigned a different reporter.
 Native rerun is still required.
+
+## First Manager browser findings
+
+Operator confirms WO-429 clarification saved and waiting-for-reporter state
+appeared. WO-425 activity resolves names and readable dates correctly. Browser
+found repeated description and raw stamped progress duplicated in original notes.
+Presentation correction shows full description once, selected-ticket ID only,
+and hides a stamped note only when timestamp/person/text match loaded progress
+activity exactly. Unmatched history and all stored notes remain unchanged.
+89 focused local checks pass; corrected browser review pending. Intake-75 can
+be tested by opening the preview root with ?ticket=INTAKE-75.

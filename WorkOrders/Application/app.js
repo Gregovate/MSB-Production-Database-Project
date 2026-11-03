@@ -493,7 +493,7 @@
     $("detail-content").hidden = false;
     setText("detail-category", categoryLabel(row));
     setText("detail-ticket-id", row.ticket);
-    setText("detail-title", row.title || "Untitled item");
+    setText("detail-title", row.type === "WORK_ORDER" ? "Work Order details" : "Request details");
     setText("detail-status", statusLabel(row));
     setText("detail-location", (row.location || "Location not recorded") +
       (row.type === "WORK_ORDER" ? " · " + (row.due_by ? "Due by " + row.due_by +
@@ -547,6 +547,23 @@
     document.dispatchEvent(new CustomEvent("wo419:ticket", { detail: row }));
   }
 
+  function originalNotesWithoutRecordedProgress(raw, events) {
+    // Hide only an exact copy proven present in the loaded activity. Unmatched
+    // historical text remains visible; never rewrite the authoritative notes.
+    return raw.replace(/(^|\n)\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}) UTC \| Person #(\d+)\] ([\s\S]*?)(?=\n\[\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC \| Person #\d+\] |$)/g,
+      (entry, separator, minute, person, note) => {
+        const recorded = events.some((event) => {
+          const time = new Date(event.created_at);
+          return event.event_kind === "progress" &&
+            String(event.actor_person_id) === person &&
+            !Number.isNaN(time.getTime()) &&
+            time.toISOString().slice(0, 16).replace("T", " ") === minute &&
+            (event.note || "").trim() === note.trim();
+        });
+        return recorded ? "" : entry;
+      }).trim();
+  }
+
   function activityHeading(event) {
     // Audit codes remain unchanged in storage; the page uses operator language.
     const labels = {
@@ -598,6 +615,10 @@
         box.append(top, date, note);
         list.appendChild(box);
       });
+      const detail = state.detail?.detail || {};
+      const notes = originalNotesWithoutRecordedProgress(detail.notes_raw || detail.notes || "", events);
+      setText("detail-extra-note", notes);
+      $("detail-extra-note").hidden = !notes;
     } catch (exc) {
       if (state.selected === key) status.textContent = exc.message;
     }

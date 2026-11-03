@@ -268,8 +268,7 @@
               ? "This is a submitted request, not an assigned Work Order. Managers triage it here."
               : "Manager correction review and original-reporter follow-up.";
     byId("review-context").textContent = ticket
-      ? "Selected: " + ticket.ticket + " · " +
-        (ticket.title || "Untitled") : "Create this Work Order directly; no Intake is generated.";
+      ? "Selected: " + ticket.ticket : "Create this Work Order directly; no Intake is generated.";
     showForm();
   }
 
