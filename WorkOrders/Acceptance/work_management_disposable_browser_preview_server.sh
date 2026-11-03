@@ -581,8 +581,16 @@ WO447_INSTALLED_PHASE2
     # #447 final release gate: actual Server PR99 transaction, rollback and
     # committed-object recovery only on this owned clone; baseline restored
     # before the existing identity installation and functional validation.
-    cat "$WORKTREE/WorkOrders/Acceptance/wo447_release_transaction_rehearsal.sql"
-    cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
+    if [[ "$CANDIDATE_REF" == "fix/work-orders-identity-reconciliation" ]]; then
+      cat "$WORKTREE/WorkOrders/Acceptance/wo447_release_transaction_rehearsal.sql"
+      cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
+    else
+      # PR475 starts from installed004. Preserve its definition; --no-acl
+      # restore requires only the narrow entry privilege to be reconstructed.
+      printf '%s\n' "DO \$baseline\$ BEGIN IF to_regprocedure('ops.work_management_reconcile_actor(text)') IS NULL THEN RAISE EXCEPTION 'WO475 HOLD: installed identity migration004 required'; END IF; END \$baseline\$;"
+      printf '%s\n' "REVOKE ALL ON FUNCTION ops.work_management_reconcile_actor(text) FROM PUBLIC;"
+      printf '%s\n' "GRANT EXECUTE ON FUNCTION ops.work_management_reconcile_actor(text) TO work_management_app;"
+    fi
     cat "$WORKTREE/WorkOrders/Database/005_work_management_wo_followup.sql"
   } | psql_clone
   echo "PASS: V1 proposed native schema/functions installed on disposable clone"
@@ -641,7 +649,14 @@ BEGIN
 END
 $wo447$;
 WO447_INSTALLED_PHASE2
-    cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
+    if [[ "$CANDIDATE_REF" == "fix/work-orders-identity-reconciliation" ]]; then
+      cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
+    else
+      # Keep the deployed identity function intact in browser review as well.
+      printf '%s\n' "DO \$baseline\$ BEGIN IF to_regprocedure('ops.work_management_reconcile_actor(text)') IS NULL THEN RAISE EXCEPTION 'WO475 HOLD: installed identity migration004 required'; END IF; END \$baseline\$;"
+      printf '%s\n' "REVOKE ALL ON FUNCTION ops.work_management_reconcile_actor(text) FROM PUBLIC;"
+      printf '%s\n' "GRANT EXECUTE ON FUNCTION ops.work_management_reconcile_actor(text) TO work_management_app;"
+    fi
     cat "$WORKTREE/WorkOrders/Database/005_work_management_wo_followup.sql"
   } | psql_clone
   echo "PASS: V1 native SQL installed inside private restored clone only"

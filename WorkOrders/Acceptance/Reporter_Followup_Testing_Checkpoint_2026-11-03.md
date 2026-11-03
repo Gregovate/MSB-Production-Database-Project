@@ -100,3 +100,18 @@ Live browser and database validation remain pending with the full candidate.
   the private server. Publish the reviewed candidate before the established local
   PowerShell runner can fetch it for SQL/browser acceptance. Do not substitute
   production tests or resend queued messages.
+
+## First native validation HOLD and runner correction
+
+Candidate e492a1a1 on 2026-11-03: disposable read acceptance PASS; native
+validation stopped at `WO447 rehearsal baseline entry must be absent` before
+identity/V1/Phase2 tests. Report: WO419_Disposable_Browser_Preview_20261103T123939.txt.
+Cleanup PASS; Production fingerprint and shared checkout UNCHANGED.
+
+PR475 now requires the installed004 identity entry and reconstructs only its
+clone ACL after the no-ACL restore. It does not replay the historical install/
+rollback rehearsal or overwrite the deployed identity function. Original #447
+branch retains its original rehearsal. Both validation and browser paths use
+this installed-baseline handling; identity functional regressions still run.
+29 targeted checks pass (one existing listener inspection exclusion). Native
+rerun remains required; this source correction is not native acceptance.

@@ -562,3 +562,22 @@ def test_current_clone_preserves_sent_history_and_installed_phase2_functions():
     for marker in ('BEGIN WO447 RESULT', 'END WO447 RESULT', 'Validation exit:',
                    'Production fingerprint:', 'Shared checkout:'):
         assert marker in runner
+
+
+def test_followup_candidate_preserves_installed_identity_baseline(tmp_path):
+    """Execute both shell branches with marker files, not a PostgreSQL server."""
+    import subprocess
+    source = RUNNER.read_text()
+    marker = '    if [[ "$CANDIDATE_REF" == "fix/work-orders-identity-reconciliation" ]]; then'
+    blocks = source.split(marker)[1:]
+    assert len(blocks) == 2
+    for suffix in blocks:
+        block = marker + suffix.split('    fi', 1)[0] + '    fi\n'
+        result = subprocess.run(['bash', '-c',
+            'set -eu\nCANDIDATE_REF=fix/419-work-order-clarification\nWORKTREE=/does-not-exist\n' + block],
+            capture_output=True, text=True, check=True)
+        assert 'installed identity migration004 required' in result.stdout
+        assert 'REVOKE ALL ON FUNCTION ops.work_management_reconcile_actor' in result.stdout
+        assert 'GRANT EXECUTE ON FUNCTION ops.work_management_reconcile_actor' in result.stdout
+        assert 'CREATE OR REPLACE' not in result.stdout
+        assert 'DO $baseline$' in result.stdout
