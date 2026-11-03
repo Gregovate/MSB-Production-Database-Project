@@ -1314,3 +1314,13 @@ Validate the current form export format, actual retained references and host
 permissions on the established clone/browser path. Do not invent a second file
 store or claim new follow-up uploads work before the existing storage contract
 is verified. New clarification photos remain an acceptance requirement.
+
+
+### November 3 — routine clarification confirmation wording
+
+Greg approved the production prompt `Send this question to Rick Hoffmann?`.
+Use the current ticket reporter name for live clarification confirmation. Keep
+missing-reporter contact exceptions and disposable no-send notices explicit.
+This is wording only: validation, authorization, saved activity, notification
+capture and delivery handling remain unchanged. No schema or runtime dependency
+change is required. Production wording deployment is pending.
