@@ -200,7 +200,7 @@ class V1Commands:
             raise WorkManagementError("Work Order command body must be an object.")
         if action not in {
             "create", "promote", "assign", "progress", "complete",
-            "correction_owner", "clarify", "reply", "resolve", "edit", "cancel", "due_date",
+            "correction_owner", "clarify", "reply", "resolve", "edit", "cancel", "due_date", "duplicate",
         }:
             raise WorkManagementError(
                 "This Work Orders V1 operation is not yet approved for release.", 409
@@ -218,8 +218,14 @@ class V1Commands:
             conn.set_session(readonly=False, autocommit=False)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 require_native_database(cur)
+                # Only active-WO communication uses the new narrow command.
+                command = ("work_management_duplicate" if action == "duplicate" else
+                           "work_management_wo_followup"
+                           if action in {"clarify", "reply"} and
+                           isinstance(ticket, str) and ticket.startswith("WO-")
+                           else "work_management_v1_command")
                 cur.execute(
-                    "SELECT ops.work_management_v1_command(%s,%s,%s,%s,%s::uuid) "
+                    "SELECT ops." + command + "(%s,%s,%s,%s,%s::uuid) "
                     "AS outcome",
                     (actor["email"], action, ticket, Json(body), key),
                 )
@@ -228,6 +234,42 @@ class V1Commands:
                     raise WorkManagementError("Work Order command did not save.", 503)
             conn.commit()
             return saved
+        except psycopg2.Error as exc:
+            conn.rollback()
+            # Allowlist application messages; never expose arbitrary SQL errors.
+            message = getattr(exc.diag, "message_primary", None)
+            safe = {
+                "Work Orders: duplicate relationship already exists; review the original":
+                    "This record already has a duplicate relationship. Refresh and review the original Work Order.",
+                "Work Orders: duplicate request key conflict":
+                    "This save request was already used. Refresh before continuing.",
+                "Work Orders: Intake already promoted":
+                    "Another manager already promoted this request. Refresh to open the existing Work Order.",
+                "Work Orders: disposed Intake must not be promoted":
+                    "Another manager already closed this request. Refresh to review the outcome.",
+                "Work Orders: correction already resolved":
+                    "Another manager already closed this request. Refresh to review the outcome.",
+                "Work Orders: linked Work Order owns the outcome":
+                    "This request already became a Work Order. Open the linked Work Order to ask the reporter for details.",
+                "Work Orders: follow-up state changed; refresh this Work Order":
+                    "The question or reply has changed. Refresh this Work Order before continuing.",
+                "Work Orders: follow-up requires an open Work Order":
+                    "This Work Order is no longer open for follow-up.",
+                "Work Orders: follow-up request key conflict":
+                    "This save request was already used. Refresh before continuing.",
+            }
+            if message in safe and exc.pgcode in {"23505", "23514"}:
+                raise WorkManagementError(safe[message], 409) from exc
+            validation = {
+                "Work Orders: valid original Work Order required": "Enter a valid original Work Order number.",
+                "Work Orders: duplicate needs a different original and a reason": "Choose a different original Work Order and explain the duplicate (10–4500 characters).",
+                "Work Orders: original Work Order not found": "The original Work Order was not found. Check its number.",
+            }
+            if exc.pgcode == "22023" and message in validation:
+                raise WorkManagementError(validation[message], 400) from exc
+            if exc.pgcode == "42501":
+                raise WorkManagementError("You are not authorized for this Work Order action.", 403) from exc
+            raise
         except Exception:
             conn.rollback()
             raise
@@ -263,8 +305,13 @@ class V1Commands:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 require_native_database(cur)
                 cur.execute(
-                    "SELECT event_kind,actor_person_id,target_person_id,note,"
-                    "details,created_at FROM ops.work_management_v1_activity(%s,%s)",
+                    # Keep the native function's authorization; enrich only its returned events.
+                    "SELECT a.event_kind,a.actor_person_id,a.target_person_id,a.note,a.details,a.created_at, nullif(btrim(concat_ws(' ', "
+                    "coalesce(nullif(btrim(p.preferred_name),''), p.first_name), "
+                    "p.last_name)), '') AS actor_name "
+                    "FROM ops.work_management_v1_activity(%s,%s) a "
+                    "LEFT JOIN ref.person p ON p.person_id=a.actor_person_id "
+                    "ORDER BY a.created_at",
                     (actor["email"], ticket),
                 )
                 return [dict(row) for row in cur.fetchall()]

@@ -96,3 +96,23 @@ def test_public_request_keeps_received_from_wording(values):
     message = render_email('new_request', values)
     assert 'Work Order request was received from Reporter' in message.text
     assert 'has feedback' not in message.subject
+
+
+def test_assignment_and_shared_intake_explain_real_actions(values):
+    assignment = render_email('assignment', values)
+    intake = render_email('new_request', values)
+    for text in (assignment.text, assignment.html):
+        assert 'ask the original reporter for details' in text
+        assert 'replies to this email are not captured' in text.lower()
+    for text in (intake.text, intake.html):
+        assert 'another manager may already have handled it' in text
+    assert 'SMTP' not in assignment.text + assignment.html + intake.text + intake.html
+
+
+def test_assignment_subject_and_intake_correlation(values):
+    values['source_request'] = 'INTAKE-75'
+    values['title'] = 'Long request\n' * 100
+    result = render_email('assignment', values)
+    assert len(result.subject) <= 240 and '\n' not in result.subject
+    assert 'INTAKE-75' in result.text and 'INTAKE-75' in result.html
+    assert values['title'] in result.text

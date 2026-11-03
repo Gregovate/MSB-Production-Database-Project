@@ -192,7 +192,7 @@ def test_production_mount_assets_access_and_https_command(production_client, mon
     access = production_client.get("/api/work-orders/access", headers=headers,
         environ_overrides=peer)
     assert access.status_code == 200
-    assert access.json["version"] == "V1.1.3-identity-reconciliation"
+    assert access.json["version"] == "V1.1.4-wo-reporter-followup"
     calls = []
     class Commands:
         def perform(self, actor, action, ticket, body):
@@ -300,8 +300,8 @@ def test_related_information_is_collapsed_before_fetch():
     assert '"toggle", loadRelated' in js
     assert "if (!$(" + '"related-information"' + ").open" in js
     assert "Related Information" in html
-    assert "Request More Information" in html
-    assert "Promote &amp; Assign" in html
+    assert "Questions and replies are retained" in html
+    assert "Use the actions shown on this ticket" in html
 
 
 def test_disposable_preview_rejects_nonlocal_header(client):
@@ -1087,7 +1087,7 @@ def test_v1_backend_uses_distinct_command_path_and_protected_proxy():
     runtime = (HERE / "v1_runtime.py").read_text(encoding="utf-8")
     js = (HERE / "review_actions.js").read_text(encoding="utf-8")
     app_js = (HERE / "app.js").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "V1.1.3-identity-reconciliation"' in source
+    assert 'APP_VERSION = "V1.1.4-wo-reporter-followup"' in source
     assert 'from v1_runtime import V1Repository' in source
     assert 'from v1_runtime import V1Commands' in source
     assert 'return CloneCommands()' in source
@@ -1103,8 +1103,9 @@ def test_v1_backend_uses_distinct_command_path_and_protected_proxy():
     assert 'WORK_MGMT_PRODUCTION_DSN' in runtime
     assert 'session_user AS login_name' in runtime
     assert 'work_management_app' in runtime
-    assert 'SELECT ops.work_management_v1_command(' in runtime
-    assert 'SELECT event_kind,actor_person_id' in runtime
+    assert '"work_management_v1_command"' in runtime
+    assert 'SELECT a.event_kind,a.actor_person_id' in runtime
+    assert 'LEFT JOIN ref.person p ON p.person_id=a.actor_person_id' in runtime
     assert 'PRODUCTION Work Orders database?' in js
     assert 'Saving does not prove email delivery; check delivery status.' in js
     assert 'Work Orders V1 · Production records' in app_js
