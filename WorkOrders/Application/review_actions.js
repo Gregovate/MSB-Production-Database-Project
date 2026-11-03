@@ -637,13 +637,17 @@
       summary = "Mark " + model.ticket.ticket + " as a duplicate of " + originalKey +
         " — " + original.title + ". The duplicate will close without recording repair completion. Original history is retained.";
     }
-    if (!window.confirm(
-      summary + (isLive()
+    // Routine reporter questions identify the recipient without database jargon.
+    // Keep the missing-reporter exception and disposable no-send notice explicit.
+    const reporter = model.ticket?.reported_by || "the original reporter";
+    const confirmation = kind === "clarify" && isLive() && model.ticket?.reporter_id
+      ? "Send this question to " + reporter + "?"
+      : summary + (isLive()
         ? "\n\nSave this change to the PRODUCTION Work Orders database?\n" +
           "This change is permanent. Saving does not prove email delivery; check delivery status."
         : "\n\nSave this change in the TEMPORARY disposable database?\n" +
-          "It will be discarded when the browser review ends. No emails will be sent.")
-    )) return null;
+          "It will be discarded when the browser review ends. No emails will be sent.");
+    if (!window.confirm(confirmation)) return null;
     const location = byId("review-location-type").value;
     const body = {
       action: kind,
