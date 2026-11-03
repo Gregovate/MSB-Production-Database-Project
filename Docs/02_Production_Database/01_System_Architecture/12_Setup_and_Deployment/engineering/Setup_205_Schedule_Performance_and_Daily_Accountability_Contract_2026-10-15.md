@@ -15,6 +15,34 @@
 
 This document is the controlled engineering authority for whole-Setup schedule KPIs, reporting reconciliation, daily exception follow-up, Manager notifications, and deep-link acceptance. PRs **consume** this contract; neither issue comments nor PR descriptions replace it. Production behavior remains whatever was separately accepted/deployed; descriptions below are required target behavior, not claims of completed implementation.
 
+## November 3 correction — completed tasks leave active missing-report queues
+
+Greg supplied read-only Production evidence: 11 past assignments across 10 annual
+tasks. Four assignments belong to completed tasks 436 (332/286), 424 (317), and
+422 (243, John's Tree). Four other assignments belong to tasks with partial
+reports; three tasks have no reports. Task 424 is confirmed complete by Greg;
+its residual power-cord issue is a separate Setup Work Order. Differing performed
+and recorded dates do not authorize reopening it or changing its reports.
+
+This decision supersedes earlier requirements below to keep completed tasks in
+active no-report queues. Use authoritative annual completion (including linked
+Work Order gates), never maximum percentage alone. Completed annual tasks must
+be excluded from active late counts/lists, default active cards, unfinished-day
+classification and outstanding shift workload in both screens and the Manager
+Brief/Action Center. History toggles and scheduled search must still reveal the
+original assignments. Do not fabricate an occurrence report or alter historical
+reported counts/labor to implement this filtering.
+
+Unfinished tasks retain occurrence follow-up. If task-level reports exist, show
+recorded task progress and explicitly identify the dated assignment needing
+review; do not label the entire task "NO WORK REPORTED". Truly report-free tasks
+retain a no-work-reported message. Existing Manager reschedule/report commands
+and history locks stay unchanged. No schema migration, data cleanup, email send,
+transport or timer change is part of this correction. Required acceptance:
+shared classifiers/renderers, completed/partial/no-report/cancelled/future cases,
+reopened tasks, history/search access, unchanged counts/labor, no-send HTML/text
+Brief, then protected current-clone operator review before Production release.
+
 ## Deployed contract — October 16, 2026 (#205 / #122)
 
 **Production acceptance:** The operator accepted V0.3.84 in light and dark mode and reported disposable preview `CLEAN EXIT`. Feature PR [#394](https://github.com/Gregovate/MSB-Production-Database-Project/pull/394) merged the exact approved application at `7740498e6602f36c8cdfd384791bbafaab71ee9e`; version `V0.3.84-direct-crew-cells`. Governed migrations `075_allow_setup_planned_crew_count_corrections.sql` and `076_capture_2026_reusable_task_estimates.sql` were installed in that order through the #37 controller. Greg supplied runner **PASS** with retained report `/home/msbadmin/setup-deployment-reports/Setup205-075-076-20261016T215912Z`. See [release receipt](../../../../../Setup/Acceptance/Setup_205_075_076_Release.md) and [Production deployment log](../../../../../System_Documentation/Production_Deployment_Change_Log.md). This report confirms the governed runner's declared gates, not independent reinspection of archive metadata.
@@ -843,3 +871,9 @@ Code reconnaissance: nextOpenRescheduleNoWorkDialog() builds its day/crew option
 **Source verification:** Exact candidate app/test SHA `eca26f631a9472e039b2e2e5482817b00375e47f`, client/server build `V0.3.79-sticky-day-search`, asset cache `2026-10-16.79`. [CI #38948868529](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38948868529) PASS **838 Setup Python**, FieldWiring full and executable #205 Node checks, including new `test_205_sticky_day_search.cjs` exercising multiple successive Setup Days on scroll, shared label, resize/window fallback and sticky offset. An earlier CI run failed solely because an obsolete test expected the removed `setup-board205-board-key` legend; updated contract now requires current-day label. **Live disposable/browser appearance is NOT yet operator accepted.**
 
 **Integrated acceptance retained:** All original #205 V0.3.71–V0.3.78 rejected corrections remain in the SAME next disposable browser review, including Manager Action Center, Perform Work scrolling and help, reusable Catalog quick-edit and atomic 2026 two-way synchronization, editable day-crew AM/PM sizes, no-work rescheduling, and Kit navigation. Run *one* governed current-Production disposable clone with existing migration 075 + migration 076 and both rollback-protected validations. Verify at desktop and tablet widths: as you scroll through D16/D19/D20, **current Setup Day and scheduled search remain visible together**, and per-day heading reappears correctly inside its own day; there is no header overlap or off-page bleed. Search results must remain clickable below the sticky row. No Production change, no PR merge/acceptance without Greg's browser verdict and CLEAN EXIT.
+
+## November 3 — Add a Captain while scheduling
+
+Greg requested inline day staffing during the completed-task follow-up browser review. In Schedule Annual Task, keep existing day crews and add “+ Add captain to this day”. Show the existing authorized Captain picker only for this choice. Save creates the destination crew, assigns the selected Captain, and places the task in the same existing `crews/with-tasks` transaction. Cancel writes nothing. Existing day crews remain selectable; a Captain already on the day is routed to that crew rather than intentionally duplicated. Greg clarified that a selected Captain counts as one person: a new crew defaults to 1, editable to the total expected crew including the Captain. Save its selected-period count in the same transaction. Existing crew counts are shown without overwriting shared staffing; blank remains unknown.
+
+For a single assignment moved through this dialog, an optional explicit `assignment_shift` allows the chosen AM/PM period in that transaction. Validate one existing assignment and AM/PM at API and repository boundaries. Omitted override preserves original server-read shifts for drag groups and no-work rescheduling. Historical report locks, Manager authorization, command protection and audited SQL remain authoritative. No migration. Preserve all completed-task follow-up corrections. Candidate V0.3.105-inline-captain; browser acceptance pending.

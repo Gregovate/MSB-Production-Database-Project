@@ -40,6 +40,9 @@ const ctx = {
   setup205DeadlineKpiHtml:()=>'<section>Progress summary</section>'
 };
 vm.createContext(ctx);
+const followupSource = fs.readFileSync(__dirname + '/setup_next_pass.js', 'utf8');
+vm.runInContext(followupSource.slice(followupSource.indexOf('function nextAssignmentReported('), followupSource.indexOf('function nextAssignmentReportedLabel(')), ctx);
+
 vm.runInContext(between(board,'function board205MissingEstimates(', '\nfunction board205ReschedulingLabel('),ctx);
 vm.runInContext(between(board,'function board205LaborHours(', '\nfunction board205ProgressPercent('),ctx);
 vm.runInContext(between(board,'function board205RenderKpis(', '\nfunction board205Render('),ctx);

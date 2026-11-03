@@ -14,8 +14,8 @@ def _read(name: str) -> str:
 
 def test_changed_scheduling_scripts_have_fresh_browser_asset_pins():
     html = _read("production.html")
-    assert "setup_next_pass.js?v=2026-10-31.103" in html
-    assert "setup_scheduling_board.js?v=2026-10-31.103" in html
+    assert "setup_next_pass.js?v=2026-11-03.105" in html
+    assert "setup_scheduling_board.js?v=2026-11-03.105" in html
 
 
 def test_board_workload_banner_stays_inside_shift_cell():
@@ -98,18 +98,18 @@ def test_reported_days_collapse_without_annual_completion_gate():
     collapse = board.split("function board205CanCollapseDay(day)")[1].split("function board205Day(day)")[0]
     assert "effective_complete" not in collapse
     assert "actual_person_minutes" not in collapse
-    assert "assignments.every(nextAssignmentReported)" in board
-    assert "wholeDay.every(nextAssignmentReported)" in perform
+    assert "assignments.every(item => nextAssignmentInactive(item, board205Task(item.setup_session_task_id)))" in board
+    assert "wholeDay.every(item => nextAssignmentInactive(item, nextPerformTask(item.setup_session_task_id)))" in perform
     assert "setup-board205-toggle-day" in board
     assert "next-perform-toggle-complete-day" in perform
-    assert "showCompleted || !nextAssignmentReported(assignment)" in perform
+    assert "showCompleted || !nextAssignmentInactive(assignment, nextPerformTask(assignment.setup_session_task_id))" in perform
 
 
 def test_late_and_captain_warnings_are_visible_in_both_views():
     perform = _read("setup_next_pass.js")
     board = _read("setup_scheduling_board.js")
     for source in (perform, board):
-        assert "LATE — NO WORK REPORTED" in source
+        assert "nextAssignmentReviewLabel(task)" in source
         assert "CAPTAIN TBD — NEEDS CAPTAIN" in source
         assert "lateCount" in source
     assert "timeZone: 'America/Chicago'" in perform

@@ -1206,7 +1206,7 @@ function nextPerformCaptainScopedAssignments(assignments) {
 function nextFilterPerformAssignments(assignments) {
   const showCompleted = Boolean(el('next-perform-show-completed')?.checked);
   return nextPerformCaptainScopedAssignments(assignments).filter((assignment) => (
-    showCompleted || !nextAssignmentReported(assignment)
+    showCompleted || !nextAssignmentInactive(assignment, nextPerformTask(assignment.setup_session_task_id))
   ));
 }
 
@@ -1309,6 +1309,24 @@ function nextAssignmentReported(assignment) {
   return Number(assignment.work_report_count || 0) > 0;
 }
 
+// Annual completion clears active work, not the original reporting evidence.
+// Pass the owning screen's task explicitly to avoid using another screen's cache.
+function nextAnnualTaskComplete(task) {
+  return Boolean(task?.effective_complete || String(task?.execution_status || '').toUpperCase() === 'COMPLETE');
+}
+
+function nextAssignmentInactive(assignment, task) {
+  return nextAssignmentReported(assignment) || nextAnnualTaskComplete(task);
+}
+
+function nextAssignmentReviewLabel(task) {
+  const percent = task?.latest_work_report?.percent_complete ?? task?.percent_complete;
+  const hasReports = Number(task?.progress_entries || 0) > 0 || task?.latest_work_report || Number(percent || 0) > 0;
+  return hasReports
+    ? `Task progress: ${percent == null ? 'reported' : percent + '% reported'} — scheduled assignment needs review`
+    : 'LATE — NO WORK REPORTED';
+}
+
 function nextSetupLocalDate(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit'
@@ -1317,8 +1335,9 @@ function nextSetupLocalDate(now = new Date()) {
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
-function nextAssignmentLate(assignment, workDate = assignment.work_date) {
-  return Boolean(workDate && workDate < nextSetupLocalDate()
+function nextAssignmentLate(assignment, workDate = assignment.work_date, task = null, today = nextSetupLocalDate()) {
+  return Boolean(workDate && workDate < today
+    && !nextAnnualTaskComplete(task)
     && String(assignment.day_status || '').toUpperCase() !== 'CANCELLED'
     && !nextAssignmentReported(assignment));
 }
@@ -1363,10 +1382,10 @@ function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
   const captain = crew?.captain_display_name || 'Captain TBD';
-  const late = nextAssignmentLate(assignment);
-  const status = nextAssignmentReported(assignment)
+  const late = nextAssignmentLate(assignment, assignment.work_date, task);
+  const status = nextAnnualTaskComplete(task) ? 'COMPLETE' : nextAssignmentReported(assignment)
     ? nextAssignmentReportedLabel(assignment)
-    : late ? 'LATE — NO WORK REPORTED' : nextPerformAssignmentStatus(assignment);
+    : late ? nextAssignmentReviewLabel(task) : nextPerformAssignmentStatus(assignment);
   const plannedCrew = nextPerformPlannedCrew(assignment);
   const plannedLabor = nextLaborHoursText(plannedCrew, task.expected_duration_minutes);
   const effort = String(task.effort_level || 'unknown').toLowerCase();
@@ -1400,7 +1419,7 @@ function nextPerformAssignmentCard(assignment) {
         · Est. labor ${escapeHtml(plannedLabor)}
       </div>
       ${readinessWarning}
-      ${late ? nextScheduleWarning("LATE — NO WORK REPORTED · Report actual work or ask Manager to review original assignment") : ''}
+      ${late ? nextScheduleWarning(nextAssignmentReviewLabel(task) + " · Review this assignment’s date and existing reports before recording work") : ''}
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">${annualComplete ? 'Review Work History' : 'Report Work'}</button>
@@ -1812,6 +1831,7 @@ function nextPerformShiftWorkload(items, shift) {
   let known = 0, unknown = 0, notReady = 0;
   const seen = new Set();
   for (const assignment of items) {
+    if (nextAssignmentInactive(assignment, nextPerformTask(assignment.setup_session_task_id))) continue;
     const taskKey = String(assignment.setup_work_day_crew_id) + ':' +
       String(assignment.setup_session_task_id);
     if (seen.has(taskKey)) continue;
@@ -1912,14 +1932,14 @@ function nextDayStaffingSummary(assignments, crews, taskRows = []) {
 function nextLateWorkSummary(assignments, board) {
   const late = assignments.filter((item) => {
     const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
-    return nextAssignmentLate(item, day?.work_date || item.work_date);
+    return nextAssignmentLate(item, day?.work_date || item.work_date, (board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)));
   });
   if (!late.length) return '';
-  return `<section aria-label="Late unreported work">${nextScheduleWarning(`${late.length} LATE / UNREPORTED TASKS`)}${late.map((item) => {
+  return `<section aria-label="Past assignments to review">${nextScheduleWarning(`${late.length} PAST ASSIGNMENTS TO REVIEW`)}${late.map((item) => {
     const crew = (board.crews || []).find((c) => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
     const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
     const captain = crew?.captain_display_name || 'CAPTAIN TBD';
-    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — LATE / UNREPORTED`)}<strong>${escapeHtml(item.task_name || 'Task')}</strong> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
+    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(item.task_name || 'Task')}</strong> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
   }).join('')}</section>`;
 }
 
@@ -1951,9 +1971,9 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
   const overdue = assignments.filter(a => {
     const day = dayById.get(Number(a.setup_work_day_id));
     const date = a.work_date || day?.work_date;
-    // A cancelled day has no historical reporting obligation.
-    return date && date < today && String(day?.day_status || a.day_status || '').toUpperCase() !== 'CANCELLED'
-      && Number(a.work_report_count || 0) === 0;
+    // Completion removes active follow-up without manufacturing a report.
+    const task = tasks.find(t => Number(t.setup_session_task_id) === Number(a.setup_session_task_id));
+    return nextAssignmentLate({...a, day_status: day?.day_status || a.day_status}, date, task, today);
   });
   const partial = actionable.filter(t => Number(t.percent_complete || 0) > 0 && Number(t.percent_complete || 0) < 100);
   const lateNoReportTaskCount = new Set(overdue.map(a => Number(a.setup_session_task_id))).size;
@@ -2045,7 +2065,7 @@ function setup205ManagementReportHtml(board, year) {
       ' · Crew ' + safe(crew?.crew_code || a.crew_lane || '—') +
       ' ' + safe(a.shift_code === 'MORNING' ? 'AM' : a.shift_code === 'AFTERNOON' ? 'PM' : 'All Day') +
       ' · ' + safe(crew?.captain_display_name || 'Captain TBD') +
-      ': no report for original assignment' +
+      ' · ' + safe(nextAssignmentReviewLabel(task)) +
       action('report',a.setup_work_day_task_id,'Open original work report') + '</li>';
   }).join('');
   const taskList = (rows, actionType) => rows.map(t => '<li><strong>' +
@@ -2246,7 +2266,7 @@ function setup205ActionCenterHtml(board, model) {
     '</p><ul>' + (rows.length ? rows.map(x => '<li>' + x + '</li>').join('') : '<li>None</li>') +
     '</ul></details>';
   const missed = k.overdue.map(a => '<span>' + assignmentLabel(a) +
-    ' — No matched report for this original occurrence. ' +
+    ' · ' + safe(nextAssignmentReviewLabel(taskById.get(Number(a.setup_session_task_id)))) + '. ' +
     button('report',a.setup_work_day_task_id,
       taskById.get(Number(a.setup_session_task_id))?.effective_complete
         ? 'Review original / Correct report' : 'Review original / Report Work') + '</span>');
@@ -2345,7 +2365,7 @@ function setup205ActionCenterHtml(board, model) {
     '<p class="muted">Choose a task below to report actual work, move an assignment where no work happened, ' +
     'or plan unfinished work. Reported history is protected; a confirmed no-work reschedule preserves the original schedule in the audit. ' +
     'No email is sent from this screen.</p>' +
-    section('Past occurrences awaiting reports',missed,'Includes unresolved older work periods, even if the annual task later completed or moved.') +
+    section('Past occurrences awaiting reports',missed,'Unfinished tasks only. Review the dated assignment and existing progress; completed tasks are excluded.') +
     section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
     section('Upcoming scheduled readiness exceptions (7 days)',imminent,'Hard prerequisite/Work Order gates and independent NOT READY conditions can overlap.') +
     section('Upcoming linear-hour overloads (7 days)',overCapacity,'These crews have more planned task duration than the shift permits, before weather, travel or unestimated tasks. This is not available labor forecast.') +
@@ -2476,20 +2496,20 @@ function renderNextExecution() {
     // Evaluate the entire day, not a Captain-filtered subset that could hide late work.
     const wholeDay = allAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
     const dayCanCollapse = day.work_date < nextSetupLocalDate()
-      && wholeDay.length > 0 && wholeDay.every(nextAssignmentReported);
-    const lateCount = wholeDay.filter((item) => nextAssignmentLate(item, day.work_date)).length;
+      && wholeDay.length > 0 && wholeDay.every(item => nextAssignmentInactive(item, nextPerformTask(item.setup_session_task_id)));
+    const lateCount = wholeDay.filter((item) => nextAssignmentLate(item, day.work_date, nextPerformTask(item.setup_session_task_id))).length;
     const scopedDayAssignments = scopedAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
     const reportedPersonHours = (scopedDayAssignments.reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
     const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
     return `
       <section class="next-perform-day">
-        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.work_date)} · ${dayAssignments.length} reported assignments · ${reportedPersonHours} reported person-hours</button>` : ''}
+        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.work_date)} · ${dayAssignments.length} historical assignments · ${reportedPersonHours} reported person-hours</button>` : ''}
         <div class="next-perform-day-content" ${dayCanCollapse ? 'hidden' : ''}>
         <div style="border-top:5px solid var(--accent, #466a86);padding:12px 0;margin-top:22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
           <h3 style="margin:0;font-size:1.25rem">SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
           ${appState.access?.can_manage_setup ? `<button type="button" class="small secondary next-perform-manage-day" data-work-date="${escapeHtml(day.work_date)}">Manage Schedule →</button>` : ''}
         </div>
-        ${lateCount ? nextScheduleWarning(`${lateCount} LATE TASK${lateCount === 1 ? '' : 'S'} — NO WORK REPORTED`) : ''}
+        ${lateCount ? nextScheduleWarning(`${lateCount} PAST ASSIGNMENT${lateCount === 1 ? '' : 'S'} TO REVIEW`) : ''}
         ${(() => {
           const crewShifts = ['MORNING', 'AFTERNOON'].flatMap((shift) =>
             [...new Set(dayAssignments.filter((a) => a.shift_code === shift).map((a) => Number(a.setup_work_day_crew_id)))]
@@ -2929,7 +2949,7 @@ async function loadNextTaskExecution(details, focusReport = false) {
             : '<p class="muted">No current Setup Procedure is resolved for this task.</p>'}</section>
       </div>
       <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map(nextProgressEntryHtml).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
-      ${complete ? '<div class="next-complete-banner">This annual task is complete. Review Progress history above. If an earlier work period has no report, ask a Manager to reconcile the original assignment; do not enter duplicate work.</div>' : `
+      ${complete ? '<div class="next-complete-banner">This annual task is complete. Original assignments and Progress history are retained for reference; no duplicate work report is needed.</div>' : `
       <form class="next-completion-form next-report-work-form"
         data-scheduled-date="${escapeHtml(day?.work_date || assignment?.work_date || '')}"
         data-session-task-id="${sessionTaskId}"

@@ -648,10 +648,17 @@ def summarize(board: dict, today: date) -> dict:
             "id":int(a["setup_work_day_task_id"]),
             "url":record_url("report", a["setup_work_day_task_id"]),
         }
-        # A completed Work Order satisfies its Setup gate without a second
-        # Setup report; stored execution_status may correctly remain PLANNED.
-        completed_gate = task.get("linked_work_order_gate") and task.get("effective_complete")
-        if work_day < today and not completed_gate and not int(a.get("work_report_count") or 0):
+        # Annual completion clears active follow-up, never historical reports.
+        completed = task.get("effective_complete") or task.get("execution_status") == "COMPLETE"
+        percent = (task.get("latest_work_report") or {}).get("percent_complete")
+        if percent is None:
+            percent = task.get("percent_complete")
+        has_reports = task.get("progress_entries") or task.get("latest_work_report") or percent
+        row["report_context"] = (
+            f"{str(percent) + '%' if percent is not None else 'Progress'} reported; review assignment"
+            if has_reports else "No work reported for this task"
+        )
+        if work_day < today and not completed and not int(a.get("work_report_count") or 0):
             past.append(row)
         if today <= work_day <= today + timedelta(days=7) and not task.get("effective_complete") and (
             task.get("prerequisites_complete") is False or
@@ -708,7 +715,7 @@ def summarize(board: dict, today: date) -> dict:
         } for t in continuations],
         "overdue_lines":lines([
             f"- {r['name']} | {r['stage']} | {r['date']} {r['shift']} | "
-            f"Crew {r['crew']} | {r['captain']} | original #{r['id']} | {r['url']}"
+            f"Crew {r['crew']} | {r['captain']} | {r['report_context']} | original #{r['id']} | {r['url']}"
             for r in past
         ]),
         "continuation_lines":lines([
@@ -756,7 +763,7 @@ def render_html(template: str, person: dict, report: dict) -> str:
     past = []
     for row in report.get("past_rows") or []:
         # Restrict markup to known table tags; stage and names are escaped by td.
-        task = str(row["name"]) + " — " + str(row["stage"])
+        task = str(row["name"]) + " — " + str(row["stage"]) + "\n" + str(row.get("report_context") or "")
         crew = "Crew " + str(row["crew"]) + " / " + str(row["captain"])
         original = str(row["date"]) + " " + str(row["shift"])
         past.append("<tr>" + td(original) + linked_cell(task, row["url"]) + td(crew) + "</tr>")
@@ -764,7 +771,7 @@ def render_html(template: str, person: dict, report: dict) -> str:
 
     continuation = []
     for row in report.get("continuation_rows") or []:
-        task = str(row["name"]) + " — " + str(row["stage"])
+        task = str(row["name"]) + " — " + str(row["stage"]) + "\n" + str(row.get("report_context") or "")
         continuation.append("<tr>" + linked_cell(task + "\n" + row.get("detail", "Report Work evidence not loaded"), row["url"], row.get("blocked_next_tasks", [])) + td(str(row["percent"]) + "%",right=True) + "</tr>")
     values["continuation_html_rows"] = rows_or_none(continuation).replace(
         'colspan="3"', 'colspan="2"'

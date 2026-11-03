@@ -28,3 +28,47 @@ assert.match(select.innerHTML, /Crew B · Rob VanderSchaaf/);
 assert.match(select.innerHTML, /Crew C · Captain not assigned/);
 assert.equal(select.value,'102');
 console.log('PASS #205 Scheduling Board Crew select includes Captain names');
+
+assert.match(select.innerHTML, /value="NEW_CREW"/);
+const captainRow = {hidden:true};
+const captainSelect = {disabled:true, required:false};
+context.document.getElementById = id => ({
+  'setup-board205-schedule-crew':select,
+  'setup-board205-schedule-captain-row':captainRow,
+  'setup-board205-schedule-captain':captainSelect,
+})[id];
+select.value = 'NEW_CREW';
+context.board205ScheduleCaptainVisibility();
+assert.equal(captainRow.hidden,false);
+assert.equal(captainSelect.required,true);
+assert.equal(captainSelect.disabled,false);
+select.value = '101';
+context.board205ScheduleCaptainVisibility();
+assert.equal(captainRow.hidden,true);
+assert.equal(captainSelect.required,false);
+assert.equal(captainSelect.disabled,true);
+console.log('PASS inline Captain picker visibility and required-state reset');
+
+const size = {value:''};
+const note = {textContent:''};
+const controls = {
+  'setup-board205-schedule-crew':select,
+  'setup-board205-schedule-captain-row':captainRow,
+  'setup-board205-schedule-captain':captainSelect,
+  'setup-board205-schedule-size':size,
+  'setup-board205-schedule-size-note':note,
+  'setup-board205-schedule-day':{value:'17'},
+  'setup-board205-schedule-shift':{value:'MORNING'},
+};
+context.document.getElementById = id => controls[id];
+context.board205PlannedCrewForShift = () => 4;
+select.value = 'NEW_CREW';
+captainSelect.value = '8';
+context.board205ScheduleCaptainVisibility();
+assert.equal(size.value,'1', 'A new crew starts with its Captain');
+assert.equal(size.readOnly,false);
+select.value = '101';
+context.board205ScheduleCaptainVisibility();
+assert.equal(size.value,4, 'Existing crew staffing stays authoritative');
+assert.equal(size.readOnly,true);
+console.log('PASS new Captain defaults to one; existing crew size is preserved');

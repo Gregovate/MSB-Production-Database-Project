@@ -830,6 +830,9 @@ class SetupSchedulingBoardRepository:
     def add_crew_with_tasks(
         self, *, email: str, work_day_id: int, items: list[dict[str, Any]],
         captain_person_id: int | None = None,
+        assignment_shift: str | None = None,
+        am_planned_crew_count: int | None = None,
+        pm_planned_crew_count: int | None = None,
     ) -> dict[str, Any]:
         """Create destination crew AND place all tasks in one transaction.
 
@@ -841,6 +844,18 @@ class SetupSchedulingBoardRepository:
             raise SetupSchedulingBoardRepositoryError(
                 "Drop one to 25 scheduled or unscheduled tasks into a new crew"
             )
+        if assignment_shift is not None and (
+            assignment_shift not in ("MORNING", "AFTERNOON")
+            or len(items) != 1 or items[0].get("kind") != "assignment"
+        ):
+            raise SetupSchedulingBoardRepositoryError(
+                "Choose AM or PM for one existing assignment"
+            )
+        for count in (am_planned_crew_count, pm_planned_crew_count):
+            if count is not None and (type(count) is not int or count < 1):
+                raise SetupSchedulingBoardRepositoryError(
+                    "Crew size must be a whole number of at least 1, or blank if unknown"
+                )
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 "SELECT setup_session_id, day_status FROM ops.setup_work_day "
@@ -858,12 +873,12 @@ class SetupSchedulingBoardRepository:
             )
             crew = self._one(cur, "New Setup workday crew was not created")
             new_crew_id = int(crew["setup_work_day_crew_id"])
-            if captain_person_id is not None:
+            if any(value is not None for value in (captain_person_id, am_planned_crew_count, pm_planned_crew_count)):
                 # Preserve Captain identity in the same transaction as crew creation
                 # and assignment moves. Failure rolls back the entire operation.
                 cur.execute(
                     "SELECT * FROM ops.update_setup_work_day_crew(%s,%s,%s,%s,%s)",
-                    (email, new_crew_id, None, None, captain_person_id),
+                    (email, new_crew_id, am_planned_crew_count, pm_planned_crew_count, captain_person_id),
                 )
                 crew = self._one(cur, "Unable to assign the destination Captain")
             placed = []
@@ -886,6 +901,9 @@ class SetupSchedulingBoardRepository:
                         raise SetupSchedulingBoardRepositoryError(
                             "Legacy All Day assignments require individual review"
                         )
+                    # Explicit single-task dialog moves may choose a new work period.
+                    # Group/day drops continue to preserve the database shift.
+                    shift = assignment_shift or shift
                     cur.execute(
                         "SELECT * FROM ops.update_setup_work_day_assignment("
                         "%s,%s,%s,%s,%s,%s)",

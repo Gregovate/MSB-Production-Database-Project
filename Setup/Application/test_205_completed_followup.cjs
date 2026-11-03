@@ -1,0 +1,73 @@
+/* November 3 regression: real selectors/renderers, synthetic operator evidence. */
+const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
+const source = fs.readFileSync(__dirname+'/setup_next_pass.js','utf8');
+const schedule = fs.readFileSync(__dirname+'/setup_scheduling_board.js','utf8');
+function load(text, name) {
+  const start=text.indexOf('function '+name+'(');
+  assert(start>=0, name);
+  const ends=['\nfunction ', '\nasync function '].map(x=>text.indexOf(x,start+1)).filter(x=>x>=0);
+  vm.runInContext(text.slice(start,Math.min(...ends)),ctx);
+}
+const tasks=[
+  {setup_session_task_id:436,task_name:'Sledders',execution_status:'COMPLETE',effective_complete:true,progress_entries:2,percent_complete:100},
+  {setup_session_task_id:424,task_name:'Glistening Grove',execution_status:'COMPLETE',effective_complete:true,progress_entries:2,percent_complete:100,latest_work_report:{percent_complete:95}},
+  {setup_session_task_id:422,task_name:"John's Tree",execution_status:'COMPLETE',effective_complete:true,progress_entries:4,percent_complete:100},
+  ...[[392,85],[451,75],[341,50],[365,10]].map(([id,percent])=>({setup_session_task_id:id,task_name:'Partial '+id,execution_status:'IN_PROGRESS',effective_complete:false,progress_entries:1,percent_complete:percent})),
+  ...[353,462,338].map(id=>({setup_session_task_id:id,task_name:'Unreported '+id,execution_status:'PLANNED',effective_complete:false,progress_entries:0}))
+];
+const assignments=[[436,332],[436,286],[424,317],[422,243],[392,304],[451,348],[341,347],[365,308],[353,341],[462,350],[338,309]].map(([task,id])=>({setup_session_task_id:task,setup_work_day_task_id:id,setup_work_day_id:1,setup_work_day_crew_id:1,shift_code:'MORNING',work_date:'2026-10-23',work_report_count:0,actual_person_minutes:0,task_name:tasks.find(t=>t.setup_session_task_id===task).task_name}));
+const board={tasks,assignments,work_days:[{setup_work_day_id:1,work_date:'2026-10-23'}],crews:[]};
+const before=JSON.stringify(board);
+const toggle={checked:false};
+const taskFor=id=>tasks.find(t=>t.setup_session_task_id===Number(id));
+const ctx={console,Intl,Date,Number,String,Math,Set,Map,
+  escapeHtml:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;'),
+  el:()=>toggle, document:{getElementById:()=>toggle},
+  nextPerformCaptainScopedAssignments:rows=>rows, nextPerformTask:taskFor,
+  board205Task:taskFor,board205DayAssignments:()=>assignments,
+  board205AssignmentsFor:()=>assignments,board205CrewSequence:()=>assignments,
+  SETUP_BOARD205_TYPICAL_AM_MINUTES:180,
+  appState:{access:{can_manage_setup:true}},
+  setupAnnualMilestoneDates:()=>({setupComplete:new Date('2026-11-17T00:00:00Z')}),
+  nextPerformCrew:()=>null,nextPerformPlannedCrew:()=>2,nextLaborHoursText:()=>2,
+  nextTaskScopeLabel:()=>'',formatMinutes:()=>'',nextCanSubmitFieldFinding:()=>true,
+  nextCanRescheduleNoWork:()=>false,
+};
+vm.createContext(ctx);
+for(const name of ['nextAssignmentReported','nextAnnualTaskComplete','nextAssignmentInactive','nextAssignmentReviewLabel','nextSetupLocalDate','nextAssignmentLate','nextAssignmentReportedLabel','nextScheduleWarning','nextSetupAssignmentStatus','nextPerformAssignmentStatus','nextPerformAssignmentCard','nextFilterPerformAssignments','nextPerformShiftWorkload','nextLateWorkSummary','setup205DeadlineKpiModel'])load(source,name);
+ctx.nextSetupLocalDate=()=> '2026-11-03';
+for(const name of ['board205DayViewState','board205ShowReportedTaskCards','board205ActiveAssignmentsFor','board205AmCapacity','board205ShiftWorkload'])load(schedule,name);
+assert.equal(ctx.setup205DeadlineKpiModel(board,2026).overdue.length,7);
+assert.equal(ctx.nextFilterPerformAssignments(assignments).length,7);
+assert.equal(ctx.board205ActiveAssignmentsFor().length,7);
+assert.equal(ctx.board205ShiftWorkload(1,'MORNING').count,7);
+assert.equal(ctx.nextPerformShiftWorkload(assignments,'MORNING').count,7);
+assert.equal(ctx.board205DayViewState(board.work_days[0]),'UNFINISHED');
+for(const a of assignments.slice(0,4)){
+ assert.equal(ctx.nextAssignmentLate(a,a.work_date,taskFor(a.setup_session_task_id)),false);
+ assert.equal(ctx.nextAssignmentReported(a),false,'never fabricate a report');
+ const card=ctx.nextPerformAssignmentCard(a);
+ assert(card.includes('data-work-status="COMPLETE"'));
+ assert(!card.includes('LATE') && !card.includes('scheduled assignment needs review'));
+}
+for(const a of assignments.slice(4,8)){
+ const card=ctx.nextPerformAssignmentCard(a);
+ assert(card.includes('Task progress:') && card.includes('scheduled assignment needs review'));
+ assert(!card.includes('NO WORK REPORTED'));
+}
+assert(ctx.nextPerformAssignmentCard(assignments[8]).includes('NO WORK REPORTED'));
+const summary=ctx.nextLateWorkSummary(assignments,board);
+assert(summary.includes('7 PAST ASSIGNMENTS TO REVIEW'));
+assert(!summary.includes("John's Tree") && !summary.includes('Glistening Grove'));
+toggle.checked=true;
+assert.equal(ctx.nextFilterPerformAssignments(assignments).length,11);
+assert.equal(ctx.board205ActiveAssignmentsFor().length,11);
+ctx.board205DayAssignments=()=>assignments.slice(0,4);
+assert.equal(ctx.board205DayViewState({}),'COMPLETED');
+assert.equal(ctx.nextAssignmentLate({...assignments[4],day_status:'CANCELLED'},'2026-10-23',tasks[3]),false);
+assert.equal(ctx.nextAssignmentLate(assignments[4],'2026-11-04',tasks[3]),false);
+assert.equal(ctx.nextAssignmentLate({...assignments[4],work_report_count:1},'2026-10-23',tasks[3]),false);
+assert.equal(ctx.nextAssignmentLate(assignments[0],'2026-10-23',{execution_status:'IN_PROGRESS',effective_complete:false,percent_complete:100}),true,'old max 100 does not hide reopened work');
+assert.equal(ctx.nextAssignmentLate(assignments[0],'2026-10-23',{execution_status:'PLANNED',effective_complete:true,linked_work_order_gate:true}),false);
+assert.equal(JSON.stringify(board),before,'all input history and labor stay unchanged');
+console.log('PASS completed follow-up: 11 assignments -> 7 active; history, partial progress, completion, reopening, dates and workload');

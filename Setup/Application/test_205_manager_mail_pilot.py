@@ -534,7 +534,7 @@ def test_no_sender_header_from_operator_content():
     assert not hasattr(mail,"captain_email")
 
 
-@pytest.mark.parametrize("gate,complete,expected", [(True,True,0),(True,False,1),(False,True,1)])
+@pytest.mark.parametrize("gate,complete,expected", [(True,True,0),(True,False,1),(False,True,0)])
 def test_completed_work_order_gate_needs_no_duplicate_setup_report(gate,complete,expected):
     board=fixture_board()
     task=board["tasks"][1]
@@ -546,3 +546,40 @@ def test_completed_work_order_gate_needs_no_duplicate_setup_report(gate,complete
     assert (task["task_name"] in report["overdue_lines"]) == bool(expected)
     html=mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(),{"display_name":"Fixture"},report)
     assert (task["task_name"] in html) == bool(expected)
+
+
+def test_nov3_completed_tasks_leave_brief_but_keep_partial_and_unreported_history():
+    """Operator's eleven rows: four complete, four partial, three no-report."""
+    import copy
+    board = fixture_board()
+    board['tasks'] = [
+        dict(setup_session_task_id=task_id, task_name=name, effective_complete=True,
+             execution_status='COMPLETE', percent_complete=100,
+             latest_work_report={'percent_complete':95})
+        for task_id, name in [(436,'Sledders'),(424,'Glistening Grove'),(422,"John's Tree")]
+    ] + [dict(setup_session_task_id=i, task_name=f'Partial {i}', effective_complete=False,
+              execution_status='IN_PROGRESS', percent_complete=p, progress_entries=1)
+         for i,p in [(392,85),(451,75),(341,50),(365,10)]] + [
+         dict(setup_session_task_id=i,task_name=f'Unreported {i}',effective_complete=False,
+              execution_status='PLANNED',progress_entries=0) for i in [353,462,338]]
+    ids = [(436,332),(436,286),(424,317),(422,243),(392,304),(451,348),
+           (341,347),(365,308),(353,341),(462,350),(338,309)]
+    board['assignments'] = [dict(setup_session_task_id=t,setup_work_day_task_id=a,
+        setup_work_day_id=9,shift_code='MORNING',work_report_count=0,actual_person_minutes=0)
+        for t,a in ids]
+    original = copy.deepcopy(board)
+    report = mail.summarize(board,date(2026,11,3))
+    report.update(fixture_containers())
+    assert report['missing_report_occurrences'] == 7
+    assert [r['id'] for r in report['past_rows']] == sorted(a for _,a in ids[4:])
+    assert report['completed_tasks'] == 3
+    assert report['total_tasks'] == 10
+    html = mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(),{'display_name':'Manager'},report)
+    for name in ['Sledders','Glistening Grove',"John's Tree"]:
+        assert name not in report['overdue_lines']
+        assert name not in html
+    for percent in [85,75,50,10]:
+        assert f'{percent}% reported; review assignment' in html
+        assert f'{percent}% reported; review assignment' in report['overdue_lines']
+    assert html.count('No work reported for this task') == 3
+    assert board == original

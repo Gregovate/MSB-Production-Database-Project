@@ -18,7 +18,7 @@ def test_workload_excludes_reported_assignments_and_keeps_continuation():
     banner = board.split("function board205WorkloadBanner(", 1)[1].split(
         "\nfunction board205AmCapacityNote(", 1)[0]
     for snippet in (am, workload):
-        assert "!nextAssignmentReported(item)" in snippet
+        assert "!nextAssignmentInactive(item, board205Task(item.setup_session_task_id))" in snippet
     assert "w.count" in banner
     assert "hours scheduled" in banner
     assert "continue in PM" in banner

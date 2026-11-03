@@ -72,7 +72,7 @@ def test_schedule_shows_active_work_instead_of_reported_card_clutter():
     css=read("setup_scheduling_board.css")
     assert 'id="setup-board205-show-reported-tasks" type="checkbox"' in ui
     assert "function board205ActiveAssignmentsFor(" in ui
-    assert "rows.filter(item => !nextAssignmentReported(item))" in ui
+    assert "rows.filter(item => !nextAssignmentInactive(item, board205Task(item.setup_session_task_id)))" in ui
     assert "setup-board205-completed-crew-summary" in ui
     assert "historyToggle.checked = true;" in ui
     assert "position: sticky;" in css and ".setup-board205-day-header" in css
