@@ -14,7 +14,11 @@ const ctx = {
   appState: {seasonYear:2026,access:{can_manage_setup:true}},
 };
 vm.createContext(ctx);
+const followupSource = fs.readFileSync(__dirname + '/setup_next_pass.js', 'utf8');
+vm.runInContext(followupSource.slice(followupSource.indexOf('function nextAssignmentReported('), followupSource.indexOf('function nextAssignmentReportedLabel(')), ctx);
+
 vm.runInContext(source.slice(begin, end), ctx);
+ctx.nextSetupLocalDate = () => '2026-10-15';
 const get = (board) => ctx.setup205DeadlineKpiModel(board, 2026);
 const base = {
   tasks: [

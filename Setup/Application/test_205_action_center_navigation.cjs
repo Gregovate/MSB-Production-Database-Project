@@ -36,6 +36,9 @@ const ctx={
  setAlert:msg=>alerts.push(msg)
 };
 vm.createContext(ctx);
+const followupSource = fs.readFileSync(__dirname + '/setup_next_pass.js', 'utf8');
+vm.runInContext(followupSource.slice(followupSource.indexOf('function nextAssignmentReported('), followupSource.indexOf('function nextAssignmentReportedLabel(')), ctx);
+
 vm.runInContext(source.slice(start,end),ctx);
 const root={
  dataset:{},

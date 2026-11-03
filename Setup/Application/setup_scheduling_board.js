@@ -591,8 +591,8 @@ function board205RenderWorkDayCalendar() {
 function board205DayViewState(day) {
   const assignments = board205DayAssignments(day);
   if (!assignments.length) return 'EMPTY';
-  // Annual completion never resolves an unreported occurrence on another day.
-  return assignments.every(nextAssignmentReported) ? 'COMPLETED' : 'UNFINISHED';
+  // Completed annual tasks are history even if an old assignment has no report.
+  return assignments.every(item => nextAssignmentInactive(item, board205Task(item.setup_session_task_id))) ? 'COMPLETED' : 'UNFINISHED';
 }
 
 function board205CompactWorkDate(value) {
@@ -677,7 +677,7 @@ function board205RevealScheduledAssignment(item) {
     if (state === 'COMPLETED' && completed) completed.checked = true;
     if (state === 'EMPTY' && empty) empty.checked = true;
   }
-  if (nextAssignmentReported(item)) {
+  if (nextAssignmentInactive(item, board205Task(item.setup_session_task_id))) {
     const historyToggle = document.getElementById('setup-board205-show-reported-tasks');
     if (historyToggle) historyToggle.checked = true;
   }
@@ -817,7 +817,7 @@ function board205AutoScrollPane(pane, event) {
 function board205AmCapacity(crewId) {
   // Reported assignments are history, not outstanding shift capacity.
   const items = board205CrewSequence(crewId).filter((item) =>
-    item.shift_code === 'MORNING' && !nextAssignmentReported(item));
+    item.shift_code === 'MORNING' && !nextAssignmentInactive(item, board205Task(item.setup_session_task_id)));
   if (!items.length) {
     return { total: 0, remaining: SETUP_BOARD205_TYPICAL_AM_MINUTES, carryover: 0, known: true };
   }
@@ -844,7 +844,7 @@ function board205AmCapacity(crewId) {
 // Keep unknown estimates visible even when known work is already overloaded.
 function board205ShiftWorkload(crewId, shift) {
   const items = board205CrewSequence(crewId).filter((item) =>
-    item.shift_code === shift && !nextAssignmentReported(item));
+    item.shift_code === shift && !nextAssignmentInactive(item, board205Task(item.setup_session_task_id)));
   const capacity = shift === 'MORNING' ? 180 : 120;
   let known = 0, unknown = 0, notReady = 0;
   for (const item of items) {
@@ -1873,7 +1873,7 @@ function board205ShowReportedTaskCards() {
 
 function board205ActiveAssignmentsFor(dayId, shift, crewId) {
   const rows = board205AssignmentsFor(dayId, shift, crewId);
-  return board205ShowReportedTaskCards() ? rows : rows.filter(item => !nextAssignmentReported(item));
+  return board205ShowReportedTaskCards() ? rows : rows.filter(item => !nextAssignmentInactive(item, board205Task(item.setup_session_task_id)));
 }
 
 function board205AssignmentsFor(dayId, shift, crewId) {
@@ -1898,9 +1898,9 @@ function board205AssignmentCard(item) {
   const locked = Boolean(item.historical_locked);
   // Historical assignment status describes that day's work, not current annual progress.
   // Never show IN PROGRESS on a locked past assignment: it looks like active shift work.
-  const status = nextAssignmentReported(item)
+  const status = nextAnnualTaskComplete(task) ? 'COMPLETE' : nextAssignmentReported(item)
     ? nextAssignmentReportedLabel(item)
-    : nextAssignmentLate(item) ? 'LATE — NO WORK REPORTED' : nextSetupAssignmentStatus(task);
+    : nextAssignmentLate(item, item.work_date, task) ? nextAssignmentReviewLabel(task) : nextSetupAssignmentStatus(task);
   const planned = board205AssignmentPlannedCrew(item);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   const plannedLabor = board205LaborHoursText(planned, task.expected_duration_minutes);
@@ -1910,7 +1910,7 @@ function board205AssignmentCard(item) {
   const needsCaptain = !locked && crew?.captain_person_id == null;
   const assignmentDay = (setupBoard205State.board.work_days || []).find(
     (day) => Number(day.setup_work_day_id) === Number(item.setup_work_day_id));
-  const missingActualReport = nextAssignmentLate(item, assignmentDay?.work_date);
+  const missingActualReport = nextAssignmentLate(item, assignmentDay?.work_date, task);
 
   return `
     <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
@@ -1937,7 +1937,7 @@ function board205AssignmentCard(item) {
       ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
       ${heavyWarning ? `<div class="setup-board205-warning">⚠ ${board205Esc(heavyWarning)}</div>` : ''}
       ${needsCaptain ? '<div class="setup-board205-warning" style="border:2px solid #9d2424;font-weight:900">NEEDS CAPTAIN — assign before dispatch</div>' : ''}
-      ${missingActualReport ? nextScheduleWarning('LATE — NO WORK REPORTED · Report missed work or remove from schedule') : ''}
+      ${missingActualReport ? nextScheduleWarning(nextAssignmentReviewLabel(task) + ' · Review this assignment’s date and existing reports before recording work') : ''}
       ${missingActualReport ? '<button type="button" class="small setup-board205-report-missed">Report Work</button>' : ''}
 
       ${locked ? '<div class="setup-board205-lock">Historical actual — locked</div>' : ''}
@@ -1973,8 +1973,8 @@ function board205Cell(day, shift, crew) {
       ${showWorkload ? carryoverNote : ''}
       ${items.length ? items.map(board205AssignmentCard).join('') :
         '<div class="setup-board205-cell-empty">' +
-          (reportedHidden ? reportedHidden + ' reported task' + (reportedHidden === 1 ? '' : 's') +
-            ' hidden · use Show reported task cards to review' : 'Drop work here') + '</div>'}
+          (reportedHidden ? reportedHidden + ' historical assignment' + (reportedHidden === 1 ? '' : 's') +
+            ' hidden · use Show completed / reported task cards to review' : 'Drop work here') + '</div>'}
     </div>`;
 }
 
@@ -2053,21 +2053,21 @@ function board205Day(day) {
   }
   const collapseEligible = board205CanCollapseDay(day);
   const dayAssignmentCount = board205DayAssignments(day).length;
-  const lateCount = board205DayAssignments(day).filter((item) => nextAssignmentLate(item, day.work_date)).length;
+  const lateCount = board205DayAssignments(day).filter((item) => nextAssignmentLate(item, day.work_date, board205Task(item.setup_session_task_id))).length;
   const reportedPersonHours = (board205DayAssignments(day).reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
   const crewRows = crews.map((crew) => {
     const legacyAll = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
     const legacy = board205ShowReportedTaskCards()
-      ? legacyAll : legacyAll.filter(item => !nextAssignmentReported(item));
+      ? legacyAll : legacyAll.filter(item => !nextAssignmentInactive(item, board205Task(item.setup_session_task_id)));
     const crewAssignments = (setupBoard205State.board.assignments || []).filter(item =>
       Number(item.setup_work_day_crew_id) === Number(crew.setup_work_day_crew_id));
-    const reportedCount = crewAssignments.filter(nextAssignmentReported).length;
-    const activeCount = crewAssignments.length - reportedCount;
-    if (!board205ShowReportedTaskCards() && activeCount === 0 && reportedCount > 0) {
+    const inactiveCount = crewAssignments.filter(item => nextAssignmentInactive(item, board205Task(item.setup_session_task_id))).length;
+    const activeCount = crewAssignments.length - inactiveCount;
+    if (!board205ShowReportedTaskCards() && activeCount === 0 && inactiveCount > 0) {
       return '<div class="setup-board205-completed-crew-summary">Crew ' +
         board205Esc(crew.crew_code) + ' · ' +
-        reportedCount + ' reported task' + (reportedCount === 1 ? '' : 's') +
-        ' hidden. Select Show reported task cards to review history.</div>';
+        inactiveCount + ' historical assignment' + (inactiveCount === 1 ? '' : 's') +
+        ' hidden. Select Show completed / reported task cards to review history.</div>';
     }
     const printEmptyCrew = !meaningfulCrewIds.has(Number(crew.setup_work_day_crew_id));
     return `
@@ -2100,9 +2100,9 @@ function board205Day(day) {
   return `
     <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}" data-day-label="SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.day_of_week)} · ${board205Esc(day.work_date)}">
       <div class="setup-board205-day-collapse-control" style="padding:4px 10px">
-        ${collapseEligible ? `<button type="button" class="small secondary setup-board205-toggle-day" aria-expanded="false">▶ SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.work_date)} · ${dayAssignmentCount} reported assignments · ${reportedPersonHours} reported person-hours</button>` : ''}
+        ${collapseEligible ? `<button type="button" class="small secondary setup-board205-toggle-day" aria-expanded="false">▶ SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.work_date)} · ${dayAssignmentCount} historical assignments · ${reportedPersonHours} reported person-hours</button>` : ''}
       </div>
-      ${lateCount ? nextScheduleWarning(`${lateCount} LATE TASK${lateCount === 1 ? '' : 'S'} — NO WORK REPORTED`) : ''}
+      ${lateCount ? nextScheduleWarning(`${lateCount} PAST ASSIGNMENT${lateCount === 1 ? '' : 'S'} TO REVIEW`) : ''}
       <div class="setup-board205-day-content" ${collapseEligible ? 'hidden' : ''}>
       <div class="setup-board205-day-header">
         <div>
@@ -4044,9 +4044,9 @@ function board205InstallView() {
               <div class="setup-board205-day-filters" aria-label="Day view">
                 <strong>Day view</strong>
                 <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Days needing reports</label>
-                <label><input id="setup-board205-show-completed-days" type="checkbox"> Fully reported days</label>
+                <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed / reported days</label>
                 <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty</label>
-                <label><input id="setup-board205-show-reported-tasks" type="checkbox"> Show reported task cards</label>
+                <label><input id="setup-board205-show-reported-tasks" type="checkbox"> Show completed / reported task cards</label>
               </div>
 
               <span id="setup-board205-selection-count" class="setup-board205-selection-count" hidden></span>

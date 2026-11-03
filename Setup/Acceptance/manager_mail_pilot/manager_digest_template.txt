@@ -21,7 +21,7 @@ Recorded snapshot: $containers_snapshot_as_of
 $containers_evidence_note
 
 MANAGER DECISIONS
-$missing_report_occurrences past assignments to verify — no matched work report
+$missing_report_occurrences past assignments to verify
 $continuation_needed started tasks needing a future continuation
 $readiness_exceptions upcoming scheduled readiness exceptions
 $captain_tbd_count future assignments with no Captain assigned
@@ -39,7 +39,7 @@ STARTED TASKS NEEDING CONTINUATION
 $continuation_lines
 
 CONTAINER ACTIONS AND CURRENT REVIEWS
-Only Containers needing action appear below. Routine records stay in the summary. Display placement is reviewed separately.
+Only Containers needing action appear below. Display placement is reviewed separately.
 
 $container_detail_lines
 

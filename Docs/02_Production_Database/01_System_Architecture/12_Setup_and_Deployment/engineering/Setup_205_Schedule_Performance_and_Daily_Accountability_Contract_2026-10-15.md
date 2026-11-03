@@ -15,6 +15,34 @@
 
 This document is the controlled engineering authority for whole-Setup schedule KPIs, reporting reconciliation, daily exception follow-up, Manager notifications, and deep-link acceptance. PRs **consume** this contract; neither issue comments nor PR descriptions replace it. Production behavior remains whatever was separately accepted/deployed; descriptions below are required target behavior, not claims of completed implementation.
 
+## November 3 correction — completed tasks leave active missing-report queues
+
+Greg supplied read-only Production evidence: 11 past assignments across 10 annual
+tasks. Four assignments belong to completed tasks 436 (332/286), 424 (317), and
+422 (243, John's Tree). Four other assignments belong to tasks with partial
+reports; three tasks have no reports. Task 424 is confirmed complete by Greg;
+its residual power-cord issue is a separate Setup Work Order. Differing performed
+and recorded dates do not authorize reopening it or changing its reports.
+
+This decision supersedes earlier requirements below to keep completed tasks in
+active no-report queues. Use authoritative annual completion (including linked
+Work Order gates), never maximum percentage alone. Completed annual tasks must
+be excluded from active late counts/lists, default active cards, unfinished-day
+classification and outstanding shift workload in both screens and the Manager
+Brief/Action Center. History toggles and scheduled search must still reveal the
+original assignments. Do not fabricate an occurrence report or alter historical
+reported counts/labor to implement this filtering.
+
+Unfinished tasks retain occurrence follow-up. If task-level reports exist, show
+recorded task progress and explicitly identify the dated assignment needing
+review; do not label the entire task "NO WORK REPORTED". Truly report-free tasks
+retain a no-work-reported message. Existing Manager reschedule/report commands
+and history locks stay unchanged. No schema migration, data cleanup, email send,
+transport or timer change is part of this correction. Required acceptance:
+shared classifiers/renderers, completed/partial/no-report/cancelled/future cases,
+reopened tasks, history/search access, unchanged counts/labor, no-send HTML/text
+Brief, then protected current-clone operator review before Production release.
+
 ## Deployed contract — October 16, 2026 (#205 / #122)
 
 **Production acceptance:** The operator accepted V0.3.84 in light and dark mode and reported disposable preview `CLEAN EXIT`. Feature PR [#394](https://github.com/Gregovate/MSB-Production-Database-Project/pull/394) merged the exact approved application at `7740498e6602f36c8cdfd384791bbafaab71ee9e`; version `V0.3.84-direct-crew-cells`. Governed migrations `075_allow_setup_planned_crew_count_corrections.sql` and `076_capture_2026_reusable_task_estimates.sql` were installed in that order through the #37 controller. Greg supplied runner **PASS** with retained report `/home/msbadmin/setup-deployment-reports/Setup205-075-076-20261016T215912Z`. See [release receipt](../../../../../Setup/Acceptance/Setup_205_075_076_Release.md) and [Production deployment log](../../../../../System_Documentation/Production_Deployment_Change_Log.md). This report confirms the governed runner's declared gates, not independent reinspection of archive metadata.

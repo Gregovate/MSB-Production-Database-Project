@@ -22,7 +22,7 @@ def test_shift_workload_reports_only_unfinished_work_and_does_not_require_pm_man
     js = source("setup_scheduling_board.js")
     banner = js.split("function board205WorkloadBanner(",1)[1].split("\nfunction board205AmCapacityNote(",1)[0]
     workload = js.split("function board205ShiftWorkload(",1)[1].split("\nfunction board205WorkloadBanner(",1)[0]
-    assert "!nextAssignmentReported(item)" in workload
+    assert "!nextAssignmentInactive(item, board205Task(item.setup_session_task_id))" in workload
     assert "STAFFING NOT CONFIRMED" in banner
     assert "needs both shifts" in banner
     assert "SHIFT OK" in banner
@@ -47,9 +47,9 @@ def test_day_and_crew_identity_and_visible_actions():
 
 def test_version_and_asset_pins_change_together():
     html = source("production.html")
-    assert "2026-10-31.103" in html
-    assert "V0.3.103-manager-brief-summary" in source("production_backend.py")
-    assert "V0.3.103-manager-brief-summary" in source("setup_catalog_dirty_guard.js")
+    assert "2026-11-03.104" in html
+    assert "V0.3.104-completed-task-followup" in source("production_backend.py")
+    assert "V0.3.104-completed-task-followup" in source("setup_catalog_dirty_guard.js")
 
 
 def test_new_crew_move_preserves_captain_inside_one_guarded_transaction():

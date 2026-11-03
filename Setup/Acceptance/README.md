@@ -1,3 +1,7 @@
+## November 3 completed-task follow-up candidate
+
+[Review scope and gates](Setup_205_Completed_Task_Followup_2026-11-03.md): completed tasks leave active late/report queues, partial tasks show progress, history stays intact. V0.3.104 source-tested; protected browser acceptance and Production release pending. No migration or email send.
+
 ## PR470 October 27 map-label review
 
 Prior f79b62e preview CLEAN EXIT confirmed. Next exact candidate must pass CI before launching the existing reusable preview on 8898 with the unchanged 171_panel_receptacles migration/validation. At park overview zoom, route and waypoint labels disappear; at zoom19+ waypoint names appear and track names align with their lines, with overlapping text suppressed. Check panning, layer toggles and popup clicks. Verify compact Cable ID/Test ID rows and explicit unmatched network names. No FLW/GPX import, source deletion or Production write is included. Operator acceptance and CLEAN EXIT remain required before Production release.

@@ -461,7 +461,7 @@ def test_205_schedule_command_bar_preserves_board_height_and_controls() -> None:
     assert "+ Add Work Days" in ui
     assert "Find scheduled task" in ui
     assert "> Days needing reports</label>" in ui
-    assert "> Fully reported days</label>" in ui
+    assert "> Completed / reported days</label>" in ui
     assert "> Empty</label>" in ui
     assert "setup-board205-selection-count" in ui
     assert "Print Schedule" in ui
@@ -740,8 +740,8 @@ def test_205_rolling_board_filters_days_by_operational_state() -> None:
 
     assert "function board205DayViewState(day)" in ui
     assert "if (!assignments.length) return 'EMPTY';" in ui
-    assert "return assignments.every(nextAssignmentReported) ? 'COMPLETED' : 'UNFINISHED';" in ui
-    assert "> Fully reported days</label>" in ui
+    assert "return assignments.every(item => nextAssignmentInactive(item, board205Task(item.setup_session_task_id))) ? 'COMPLETED' : 'UNFINISHED';" in ui
+    assert "> Completed / reported days</label>" in ui
     assert "cancelled-day" in ui
     assert 'id="setup-board205-show-unfinished-days" type="checkbox" checked' in ui
     assert 'id="setup-board205-show-completed-days" type="checkbox">' in ui
@@ -1023,8 +1023,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-31.103" in html
-    assert "setup_scheduling_board.js?v=2026-10-31.103" in html
+    assert "setup_scheduling_board.css?v=2026-11-03.104" in html
+    assert "setup_scheduling_board.js?v=2026-11-03.104" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
@@ -1261,7 +1261,7 @@ def test_122_b1a_reusable_task_audit_is_visible() -> None:
     assert "<strong>Audit:</strong>" in ui
     assert "reusable-task-audit" in html
     assert "Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}" in production
-    assert "setup_production.js?v=2026-10-31.103" in html
+    assert "setup_production.js?v=2026-11-03.104" in html
 
 
 def test_122_b1a_historical_overlay_preserves_fresh_board_audit_after_write() -> None:
