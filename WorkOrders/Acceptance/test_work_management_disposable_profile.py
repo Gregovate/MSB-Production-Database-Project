@@ -581,3 +581,15 @@ def test_followup_candidate_preserves_installed_identity_baseline(tmp_path):
         assert 'GRANT EXECUTE ON FUNCTION ops.work_management_reconcile_actor' in result.stdout
         assert 'CREATE OR REPLACE' not in result.stdout
         assert 'DO $baseline$' in result.stdout
+
+
+def test_native_intake_cases_create_rollback_owned_fixtures():
+    for name in ('wo419_v1_disposable_validation.sql', 'wo419_phase2_disposable_validation.sql'):
+        source = (HERE / name).read_text()
+        insert = source.index('INSERT INTO stage.work_order_intake')
+        assert source.index("current_database()" if 'phase2' in name else "v_db <> 'msb_wo419_preview'") < insert
+        assert source.index('BEGIN;') < insert < source.rindex('ROLLBACK;')
+        assert 'RETURNING intake_id INTO v_intake' in source
+        assert 'SELECT i.intake_id INTO v_intake' not in source
+        assert 'UPDATE stage.work_order_intake SET submitter_person_id' not in source
+        assert "'WO475_DISPOSABLE'" in source

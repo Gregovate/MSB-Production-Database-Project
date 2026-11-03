@@ -115,3 +115,15 @@ branch retains its original rehearsal. Both validation and browser paths use
 this installed-baseline handling; identity functional regressions still run.
 29 targeted checks pass (one existing listener inspection exclusion). Native
 rerun remains required; this source correction is not native acceptance.
+
+## Second native validation HOLD — test fixture availability
+
+Candidate 1c9d24ec: identity PASS; V1 Manager correction/cancel, Directus rights
+and suspended-user checks PASS, then HOLD because no unpromoted public Intake
+remained. Report: WO419_Disposable_Browser_Preview_20261103T124400.txt. Cleanup
+PASS, production fingerprint and shared checkout UNCHANGED.
+
+V1 promotion and Phase2 clarification now each INSERT their own uniquely
+identified public-shaped intake inside the existing guarded rollback transaction.
+No restored intake is selected, reopened or assigned a different reporter.
+Native rerun is still required.
