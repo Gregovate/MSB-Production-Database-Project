@@ -198,6 +198,7 @@
         <p>Save work notes or completion to the <strong>disposable database only</strong>. Changes are discarded at cleanup; no emails sent.</p>
       </div>
       <div class="review-inner">
+        <div id="intake-state-notice" role="status" aria-live="polite" hidden></div>
         <!-- Original Intake evidence must be visible BEFORE a decision is chosen.
              It must remain visible during Promote, Clarify and Disposition. -->
         <section id="review-source-evidence" class="review-source-evidence" hidden aria-label="Original submitted Intake evidence">
@@ -221,7 +222,6 @@
           <button id="duplicate-search-button" type="button">Find related work</button>
           <div id="duplicate-results" role="status"></div>
         </details>
-        <div id="intake-state-notice" role="status" aria-live="polite"></div>
         <form id="review-action-form" hidden>
           <fieldset id="review-deadline-fields" hidden>
             <legend>Manager · Set Due by</legend>

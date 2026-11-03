@@ -35,22 +35,43 @@
   function showIntakeStatus(ticket, message = "") {
     const notice = byId("intake-state-notice");
     notice.replaceChildren();
-    if (message) notice.append(document.createTextNode(message + " "));
-    if (!intakeHandled(ticket)) return;
+    const isHandled = Boolean(intakeHandled(ticket));
+    notice.hidden = !isHandled && !message;
+    notice.className = isHandled ? "intake-disposition" : "intake-disposition intake-status-warning";
+    if (!isHandled) {
+      if (message) notice.append(document.createTextNode(message));
+      return;
+    }
+    byId("duplicate-review").hidden = true;
     const handled = ticket.handled || {};
+    const heading = document.createElement("h3");
+    const stateLabels = {PROMOTED_TO_WO:"Promoted to a Work Order",RESOLVED:"Resolved",
+      DEFERRED:"Deferred",REJECTED:"No action required",DUPLICATE:"Linked as duplicate"};
+    heading.textContent = "Already handled — " + (stateLabels[ticket.state] || "Reviewed");
     const text = document.createElement("p");
-    text.textContent = "Already handled — " +
-      (ticket.state === "PROMOTED_TO_WO" ? "promoted to a Work Order" : ticket.state.toLowerCase()) +
-      (handled.handled_by ? " · " + handled.handled_by : " · Handler not recorded") +
-      (handled.created_at ? " · " + new Date(handled.created_at).toLocaleString() : "") +
+    const when = handled.created_at ? new Date(handled.created_at) : null;
+    text.textContent = (handled.handled_by || "Handler not recorded") +
+      (when && !Number.isNaN(when.getTime()) ? " · " + new Intl.DateTimeFormat("en-US", {
+        timeZone:"America/Chicago",month:"short",day:"numeric",year:"numeric",
+        hour:"numeric",minute:"2-digit",timeZoneName:"short"}).format(when) : "") +
       (handled.note ? " · " + handled.note : "");
-    notice.append(text);
+    const instruction = document.createElement("p");
+    instruction.textContent = ticket.state === "PROMOTED_TO_WO"
+      ? "This intake is closed to triage. Continue on the Work Order below."
+      : "This intake is closed to triage. The recorded decision is shown above.";
+    notice.append(heading, text, instruction);
+    if (message) {
+      const warning = document.createElement("p");
+      warning.textContent = message;
+      notice.append(warning);
+    }
     for (const item of ticket.linked_work_order_details || []) {
       if (!/^WO-[1-9][0-9]*$/.test(item.ticket)) continue;
       const line = document.createElement("p");
       const link = document.createElement("a");
       link.href = appBase + "/?ticket=" + encodeURIComponent(item.ticket);
       link.textContent = "Open " + item.ticket;
+      link.className = "intake-disposition-link";
       line.append(link, document.createTextNode(" · Assigned to: " + item.assignees));
       notice.append(line);
     }
@@ -77,7 +98,7 @@
         model.ticket = data.ticket;
         model.intakeStatusVerified = true;
         const blocked = Boolean(intakeHandled(data.ticket));
-        showIntakeStatus(data.ticket, blocked ? "This request no longer needs triage. Your unsaved entries are preserved below." : "");
+        showIntakeStatus(data.ticket);
         byId("review-submit").disabled = blocked;
         if (blocked) {
           byId("review-action").disabled = true;
@@ -457,7 +478,7 @@
     const form = byId("review-action-form");
     form.hidden = !kind;
     byId("review-duplicate-fields").hidden = kind !== "duplicate";
-    byId("duplicate-review").hidden = !model.actor?.can_manage || !model.ticket;
+    byId("duplicate-review").hidden = !model.actor?.can_manage || !model.ticket || Boolean(intakeHandled(model.ticket));
     if (kind === "promote" || kind === "duplicate") byId("duplicate-review").open = true;
     byId("review-create-fields").hidden = !["create", "promote", "edit"].includes(kind);
     byId("review-work-order-legend").textContent =

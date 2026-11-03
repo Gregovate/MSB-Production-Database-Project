@@ -138,3 +138,13 @@ and hides a stamped note only when timestamp/person/text match loaded progress
 activity exactly. Unmatched history and all stored notes remain unchanged.
 89 focused local checks pass; corrected browser review pending. Intake-75 can
 be tested by opening the preview root with ?ticket=INTAKE-75.
+
+## Handled intake browser review and disposition emphasis
+
+Operator confirms INTAKE-75 shows Rick Hoffmann's promotion, WO-429 and Greg
+Liebig assignment without promotion actions. Requested stronger disposition
+emphasis. Native browser tunnel then reported CLEAN EXIT. Candidate now places
+a bordered, high-contrast handled banner before original evidence, with a large
+heading and prominent WO link. Duplicate link/search clutter is removed on
+handled intake and the misleading unsaved-entry message is omitted on refresh.
+89 focused checks pass; visual confirmation of this update remains pending.

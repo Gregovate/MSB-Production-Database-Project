@@ -117,6 +117,10 @@ def test_stale_intake_refresh_preserves_draft_and_blocks_failed_status_read():
       assert.equal(fieldset.disabled,true);
       assert.equal(button.disabled,true);
       assert.equal(byId('review-submit').disabled,true);
+      assert.equal(byId('intake-state-notice').hidden,false);
+      assert.equal(byId('intake-state-notice').className,'intake-disposition');
+      assert.equal(byId('intake-state-notice').children[0].textContent,'Already handled — Promoted to a Work Order');
+      assert.equal(byId('duplicate-review').hidden,true);
       model.ticket={ticket:'INTAKE-76',type:'INTAKE_REQUEST',state:'SUBMITTED'};
       fail=true;
       assert.equal(await refreshIntakeStatus(),false);

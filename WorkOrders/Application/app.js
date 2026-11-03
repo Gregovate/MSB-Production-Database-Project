@@ -507,7 +507,7 @@
       followup.textContent = row.followup_state === "clarify"
         ? "Waiting for the original reporter to answer. Assignment remains unchanged."
         : "Reporter replied — review the recorded activity below.";
-    for (const key of row.linked_work_orders || []) {
+    for (const key of (row.linked_work_order_details || []).length ? [] : row.linked_work_orders || []) {
       if (!/^WO-[1-9][0-9]*$/.test(key)) continue;
       const link = document.createElement("a");
       link.href = appBase + "/?ticket=" + encodeURIComponent(key);
