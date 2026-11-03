@@ -11,6 +11,11 @@ import json
 import os
 import re
 import uuid
+import sqlite3
+import subprocess
+import sys
+import tempfile
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -241,7 +246,7 @@ def background_changes(previous, current):
     return result
 
 
-def capture(folder):
+def capture(folder, *, include_backgrounds=True):
     files = []
     background_errors = []
     paths = sorted(folder.glob('*.lorprev'), key=lambda p: p.name.casefold())
@@ -272,7 +277,7 @@ def capture(folder):
                 raise ValueError('Unsupported master-dimming flag')
         metadata = {p.get('id'): {k: p.get(k) for k in ('Name', 'MasterDimmable')} for p in root if p.tag == 'PropClass'}
         try:
-            assets = capture_backgrounds(root)
+            assets = capture_backgrounds(root) if include_backgrounds else None
         except ValueError as error:
             background_errors.append('Preview file: ' + path.name + '\nPreview: ' + root.get('Name', '') + '\n' + str(error))
             assets = []
@@ -284,9 +289,51 @@ def capture(folder):
     return files
 
 
+# Recover only from the exact reconciled SQLite bytes. Presentation fields
+# below are already excluded by the catalog policy; every other stored field
+# remains part of the recovery proof, including controller/network/channel IDs.
+RECOVERY_TABLES = {
+    'previews': {'Name', 'Revision', 'Brightness', 'BackgroundFile', 'SourceFilename'},
+    'scenes': {'BackgroundFile', 'HScroll', 'VScroll', 'Zoom'},
+    'props': {'MasterDimmable'}, 'subProps': {'MasterDimmable'}, 'dmxChannels': set(),
+    'scene_lor_props': set(),
+}
+
+
+def prove_database_rows(baseline_path, candidate_path):
+    def rows(path):
+        with sqlite3.connect(Path(path).resolve().as_uri() + '?mode=ro', uri=True) as db:
+            result = {}
+            for table, excluded in RECOVERY_TABLES.items():
+                schema = list(db.execute('PRAGMA table_info("' + table + '")'))
+                if not schema:
+                    raise ValueError('Recovery table missing: ' + table)
+                columns = [r[1] for r in schema if r[1] not in excluded and not
+                           (r[1].startswith('Int') and r[2].upper() == 'INTEGER' and r[5])]
+                # Channel Name is presentation only when a Display Comment supplies
+                # identity. Retain Name when the parser uses it as fallback.
+                expressions = []
+                for c in columns:
+                    if table in {'props', 'subProps'} and c == 'Name' and 'LORComment' in columns:
+                        expressions.append("CASE WHEN trim(coalesce(LORComment,'')) <> '' THEN NULL ELSE Name END")
+                    else:
+                        expressions.append('"' + c.replace('"', '""') + '"')
+                quoted = ','.join(expressions)
+                result[table] = (columns, Counter(db.execute('SELECT ' + quoted + ' FROM "' + table + '"')))
+            return result
+    old, new = rows(baseline_path), rows(candidate_path)
+    changed = [t for t in RECOVERY_TABLES if old[t] != new[t]]
+    if changed:
+        raise ValueError('Catalog baseline recovery found database differences in: ' + ', '.join(changed) +
+                         '. Retained evidence is unchanged; database review is required.')
+    return sorted(RECOVERY_TABLES)
+
+
 class Catalog:
-    def __init__(self, root, folder, version):
+    def __init__(self, root, folder, version, *, recovery_db=None, parser_path=None):
         self.root, self.folder, self.version = Path(root), Path(folder), version
+        self.recovery_db = Path(recovery_db) if recovery_db else None
+        self.parser_path = Path(parser_path) if parser_path else None
         if not self.root.is_absolute() or not self.folder.is_absolute() or self.folder.name != 'Database Previews V' + version:
             raise ValueError('Catalog requires absolute local evidence and exact approved version folder')
 
@@ -331,16 +378,78 @@ class Catalog:
                 raise ValueError('Catalog baseline/source mismatch')
             return baseline
         files = self.scan()
+        recovery = None
         if source_digest(files) != accepted['source_manifest_sha256']:
-            raise ValueError('Initial catalog registration requires unchanged accepted master bytes. Do not regenerate evidence from unaccepted files.')
+            snapshot = self.root / 'database-snapshots' / (accepted['source_sqlite_sha256'] + '.json')
+            if snapshot.exists():
+                retained = self.read(snapshot)
+                if (retained['source_manifest_sha256'] != accepted['source_manifest_sha256']
+                        or retained['sqlite_sha256'] != accepted['source_sqlite_sha256']):
+                    raise ValueError('Retained database snapshot binding mismatch')
+                files = retained['files']
+            elif self.recovery_db and self.parser_path:
+                files, recovery = self.recover_database_baseline(accepted, files)
+            else:
+                raise ValueError('Initial catalog registration requires unchanged accepted master bytes. Do not regenerate evidence from unaccepted files.')
         actual = sorted((f['filename'], f['preview_id'], f['name'], f['revision']) for f in files)
         expected = sorted((f['filename'], f['preview_id'], f['name'], f['revision']) for f in accepted['previews'])
-        if actual != expected:
+        if not recovery and actual != expected:
             raise ValueError('Initial master inventory does not match frozen completed source')
         value = dict(policy=POLICY, accepted=accepted, files=files, registered_by=actor,
                      registered_at=datetime.now(timezone.utc).isoformat())
+        if recovery:
+            value['recovery_proof'] = recovery
         self.write(path, value)
         return value
+
+    def retain_database_snapshot(self, sqlite_path, expected_sqlite, expected_source):
+        if hashlib.sha256(Path(sqlite_path).read_bytes()).hexdigest() != expected_sqlite:
+            raise ValueError('SQLite changed before catalog evidence capture')
+        files = capture(self.folder, include_backgrounds=False)
+        if files != capture(self.folder, include_backgrounds=False):
+            raise ValueError('Master changed during database evidence capture')
+        if source_digest(files) != expected_source:
+            raise ValueError('Master changed after parsing; rerun parser before ingest')
+        path = self.root / 'database-snapshots' / (expected_sqlite + '.json')
+        value = dict(sqlite_sha256=expected_sqlite, source_manifest_sha256=expected_source, files=files)
+        if path.exists():
+            if self.read(path) != value:
+                raise ValueError('Retained database snapshot differs')
+        else:
+            self.write(path, value)
+
+    def recover_database_baseline(self, accepted, files):
+        expected = accepted['source_sqlite_sha256']
+        if hashlib.sha256(self.recovery_db.read_bytes()).hexdigest() != expected:
+            raise ValueError('Recovery requires the exact reconciled SQLite snapshot')
+        with sqlite3.connect(self.recovery_db.resolve().as_uri() + '?mode=ro', uri=True) as db:
+            row = db.execute('SELECT ParserSHA256, SourceManifestSHA256, SourceLORVersion, ValidationStatus, Status FROM parser_run').fetchall()
+        parser_hash = hashlib.sha256(self.parser_path.read_bytes()).hexdigest()
+        if len(row) != 1 or row[0][:4] != (parser_hash, accepted['source_manifest_sha256'], self.version, 'PASSED') or row[0][4] != 'COMPLETE':
+            raise ValueError('Reconciled SQLite/parser provenance mismatch')
+        self.root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='catalog-recovery-', dir=self.root) as temporary:
+            work = Path(temporary); source = work / 'previews'; source.mkdir()
+            for item in files:
+                raw = (self.folder / item['filename']).read_bytes()
+                if hashlib.sha256(raw).hexdigest() != item['sha256']:
+                    raise ValueError('Master changed during catalog recovery')
+                (source / item['filename']).write_bytes(raw)
+            output = work / 'candidate.db'
+            result = subprocess.run([sys.executable, str(self.parser_path), '--db-file', str(output),
+                '--preview-folder', str(source), '--reports-folder', str(work / 'reports'),
+                '--run-mode', 'TEST', '--source-lor-version', self.version, '--non-interactive'],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=900)
+            if result.returncode or not output.is_file():
+                raise ValueError('Disposable catalog recovery parse failed; no baseline registered. ' + result.stdout.decode('utf-8', errors='replace')[-1500:])
+            verified = prove_database_rows(self.recovery_db, output)
+        if (hashlib.sha256(self.recovery_db.read_bytes()).hexdigest() != expected
+                or hashlib.sha256(self.parser_path.read_bytes()).hexdigest() != parser_hash
+                or self.scan() != files):
+            raise ValueError('Source changed during catalog recovery')
+        return files, dict(method='SAME_PARSER_SQLITE_PROJECTION_V1', sqlite_sha256=expected,
+                           parser_sha256=parser_hash, verified_tables=verified,
+                           current_manifest_sha256=source_digest(files))
 
     def comparison_baseline(self, directory, baseline_files, current):
         # Append-only policy anchors supplement legacy hash-only evidence. Only
