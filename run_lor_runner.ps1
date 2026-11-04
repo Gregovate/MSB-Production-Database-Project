@@ -71,6 +71,41 @@ $ReadinessTimeoutSeconds = 600
 $ReadinessInitialDelaySeconds = 2
 $ReadinessMaxDelaySeconds = 30
 
+function Set-CatalogEnvironment {
+    param([Parameter(Mandatory=$true)][string]$LocalRoot)
+    # Scheduled tasks must load explicit private per-profile settings each time;
+    # an interactive shell's environment is not a persistent release contract.
+    Remove-Item Env:\LOR_CATALOG_ROOT,Env:\LOR_CATALOG_PUBLISHERS -ErrorAction SilentlyContinue
+    $settingsPath=Join-Path $LocalRoot 'catalog-settings.json'
+    if (-not (Test-Path -LiteralPath $settingsPath -PathType Leaf)) { return }
+    $settings=Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
+    if ($settings.schema_version -ne 1 -or $settings.enabled -isnot [bool]) { throw 'Invalid catalog settings schema' }
+    if (-not $settings.enabled) { return }
+    $publishers=@($settings.publishers)
+    if ($publishers.Count -eq 0) { throw 'Explicit catalog publishers are required' }
+    foreach ($email in $publishers) {
+        if ($email -isnot [string] -or $email -notmatch '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') { throw 'Invalid catalog publisher email' }
+    }
+    $catalogRoot=[IO.Path]::GetFullPath((Join-Path $LocalRoot 'preview-catalog'))
+    if (-not (Test-Path -LiteralPath $catalogRoot -PathType Container)) { throw 'Private local catalog evidence directory has not been provisioned' }
+    if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
+        if ([IO.Path]::GetPathRoot($catalogRoot) -ine 'C:\') { throw 'Catalog evidence must remain on the local C: profile' }
+        $allowed=@([Security.Principal.WindowsIdentity]::GetCurrent().User.Value,'S-1-5-18','S-1-5-32-544')
+        $writeRights=[Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership
+        foreach ($path in @($settingsPath,$catalogRoot)) {
+            if ((Get-Item -LiteralPath $path).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Catalog settings/evidence must not be redirected links' }
+            foreach ($rule in (Get-Acl -LiteralPath $path).Access) {
+                $sid=$rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+                if ($rule.AccessControlType -eq [Security.AccessControl.AccessControlType]::Allow -and ($rule.FileSystemRights -band $writeRights) -ne 0 -and $sid -notin $allowed) {
+                    throw 'Catalog settings/evidence has an unauthorized writable ACL'
+                }
+            }
+        }
+    }
+    $env:LOR_CATALOG_ROOT=$catalogRoot
+    $env:LOR_CATALOG_PUBLISHERS=($publishers | ForEach-Object {$_.ToLowerInvariant()} | Select-Object -Unique) -join ','
+}
+
 function Write-ServiceLog {
     param([Parameter(Mandatory = $true)][string]$Message)
 
@@ -618,9 +653,10 @@ switch ($Action) {
             $env:LOR_PARSER_PATH = $ParserPath
             $env:LOR_CHECKER_PATH = $CheckerPath
             $env:LOR_INGEST_PATH = $IngestPath
+            Set-CatalogEnvironment -LocalRoot $SecretRoot
             $env:PYTHONUNBUFFERED = '1'
             Write-ServiceLog (
-                "Starting runner V1.7.2; profile=$DeploymentProfile; " +
+                "Starting runner V1.8.0; profile=$DeploymentProfile; " +
                 "credential fingerprint=" +
                 "$(Get-TokenFingerprint -Token $token)."
             )
@@ -653,6 +689,7 @@ switch ($Action) {
         finally {
             Remove-Item Env:\LOR_RUNNER_TOKEN -ErrorAction SilentlyContinue
             Remove-Item Env:\LOR_INGEST_PG_PASSWORD -ErrorAction SilentlyContinue
+            Remove-Item Env:\LOR_CATALOG_ROOT,Env:\LOR_CATALOG_PUBLISHERS -ErrorAction SilentlyContinue
             Remove-Variable token -ErrorAction SilentlyContinue
             Remove-Variable ingestCredential -ErrorAction SilentlyContinue
         }
