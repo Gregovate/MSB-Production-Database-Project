@@ -43,14 +43,14 @@
         : proposal.can_publish ? 'Review ready. Publication updates preview distribution evidence only; no database ingest.'
         : 'The master matches the current published catalog. No publication is needed.';
       disclosure.open = !!proposal.database_contract_review_required;
-      if (proposal.can_publish) status.textContent = 'Ready to publish. No blockers. Database contract unchanged. No database ingest required.';
+      if (proposal.can_publish) status.textContent = proposal.parser_validation ? 'Ready to publish. Parser validation passed for these exact previews. No database ingest required.' : 'Ready to publish. No blockers. Database contract unchanged. No database ingest required.';
       const lines = ['Source master folder: ' + (proposal.source_folder || 'Not reported'), 'Catalog evidence destination: ' + (proposal.catalog_evidence_folder || 'Not reported'), '', 'Database baseline: Run ' + proposal.baseline_run_id, 'Reviewed master digest: ' + proposal.master_digest];
       if (proposal.minimum_updater_version) lines.push('Required PC updater: ' + proposal.minimum_updater_version);
       const registrations = proposal.changes.filter(change => change.image_registration_only);
       if (registrations.length) lines.push('', 'Existing image evidence registered for ' + registrations.length + ' unchanged previews. No preview content changed in these entries.');
       for (const change of proposal.changes) {
         if (change.image_registration_only) continue;
-        lines.push('', change.filename, change.database_contract_review_required ? (change.comparison_status === 'BASELINE_EVIDENCE_MISSING' ? 'STOP: original comparison evidence unavailable; no field change has been proven.' : 'STOP: protected content differs from the original baseline.') : 'Sequencing / presentation change — database contract unchanged');
+        lines.push('', change.filename, change.database_contract_review_required ? (change.comparison_status === 'BASELINE_EVIDENCE_MISSING' ? 'STOP: original comparison evidence unavailable; no field change has been proven.' : 'STOP: protected content differs from the original baseline.') : (proposal.parser_validation ? 'Parser-validated preview update; database ingest is separate.' : 'Sequencing / presentation change — database contract unchanged'));
         const images = change.background_changes || [];
         const existing = images.filter(item => item.action === 'VERIFY_LINKED_BACKGROUND');
         if (existing.length) lines.push('Linked images verified: ' + existing.length);

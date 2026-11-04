@@ -331,10 +331,12 @@ def prove_database_rows(baseline_path, candidate_path):
 
 
 class Catalog:
-    def __init__(self, root, folder, version, *, recovery_db=None, parser_path=None):
+    def __init__(self, root, folder, version, *, recovery_db=None, parser_path=None, parser_run=None, parser_activity=None):
         self.root, self.folder, self.version = Path(root), Path(folder), version
         self.recovery_db = Path(recovery_db) if recovery_db else None
         self.parser_path = Path(parser_path) if parser_path else None
+        self.parser_run = parser_run or {}
+        self.parser_activity = parser_activity or {}
         if not self.root.is_absolute() or not self.folder.is_absolute() or self.folder.name != 'Database Previews V' + version:
             raise ValueError('Catalog requires absolute local evidence and exact approved version folder')
 
@@ -370,6 +372,42 @@ class Catalog:
             raise ValueError('Master files changed during capture; export completely and retry')
         return first
 
+    def parser_validation(self, files):
+        """Distribution authority is passed parser output, never ingest approval.
+
+        State comes from the authenticated runner, not request-supplied fields.
+        Recheck the SQLite and current export bytes on both review and publish.
+        """
+        run, activity = self.parser_run, self.parser_activity
+        if not run or not activity:
+            return None
+        if (run.get('status') != 'COMPLETE' or run.get('validation_status') != 'PASSED'
+                or activity.get('status') != 'PASSED' or activity.get('target') != 'current'
+                or not activity.get('activity_id')
+                or run.get('parser_activity_id') != activity['activity_id']
+                or run.get('source_lor_version') != self.version
+                or activity.get('source_lor_version') != self.version
+                or str(activity.get('source_preview_folder')) != str(self.folder)
+                or run.get('source_manifest_sha256') != source_digest(files)):
+            return None
+        sqlite_hash = run.get('sqlite_sha256', '')
+        if (not re.fullmatch('[a-f0-9]{64}', sqlite_hash)
+                or not self.recovery_db or not self.parser_path
+                or Path(str(run.get('sqlite_path', ''))).resolve() != self.recovery_db.resolve()
+                or (activity.get('result') or {}).get('sqlite_sha256') != sqlite_hash):
+            return None
+        if hashlib.sha256(self.recovery_db.read_bytes()).hexdigest() != sqlite_hash:
+            raise ValueError('Parser SQLite changed after validation; run parser again. Ingest is not required.')
+        parser_hash = hashlib.sha256(self.parser_path.read_bytes()).hexdigest()
+        with closing(sqlite3.connect(self.recovery_db.resolve().as_uri() + '?mode=ro', uri=True)) as db:
+            rows = db.execute('SELECT ParserSHA256,SourceManifestSHA256,SourceLORVersion,ValidationStatus,Status,RunMode,SourcePreviewFolder FROM parser_run').fetchall()
+        expected = (parser_hash, source_digest(files), self.version, 'PASSED', 'COMPLETE', 'PRODUCTION', str(self.folder))
+        if rows != [expected]:
+            raise ValueError('Parser provenance does not match current exports; run parser again. Ingest is not required.')
+        return dict(authority='PASSED_PARSER_V1', activity_id=activity['activity_id'],
+                    source_manifest_sha256=source_digest(files), sqlite_sha256=sqlite_hash,
+                    parser_sha256=parser_hash, lor_version=self.version)
+
     def baseline(self, accepted, actor):
         directory = self.context(accepted)
         path = directory / 'baseline.json'
@@ -380,7 +418,8 @@ class Catalog:
             return baseline
         files = self.scan()
         recovery = None
-        if source_digest(files) != accepted['source_manifest_sha256']:
+        parser_validation = self.parser_validation(files)
+        if not parser_validation and source_digest(files) != accepted['source_manifest_sha256']:
             snapshot = self.root / 'database-snapshots' / (accepted['source_sqlite_sha256'] + '.json')
             if snapshot.exists():
                 retained = self.read(snapshot)
@@ -394,12 +433,15 @@ class Catalog:
                 raise ValueError('Initial catalog registration requires unchanged accepted master bytes. Do not regenerate evidence from unaccepted files.')
         actual = sorted((f['filename'], f['preview_id'], f['name'], f['revision']) for f in files)
         expected = sorted((f['filename'], f['preview_id'], f['name'], f['revision']) for f in accepted['previews'])
-        if not recovery and actual != expected:
+        if not recovery and not parser_validation and actual != expected:
             raise ValueError('Initial master inventory does not match frozen completed source')
         value = dict(policy=POLICY, accepted=accepted, files=files, registered_by=actor,
                      registered_at=datetime.now(timezone.utc).isoformat())
         if recovery:
             value['recovery_proof'] = recovery
+        if parser_validation:
+            value['registration_authority'] = 'PASSED_PARSER_V1'
+            value['parser_validation'] = parser_validation
         self.write(path, value)
         return value
 
@@ -496,6 +538,9 @@ class Catalog:
         baseline = self.baseline(accepted, actor)
         files = self.scan()
         directory = self.context(accepted)
+        parser_validation = self.parser_validation(files)
+        if baseline.get('registration_authority') == 'PASSED_PARSER_V1' and not parser_validation:
+            raise ValueError('Run the parser successfully for the current exports before catalog approval. Ingest is not required.')
         pointer = directory / 'current.json'
         parent = self.parent(directory)
         baseline_files = {f['preview_id']: f for f in baseline['files']}
@@ -532,14 +577,24 @@ class Catalog:
                                 name=b['name'] if b else None, database_contract_review_required=bool(requires_review),
                                 before_sha256=a['sha256'] if a else None, after_sha256=b['sha256'] if b else None,
                                 metadata_changes=details))
+        if parser_validation:
+            # The parser independently validated identity, source and output.
+            # Keep the database comparison as information, not an ingest gate.
+            for change in changes:
+                change['database_contract_changed'] = change['database_contract_review_required']
+                change['database_contract_review_required'] = False
+                change['comparison_status'] = 'PARSER_VALIDATED'
+            protected = False
         proposal = dict(policy=POLICY, comparison_policy=COMPARISON_POLICY, baseline_evidence_id=accepted['evidence_id'], parent_publication_id=parent,
                         source_manifest_sha256=source_digest(files), files=files, changes=changes,
                         database_contract_review_required=bool(protected), reviewed_by=actor)
+        if parser_validation:
+            proposal['parser_validation'] = parser_validation
         proposal_id = digest(proposal)
         self.write(directory / 'reviews' / (proposal_id + '.json'), proposal)
         return dict(review_id=proposal_id, minimum_updater_version='1.1.2', changes=changes, source_folder=str(self.folder), catalog_evidence_folder=str(self.root), database_contract_review_required=bool(protected),
                     can_publish=not protected and (parent is None or bool(changes)), master_digest=proposal['source_manifest_sha256'],
-                    baseline_run_id=accepted['run_id'], parent_publication_id=parent)
+                    baseline_run_id=accepted['run_id'], parent_publication_id=parent, parser_validation=parser_validation)
 
     def publish(self, accepted, actor, review_id):
         if not re.fullmatch('[a-f0-9]{64}', str(review_id)):
@@ -559,6 +614,9 @@ class Catalog:
                         previews=[{k: f[k] for k in ('filename', 'preview_id', 'name', 'revision')} for f in review['files']],
                         published_by=actor, published_at=datetime.now(timezone.utc).isoformat(),
                         parent_publication_id=review['parent_publication_id'])
+        if review.get('parser_validation'):
+            document['distribution_authority'] = 'PASSED_PARSER_V1'
+            document['parser_validation'] = review['parser_validation']
         document.pop('evidence_id')
         document['evidence_id'] = digest(document)
         publication_id = document['evidence_id']

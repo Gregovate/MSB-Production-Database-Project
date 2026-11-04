@@ -957,14 +957,6 @@ class Runner:
         ):
             raise ValueError("This exact SQLite digest was already ingested")
 
-        # Freeze catalog contracts before ingest accepts this SQLite. Later
-        # authoring exports may overwrite every original .lorprev file.
-        if os.environ.get("LOR_CATALOG_ROOT"):
-            from preview_catalog import Catalog
-            Catalog(Path(required_environment("LOR_CATALOG_ROOT")),
-                    Path(state["current_preview_folder"]), state["current_lor_version"]).retain_database_snapshot(
-                        self.production_db, digest, parser_run["source_manifest_sha256"])
-
         password = required_environment("LOR_INGEST_PG_PASSWORD")
         version = state["current_lor_version"]
 
@@ -1336,6 +1328,13 @@ class Runner:
             "parser_activity_id": activity["activity_id"],
         }
 
+        # Parser validation controls distribution. Freeze its comparison evidence
+        # now, independently of the separate PostgreSQL ingest approval.
+        if target == "current" and os.environ.get("LOR_CATALOG_ROOT"):
+            from preview_catalog import Catalog
+            Catalog(Path(required_environment("LOR_CATALOG_ROOT")), folder, version).retain_database_snapshot(
+                db_file, result["sqlite_sha256"], result["source_manifest_sha256"])
+
         def operation(current: dict[str, Any]) -> None:
             expected = (
                 current["current_lor_version"]
@@ -1593,7 +1592,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                     state = self.runner.store.read()
                     catalog = Catalog(Path(required_environment("LOR_CATALOG_ROOT")),
                                       Path(state["current_preview_folder"]), state["current_lor_version"],
-                                      recovery_db=self.runner.production_db, parser_path=self.runner.parser_path)
+                                      recovery_db=self.runner.production_db, parser_path=self.runner.parser_path,
+                                      parser_run=state.get("production_parser_run"), parser_activity=state.get("parser_activity"))
                     accepted = payload.get("accepted_source")
                     if not isinstance(accepted, dict):
                         raise ValueError("A completed source document is required")
