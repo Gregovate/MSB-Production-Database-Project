@@ -15,6 +15,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import zipfile
 from collections import Counter
 from contextlib import closing
 from datetime import datetime, timezone
@@ -460,6 +461,61 @@ class Catalog:
                 raise ValueError('Retained database snapshot differs')
         else:
             self.write(path, value)
+        self.retain_preview_archive(files, expected_source, expected_sqlite)
+
+    def retain_preview_archive(self, files, source_hash, sqlite_hash):
+        """Retain exact external-link XML bytes, never embedded image copies."""
+        if (not re.fullmatch('[a-f0-9]{64}', source_hash)
+                or not re.fullmatch('[a-f0-9]{64}', sqlite_hash)
+                or source_digest(files) != source_hash):
+            raise ValueError('Invalid preview history source binding')
+        directory = self.root / 'preview-history'
+        archive = directory / 'archives' / (source_hash + '.zip')
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        expected = {f['filename']: f['sha256'] for f in files}
+        def validate(path):
+            with zipfile.ZipFile(path) as saved:
+                if len(saved.namelist()) != len(expected) or set(saved.namelist()) != set(expected):
+                    raise ValueError('Preview history inventory mismatch')
+                for name, sha in expected.items():
+                    if Path(name).name != name or '/' in name or '\\' in name or ':' in name:
+                        raise ValueError('Unsafe preview history filename')
+                    if hashlib.sha256(saved.read(name)).hexdigest() != sha:
+                        raise ValueError('Preview history byte verification failed')
+        if not archive.exists():
+            temporary = archive.with_name('.' + uuid.uuid4().hex + '.writing')
+            try:
+                with temporary.open('xb') as stream:
+                    with zipfile.ZipFile(stream, 'w', compression=zipfile.ZIP_DEFLATED) as saved:
+                        for name in sorted(expected, key=str.casefold):
+                            raw = (self.folder / name).read_bytes()
+                            if hashlib.sha256(raw).hexdigest() != expected[name]:
+                                raise ValueError('Master changed before preview history capture')
+                            info = zipfile.ZipInfo(name, date_time=(1980,1,1,0,0,0))
+                            info.compress_type = zipfile.ZIP_DEFLATED
+                            saved.writestr(info, raw)
+                    stream.flush(); os.fsync(stream.fileno())
+                validate(temporary)
+                if source_digest(capture(self.folder, include_backgrounds=False)) != source_hash:
+                    raise ValueError('Master changed during preview history capture')
+                os.replace(temporary, archive)
+            finally:
+                temporary.unlink(missing_ok=True)
+        validate(archive)
+        record = dict(source_manifest_sha256=source_hash, sqlite_sha256=sqlite_hash,
+                      lor_version=self.version, source_folder=str(self.folder),
+                      archive_sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
+                      files=[dict(filename=f['filename'], sha256=f['sha256'], preview_id=f['preview_id'], revision=f['revision']) for f in files])
+        path = directory / 'records' / (sqlite_hash + '.json')
+        if path.exists():
+            prior = self.read(path)
+            record['captured_at'] = prior.get('captured_at')
+            if prior != record:
+                raise ValueError('Preview history record differs')
+        else:
+            record['captured_at'] = datetime.now(timezone.utc).isoformat()
+            self.write(path, record)
+        return record
 
     def recover_database_baseline(self, accepted, files):
         expected = accepted['source_sqlite_sha256']
