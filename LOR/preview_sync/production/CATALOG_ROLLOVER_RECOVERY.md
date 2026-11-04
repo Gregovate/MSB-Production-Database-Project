@@ -32,6 +32,11 @@ parser/ingest state, PostgreSQL, task credentials or pairing is changed by proof
 The runner's existing operation lock covers recovery. A bounded installer replaces
 only preview_catalog.py and lor_operator_runner.py and retains exact-byte rollback.
 
-Validation: 89 existing catalog tests (3 fixture-dependent skips), 8 rollover and
+Validation: 89 existing catalog tests (3 fixture-dependent skips), 9 rollover and
 recovery tests, and an actual V7.0.11 disposable-parser recovery experiment passed.
 Production installation/recovery remains operator pending. No catalog published.
+
+Windows preflight originally stopped on leaked SQLite handles. Recovery reads now
+explicitly close connections; fixture writes commit and close. A regression checks
+closed handles on successful comparison and rejection. Production was unchanged
+by that failed preflight. Corrected native Windows preflight remains pending.

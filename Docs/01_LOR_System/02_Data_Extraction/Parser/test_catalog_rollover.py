@@ -4,6 +4,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 from preview_catalog import Catalog, capture, source_digest, prove_database_rows, RECOVERY_TABLES
@@ -18,7 +19,7 @@ class RolloverTests(unittest.TestCase):
         self.files=capture(self.folder);self.store=self.root/'evidence'
         self.accepted=dict(schema_version=1,status='COMPLETED',validation='PASSED',lor_version='6.6.12',source_folder=str(self.folder),evidence_id='a'*64,source_manifest_sha256=source_digest(self.files),source_sqlite_sha256='b'*64,run_id=34,previews=[{k:self.files[0][k] for k in ('filename','preview_id','name','revision')}])
     def db(self,path,value='protected',background='old',parser_hash='c'*64):
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db, db:
             for t in RECOVERY_TABLES:
                 db.execute('CREATE TABLE "'+t+'" (id TEXT, Value TEXT'+(', BackgroundFile TEXT' if t=='scenes' else '')+')')
                 if t=='scenes':db.execute('INSERT INTO scenes VALUES (?,?,?)',('id',value,background))
@@ -42,16 +43,29 @@ class RolloverTests(unittest.TestCase):
     def test_proof_rejects_changed_protected_rows(self):
         a=self.root/'a.db';b=self.root/'b.db';self.db(a);self.db(b,value='different controller')
         with self.assertRaisesRegex(ValueError,'database differences'):prove_database_rows(a,b)
+    def test_proof_closes_connections_on_success_and_difference(self):
+        a=self.root/'a.db';b=self.root/'b.db';self.db(a);self.db(b)
+        original=sqlite3.connect
+        opened=[]
+        def tracked(*args,**kwargs):
+            db=original(*args,**kwargs);opened.append(db);return db
+        with patch('preview_catalog.sqlite3.connect',side_effect=tracked):
+            prove_database_rows(a,b)
+            with closing(original(b)) as db, db:db.execute("UPDATE props SET Value='changed'")
+            with self.assertRaisesRegex(ValueError,'database differences'):prove_database_rows(a,b)
+        self.assertEqual(len(opened),4)
+        for db in opened:
+            with self.assertRaises(sqlite3.ProgrammingError):db.execute('SELECT 1')
     def test_channel_name_exception_requires_display_comment(self):
         a=self.root/'a.db';b=self.root/'b.db';self.db(a);self.db(b)
         for path,name in ((a,'Old Channel'),(b,'New Channel')):
-            with sqlite3.connect(path) as db:
+            with closing(sqlite3.connect(path)) as db, db:
                 db.execute('ALTER TABLE props ADD COLUMN Name TEXT')
                 db.execute('ALTER TABLE props ADD COLUMN LORComment TEXT')
                 db.execute('UPDATE props SET Name=?,LORComment=?',(name,'Display-01'))
         prove_database_rows(a,b)
         for path in (a,b):
-            with sqlite3.connect(path) as db:db.execute("UPDATE props SET LORComment='' ")
+            with closing(sqlite3.connect(path)) as db, db:db.execute("UPDATE props SET LORComment='' ")
         with self.assertRaisesRegex(ValueError,'database differences'):prove_database_rows(a,b)
     def test_recovery_rejects_wrong_sqlite_before_parse(self):
         a=self.root/'a.db';self.db(a);parser=self.root/'parser.py';parser.write_text('raise Exception("must not run")')

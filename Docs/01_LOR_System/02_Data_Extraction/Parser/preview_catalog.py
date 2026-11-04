@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 from collections import Counter
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -302,7 +303,7 @@ RECOVERY_TABLES = {
 
 def prove_database_rows(baseline_path, candidate_path):
     def rows(path):
-        with sqlite3.connect(Path(path).resolve().as_uri() + '?mode=ro', uri=True) as db:
+        with closing(sqlite3.connect(Path(path).resolve().as_uri() + '?mode=ro', uri=True)) as db:
             result = {}
             for table, excluded in RECOVERY_TABLES.items():
                 schema = list(db.execute('PRAGMA table_info("' + table + '")'))
@@ -422,7 +423,7 @@ class Catalog:
         expected = accepted['source_sqlite_sha256']
         if hashlib.sha256(self.recovery_db.read_bytes()).hexdigest() != expected:
             raise ValueError('Recovery requires the exact reconciled SQLite snapshot')
-        with sqlite3.connect(self.recovery_db.resolve().as_uri() + '?mode=ro', uri=True) as db:
+        with closing(sqlite3.connect(self.recovery_db.resolve().as_uri() + '?mode=ro', uri=True)) as db:
             row = db.execute('SELECT ParserSHA256, SourceManifestSHA256, SourceLORVersion, ValidationStatus, Status FROM parser_run').fetchall()
         parser_hash = hashlib.sha256(self.parser_path.read_bytes()).hexdigest()
         if len(row) != 1 or row[0][:4] != (parser_hash, accepted['source_manifest_sha256'], self.version, 'PASSED') or row[0][4] != 'COMPLETE':

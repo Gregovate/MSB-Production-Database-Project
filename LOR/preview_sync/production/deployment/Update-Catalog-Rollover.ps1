@@ -6,7 +6,7 @@ $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $repo='C:\MSB_LORRunner'
 $prefix='Docs/01_LOR_System/02_Data_Extraction/Parser/'
-$modules=ConvertFrom-Json '[{"name":"preview_catalog.py","old":["2c758dbb43b174f67155d3491f3d79fd376e26a257fec66cada2bad52910d82d","ba744c12f04a550123711223436d9043b92deb7186a7b4643e290b6cec6e2f74"],"new":"c39579de2297eb837e9846e41664d767289968ab154d6ecf5e68bc06ee074473"},{"name":"lor_operator_runner.py","old":["dd8e7210e2d4ff10d056585498ff547d6890948e23216d24fbd6e7c0dd6873d8","c0c22270546b0449a08fd8059f00b1294597947e103953ca42dd1cff3403bfd7"],"new":"f16d3f020d3c12ac76ae144fa1671b3a6c9ab83cf4fd31a925759db150dc7f8b"}]'
+$modules=ConvertFrom-Json '[{"name":"preview_catalog.py","old":["2c758dbb43b174f67155d3491f3d79fd376e26a257fec66cada2bad52910d82d","ba744c12f04a550123711223436d9043b92deb7186a7b4643e290b6cec6e2f74"],"new":"e92d87a6284f077271aa751632059d562dab40f80cfe1d1ddb4e7248f91f4e7f"},{"name":"lor_operator_runner.py","old":["dd8e7210e2d4ff10d056585498ff547d6890948e23216d24fbd6e7c0dd6873d8","c0c22270546b0449a08fd8059f00b1294597947e103953ca42dd1cff3403bfd7"],"new":"f16d3f020d3c12ac76ae144fa1671b3a6c9ab83cf4fd31a925759db150dc7f8b"}]'
 function Require($value,$reason) { if (-not $value) { throw $reason } }
 function Hash($path) { (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() }
 Require ($env:COMPUTERNAME -ieq 'PRINT-SERVER') 'Run on PRINT-SERVER'
