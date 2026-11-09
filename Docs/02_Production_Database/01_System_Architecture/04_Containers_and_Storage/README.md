@@ -2,6 +2,13 @@
 
 This subsystem documents physical container identity, display-to-container relationships, storage locations, container state, and the operational data needed before container-based testing or deployment can occur.
 
+## Start Here — #230 reference-data engineering contract
+
+- [Reference Data Manager — Physical Identity and Labelability (DRAFT)](engineering/Reference_Data_Manager_Physical_Identity_and_Labelability_Contract.md) — **owning #230 engineering specification** for permanent Container/Display physical-role relationships, integral show-base Displays versus removable cargo, label presence/24mm candidate/no-label exceptions, and real October 19 C009/Traditional Christmas/Flag/C131 examples.
+- [#230 Manager Reference Data issue](https://github.com/Gregovate/MSB-Production-Database-Project/issues/230) — open implementation/acceptance and governed permanent ref.* editing. The issue and PRs consume the above contract rather than replacing engineering authority.
+
+**Current handoff, updated October 19:** The LOR Display ID identifies the show Display; **keep every existing Container ID** for transport, Testing and history. Default assigned Displays to **removable cargo** unless the specific Display is explicitly classified as permanently attached to its Container (proposed Display-side Boolean, not yet approved DDL). Do not confuse this default *removability* with the seasonal DETACHED movement state. C009/909 demonstrates the attached-Display rule with twelve removable children. Historical synthetic Testing Container IDs are preserved and audited, not casually deleted. [#429](https://github.com/Gregovate/MSB-Production-Database-Project/issues/429) owns the bounded permanent identity rule; [#432](https://github.com/Gregovate/MSB-Production-Database-Project/issues/432) owns physical labelability. C131 partial unload and Default Drop/GPS remain a distinct #88/#171 field incident. Full 24mm label and physical-role support not deployed.
+
 ## Current State
 
 Containers and storage locations are active Production Database entities used by operational workflows and Directus views/bookmarks.
