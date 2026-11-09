@@ -216,8 +216,8 @@ function setupMilestoneDateLabel(value) {
 }
 
 function setupMilestoneCountdown(value) {
-  const now = new Date();
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  // Compare calendar dates, independent of the workstation timezone.
+  const today = Date.parse(nextSetupLocalDate() + 'T00:00:00Z');
   const target = Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
   const days = Math.round((target - today) / 86400000);
   if (days === 0) return 'TODAY';
@@ -2669,7 +2669,7 @@ async function printNextPerformTask(details) {
         <div class="eyebrow">Captain / field execution</div>
         <h1>Setup Task Cover Sheet</h1>
       </div>
-      <div class="setup-perform-print-generated"><strong>Generated:</strong> ${escapeHtml(new Date().toLocaleString())}</div>
+      <div class="setup-perform-print-generated"><strong>Generated:</strong> ${escapeHtml(new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'}))}</div>
     </header>
     <h2>${escapeHtml(assignment?.task_name || task?.task_name || 'Setup task')}</h2>
     <div class="setup-perform-print-meta">

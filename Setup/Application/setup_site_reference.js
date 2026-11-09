@@ -384,7 +384,7 @@
           });
           for (const c of ownCircuits) {
             action(edits, 'Production crew: ' + c.circuit_code + ' season ON / OFF', 'crew_set_switching', form => {
-              const year = field(form, 'Season year', 'season_year', new Date().getFullYear(), 'number');
+              const year = field(form, 'Season year', 'season_year', Number(new Intl.DateTimeFormat('en-US', {timeZone: 'America/Chicago', year: 'numeric'}).format(new Date())), 'number');
               const on = field(form, 'Instructions to turn ON', 'turn_on_instruction');
               const off = field(form, 'Instructions to turn OFF', 'turn_off_instruction');
               return () => ({circuit_id:c.site_power_circuit_id,season_year:Number(year.value),
@@ -761,7 +761,7 @@
       current = saved;
       status.style.color = '#923b15';
       status.textContent = 'OFFLINE SAVED PostgreSQL GIS · revision ' + saved.revision
-        + ' · downloaded ' + new Date(saved._offlinePreparedAt).toLocaleString()
+        + ' · downloaded ' + new Date(saved._offlinePreparedAt).toLocaleString('en-US', {timeZone: 'America/Chicago'})
         + ' · NOT CURRENT · editing disabled · (' + error.message + ')';
       renderDb(saved);
       renderNetworks(saved, true);

@@ -51,7 +51,7 @@
     select.appendChild(option);
   }
   const describe = data => data ?
-    'Prepared: ' + new Date(data.preparedAt).toLocaleString() +
+    'Prepared: ' + new Date(data.preparedAt).toLocaleString('en-US', {timeZone: 'America/Chicago'}) +
     ' · z14–' + data.maxZoom + ' · ' + data.tiles + ' tiles · ' +
     (data.referenceRevision == null ? 'static GPX only (DB not downloaded)' :
       'PostgreSQL reference revision ' + data.referenceRevision) +

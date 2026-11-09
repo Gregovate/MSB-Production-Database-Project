@@ -1,7 +1,8 @@
 """Protected API for Setup V0.3 organization, planning, scheduling, and Captain execution."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
 
@@ -427,7 +428,7 @@ def api_setup_record_progress(setup_session_task_id: int) -> tuple[Response, int
     except ValueError as exc:
         raise SetupCommandError("Work completed on date is required") from exc
 
-    if performed_on > date.today():
+    if performed_on > datetime.now(ZoneInfo("America/Chicago")).date():
         raise SetupCommandError("Work completed on date cannot be in the future")
 
     result = repo().record_progress(
@@ -474,7 +475,7 @@ def api_setup_correct_progress(setup_task_progress_id: int) -> tuple[Response, i
     except ValueError as exc:
         raise SetupCommandError("Work completed on date is required") from exc
 
-    if performed_on > date.today():
+    if performed_on > datetime.now(ZoneInfo("America/Chicago")).date():
         raise SetupCommandError("Work completed on date cannot be in the future")
 
     result = repo().correct_progress(

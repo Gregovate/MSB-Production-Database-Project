@@ -44,12 +44,11 @@
   }
 
   function todayIso() {
-    const now = new Date();
-    return [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, '0'),
-      String(now.getDate()).padStart(2, '0')
-    ].join('-');
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const part = name => parts.find(item => item.type === name).value;
+    return `${part('year')}-${part('month')}-${part('day')}`;
   }
 
   function noSundayPickDate(value) {
@@ -508,7 +507,7 @@
     statusLine.textContent = data.session
       ? `Live ${data.session.season_year} annual material oversight. Recorded movement overrides planning; physical contents are unconfirmed.`
       : `No Setup Session exists for ${year}.`;
-    generatedAt.textContent = `Generated ${new Date().toLocaleString()}`;
+    generatedAt.textContent = `Generated ${new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'})}`;
   }
 
   function showError(error) {

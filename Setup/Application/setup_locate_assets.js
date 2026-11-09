@@ -46,7 +46,7 @@ function installMapReturnState(map, layers, doc, win, storage) {
     EMPTY: 'assets/container-empty.svg'
   };
   const year = document.getElementById('asset-year');
-  year.value = new Date().getFullYear();
+  year.value = Number(new Intl.DateTimeFormat('en-US', {timeZone: 'America/Chicago', year: 'numeric'}).format(new Date()));
   const status = document.getElementById('asset-status');
   const unlocated = document.getElementById('asset-unlocated');
   const refresh = document.getElementById('asset-refresh');

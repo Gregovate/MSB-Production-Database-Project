@@ -448,11 +448,8 @@ function board205CrewSequence(crewId) {
 }
 
 function board205TodayKey() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  // All board boundaries use the park's date, not the browser timezone.
+  return nextSetupLocalDate();
 }
 
 function board205DayAssignments(day) {
@@ -474,15 +471,15 @@ function board205CalendarMonthStart() {
   if (setupBoard205State.workDayCalendarMonth) {
     return new Date(setupBoard205State.workDayCalendarMonth + '-01T00:00:00Z');
   }
-  const today = new Date();
+  const today = nextSetupLocalDate();
   const seasonYear = Number(appState.seasonYear);
   const existing = (setupBoard205State.board.work_days || [])
     .map((day) => String(day.work_date || '').slice(0, 7))
     .filter((value) => value.startsWith(String(seasonYear) + '-'))
     .sort();
   const month = existing.at(-1)
-    || (today.getUTCFullYear() === seasonYear
-      ? String(seasonYear) + '-' + String(today.getUTCMonth() + 1).padStart(2, '0')
+    || (Number(today.slice(0, 4)) === seasonYear
+      ? today.slice(0, 7)
       : String(seasonYear) + '-01');
   setupBoard205State.workDayCalendarMonth = month;
   return new Date(month + '-01T00:00:00Z');
@@ -1026,7 +1023,7 @@ function board205AuditWhen(value) {
   if (!value) return 'unknown time';
   if (typeof formatTimestamp === 'function') return formatTimestamp(value);
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString();
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('en-US', {timeZone: 'America/Chicago'});
 }
 
 function board205AuditLine(task) {
@@ -2570,11 +2567,12 @@ function board205OpenHistoricalDayCorrection() {
 
   form.reset();
   const today = board205TodayDateKey();
-  const maxDate = new Date(today + 'T00:00:00');
-  maxDate.setDate(maxDate.getDate() - 1);
-  const year = maxDate.getFullYear();
-  const month = String(maxDate.getMonth() + 1).padStart(2, '0');
-  const day = String(maxDate.getDate()).padStart(2, '0');
+  // Calendar arithmetic only: keep the Chicago date literal across DST.
+  const maxDate = new Date(today + 'T00:00:00Z');
+  maxDate.setUTCDate(maxDate.getUTCDate() - 1);
+  const year = maxDate.getUTCFullYear();
+  const month = String(maxDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(maxDate.getUTCDate()).padStart(2, '0');
   date.max = `${year}-${month}-${day}`;
   note.value = '';
   dialog.showModal();
@@ -4133,7 +4131,7 @@ function board205InstallView() {
     <dialog id="setup-board205-historical-day-dialog" class="setup-board205-dialog">
       <form id="setup-board205-historical-day-form">
         <h3>Add Historical Work Day</h3>
-        <p class="muted">Manager correction only. Normal + Add Work Days stays future-only. Use this when a real past Setup date was omitted or needs to be restored for correction.</p>
+        <p class="muted">Manager correction only. Use + Add Work Days for today or future dates. Use this when a real past Setup date was omitted or needs to be restored for correction.</p>
         <label>Past work date<input id="setup-board205-historical-day-date" type="date" required></label>
         <label>Correction note <span class="muted">(optional)</span><textarea id="setup-board205-historical-day-note" rows="3" placeholder="e.g. Restored to record why the day was removed"></textarea></label>
         <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Add Historical Day</button></menu>

@@ -350,7 +350,7 @@ function logMovement(type, description) {
   state.movement.events.unshift({
     type,
     description,
-    at: new Date().toLocaleString()
+    at: new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'})
   });
 }
 

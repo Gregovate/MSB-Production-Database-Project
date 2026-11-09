@@ -1,10 +1,10 @@
 'use strict';
 
-const CACHE_NAME = 'msb-setup-record-location-v23-controller';
+const CACHE_NAME = 'msb-setup-record-location-v24-local-calendar';
 const SHELL = [
   './',
   'assets/setup_record_location.css?v=2026-10-10.62',
-  'assets/setup_record_location.js?v=ctrl077-2026-10-10.62',
+  'assets/setup_record_location.js?v=2026-11-08.106',
   'location-references.json'
 ];
 

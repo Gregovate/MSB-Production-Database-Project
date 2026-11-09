@@ -85,7 +85,7 @@
 
   function seasonYear() {
     const raw = Number(new URLSearchParams(location.search).get('season_year'));
-    return Number.isInteger(raw) && raw > 2000 ? raw : new Date().getFullYear();
+    return Number.isInteger(raw) && raw > 2000 ? raw : Number(new Intl.DateTimeFormat('en-US', {timeZone: 'America/Chicago', year: 'numeric'}).format(new Date()));
   }
 
   function uuid() {
