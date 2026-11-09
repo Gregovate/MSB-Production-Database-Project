@@ -50,7 +50,7 @@ candidate SHA/ref and matching version; allocation remains **8898**. Use its
 existing parameters:
 
 - MigrationPaths: `Setup/Database/079_fix_setup_local_calendar_boundaries.sql`
-- ValidationPaths: `Setup/Database/validation/079_setup_local_calendar_validation.sql`
+- ValidationPaths: `Setup/Acceptance/setup_122_local_calendar_validation.sql`
 - PreviewProfile: Setup
 
 Do not run a second dump/clone between database checks and browser review.
@@ -83,3 +83,13 @@ Production classification is DATABASE-CHANGING. After exact candidate review,
 use existing Server Management maintenance/freeze/validated snapshot/migration/
 return-to-service procedure. Source-only installers cannot deploy this fix.
 No Production permission, merge, deployment or actual report save is claimed.
+
+## Runnable handoff correction
+
+PR478 contains the copy/paste PowerShell preparation and preview command pinned
+to the current handoff commit. Validation resides in Setup/Acceptance because
+that is the existing launcher's approved validation boundary. Do not broaden
+the runner allowlist. Preparation creates a separate review worktree and branch,
+checks the fetched SHA, and leaves the primary checkout untouched. Stop on any
+failure. Keep PowerShell open through BROWSER REVIEW READY and CLEAN EXIT.
+The PR also contains cleanup commands; run those only after CLEAN EXIT.
