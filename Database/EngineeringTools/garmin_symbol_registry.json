@@ -1,0 +1,34 @@
+{
+  "symbols": [
+    {
+      "type": "Panel",
+      "source": "panel.png",
+      "symbol": "PANEL"
+    },
+    {
+      "type": "OUT-Combo",
+      "source": "outlet-combo.png",
+      "symbol": "Outlet_Combo"
+    },
+    {
+      "type": "Stage",
+      "source": "stage.png",
+      "symbol": "Stage"
+    },
+    {
+      "type": "LP-Combo",
+      "source": "lp-combo.png",
+      "symbol": "LP_Combo"
+    },
+    {
+      "type": "LP-Power",
+      "source": "lp-outlet.png",
+      "symbol": "LP_Power"
+    },
+    {
+      "type": "LP-Network",
+      "source": "lp-network.png",
+      "symbol": "LP_Network"
+    }
+  ]
+}

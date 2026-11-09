@@ -87,7 +87,7 @@ def candidate_paths(park, local, extras, warnings):
                     listed.add(key)
                     yield path
 
-    for base in [Path(park) / "MSB GIS" / "Symbols" / "png", Path(local)]:
+    for base in [Path(park) / "MSB GIS" / "Symbol Library" / "png", Path(local)]:
         if not base.is_dir():
             warnings.append("Unavailable output/reference root: " + str(base))
             continue

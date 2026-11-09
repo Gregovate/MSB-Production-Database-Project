@@ -15,7 +15,7 @@ if not exist "%MSB_ICON_ARTWORK%" (
   pause
   exit /b 1
 )
-powershell.exe -NoProfile -Command "$desk=[Environment]::GetFolderPath('Desktop'); if (-not (Test-Path -LiteralPath $desk)) { throw 'Desktop folder is unavailable' }; $p=Join-Path $desk 'MSB Icon Library Manager.lnk'; $sh=New-Object -ComObject WScript.Shell; $lnk=$sh.CreateShortcut($p); $lnk.TargetPath=$env:MSB_ICON_LAUNCHER; $lnk.WorkingDirectory=Split-Path -Parent $env:MSB_ICON_LAUNCHER; $lnk.Description='Manage MSB GIS Icons from controlled Shared Drive source'; $lnk.IconLocation=$env:MSB_ICON_ARTWORK+',0'; $lnk.Save(); Write-Host ('Desktop shortcut created: '+$p)"
+powershell.exe -NoProfile -Command "$desk=[Environment]::GetFolderPath('Desktop'); if (-not (Test-Path -LiteralPath $desk)) { throw 'Desktop folder is unavailable' }; $p=Join-Path $desk 'MSB Icon Library Manager.lnk'; $sh=New-Object -ComObject WScript.Shell; if (Test-Path -LiteralPath $p) { $backup=$p+'.backup-'+(Get-Date -Format 'yyyyMMdd-HHmmss'); Copy-Item -LiteralPath $p -Destination $backup -ErrorAction Stop; Write-Host ('Previous shortcut preserved: '+$backup) }; $lnk=$sh.CreateShortcut($p); $lnk.TargetPath=$env:MSB_ICON_LAUNCHER; $lnk.WorkingDirectory=Split-Path -Parent $env:MSB_ICON_LAUNCHER; $lnk.Description='Manage MSB GIS Icons from controlled Shared Drive source'; $lnk.IconLocation=$env:MSB_ICON_ARTWORK+',0'; $lnk.Save(); Write-Host ('Desktop shortcut created: '+$p)"
 if errorlevel 1 (
   echo Shortcut installation failed. No source assets were changed.
   pause

@@ -26,7 +26,7 @@ Previewing icons and updating a user's local ExpertGPS PNGs are separate non-web
 ## Before You Start
 
 1. On the administrator's authorized Windows PC, update the normal Git checkout and launch the Desktop **MSB Icon Library Manager** using [Install or Update the Manager](Install_or_Update_MSB_Icon_Library_Manager.md).
-2. Confirm the intended approved source on the Shared Drive is `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain`. These are exported Plain SVGs, not editable Inkscape Masters or a Downloads ZIP.
+2. Confirm the intended approved source on the Shared Drive is `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbol Library\Plain`. These are exported Plain SVGs, not editable Inkscape Masters or a Downloads ZIP.
 3. Ensure that any intentional source edits have been saved as Plain SVG, and that the images look right. Do not publish because of a timestamp warning alone.
 4. Confirm the existing intended Synology destination is `\\192.168.5.4\webassets\images\symbols\msb-svg`, not `...\msb` (which is the separate legacy PNG/BMP folder).
 
