@@ -103,8 +103,24 @@ class SetupSchedulingBoardRepository:
                     wd.day_status,
                     wd.weather_note,
                     wd.volunteer_note,
-                    wd.notes
+                    wd.notes,
+                    COALESCE(actual.report_count, 0)::integer
+                        AS actual_date_report_count,
+                    COALESCE(actual.person_minutes, 0)::bigint
+                        AS actual_date_person_minutes
                 FROM ops.setup_work_day wd
+                -- The date labor was physically performed is NOT necessarily
+                -- the original scheduled assignment date. This separate
+                -- read-only projection preserves assignment history and reports.
+                LEFT JOIN LATERAL (
+                    SELECT COUNT(*) AS report_count,
+                           SUM(p.crew_count * p.duration_minutes) AS person_minutes
+                    FROM ops.setup_task_progress p
+                    JOIN ops.setup_session_task st
+                      ON st.setup_session_task_id = p.setup_session_task_id
+                    WHERE st.setup_session_id = wd.setup_session_id
+                      AND p.performed_on = wd.work_date
+                ) actual ON TRUE
                 WHERE wd.setup_session_id = %s
                 ORDER BY wd.work_date, wd.setup_day_number, wd.setup_work_day_id
                 """,
