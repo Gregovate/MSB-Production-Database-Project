@@ -885,6 +885,9 @@ function installNextTabs() {
           <input id="next-perform-show-completed" type="checkbox">
           Show completed
         </label>
+        <label>Find Setup task / Stage
+          <input type="search" id="next-perform-task-search" placeholder="Task, Stage, or assignment #" autocomplete="off" aria-label="Find scheduled Setup work">
+        </label>
         <span id="next-perform-filter-summary" class="muted"></span>
       <button id="next-perform-back-to-top" type="button" class="small secondary">↑ Back to top / Navigation</button>
       <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
