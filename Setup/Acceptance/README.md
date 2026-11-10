@@ -1,3 +1,9 @@
+## November 8 local-calendar blocker candidate
+
+[#122 DBG-2026-021 review scope](Setup_122_Local_Calendar_Candidate_2026-11-08.md)
+tracks V0.3.106-local-calendar, migration079, local regression, and the pending
+current-clone report-work/browser gates. This candidate is not deployed.
+
 ## November 3 completed-task follow-up candidate
 
 [Review scope and gates](Setup_205_Completed_Task_Followup_2026-11-03.md): completed tasks leave active late/report queues, partial tasks show progress, history stays intact. V0.3.105 adds inline Captain selection while scheduling; source-tested; protected browser acceptance and Production release pending. No migration or email send.

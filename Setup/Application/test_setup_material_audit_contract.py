@@ -347,7 +347,7 @@ def test_historical_restore_ui_uses_operator_names_and_zero_padded_containers() 
     html = read_app("material_audit.html")
     js = read_app("setup_material_audit.js")
 
-    assert "setup_material_audit.js?v=2026-09-28.3" in html
+    assert "setup_material_audit.js?v=2026-11-08.106" in html
     assert "function humanContainerId(value)" in js
     assert "padStart(3, '0')" in js
     assert "data-material-name" in js

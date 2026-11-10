@@ -421,7 +421,7 @@
     qs('summary-root').hidden = false;
     qs('summary-scope').textContent = summary.scope_label || summary.scope;
     qs('summary-count').textContent = String(summary.task_count ?? 0);
-    qs('summary-printed-at').textContent = new Date().toLocaleString();
+    qs('summary-printed-at').textContent = new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'});
     qs('verification-boundary').textContent = summary.verification_boundary || '';
 
     let warning = qs('disposable-warning');
@@ -531,7 +531,7 @@
   qs('stage-select').addEventListener('change', refreshSceneOptions);
   qs('load-summary').addEventListener('click', loadSummary);
   qs('print-summary').addEventListener('click', () => {
-    qs('summary-printed-at').textContent = new Date().toLocaleString();
+    qs('summary-printed-at').textContent = new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'});
     window.print();
   });
 

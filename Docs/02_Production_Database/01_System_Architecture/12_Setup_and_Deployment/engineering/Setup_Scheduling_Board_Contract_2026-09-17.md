@@ -10,6 +10,73 @@
 | Related Work | #122, #132, #145 (complete), #172, #175, #205 |
 | Historical Implementation Branch | `agent/setup-205-scheduling-board` |
 
+## Local calendar authority — DBG-2026-021 (2026-11-08)
+
+**Established requirement: all MSB operator dates/times and business calendar
+boundaries use America/Chicago, including DST.** Host, PostgreSQL connection,
+and browser timezone defaults are not business authority. This is a defect
+correction under #122/#205 with #132 reporting, not a new timezone preference.
+
+Normal Work Day creation accepts today and later; Historical Day correction
+accepts strictly earlier dates. Report Work and Manager correction accept actual
+work dates through today, never tomorrow. All three boundaries must agree.
+Date-only work_date/performed_on values stay literal calendar dates; never shift
+or rewrite them. Instant transport/storage may remain timezone-aware UTC;
+operator presentation converts instants to Chicago. UTC arithmetic used solely
+to preserve date-only values is not UTC business-day classification.
+
+At 2026-11-09T01:30Z, the business date is 2026-11-08 (19:30 CST).
+The existing Chicago browser helper permits November8, while migration069's
+session-dependent current_date insert guard rejects it in a UTC session.
+Historical UI correctly caps entry at November7, leaving no valid entry route.
+This source mismatch is confirmed at main 897a9ab1175402adcfc3ac12223830f3b9bbd663;
+live TimeZone/function settings still require read-only verification.
+
+### Implementation boundary
+
+- Add a new migration; do not rerun/edit installed 061/069. Pin TimeZone on the
+  four existing insert/historical/report/correction functions to America/Chicago.
+  Preserve their bodies, signatures, owners, ACLs, SECURITY DEFINER/search_path,
+  management/crew checks, auditing, history locks and transaction behavior.
+  Function-scoped configuration restores the caller setting on return and
+  avoids changing global PostgreSQL, role, database or service configuration.
+- Use an explicit Chicago-aware Python date for both report API validators.
+  Use explicit Chicago dates in material-readiness and audit-season queries.
+- Reuse existing Chicago browser date logic; correct remaining host-dependent
+  board dates/countdowns, standalone pick-date defaults, season defaults and
+  displayed timestamps. Preserve timezone-aware movement/offline payloads.
+- Historical dialog copy must say normal entry includes today. Preserve input
+  on rejection. No relabeling today's actual work as yesterday or tomorrow.
+- Preserve existing reports/assignments and actual-date reporting independently
+  of the original scheduled date. No bulk repair is authorized by this change;
+  other reported entry discrepancies require per-record evidence.
+
+### Required acceptance and release
+
+Test the same instant with UTC and Chicago hosts/connections and a non-Chicago
+browser. Cover winter UTC rollover (Nov8 19:30 CST), summer rollover, immediately
+before/after Chicago midnight, both DST transitions and the local year boundary.
+Normal insertion must accept today/tomorrow and reject yesterday; historical
+must accept yesterday and reject today/tomorrow; reports/corrections accept
+today and reject tomorrow. Include a Sunday (the reported Nov8 case); warnings
+must not become a prohibition on recording actual work.
+
+On one current-Production disposable clone: create the missing local day,
+confirm one default Crew A, assign legitimate clone-only test work/captain,
+record actual crew/minutes/progress/note on that day, reload and prove the
+saved date and history. Test an existing assignment with a different actual
+work date without moving the original assignment. Retry/duplicate-day behavior,
+authorization, historical audit and partial-work continuation remain protected.
+Compare business/history fingerprints across migration: configuration-only SQL
+must not rewrite any business rows. Inspect function proconfig/ACLs before/after.
+
+Use the existing reusable Setup disposable launcher, port8898, and the same
+prepared clone through browser review. Candidate must carry a distinct matching
+client/server release identity. This is DATABASE-CHANGING because functions
+change: existing Server Management maintenance/freeze/snapshot/migration/ONLINE
+procedure applies only after exact candidate review and explicit deployment
+authorization. No Production deployment or operator acceptance is asserted here.
+
 ## Purpose
 
 Define the annual Setup Scheduling Board as the rolling dispatch and historical-learning layer between the reusable Setup Catalog and field execution.
@@ -911,3 +978,26 @@ Scheduling requires an operator estimate of time, minimum crew size and effort. 
 Keep the existing rescheduling badge colors and priority ordering. Badge text is NEEDS RESCHEDULING — <percentage>% COMPLETE, or NEEDS RESCHEDULING — WORK INCOMPLETE if unavailable. Remove the redundant PRIORITY CONTINUATION banner. KPIs remain deferred by operator direction.
 
 Historical exception: the existing database rejects edits to annual planning once actual work exists. Such continuation tasks remain schedulable with an explicit missing-estimate warning; enforcing new estimates there requires separately governed support and is not silently bypassed in this UI-only release.
+
+
+## November 9 PR478 — bounded governed release after local-calendar acceptance
+
+The accepted V0.3.106 browser review and migration 079 are **DATABASE-CHANGING**,
+even though the migration only adds function-local America/Chicago TimeZone
+settings to four existing commands. Preserve every command body, owner, ACL,
+existing configuration and all annual/report/audit rows. A passing preview or
+source merge must not be mistaken for live installation.
+
+Deploy migration 079 with the **existing** Server Management #37 maintenance
+controller and `setup_maintenance_deploy.py`, using the PR478 exact-candidate
+release profile. Its immutable target/candidate/migration identifiers, current
+live Setup source, reviewed SQL and controller state must all pass first.
+Preflight is read-only; the approved mutation runs only after freeze proof and
+validated rollback snapshot. Validate source, function settings, original row
+fingerprints, health and ONLINE return before declaring server PASS. No
+calendar-date change authorizes rewriting historical labor reports.
+
+The related Perform Work QC/history search and `performed_on` labor-attribution
+findings remain independently owned by #205/#122; do not silently combine
+them into this already accepted date-migration release or require new reports
+to conceal stale historical exceptions.

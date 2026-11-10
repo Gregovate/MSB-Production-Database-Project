@@ -95,7 +95,7 @@ class SetupMaterialReadinessRepository:
                 WHERE wd.setup_session_id = %s
                   AND wd.day_status <> 'CANCELLED'
                   AND st.included_flag
-                  AND wd.work_date >= current_date
+                  AND wd.work_date >= (now() AT TIME ZONE 'America/Chicago')::date
                 ORDER BY wd.work_date,
                          wd.setup_day_number,
                          CASE wdt.shift_code

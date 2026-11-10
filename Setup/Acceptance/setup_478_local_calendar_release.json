@@ -1,0 +1,11 @@
+{
+  "profile": "478-local-calendar",
+  "release_tag": "PR478-Local-Calendar",
+  "candidate": "df5aedd897aa967e1c567dd9d53e40da1712f308",
+  "target": "e1d5c9d9d5ef5a8c59f0381ea559d240aed1c30b",
+  "tree": "277db87d435421f8c45af480ffe341b5eb6837f9",
+  "old_setup": "85769c951429cec6faa1ed8ae627501bb8ba028b",
+  "version": "V0.3.106-local-calendar",
+  "migration": "Setup/Database/079_fix_setup_local_calendar_boundaries.sql",
+  "migration_blob": "9e0b193a02b88141f91d2804c3af449c709b8412"
+}
