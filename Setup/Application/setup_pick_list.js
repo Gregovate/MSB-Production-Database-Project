@@ -49,11 +49,11 @@
   }
 
   function todayIso() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const part = name => parts.find(item => item.type === name).value;
+    return `${part('year')}-${part('month')}-${part('day')}`;
   }
 
   function noSundayPickDate(value) {
@@ -286,7 +286,7 @@
   function formatObservedAt(value) {
     if (!value) return '';
     const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString();
+    return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('en-US', {timeZone: 'America/Chicago'});
   }
 
   function formatDate(value) {
@@ -801,7 +801,7 @@
     const date = dateFilter.value;
     const items = renderItems(date);
     renderSummary(date);
-    generatedAt.textContent = `Generated ${new Date().toLocaleString()}`;
+    generatedAt.textContent = `Generated ${new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'})}`;
     statusLine.textContent = readiness.session
       ? `Live ${readiness.session.season_year} schedule → physical Pick List.`
       : 'No Setup Session exists for this season.';

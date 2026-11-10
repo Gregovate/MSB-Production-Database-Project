@@ -38,7 +38,7 @@
   function formatDate(value) {
     if (!value) return '';
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('en-US', {timeZone: 'America/Chicago'});
   }
   async function api(path, options = {}) {
     const response = await fetch(appUrl(path), {

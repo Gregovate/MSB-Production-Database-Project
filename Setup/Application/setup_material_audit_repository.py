@@ -60,7 +60,7 @@ class SetupMaterialAuditRepository:
                 """
                 SELECT coalesce(
                     max(ss.season_year),
-                    extract(year from current_date)::integer
+                    extract(year from (now() AT TIME ZONE 'America/Chicago')::date)::integer
                 )
                 FROM ops.setup_session AS ss
                 """

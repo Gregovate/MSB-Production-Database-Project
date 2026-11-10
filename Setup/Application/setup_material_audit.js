@@ -367,7 +367,7 @@
   function dispositionText(row) {
     if (!row.disposition_active) return '<span class="muted">None</span>';
     const who = row.disposition_reviewed_by || `Person ${row.reviewed_by_person_id || ''}`;
-    const when = row.disposition_reviewed_at ? new Date(row.disposition_reviewed_at).toLocaleString() : '';
+    const when = row.disposition_reviewed_at ? new Date(row.disposition_reviewed_at).toLocaleString('en-US', {timeZone: 'America/Chicago'}) : '';
     return `<strong>Reviewed shared/non-task</strong><div class="muted">${esc(who)}${when ? ` · ${esc(when)}` : ''}</div>${row.disposition_note ? `<div>${esc(row.disposition_note)}</div>` : ''}`;
   }
 
