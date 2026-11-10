@@ -55,3 +55,18 @@ def test_existing_feedback_intake_remains_authoritative():
     assert "api/setup/session-tasks/${sessionTaskId}/correction-intake" in SOURCE
     assert "Submitted to Work Order Intake #" in SOURCE
     assert "openNextCorrectionIntake(details)" in SOURCE
+
+
+def test_actual_local_date_labor_is_separate_from_scheduled_occurrence():
+    repo_source = (Path(__file__).with_name(
+        "setup_scheduling_board_repository.py"
+    )).read_text(encoding="utf-8")
+    assert "p.performed_on = wd.work_date" in repo_source
+    assert "st.setup_session_id = wd.setup_session_id" in repo_source
+    assert "actual_date_person_minutes" in repo_source
+    assert "actual_date_report_count" in repo_source
+    render = _section("function renderNextExecution() {", "async function printNextPerformTask(")
+    assert "const actualDayHours" in render
+    assert "const assignmentHours" in render
+    assert "person-hours performed on" in render
+    assert "person-hours linked to scheduled assignments" in render
