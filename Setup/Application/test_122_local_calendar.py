@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import os
 import subprocess
+import shutil
 
 import pytest
 from flask import Flask
@@ -86,7 +87,12 @@ global.Date = class extends RealDate {
     for call in checks:
         script += 'assert.equal('+call+', expected);'
     script += '}'
-    subprocess.run(['node', '-e', script], env={**os.environ, 'TZ': browser_zone}, check=True)
+    # The disposable browser-preview host is not required to have Node.js.
+    # CI executes the real JavaScript date helpers when Node is available.
+    node = shutil.which('node')
+    if node is None:
+        pytest.skip('Node unavailable in this runtime; CI executes local-calendar JavaScript regressions')
+    subprocess.run([node, '-e', script], env={**os.environ, 'TZ': browser_zone}, check=True)
 
 
 def test_migration_is_function_scoped_and_preserves_command_bodies():
