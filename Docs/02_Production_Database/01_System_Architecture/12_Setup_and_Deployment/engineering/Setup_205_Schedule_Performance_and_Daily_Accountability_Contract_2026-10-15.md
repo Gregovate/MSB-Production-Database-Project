@@ -915,3 +915,28 @@ the exact client error, role, date and assignment are not yet verified.
 PR #478 local-calendar correction remains a separate database-changing release.
 Do not infer that successful #205 presentation review resolves Rick's failure,
 authorize Production installation or close these QC/reporting gaps.
+
+
+## November 10 — Read-only actual-date labor versus scheduled assignment labor
+
+Production Report Work records independently preserve `performed_on` (the actual
+local work date), scheduled Work Day/shift and stable assignment identity. A
+report entered for November 8 against a November 7 assignment belongs to the
+original assignment history but must still count in November 8 **actual labor**.
+Do not move, rewrite, duplicate or manufacture work reports to force the
+Planning Board's scheduled-occurrence totals to match calendar dates.
+
+The Scheduling Board repository provides two distinct read-only measures:
+- `work_report_count` / `actual_person_minutes` per original assignment,
+  retaining the legacy exact assignment and day/task/shift fallback;
+- `actual_date_report_count` / `actual_date_person_minutes` for a Work Day's
+  `work_date`, matched by `ops.setup_task_progress.performed_on` and current
+  `ops.setup_session_task.setup_session_id`.
+
+Perform Work must label these totals separately, including Captain-scoped
+scheduled-assignment figures versus **all-crew** actual-work-date figures.
+Do not label schedule-linked labor as exclusively performed that day. A work
+report for a date without a Work Day still retains its `performed_on` record;
+adding an assignment later does not automatically rewrite the original
+assignment identity. Any future unscheduled-work calendar summary requires
+separate reviewed requirements and tests.
