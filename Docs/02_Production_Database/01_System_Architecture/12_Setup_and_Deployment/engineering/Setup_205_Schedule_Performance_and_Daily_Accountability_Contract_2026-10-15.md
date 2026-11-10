@@ -877,3 +877,41 @@ Code reconnaissance: nextOpenRescheduleNoWorkDialog() builds its day/crew option
 Greg requested inline day staffing during the completed-task follow-up browser review. In Schedule Annual Task, keep existing day crews and add “+ Add captain to this day”. Show the existing authorized Captain picker only for this choice. Save creates the destination crew, assigns the selected Captain, and places the task in the same existing `crews/with-tasks` transaction. Cancel writes nothing. Existing day crews remain selectable; a Captain already on the day is routed to that crew rather than intentionally duplicated. Greg clarified that a selected Captain counts as one person: a new crew defaults to 1, editable to the total expected crew including the Captain. Save its selected-period count in the same transaction. Existing crew counts are shown without overwriting shared staffing; blank remains unknown.
 
 For a single assignment moved through this dialog, an optional explicit `assignment_shift` allows the chosen AM/PM period in that transaction. Validate one existing assignment and AM/PM at API and repository boundaries. Omitted override preserves original server-read shifts for drag groups and no-work rescheduling. Historical report locks, Manager authorization, command protection and audited SQL remain authoritative. No migration. Preserve all completed-task follow-up corrections. Candidate V0.3.105-inline-captain; browser acceptance pending.
+
+
+## November 9, 2026 — Urgent Perform Work history navigation and QC feedback (candidate)
+
+The 2026 Production Manager cannot reliably locate an original Setup work
+assignment behind expanded late-report warnings, historical Captain/date filters,
+or completed-task visibility settings. A QC discovery must not be mistaken for an
+unreported shift, and a missing work report does not prove work occurred.
+
+A narrow read-only presentation correction in #205 must:
+- collapse past-assignment warning details by default, retaining the exact count,
+  scheduled date, shift, Captain, annual task and stable assignment identity;
+- support finding existing scheduled task/Stage/Scene/assignment history across
+  old and completed records, independent of the current Captain and completed
+  visibility filters during explicit search;
+- open the exact selected historical assignment without silently submitting a
+  new report, rewriting an old work date or modifying completion;
+- expose the existing authorized #172 Task Feedback/Report Correction action
+  once that exact context has been loaded.
+
+These presentation improvements do NOT constitute a Display-first QC index.
+The Production Manager also needs an existing-authority Display-ID-based lookup
+that can show the candidate Setup installation and FieldWiring steps, reporters,
+actual work dates, full notes, Captains and original report history. Never infer
+who physically performed wiring from a reporter's identity, and never silently
+link a QC finding to a guessed task. Where the owning step cannot be identified,
+preserve the exact Display finding with the association unresolved.
+
+#172 continues to produce a Work Order Intake item for Manager triage, not an
+automatically activated Work Order. Preserve actual QC observations, correction
+and independent retest evidence in the established Work Management lifecycle;
+a Setup completion percentage is not show-readiness acceptance.
+
+P0 independent investigation: Rick Hoffmann reported inability to submit work;
+the exact client error, role, date and assignment are not yet verified.
+PR #478 local-calendar correction remains a separate database-changing release.
+Do not infer that successful #205 presentation review resolves Rick's failure,
+authorize Production installation or close these QC/reporting gaps.
