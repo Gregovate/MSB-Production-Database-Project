@@ -114,24 +114,25 @@
 
   function applyPerformSearch() {
     const target = document.getElementById('next-perform-list');
-    if (!target) return;
+    if (!target || typeof setupNextState === 'undefined') return;
     const query = searchQuery();
-    const tasksById = sessionTaskMap();
-    const rows = [...target.querySelectorAll('.next-perform-task')];
-    const visibleRows = [];
 
-    rows.forEach((row) => {
-      const task = tasksById.get(Number(row.dataset.sessionTaskId)) || null;
-      const show = !query || taskMatchesSearch(task, query);
-      setSearchVisible(row, show);
-      if (show) visibleRows.push(row);
-    });
+    // The full Perform Work renderer owns which assignments and historical
+    // warnings exist; merely hiding task cards leaves unrelated red banners.
+    if (String(setupNextState.performTaskSearch || '').trim().toLowerCase() !== query) {
+      setupNextState.performTaskSearch = query;
+      renderNextExecution();
+      return;
+    }
 
-    syncFlatStageScopeHeadings(target, visibleRows);
+    // Clear stale CSS hiding from older searches. The renderer already filtered
+    // the complete day/shift/assignment and late-report population.
+    const visibleRows = [...target.querySelectorAll('.next-perform-task')];
+    visibleRows.forEach(row => setSearchVisible(row, true));
     renderEmptySearchState(
       target,
       'setup-perform-search-empty',
-      'No Perform Work tasks match this search.',
+      'No Perform Work assignments match this search.',
       visibleRows.length
     );
   }
