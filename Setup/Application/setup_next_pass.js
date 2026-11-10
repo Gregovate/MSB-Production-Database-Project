@@ -1213,11 +1213,10 @@ function nextFilterPerformAssignments(assignments) {
     return assignments.filter((assignment) => {
       const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
       const crew = nextPerformCrew(assignment);
-      const stageNames = (setupNextState.performBoard?.tasks || [])
-        .filter(peer => Number(peer.stage_id) === Number(task.stage_id) && task.stage_id != null)
-        .map(peer => peer.task_name || '');
+      // Search the individual task and its own Stage/Scene, not every sibling
+      // task in the same Stage: QC needs the correct step, not extra matches.
       const text = [task.task_name, assignment.task_name, task.stage_name,
-        task.stage_key, task.scene_name, ...stageNames, assignment.setup_session_task_id,
+        task.stage_key, task.scene_name, assignment.setup_session_task_id,
         assignment.setup_work_day_task_id, crew?.captain_display_name,
         crew?.crew_code, assignment.work_date].join(' ').toLowerCase();
       return terms.every(term => text.includes(term));
