@@ -978,3 +978,26 @@ Scheduling requires an operator estimate of time, minimum crew size and effort. 
 Keep the existing rescheduling badge colors and priority ordering. Badge text is NEEDS RESCHEDULING — <percentage>% COMPLETE, or NEEDS RESCHEDULING — WORK INCOMPLETE if unavailable. Remove the redundant PRIORITY CONTINUATION banner. KPIs remain deferred by operator direction.
 
 Historical exception: the existing database rejects edits to annual planning once actual work exists. Such continuation tasks remain schedulable with an explicit missing-estimate warning; enforcing new estimates there requires separately governed support and is not silently bypassed in this UI-only release.
+
+
+## November 9 PR478 — bounded governed release after local-calendar acceptance
+
+The accepted V0.3.106 browser review and migration 079 are **DATABASE-CHANGING**,
+even though the migration only adds function-local America/Chicago TimeZone
+settings to four existing commands. Preserve every command body, owner, ACL,
+existing configuration and all annual/report/audit rows. A passing preview or
+source merge must not be mistaken for live installation.
+
+Deploy migration 079 with the **existing** Server Management #37 maintenance
+controller and `setup_maintenance_deploy.py`, using the PR478 exact-candidate
+release profile. Its immutable target/candidate/migration identifiers, current
+live Setup source, reviewed SQL and controller state must all pass first.
+Preflight is read-only; the approved mutation runs only after freeze proof and
+validated rollback snapshot. Validate source, function settings, original row
+fingerprints, health and ONLINE return before declaring server PASS. No
+calendar-date change authorizes rewriting historical labor reports.
+
+The related Perform Work QC/history search and `performed_on` labor-attribution
+findings remain independently owned by #205/#122; do not silently combine
+them into this already accepted date-migration release or require new reports
+to conceal stale historical exceptions.
