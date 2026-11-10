@@ -17,7 +17,8 @@ const setupNextState = {
   performAssignmentMode: true,
   performCaptainFilter: null,
   performCaptainFilterKey: null,
-  performCaptainFilterTouched: false
+  performCaptainFilterTouched: false,
+  performTaskSearch: ''
 };
 
 // Catalog drag scrolling is independent of the Scheduling Board's pane scroll.
@@ -1054,6 +1055,9 @@ function nextEnsurePerformToolbar() {
         <input id="next-perform-show-completed" type="checkbox">
         Show completed
       </label>
+      <label>Find Setup task / Stage
+        <input type="search" id="next-perform-task-search" placeholder="Task, Stage, or assignment #" autocomplete="off" aria-label="Find scheduled Setup work">
+      </label>
       <span id="next-perform-filter-summary" class="muted"></span>
       <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
     `;
@@ -1067,6 +1071,16 @@ function nextEnsurePerformToolbar() {
       (tabs || document.querySelector('header') || document.body)
         .scrollIntoView({block:'start', behavior:'smooth'});
       window.scrollTo({top:0,behavior:'smooth'});
+    });
+  }
+  const search = el('next-perform-task-search');
+  if (search && search.dataset.performSearchInstalled !== '1') {
+    search.dataset.performSearchInstalled = '1';
+    search.value = setupNextState.performTaskSearch || '';
+    search.addEventListener('input', () => {
+      setupNextState.performTaskSearch = search.value;
+      renderNextExecution();
+      el('next-perform-task-search')?.focus();
     });
   }
   const showCompleted = el('next-perform-show-completed');
@@ -1204,6 +1218,21 @@ function nextPerformCaptainScopedAssignments(assignments) {
 }
 
 function nextFilterPerformAssignments(assignments) {
+  const query = String(setupNextState.performTaskSearch || '').trim().toLowerCase();
+  if (query) {
+    // A Manager searching for QC history must see completed and historical steps,
+    // regardless of the Captain and Show completed filters. No data is modified.
+    const terms = query.split(/\s+/).filter(Boolean);
+    return assignments.filter((assignment) => {
+      const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
+      const crew = nextPerformCrew(assignment);
+      const text = [task.task_name, assignment.task_name, task.stage_name,
+        task.stage_key, task.scene_name, assignment.setup_session_task_id,
+        assignment.setup_work_day_task_id, crew?.captain_display_name,
+        crew?.crew_code, assignment.work_date].join(' ').toLowerCase();
+      return terms.every(term => text.includes(term));
+    });
+  }
   const showCompleted = Boolean(el('next-perform-show-completed')?.checked);
   return nextPerformCaptainScopedAssignments(assignments).filter((assignment) => (
     showCompleted || !nextAssignmentInactive(assignment, nextPerformTask(assignment.setup_session_task_id))
@@ -1931,18 +1960,33 @@ function nextDayStaffingSummary(assignments, crews, taskRows = []) {
 // or hidden-day expansion is required to discover an outstanding report.
 function nextLateWorkSummary(assignments, board) {
   const late = assignments.filter((item) => {
-    const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
-    return nextAssignmentLate(item, day?.work_date || item.work_date, (board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)));
+    const day = (board.work_days || []).find(d => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
+    const task = nextPerformTask(item.setup_session_task_id);
+    return nextAssignmentLate(item, day?.work_date || item.work_date, task);
   });
   if (!late.length) return '';
-  return `<section aria-label="Past assignments to review">${nextScheduleWarning(`${late.length} PAST ASSIGNMENTS TO REVIEW`)}${late.map((item) => {
-    const crew = (board.crews || []).find((c) => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
-    const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
-    const captain = crew?.captain_display_name || 'CAPTAIN TBD';
-    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(item.task_name || 'Task')}</strong> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
-  }).join('')}</section>`;
+  // Compact by default. Historical reporting exceptions are not a QC verdict,
+  // nor evidence that an annual task is unfinished.
+  return `<details class="next-late-review" style="border:1px solid #a55;padding:10px;margin:8px 0">
+    <summary style="cursor:pointer;font-weight:700">${late.length} past assignments need reporting review — expand details</summary>
+    <p class="muted">A missing assignment report does not mean the Display failed QC or that work was done. Check original activity before reporting.</p>
+    ${late.map(item => {
+      const crew = (board.crews || []).find(c => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
+      const day = (board.work_days || []).find(d => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
+      const task = nextPerformTask(item.setup_session_task_id) || item;
+      const captain = crew?.captain_display_name || 'Captain TBD';
+      const assignmentId = Number(item.setup_work_day_task_id);
+      const status = nextAssignmentReviewLabel(task);
+      return `<div style="padding:9px 2px;border-bottom:1px solid #ddd">
+        <strong>${escapeHtml(item.task_name || task.task_name || 'Task')}</strong>
+        · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')}
+        · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}
+        <div class="muted">${escapeHtml(captain)} · ${escapeHtml(status)}</div>
+        <button type="button" class="small next-late-report" data-assignment-id="${assignmentId}">Open exact assignment / Report Work</button>
+      </div>`;
+    }).join('')}
+  </details>`;
 }
-
 
 /* #205 Whole-Setup deadline dashboard. Read-only; annual tasks are counted once.
    A historical assignment report does not imply annual-task completion. */
@@ -2557,9 +2601,21 @@ function renderNextExecution() {
 
   target.querySelectorAll('.next-late-report').forEach((button) => {
     button.addEventListener('click', () => {
-      const details = [...target.querySelectorAll('details[data-assignment-id]')].find((item) => item.dataset.assignmentId === button.dataset.assignmentId);
-      details?.querySelector('.next-report-work')?.click();
-      details?.scrollIntoView({ block: 'center' });
+      // Do not silently do nothing when Captain/Show completed hides a card.
+      // Exact assignment ID is used; task name is never an identity key.
+      const id = button.dataset.assignmentId;
+      setupNextState.performTaskSearch = String(id);
+      const search = el('next-perform-task-search');
+      if (search) search.value = id;
+      renderNextExecution();
+      const details = [...target.querySelectorAll('details[data-assignment-id]')]
+        .find(item => item.dataset.assignmentId === id);
+      if (!details) {
+        setAlert('Assignment #' + id + ' could not be located. No report was created.', 'error');
+        return;
+      }
+      details.open = true;
+      details.scrollIntoView({ block: 'center' });
     });
   });
 
