@@ -940,3 +940,28 @@ report for a date without a Work Day still retains its `performed_on` record;
 adding an assignment later does not automatically rewrite the original
 assignment identity. Any future unscheduled-work calendar summary requires
 separate reviewed requirements and tests.
+
+
+## November 10 — Display-first QC history lookup, exact identity before feedback
+
+The authenticated, read-only `/api/setup/scheduling-board/qc-displays`
+search exposes permanent `ref.display.display_id` and human-readable
+Display name. It consults existing `ref.setup_task_display` for an
+**EXPLICIT_TASK_OWNER** relationship and otherwise lists relevant
+**STAGE_CANDIDATE** annual tasks. These candidates are not proof of who
+installed, wired, tested, or inspected a Display. Individual Task Feedback
+remains tied to the exact selected scheduled assignment and follows
+#172's existing Manager-triaged Work Order Intake process.
+
+No service may infer a work report, verified Display placement, inspected QC
+status, responsible individual or active Work Order from a Display search.
+Preserve the actual `performed_on` date, progress history, author and Captain.
+Unmatched Display or ambiguous task ownership must remain visible as such;
+do not create an unverified link or rewrite history to clear warnings.
+
+The initial interface shows Search Display matches alongside the existing
+global Perform Work search and provides selectable exact task history candidates.
+An independent Display-linked QC finding with **no** scheduled assignment
+is still a required workstream in #122/#172/#419 and is *not* implemented
+by this read-only lookup. Manager/Crew protected preview acceptance must
+exercise Stage-only and explicit-owner cases before release.
