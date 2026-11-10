@@ -1971,7 +1971,7 @@ function nextLateWorkSummary(assignments, board) {
   // Compact by default. Historical reporting exceptions are not a QC verdict,
   // nor evidence that an annual task is unfinished.
   return `<details class="next-late-review" style="border:1px solid #a55;padding:10px;margin:8px 0">
-    <summary style="cursor:pointer;font-weight:700">${late.length} past assignments need reporting review — expand details</summary>
+    <summary style="cursor:pointer;font-weight:700">${late.length} PAST ASSIGNMENTS TO REVIEW — expand details</summary>
     <p class="muted">A missing assignment report does not mean the Display failed QC or that work was done. Check original activity before reporting.</p>
     ${late.map(item => {
       const crew = (board.crews || []).find(c => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
