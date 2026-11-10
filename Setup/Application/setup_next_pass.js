@@ -2469,6 +2469,79 @@ function setup205WireActionCenter(root) {
   });
 }
 
+// #205 QC: only permanent Display IDs and explicit task ownership are
+// authoritative. Same-Stage results are candidates for operator selection.
+let nextQcLookupSequence = 0;
+async function nextQcDisplayLookup(target) {
+  const query = String(setupNextState.performTaskSearch || '').trim();
+  const holder = target.querySelector('.next-qc-display-results');
+  if (!holder) return;
+  const seq = ++nextQcLookupSequence;
+  if (query.length < 2) {
+    holder.innerHTML = '';
+    return;
+  }
+  try {
+    const result = await api('api/setup/scheduling-board/qc-displays?season_year='
+      + encodeURIComponent(appState.seasonYear) + '&q=' + encodeURIComponent(query));
+    if (seq !== nextQcLookupSequence || !holder.isConnected) return;
+    const items = result.displays || [];
+    if (!items.length) {
+      holder.innerHTML = '';
+      return;
+    }
+    const groups = new Map();
+    for (const item of items) {
+      const id = Number(item.display_id);
+      if (!groups.has(id)) groups.set(id, {display:item, steps:[]});
+      if (item.setup_session_task_id) groups.get(id).steps.push(item);
+    }
+    holder.innerHTML = '<section class="next-qc-display-lookup" style="border:1px solid #8299ac;border-radius:8px;padding:12px;margin:10px 0">'
+      + '<h3 style="margin:0 0 8px">Display matches for QC / work history</h3>'
+      + '<p class="muted">Exact Display identity is shown. Stage candidates do not prove who did the wiring. Select the correct Setup task before filing feedback.</p>'
+      + [...groups.values()].map(group => {
+        const d = group.display;
+        const ordered = group.steps.slice().sort((a,b) =>
+          Number(b.relationship === 'EXPLICIT_TASK_OWNER') - Number(a.relationship === 'EXPLICIT_TASK_OWNER'));
+        return '<div style="border-top:1px solid #ddd;padding:8px 0">'
+          + '<strong>' + escapeHtml(d.display_name) + '</strong> · Display #' + Number(d.display_id)
+          + ' · ' + escapeHtml(d.stage_name || d.stage_key || 'Stage unknown')
+          + (!ordered.length ? '<p class="muted">No Setup task mapping found. Do not guess the original work step.</p>' : '')
+          + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'
+          + ordered.slice(0,12).map(step =>
+            '<button type="button" class="small secondary next-qc-open-step" data-session-task-id="'
+            + Number(step.setup_session_task_id) + '">'
+            + escapeHtml(step.task_name || 'Setup task') + ' · '
+            + (step.relationship === 'EXPLICIT_TASK_OWNER' ? 'Explicit owner' : 'Stage candidate')
+            + ' · ' + Number(step.work_reports || 0) + ' work reports'
+            + '</button>').join('')
+          + '</div>' + (ordered.length > 12 ? '<p class="muted">Additional Stage candidates not displayed; narrow the task search.</p>' : '')
+          + '</div>';
+      }).join('') + '</section>';
+    holder.querySelectorAll('.next-qc-open-step').forEach(button => {
+      button.addEventListener('click', () => {
+        const id = String(button.dataset.sessionTaskId);
+        const search = el('setup-task-search');
+        if (search) search.value = id;
+        setupNextState.performTaskSearch = id;
+        renderNextExecution();
+        const card = target.querySelector('.next-perform-assignment[data-session-task-id="' + id + '"]');
+        if (card) {
+          card.open = true;
+          card.scrollIntoView({block:'center'});
+        } else {
+          setAlert('No scheduled assignment for this task is available. Preserve the QC finding; do not attach it to a different task.', 'error');
+        }
+      });
+    });
+  } catch (error) {
+    if (seq === nextQcLookupSequence && holder.isConnected) {
+      holder.innerHTML = '<p role="status">Display lookup unavailable: '
+        + escapeHtml(error.message || String(error)) + '</p>';
+    }
+  }
+}
+
 function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
@@ -2526,7 +2599,8 @@ function renderNextExecution() {
   } else {
     setup205WireManagementNavigation(target); // compatibility with older static fixtures
   }
-  target.innerHTML = (globalKpis ? '' : setup205DeadlineKpiHtml(board, appState.seasonYear)) +
+  target.innerHTML = '<div class="next-qc-display-results"></div>' +
+    (globalKpis ? '' : setup205DeadlineKpiHtml(board, appState.seasonYear)) +
     nextLateWorkSummary(query ? assignments : scopedAssignments, board) + (days.length ? days.map((day) => {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
@@ -2597,6 +2671,9 @@ function renderNextExecution() {
         </div>
       </section>`;
   }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>');
+
+  // Nonblocking lookup against existing reference data; does not write reports.
+  void nextQcDisplayLookup(target);
 
   target.querySelectorAll('.next-late-report').forEach((button) => {
     button.addEventListener('click', () => {
