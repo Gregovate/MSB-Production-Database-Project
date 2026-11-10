@@ -27,6 +27,7 @@ const ctx={console,Intl,Date,Number,String,Math,Set,Map,
   board205Task:taskFor,board205DayAssignments:()=>assignments,
   board205AssignmentsFor:()=>assignments,board205CrewSequence:()=>assignments,
   SETUP_BOARD205_TYPICAL_AM_MINUTES:180,
+  setupNextState:{performTaskSearch:''},
   appState:{access:{can_manage_setup:true}},
   setupAnnualMilestoneDates:()=>({setupComplete:new Date('2026-11-17T00:00:00Z')}),
   nextPerformCrew:()=>null,nextPerformPlannedCrew:()=>2,nextLaborHoursText:()=>2,
@@ -39,6 +40,12 @@ ctx.nextSetupLocalDate=()=> '2026-11-03';
 for(const name of ['board205DayViewState','board205ShowReportedTaskCards','board205ActiveAssignmentsFor','board205AmCapacity','board205ShiftWorkload'])load(schedule,name);
 assert.equal(ctx.setup205DeadlineKpiModel(board,2026).overdue.length,7);
 assert.equal(ctx.nextFilterPerformAssignments(assignments).length,7);
+ctx.setupNextState.performTaskSearch="John's Tree";
+assert.equal(ctx.nextFilterPerformAssignments(assignments).length,1,'search finds completed historical task');
+ctx.setupNextState.performTaskSearch="304";
+assert.equal(ctx.nextFilterPerformAssignments(assignments).length,1,'search finds exact assignment ID');
+ctx.setupNextState.performTaskSearch='';
+
 assert.equal(ctx.board205ActiveAssignmentsFor().length,7);
 assert.equal(ctx.board205ShiftWorkload(1,'MORNING').count,7);
 assert.equal(ctx.nextPerformShiftWorkload(assignments,'MORNING').count,7);
