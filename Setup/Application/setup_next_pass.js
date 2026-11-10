@@ -989,7 +989,7 @@ async function loadNextExecution() {
 }
 
 function nextPerformTask(sessionTaskId) {
-  return (setupNextState.performBoard.tasks || []).find(
+  return (setupNextState.performBoard?.tasks || []).find(
     (task) => Number(task.setup_session_task_id) === Number(sessionTaskId)
   ) || setupNextState.executionTasks.find(
     (task) => Number(task.setup_session_task_id) === Number(sessionTaskId)
