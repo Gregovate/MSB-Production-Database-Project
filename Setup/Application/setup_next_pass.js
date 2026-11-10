@@ -885,9 +885,6 @@ function installNextTabs() {
           <input id="next-perform-show-completed" type="checkbox">
           Show completed
         </label>
-        <label>Find Setup task / Stage
-          <input type="search" id="next-perform-task-search" placeholder="Task, Stage, or assignment #" autocomplete="off" aria-label="Find scheduled Setup work">
-        </label>
         <span id="next-perform-filter-summary" class="muted"></span>
       <button id="next-perform-back-to-top" type="button" class="small secondary">↑ Back to top / Navigation</button>
       <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
@@ -1058,9 +1055,6 @@ function nextEnsurePerformToolbar() {
         <input id="next-perform-show-completed" type="checkbox">
         Show completed
       </label>
-      <label>Find Setup task / Stage
-        <input type="search" id="next-perform-task-search" placeholder="Task, Stage, or assignment #" autocomplete="off" aria-label="Find scheduled Setup work">
-      </label>
       <span id="next-perform-filter-summary" class="muted"></span>
       <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
     `;
@@ -1074,16 +1068,6 @@ function nextEnsurePerformToolbar() {
       (tabs || document.querySelector('header') || document.body)
         .scrollIntoView({block:'start', behavior:'smooth'});
       window.scrollTo({top:0,behavior:'smooth'});
-    });
-  }
-  const search = el('next-perform-task-search');
-  if (search && search.dataset.performSearchInstalled !== '1') {
-    search.dataset.performSearchInstalled = '1';
-    search.value = setupNextState.performTaskSearch || '';
-    search.addEventListener('input', () => {
-      setupNextState.performTaskSearch = search.value;
-      renderNextExecution();
-      el('next-perform-task-search')?.focus();
     });
   }
   const showCompleted = el('next-perform-show-completed');
@@ -1229,8 +1213,11 @@ function nextFilterPerformAssignments(assignments) {
     return assignments.filter((assignment) => {
       const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
       const crew = nextPerformCrew(assignment);
+      const stageNames = (setupNextState.performBoard.tasks || [])
+        .filter(peer => Number(peer.stage_id) === Number(task.stage_id) && task.stage_id != null)
+        .map(peer => peer.task_name || '');
       const text = [task.task_name, assignment.task_name, task.stage_name,
-        task.stage_key, task.scene_name, assignment.setup_session_task_id,
+        task.stage_key, task.scene_name, ...stageNames, assignment.setup_session_task_id,
         assignment.setup_work_day_task_id, crew?.captain_display_name,
         crew?.crew_code, assignment.work_date].join(' ').toLowerCase();
       return terms.every(term => text.includes(term));
@@ -2489,7 +2476,11 @@ function renderNextExecution() {
   nextEnsurePerformToolbar();
   nextRenderPerformCaptainFilter();
   const allAssignments = (board.assignments || []).slice();
-  const scopedAssignments = nextPerformCaptainScopedAssignments(allAssignments);
+  // Global "Find task or Stage" is the single search source in every Setup view.
+  // Searching history deliberately overrides Captain and Show completed filters.
+  const query = String(document.getElementById('setup-task-search')?.value || '').trim();
+  setupNextState.performTaskSearch = query;
+  const scopedAssignments = query ? allAssignments : nextPerformCaptainScopedAssignments(allAssignments);
   const assignments = nextFilterPerformAssignments(allAssignments);
   const labor = nextPerformLaborKpis(scopedAssignments);
   const summary = el('next-perform-filter-summary');
@@ -2536,7 +2527,7 @@ function renderNextExecution() {
     setup205WireManagementNavigation(target); // compatibility with older static fixtures
   }
   target.innerHTML = (globalKpis ? '' : setup205DeadlineKpiHtml(board, appState.seasonYear)) +
-    nextLateWorkSummary(scopedAssignments, board) + (days.length ? days.map((day) => {
+    nextLateWorkSummary(query ? assignments : scopedAssignments, board) + (days.length ? days.map((day) => {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
     );
@@ -2608,7 +2599,7 @@ function renderNextExecution() {
       // Exact assignment ID is used; task name is never an identity key.
       const id = button.dataset.assignmentId;
       setupNextState.performTaskSearch = String(id);
-      const search = el('next-perform-task-search');
+      const search = el('setup-task-search');
       if (search) search.value = id;
       renderNextExecution();
       const details = [...target.querySelectorAll('details[data-assignment-id]')]
