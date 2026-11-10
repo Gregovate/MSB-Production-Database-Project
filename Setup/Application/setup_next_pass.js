@@ -1213,7 +1213,7 @@ function nextFilterPerformAssignments(assignments) {
     return assignments.filter((assignment) => {
       const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
       const crew = nextPerformCrew(assignment);
-      const stageNames = (setupNextState.performBoard.tasks || [])
+      const stageNames = (setupNextState.performBoard?.tasks || [])
         .filter(peer => Number(peer.stage_id) === Number(task.stage_id) && task.stage_id != null)
         .map(peer => peer.task_name || '');
       const text = [task.task_name, assignment.task_name, task.stage_name,
