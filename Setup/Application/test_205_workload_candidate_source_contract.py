@@ -14,7 +14,7 @@ def _read(name: str) -> str:
 
 def test_changed_scheduling_scripts_have_fresh_browser_asset_pins():
     html = _read("production.html")
-    assert "setup_next_pass.js?v=2026-11-08.106" in html
+    assert "setup_next_pass.js?v=2026-11-09.107" in html
     assert "setup_scheduling_board.js?v=2026-11-08.106" in html
 
 
