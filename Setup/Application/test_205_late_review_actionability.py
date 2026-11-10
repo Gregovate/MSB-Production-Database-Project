@@ -70,3 +70,31 @@ def test_actual_local_date_labor_is_separate_from_scheduled_occurrence():
     assert "const assignmentHours" in render
     assert "person-hours performed on" in render
     assert "person-hours linked to scheduled assignments" in render
+
+
+def test_qc_display_lookup_reuses_governed_identity_and_never_guesses_actor():
+    api = (Path(__file__).with_name("setup_scheduling_board_api.py")).read_text(encoding="utf-8")
+    repo = (Path(__file__).with_name("setup_scheduling_board_repository.py")).read_text(encoding="utf-8")
+    assert "/api/setup/scheduling-board/qc-displays" in api
+    assert "require_reader()" in api.split("def api_setup_qc_display_lookup", 1)[1].split("\n\n",1)[0]
+    assert "ref.display d" in repo
+    assert "ref.setup_task_display" in repo
+    assert "EXPLICIT_TASK_OWNER" in repo
+    assert "STAGE_CANDIDATE" in repo
+    assert "p.performed_on" in repo
+    assert "qc_display_lookup" in repo
+    assert "INSERT INTO" not in repo.split("def qc_display_lookup(",1)[1].split("def upsert_work_day(",1)[0]
+
+
+def test_qc_results_do_not_auto_submit_feedback_or_reshape_original_reports():
+    section = _section("// #205 QC: only permanent Display IDs",
+                       "function renderNextExecution() {")
+    assert "next-qc-display-results" in SOURCE
+    assert "Display matches for QC / work history" in section
+    assert "Explicit owner" in section
+    assert "Stage candidate" in section
+    assert "next-qc-open-step" in section
+    assert "api/setup/scheduling-board/qc-displays" in section
+    assert "commandOptions(" not in section
+    assert "setupNextState.performTaskSearch = id" in section
+    assert "No scheduled assignment for this task" in section
