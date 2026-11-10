@@ -63,6 +63,16 @@ def api_setup_scheduling_board() -> Response:
     return jsonify(board=repo().board(required_year()))
 
 
+@setup_scheduling_board_api.get("/api/setup/scheduling-board/qc-displays")
+def api_setup_qc_display_lookup() -> Response:
+    """Search permanent Display identities; never infer QC responsibility."""
+    require_reader()
+    query = request.args.get("q", "").strip()
+    if len(query) > 100:
+        raise SetupCommandError("Display search is too long")
+    return jsonify(displays=repo().qc_display_lookup(required_year(), query))
+
+
 @setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days")
 def api_setup_scheduling_board_work_day() -> tuple[Response, int]:
     require_setup_command()

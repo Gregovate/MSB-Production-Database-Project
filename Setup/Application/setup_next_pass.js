@@ -17,7 +17,8 @@ const setupNextState = {
   performAssignmentMode: true,
   performCaptainFilter: null,
   performCaptainFilterKey: null,
-  performCaptainFilterTouched: false
+  performCaptainFilterTouched: false,
+  performTaskSearch: ''
 };
 
 // Catalog drag scrolling is independent of the Scheduling Board's pane scroll.
@@ -988,7 +989,7 @@ async function loadNextExecution() {
 }
 
 function nextPerformTask(sessionTaskId) {
-  return (setupNextState.performBoard.tasks || []).find(
+  return (setupNextState.performBoard?.tasks || []).find(
     (task) => Number(task.setup_session_task_id) === Number(sessionTaskId)
   ) || setupNextState.executionTasks.find(
     (task) => Number(task.setup_session_task_id) === Number(sessionTaskId)
@@ -1204,6 +1205,23 @@ function nextPerformCaptainScopedAssignments(assignments) {
 }
 
 function nextFilterPerformAssignments(assignments) {
+  const query = String(setupNextState.performTaskSearch || '').trim().toLowerCase();
+  if (query) {
+    // A Manager searching for QC history must see completed and historical steps,
+    // regardless of the Captain and Show completed filters. No data is modified.
+    const terms = query.split(/\s+/).filter(Boolean);
+    return assignments.filter((assignment) => {
+      const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
+      const crew = nextPerformCrew(assignment);
+      // Search the individual task and its own Stage/Scene, not every sibling
+      // task in the same Stage: QC needs the correct step, not extra matches.
+      const text = [task.task_name, assignment.task_name, task.stage_name,
+        task.stage_key, task.scene_name, assignment.setup_session_task_id,
+        assignment.setup_work_day_task_id, crew?.captain_display_name,
+        crew?.crew_code, assignment.work_date].join(' ').toLowerCase();
+      return terms.every(term => text.includes(term));
+    });
+  }
   const showCompleted = Boolean(el('next-perform-show-completed')?.checked);
   return nextPerformCaptainScopedAssignments(assignments).filter((assignment) => (
     showCompleted || !nextAssignmentInactive(assignment, nextPerformTask(assignment.setup_session_task_id))
@@ -1931,18 +1949,33 @@ function nextDayStaffingSummary(assignments, crews, taskRows = []) {
 // or hidden-day expansion is required to discover an outstanding report.
 function nextLateWorkSummary(assignments, board) {
   const late = assignments.filter((item) => {
-    const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
-    return nextAssignmentLate(item, day?.work_date || item.work_date, (board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)));
+    const day = (board.work_days || []).find(d => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
+    const task = nextPerformTask(item.setup_session_task_id);
+    return nextAssignmentLate(item, day?.work_date || item.work_date, task);
   });
   if (!late.length) return '';
-  return `<section aria-label="Past assignments to review">${nextScheduleWarning(`${late.length} PAST ASSIGNMENTS TO REVIEW`)}${late.map((item) => {
-    const crew = (board.crews || []).find((c) => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
-    const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
-    const captain = crew?.captain_display_name || 'CAPTAIN TBD';
-    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(item.task_name || 'Task')}</strong> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
-  }).join('')}</section>`;
+  // Compact by default. Historical reporting exceptions are not a QC verdict,
+  // nor evidence that an annual task is unfinished.
+  return `<details class="next-late-review" style="border:1px solid #a55;padding:10px;margin:8px 0">
+    <summary style="cursor:pointer;font-weight:700">${late.length} PAST ASSIGNMENTS TO REVIEW — expand details</summary>
+    <p class="muted">A missing assignment report does not mean the Display failed QC or that work was done. Check original activity before reporting.</p>
+    ${late.map(item => {
+      const crew = (board.crews || []).find(c => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
+      const day = (board.work_days || []).find(d => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
+      const task = nextPerformTask(item.setup_session_task_id) || item;
+      const captain = crew?.captain_display_name || 'Captain TBD';
+      const assignmentId = Number(item.setup_work_day_task_id);
+      const status = nextAssignmentReviewLabel(task);
+      return `<div style="padding:9px 2px;border-bottom:1px solid #ddd">
+        <strong>${escapeHtml(item.task_name || task.task_name || 'Task')}</strong>
+        · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')}
+        · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}
+        <div class="muted">${escapeHtml(captain)} · ${escapeHtml(status)}</div>
+        <button type="button" class="small next-late-report" data-assignment-id="${assignmentId}">Open exact assignment / Report Work</button>
+      </div>`;
+    }).join('')}
+  </details>`;
 }
-
 
 /* #205 Whole-Setup deadline dashboard. Read-only; annual tasks are counted once.
    A historical assignment report does not imply annual-task completion. */
@@ -2435,6 +2468,79 @@ function setup205WireActionCenter(root) {
   });
 }
 
+// #205 QC: only permanent Display IDs and explicit task ownership are
+// authoritative. Same-Stage results are candidates for operator selection.
+let nextQcLookupSequence = 0;
+async function nextQcDisplayLookup(target) {
+  const query = String(setupNextState.performTaskSearch || '').trim();
+  const holder = target.querySelector('.next-qc-display-results');
+  if (!holder) return;
+  const seq = ++nextQcLookupSequence;
+  if (query.length < 2) {
+    holder.innerHTML = '';
+    return;
+  }
+  try {
+    const result = await api('api/setup/scheduling-board/qc-displays?season_year='
+      + encodeURIComponent(appState.seasonYear) + '&q=' + encodeURIComponent(query));
+    if (seq !== nextQcLookupSequence || !holder.isConnected) return;
+    const items = result.displays || [];
+    if (!items.length) {
+      holder.innerHTML = '';
+      return;
+    }
+    const groups = new Map();
+    for (const item of items) {
+      const id = Number(item.display_id);
+      if (!groups.has(id)) groups.set(id, {display:item, steps:[]});
+      if (item.setup_session_task_id) groups.get(id).steps.push(item);
+    }
+    holder.innerHTML = '<section class="next-qc-display-lookup" style="border:1px solid #8299ac;border-radius:8px;padding:12px;margin:10px 0">'
+      + '<h3 style="margin:0 0 8px">Display matches for QC / work history</h3>'
+      + '<p class="muted">Exact Display identity is shown. Stage candidates do not prove who did the wiring. Select the correct Setup task before filing feedback.</p>'
+      + [...groups.values()].map(group => {
+        const d = group.display;
+        const ordered = group.steps.slice().sort((a,b) =>
+          Number(b.relationship === 'EXPLICIT_TASK_OWNER') - Number(a.relationship === 'EXPLICIT_TASK_OWNER'));
+        return '<div style="border-top:1px solid #ddd;padding:8px 0">'
+          + '<strong>' + escapeHtml(d.display_name) + '</strong> · Display #' + Number(d.display_id)
+          + ' · ' + escapeHtml(d.stage_name || d.stage_key || 'Stage unknown')
+          + (!ordered.length ? '<p class="muted">No Setup task mapping found. Do not guess the original work step.</p>' : '')
+          + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'
+          + ordered.slice(0,12).map(step =>
+            '<button type="button" class="small secondary next-qc-open-step" data-session-task-id="'
+            + Number(step.setup_session_task_id) + '">'
+            + escapeHtml(step.task_name || 'Setup task') + ' · '
+            + (step.relationship === 'EXPLICIT_TASK_OWNER' ? 'Explicit owner' : 'Stage candidate')
+            + ' · ' + Number(step.work_reports || 0) + ' work reports'
+            + '</button>').join('')
+          + '</div>' + (ordered.length > 12 ? '<p class="muted">Additional Stage candidates not displayed; narrow the task search.</p>' : '')
+          + '</div>';
+      }).join('') + '</section>';
+    holder.querySelectorAll('.next-qc-open-step').forEach(button => {
+      button.addEventListener('click', () => {
+        const id = String(button.dataset.sessionTaskId);
+        const search = el('setup-task-search');
+        if (search) search.value = id;
+        setupNextState.performTaskSearch = id;
+        renderNextExecution();
+        const card = target.querySelector('.next-perform-assignment[data-session-task-id="' + id + '"]');
+        if (card) {
+          card.open = true;
+          card.scrollIntoView({block:'center'});
+        } else {
+          setAlert('No scheduled assignment for this task is available. Preserve the QC finding; do not attach it to a different task.', 'error');
+        }
+      });
+    });
+  } catch (error) {
+    if (seq === nextQcLookupSequence && holder.isConnected) {
+      holder.innerHTML = '<p role="status">Display lookup unavailable: '
+        + escapeHtml(error.message || String(error)) + '</p>';
+    }
+  }
+}
+
 function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
@@ -2442,7 +2548,11 @@ function renderNextExecution() {
   nextEnsurePerformToolbar();
   nextRenderPerformCaptainFilter();
   const allAssignments = (board.assignments || []).slice();
-  const scopedAssignments = nextPerformCaptainScopedAssignments(allAssignments);
+  // Global "Find task or Stage" is the single search source in every Setup view.
+  // Searching history deliberately overrides Captain and Show completed filters.
+  const query = String(document.getElementById('setup-task-search')?.value || '').trim();
+  setupNextState.performTaskSearch = query;
+  const scopedAssignments = query ? allAssignments : nextPerformCaptainScopedAssignments(allAssignments);
   const assignments = nextFilterPerformAssignments(allAssignments);
   const labor = nextPerformLaborKpis(scopedAssignments);
   const summary = el('next-perform-filter-summary');
@@ -2488,8 +2598,9 @@ function renderNextExecution() {
   } else {
     setup205WireManagementNavigation(target); // compatibility with older static fixtures
   }
-  target.innerHTML = (globalKpis ? '' : setup205DeadlineKpiHtml(board, appState.seasonYear)) +
-    nextLateWorkSummary(scopedAssignments, board) + (days.length ? days.map((day) => {
+  target.innerHTML = '<div class="next-qc-display-results"></div>' +
+    (globalKpis ? '' : setup205DeadlineKpiHtml(board, appState.seasonYear)) +
+    nextLateWorkSummary(query ? assignments : scopedAssignments, board) + (days.length ? days.map((day) => {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
     );
@@ -2499,11 +2610,16 @@ function renderNextExecution() {
       && wholeDay.length > 0 && wholeDay.every(item => nextAssignmentInactive(item, nextPerformTask(item.setup_session_task_id)));
     const lateCount = wholeDay.filter((item) => nextAssignmentLate(item, day.work_date, nextPerformTask(item.setup_session_task_id))).length;
     const scopedDayAssignments = scopedAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
-    const reportedPersonHours = (scopedDayAssignments.reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
+    // Assignment-linked hours describe the scheduled occurrence, which may
+    // differ from the actual local calendar date entered by the reporter.
+    // Actual-date hours come from the separate read-only performed_on projection.
+    const assignmentHours = (scopedDayAssignments.reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
+    const actualDayHours = (Number(day.actual_date_person_minutes || 0) / 60).toFixed(1);
+    const actualDayReports = Number(day.actual_date_report_count || 0);
     const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
     return `
       <section class="next-perform-day">
-        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.work_date)} · ${dayAssignments.length} historical assignments · ${reportedPersonHours} reported person-hours</button>` : ''}
+        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.work_date)} · ${dayAssignments.length} historical assignments · ${actualDayHours} person-hours actually worked on this date (all crews)</button>` : ''}
         <div class="next-perform-day-content" ${dayCanCollapse ? 'hidden' : ''}>
         <div style="border-top:5px solid var(--accent, #466a86);padding:12px 0;margin-top:22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
           <h3 style="margin:0;font-size:1.25rem">SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
@@ -2520,7 +2636,7 @@ function renderNextExecution() {
           const notReady = crewShifts.reduce((n, w) => n + w.notReady, 0);
           const color = overloaded ? '#9d2424' : unknown || notReady ? '#835900' : '#146044';
           return `<div role="status" style="border:3px solid ${color};border-radius:8px;padding:12px;margin:8px 0;background:var(--surface, #f7f7f7);font-size:1.05rem;font-weight:700;white-space:pre-line">
-            ${escapeHtml(nextDayStaffingSummary(scopedAssignments.filter((a) => Number(a.setup_work_day_id) === Number(day.setup_work_day_id)), (board.crews || []).filter((c) => Number(c.setup_work_day_id) === Number(day.setup_work_day_id) && (setupNextState.performCaptainFilter === 'ALL' || Number(c.captain_person_id) === Number(String(setupNextState.performCaptainFilter).split(':')[1]))), board.tasks || []))}<br>${day.work_date < nextSetupLocalDate() ? `${scopedDayAssignments.filter(nextAssignmentReported).length} tasks reported · ${reportedPersonHours} actual person-hours reported so far` : ''}${overloaded || unknown || notReady ? '<br>Warnings:' : ''}${overloaded ? ` ${overloaded} crew shifts overloaded` : ''}${unknown ? ` · ${unknown} missing time estimates` : ''}${notReady ? ` · ${notReady} tasks not ready` : ''}
+            ${escapeHtml(nextDayStaffingSummary(scopedAssignments.filter((a) => Number(a.setup_work_day_id) === Number(day.setup_work_day_id)), (board.crews || []).filter((c) => Number(c.setup_work_day_id) === Number(day.setup_work_day_id) && (setupNextState.performCaptainFilter === 'ALL' || Number(c.captain_person_id) === Number(String(setupNextState.performCaptainFilter).split(':')[1]))), board.tasks || []))}<br>${day.work_date < nextSetupLocalDate() ? `${scopedDayAssignments.filter(nextAssignmentReported).length} assignment reports · ${assignmentHours} person-hours linked to scheduled assignments (Captain scope)<br>${actualDayReports} work reports · ${actualDayHours} person-hours performed on ${escapeHtml(day.work_date)} (all crews)` : ''}${overloaded || unknown || notReady ? '<br>Warnings:' : ''}${overloaded ? ` ${overloaded} crew shifts overloaded` : ''}${unknown ? ` · ${unknown} missing time estimates` : ''}${notReady ? ` · ${notReady} tasks not ready` : ''}
           </div>`;
         })()}
         ${shifts.map((shift) => {
@@ -2555,11 +2671,26 @@ function renderNextExecution() {
       </section>`;
   }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>');
 
+  // Nonblocking lookup against existing reference data; does not write reports.
+  void nextQcDisplayLookup(target);
+
   target.querySelectorAll('.next-late-report').forEach((button) => {
     button.addEventListener('click', () => {
-      const details = [...target.querySelectorAll('details[data-assignment-id]')].find((item) => item.dataset.assignmentId === button.dataset.assignmentId);
-      details?.querySelector('.next-report-work')?.click();
-      details?.scrollIntoView({ block: 'center' });
+      // Do not silently do nothing when Captain/Show completed hides a card.
+      // Exact assignment ID is used; task name is never an identity key.
+      const id = button.dataset.assignmentId;
+      setupNextState.performTaskSearch = String(id);
+      const search = el('setup-task-search');
+      if (search) search.value = id;
+      renderNextExecution();
+      const details = [...target.querySelectorAll('details[data-assignment-id]')]
+        .find(item => item.dataset.assignmentId === id);
+      if (!details) {
+        setAlert('Assignment #' + id + ' could not be located. No report was created.', 'error');
+        return;
+      }
+      details.open = true;
+      details.scrollIntoView({ block: 'center' });
     });
   });
 

@@ -103,8 +103,24 @@ class SetupSchedulingBoardRepository:
                     wd.day_status,
                     wd.weather_note,
                     wd.volunteer_note,
-                    wd.notes
+                    wd.notes,
+                    COALESCE(actual.report_count, 0)::integer
+                        AS actual_date_report_count,
+                    COALESCE(actual.person_minutes, 0)::bigint
+                        AS actual_date_person_minutes
                 FROM ops.setup_work_day wd
+                -- The date labor was physically performed is NOT necessarily
+                -- the original scheduled assignment date. This separate
+                -- read-only projection preserves assignment history and reports.
+                LEFT JOIN LATERAL (
+                    SELECT COUNT(*) AS report_count,
+                           SUM(p.crew_count * p.duration_minutes) AS person_minutes
+                    FROM ops.setup_task_progress p
+                    JOIN ops.setup_session_task st
+                      ON st.setup_session_task_id = p.setup_session_task_id
+                    WHERE st.setup_session_id = wd.setup_session_id
+                      AND p.performed_on = wd.work_date
+                ) actual ON TRUE
                 WHERE wd.setup_session_id = %s
                 ORDER BY wd.work_date, wd.setup_day_number, wd.setup_work_day_id
                 """,
@@ -745,6 +761,71 @@ class SetupSchedulingBoardRepository:
             "assignments": assignments,
             "dependencies": dependencies,
         }
+
+    def qc_display_lookup(self, season_year: int, query: str) -> list[dict[str, Any]]:
+        """Read-only Display -> existing Setup task candidates for QC follow-up.
+
+        Explicit ownership is stronger than a Stage-only candidate; neither
+        means a particular person installed or wired the Display. The caller
+        chooses the exact work step before using existing correction Intake.
+        """
+        term = (query or "").strip()
+        if len(term) < 2:
+            return []
+        if len(term) > 100:
+            raise SetupSchedulingBoardRepositoryError("Display search is too long")
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                WITH matching_displays AS (
+                    SELECT d.display_id, d.display_name, d.stage_id,
+                           s.stage_key, s.stage_name
+                    FROM ref.display d
+                    LEFT JOIN ref.stage s ON s.stage_id = d.stage_id
+                    WHERE d.display_name ILIKE %s
+                       OR (d.display_id::text = %s)
+                    ORDER BY d.display_name, d.display_id
+                    LIMIT 20
+                )
+                SELECT d.display_id, d.display_name, d.stage_id,
+                       d.stage_key, d.stage_name,
+                       st.setup_session_task_id, st.annual_task_name AS task_name,
+                       st.execution_status, st.setup_task_id,
+                       CASE WHEN td.display_id IS NOT NULL
+                            THEN 'EXPLICIT_TASK_OWNER'
+                            ELSE 'STAGE_CANDIDATE'
+                       END AS relationship,
+                       COALESCE(progress.work_reports, 0)::integer AS work_reports
+                FROM matching_displays d
+                JOIN ops.setup_session ss ON ss.season_year = %s
+                LEFT JOIN ops.setup_session_task st
+                  ON st.setup_session_id = ss.setup_session_id
+                 AND st.included_flag
+                 AND (
+                   st.annual_stage_id = d.stage_id
+                   OR EXISTS (
+                     SELECT 1 FROM ref.setup_task_display tdo
+                     WHERE tdo.setup_task_id = st.setup_task_id
+                       AND tdo.display_id = d.display_id
+                   )
+                 )
+                LEFT JOIN ref.setup_task_display td
+                  ON td.setup_task_id = st.setup_task_id
+                 AND td.display_id = d.display_id
+                LEFT JOIN LATERAL (
+                  SELECT count(*) AS work_reports
+                  FROM ops.setup_task_progress p
+                  WHERE p.setup_session_task_id = st.setup_session_task_id
+                ) progress ON TRUE
+                ORDER BY d.display_name, d.display_id,
+                         CASE WHEN td.display_id IS NOT NULL THEN 0 ELSE 1 END,
+                         st.annual_task_name NULLS LAST, st.setup_session_task_id
+                LIMIT 250
+                """,
+                ("%" + term.replace("%", r"\%").replace("_", r"\_") + "%",
+                 term, season_year),
+            )
+            return [dict(row) for row in cur.fetchall()]
 
     def upsert_work_day(
         self,
