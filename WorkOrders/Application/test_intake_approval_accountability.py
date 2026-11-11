@@ -47,3 +47,20 @@ def test_related_reports_not_mislabeled_as_duplicates():
     assert "promotion_approved" in repo
     assert "promotion_approved\":False" in repo or '"promotion_approved":False' in repo
     assert "INSERT INTO" not in wiring
+
+
+def test_multi_scope_stage_requires_one_explicit_wiring_task_choice():
+    # Winter Wonderland has several wiring/verify steps. Do not choose
+    # Christmas Vacation #582 or a general Stage task automatically.
+    assert 'picker.id = "review-intake-wiring-task"' in js
+    assert 'picker.name = "review-intake-wiring-task"' in js
+    assert "Choose a wiring/verify step — no automatic match" in js
+    assert 'option.value = String(item.setup_session_task_id)' in js
+    assert "item.execution_status" in js
+    assert "Select the exact original PLUG IN & VERIFY wiring task" in js
+    assert 'document.getElementById("review-intake-wiring-task")' in js
+    assert "Stage candidates only" in js
+    # In this draft the DB command cannot store the selected task. Prevent
+    # false claims that a successful native promotion saved attribution.
+    assert "Approval is held until the database link is implemented." in js
+    assert "No — normal repair, operations or other Work Order" in html
