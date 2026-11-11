@@ -131,15 +131,26 @@ BEGIN
        OR length(v_note)>2000 THEN
       RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Manager-reviewed Intake link and rationale required';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM stage.work_order_intake WHERE intake_id=p_intake_id) THEN
-      RAISE EXCEPTION USING ERRCODE='P0002',MESSAGE='Original Intake not found';
+    IF NOT EXISTS (
+      SELECT 1 FROM stage.work_order_intake i
+      JOIN ops.setup_session_task t ON t.setup_session_task_id=p_annual_task
+      JOIN ops.setup_session ss ON ss.setup_session_id=t.setup_session_id
+      WHERE i.intake_id=p_intake_id
+        AND i.target_year=ss.season_year
+    ) THEN
+      RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Intake must belong to the same Setup season';
+    END IF;
+    IF EXISTS (SELECT 1 FROM ops.work_order w WHERE w.source_intake_id=p_intake_id) THEN
+      RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Promoted Work Order Intake cannot become a QC repair duplicate';
     END IF;
     -- Intake remains intact; never duplicate its original message as a new WO.
     INSERT INTO ops.setup_qc_intake_link(intake_id,qc_finding_id,linked_by_person_id,rationale)
       VALUES(p_intake_id,p_finding,v_person,v_note)
       ON CONFLICT DO NOTHING;
-    INSERT INTO ops.setup_qc_event(qc_finding_id,event_type,person_id,note)
-      VALUES(p_finding,'INTAKE_LINK',v_person,'INTAKE-'||p_intake_id||': '||v_note);
+    IF FOUND THEN
+      INSERT INTO ops.setup_qc_event(qc_finding_id,event_type,person_id,note)
+        VALUES(p_finding,'INTAKE_LINK',v_person,'INTAKE-'||p_intake_id||': '||v_note);
+    END IF;
   ELSE
     IF v_action NOT IN ('OBSERVATION','CLAIM_REPAIR','REPAIRED','RETEST_PASS','RETEST_FAIL')
        OR v_note IS NULL OR length(v_note)>6000 THEN
