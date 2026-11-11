@@ -25,6 +25,14 @@ BEGIN
   IF v_task IS NULL THEN
     RAISE EXCEPTION 'QC fixture unavailable: 2026 unscheduled final QC task';
   END IF;
+  -- Unauthorized identity must be denied even when caller guesses an exact ID.
+  BEGIN
+    PERFORM ops.setup_qc_command(
+      'no-such-user-qc-check@sheboyganlights.org','CLAIM_AUDIT',v_task);
+    RAISE EXCEPTION 'QC unauthorized actor was allowed to claim audit';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
   SELECT count(*) INTO v_before FROM ops.setup_work_day_task;
   SELECT ops.setup_qc_command(v_actor,'CLAIM_AUDIT',v_task)
     INTO v_report;
@@ -61,6 +69,12 @@ BEGIN
   IF (SELECT status FROM ops.setup_qc_finding WHERE qc_finding_id=v_finding)
      <> 'VERIFIED' THEN
     RAISE EXCEPTION 'Verified finding not recorded';
+  END IF;
+  PERFORM ops.setup_qc_command(v_actor,'REOPEN',v_task,v_finding,
+    'Original problem recurred during second power-up');
+  IF (SELECT status FROM ops.setup_qc_finding WHERE qc_finding_id=v_finding)
+     <> 'OPEN' THEN
+    RAISE EXCEPTION 'Reopened failure did not return to repair queue';
   END IF;
   SELECT count(*) INTO v_after FROM ops.setup_work_day_task;
   IF v_before<>v_after THEN
