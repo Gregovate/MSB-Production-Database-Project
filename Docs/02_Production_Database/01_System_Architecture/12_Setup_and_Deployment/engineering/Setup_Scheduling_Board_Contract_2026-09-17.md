@@ -1147,3 +1147,9 @@ in past day summaries. Retain captain, task identity/scope, date/period, report
 status and exact report/no-work actions. Crew lane is unnecessary in past
 follow-up labels. Today/future staffing presentation and stored history stay
 unchanged. Actual crew/time entry remains available inside Report Work.
+
+Report Work must be visible in every collapsed Perform Work assignment summary.
+Completed assignments instead show Review Work History. Use the same existing
+exact-assignment handler and avoid duplicate reporting buttons. Clicking this
+action opens the report form without toggling the card closed. Other secondary
+actions remain inside the expanded card.

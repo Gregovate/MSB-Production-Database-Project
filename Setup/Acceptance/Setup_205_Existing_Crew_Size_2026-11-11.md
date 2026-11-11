@@ -261,3 +261,15 @@ Today/future staffing stays visible. No history, reports, routing or state chang
 Presentation-only V111 remains; disposable acceptance/CLEAN EXIT pending.
 
 Final source verification: 986 application tests and Node syntax PASS.
+
+## V111 visible collapsed-card Report Work (asset111.7)
+
+Operator's final requested display correction: every collapsed dated Perform Work
+assignment must expose Report Work. Moved the existing single action into the
+summary and retained the exact-assignment report handler; stopped event bubbling
+to prevent the summary toggle closing the opened form. Completed cards retain
+Review Work History. Secondary expanded actions and data remain unchanged.
+Regression renders past/today/future/completed summaries, confirms the visible
+action and one button per card. 986 application tests and Node syntax PASS.
+Presentation-only V111 retained. Exact final candidate browser acceptance and
+CLEAN EXIT remain required. No Production changes.

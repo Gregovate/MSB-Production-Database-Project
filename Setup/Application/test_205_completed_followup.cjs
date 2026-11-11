@@ -113,3 +113,15 @@ const pastSummary=ctx.nextLateWorkSummary(assignments,board);
 assert(!pastSummary.includes(' · Crew '));
 assert(pastSummary.includes('2026-10-23'));
 console.log('PASS past-work cards omit staffing forecasts; today keeps staffing and past report identity remains');
+
+// Reporting action remains in the visible summary for collapsed past/current/future cards.
+for (const work_date of ['2026-10-23','2026-11-03','2026-11-04']) {
+ const card=ctx.nextPerformAssignmentCard({...assignments[4],work_date});
+ const summary=card.split('<summary>')[1].split('</summary>')[0];
+ assert(summary.includes('next-report-work'));
+ assert(summary.includes('Report Work'));
+ assert.equal((card.match(/class="small next-report-work"/g)||[]).length,1);
+}
+const completedSummary=ctx.nextPerformAssignmentCard(assignments[0]).split('<summary>')[1].split('</summary>')[0];
+assert(completedSummary.includes('Review Work History'));
+console.log('PASS visible report action in collapsed past/current/future summary and completed history');

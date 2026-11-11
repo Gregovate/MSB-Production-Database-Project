@@ -1427,6 +1427,7 @@ function nextPerformAssignmentCard(assignment) {
           ${!past && shortCrew ? `<span class="setup-board205-badge short-crew-badge" title="Planned crew ${escapeHtml(plannedCrew)} / minimum ${escapeHtml(minimumCrew)}">SHORT CREW</span>` : ''}
           <span class="pill setup-work-status" ${late ? 'style="background:#a40000;color:#fff;border:2px solid #a40000;font-weight:900"' : ''} data-work-status="${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span>
         </span>
+        <button type="button" class="small next-report-work">${annualComplete ? 'Review Work History' : 'Report Work'}</button>
       </summary>
       ${past ? `<div class="next-perform-assignment-context">Captain: ${escapeHtml(captain)}</div>` : `<div class="next-perform-assignment-context">
         Crew ${escapeHtml(assignment.crew_lane || '—')} · ${escapeHtml(captain)}
@@ -1438,7 +1439,6 @@ function nextPerformAssignmentCard(assignment) {
       ${late ? nextScheduleWarning(nextAssignmentReviewLabel(task) + " · Review this assignment’s date and existing reports before recording work") : ''}
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
-        <button type="button" class="small next-report-work">${annualComplete ? 'Review Work History' : 'Report Work'}</button>
         ${nextCanRescheduleNoWork(assignment, task) ? '<button type="button" class="small secondary next-reschedule-no-work">Reschedule · No work performed</button>' : ''}
         <button type="button" class="small next-report-problem next-report-correction-action"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Task Feedback requires Production Crew or Manager access"'}>Task Feedback</button>
       </div>
@@ -2676,6 +2676,7 @@ function renderNextExecution() {
   target.querySelectorAll('.next-perform-assignment').forEach((details) => {
     details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {
       event.preventDefault();
+      event.stopPropagation();
       details.open = true;
       await loadNextTaskExecution(details, true);
     });
