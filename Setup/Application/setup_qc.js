@@ -157,6 +157,7 @@
     if (!id || nextQcDiscovery.mode!=='qc') return;
     const host=document.querySelector(`[data-qc-detail="${Number(id)}"]`);
     if (!host) return;
+    host.textContent='Loading QC findings and report controls…';
     try { await currentData(); }
     catch (error) { host.textContent='QC details unavailable: '+(error.message||error);return; }
     if (!host.isConnected || id!==nextQcDiscovery.selectedTaskId) return;
@@ -165,18 +166,9 @@
       t=>Number(t.setup_session_task_id)===Number(id));
     const unlinkedIntake=(snapshot.unreconciled_intake || []).filter(
       i=>i.stage_id != null && Number(i.stage_id)===Number(selectedQcTask?.stage_id));
-    let relevantIntake=[];
-    if (appState.access?.can_manage_setup) {
-      try {
-        const selected=nextQcAnnualTasks().find(
-          t=>Number(t.setup_session_task_id)===Number(id));
-        const all=await reviewIntake();
-        relevantIntake=all.filter(i=>Number(i.stage_id)===Number(selected?.stage_id));
-      } catch (error) {
-        setAlert('Original Intake review temporarily unavailable: '+(error.message||error),'error');
-      }
-    }
-    const auditors=snapshot.auditors.filter(x=>Number(x.setup_session_task_id)===Number(id));
+    // Intake is a separate, manager-only read. Never hold up QC entry for it.
+    const relevantIntake=[];
+    const auditors=(snapshot.auditors || []).filter(x=>Number(x.setup_session_task_id)===Number(id));
     host.innerHTML=`
       <div class="next-qc-record">
         <div><strong>QC auditors:</strong>
@@ -210,7 +202,7 @@
               </option>`).join('')}
             </select>
           </label>
-          <details><summary>Review original Intake descriptions (${relevantIntake.length})</summary>
+          <details data-qc-intake-review><summary>Review original Intake descriptions (loading…)</summary><div data-qc-intake-items>
             ${relevantIntake.map(i=>`<div class="next-qc-finding">
                <strong>INTAKE-${Number(i.intake_id)}</strong> · ${html(i.submitter_name_raw)}
                <div class="muted">${html(localTime(i.updated_at))} ·
@@ -218,7 +210,7 @@
                <div class="next-qc-note">${html(i.problem_raw)}</div>
                ${i.notes_raw ? `<div class="next-qc-note"><strong>Original notes:</strong> ${html(i.notes_raw)}</div>` : ""}
                ${i.photo_url_raw ? `<div class="muted">Photo reference: ${html(i.photo_url_raw)}</div>` : ""}
-              </div>`).join('')}
+              </div>`).join('')}</div>
           </details>
           <label>Existing QC problem
             <select data-qc-link-finding>
@@ -252,6 +244,37 @@
         </form>
       </div>`;
     bindControls(host,id);
+    if (appState.access?.can_manage_setup) {
+      // Update only Manager Intake fields so unsaved QC notes are never erased.
+      void reviewIntake().then(all => {
+        if (!host.isConnected || nextQcDiscovery.selectedTaskId !== id ||
+            nextQcDiscovery.mode !== 'qc') return;
+        const candidates=all.filter(i=>Number(i.stage_id)===Number(selectedQcTask?.stage_id));
+        const picker=host.querySelector('[data-qc-link-intake]');
+        if (picker) {
+          const previous=picker.value;
+          picker.innerHTML='<option value="">Choose original Intake</option>'+
+            candidates.map(i=>`<option value="${Number(i.intake_id)}">INTAKE-${Number(i.intake_id)} · ${html((i.problem_raw||'').slice(0,150))}</option>`).join('');
+          if ([...picker.options].some(option=>option.value===previous)) picker.value=previous;
+        }
+        const details=host.querySelector('[data-qc-intake-review]');
+        if (details) {
+          details.querySelector('summary').textContent='Review original Intake descriptions ('+candidates.length+')';
+          const items=details.querySelector('[data-qc-intake-items]');
+          items.innerHTML=candidates.map(i=>`<div class="next-qc-finding">
+            <strong>INTAKE-${Number(i.intake_id)}</strong> · ${html(i.submitter_name_raw)}
+            <div class="muted">${html(localTime(i.updated_at))} · linked findings ${html((i.linked_findings||[]).join(', ')||'none')}</div>
+            <div class="next-qc-note">${html(i.problem_raw)}</div>
+            ${i.notes_raw ? `<div class="next-qc-note"><strong>Original notes:</strong> ${html(i.notes_raw)}</div>` : ''}
+            ${i.photo_url_raw ? `<div class="muted">Photo reference: ${html(i.photo_url_raw)}</div>` : ''}
+          </div>`).join('');
+        }
+      }).catch(error=>{
+        setAlert('Original Intake review temporarily unavailable: '+(error.message||error),'error');
+        const details=host.querySelector('[data-qc-intake-review]');
+        if (details) details.querySelector('summary').textContent='Original Intake review unavailable';
+      });
+    }
   };
   window.setupQcRenderFixes=async function() {
     const host=document.getElementById('next-qc-fixes-list');
