@@ -9,6 +9,8 @@ assert(begin >= 0 && end > begin, 'shared KPI functions must exist');
 const ctx = {
   Date, Set, Map, Number, String, Math, Intl,
   escapeHtml: (s) => String(s),
+  nextPerformTaskNumberLabel: t => `Task ${t.setup_task_id || t.setup_session_task_id}`,
+  nextPerformTaskScopeLabel: t => [t.stage_name || 'Site-wide',t.scene_name || 'Stage-level'].join(' / '),
   nextSetupLocalDate: () => '2026-10-15',
   setupAnnualMilestoneDates: () => ({setupComplete: new Date('2026-11-19T00:00:00Z')}),
   appState: {seasonYear:2026,access:{can_manage_setup:true}},
@@ -172,3 +174,27 @@ assert(ctx.setup205ManagementReportHtml(base,2026).includes('setup205-kpi-expand
 assert(ctx.setup205ActionCenterHtml(base).includes('Past occurrences awaiting reports'),
   'separate Manager Action Center preserves actionable drilldowns');
 console.log('PASS #205 compact above-the-fold KPI summary, closed action breakdown');
+
+// Explicit readiness worklist includes unscheduled tasks outside the 7-day list.
+const readinessBoard=structuredClone(base);
+readinessBoard.tasks.push({setup_task_id:999,setup_session_task_id:999,task_name:'Unscheduled readiness test',execution_status:'PLANNED',readiness_state:'NOT_READY',stage_name:'Stage test',scene_name:'Scene test',readiness_note:'Wait for grass cutting'});
+ctx.appState.access.can_manage_setup=true;
+const readinessHtml=ctx.setup205ActionCenterHtml(readinessBoard);
+assert(readinessHtml.includes('data-205-action="not-ready"'));
+assert(readinessHtml.includes('Tasks marked NOT READY (2)'));
+assert(readinessHtml.includes('Task 999 · Unscheduled readiness test'));
+assert(readinessHtml.includes('Stage test / Scene test'));
+assert(readinessHtml.includes('Wait for grass cutting'));
+assert(readinessHtml.includes('data-205-action="planning" data-id="999"'));
+console.log('PASS NOT READY headline and full matching readiness worklist');
+
+// All incomplete work remains inspectable, not just exception subsets.
+const inventoryHtml=ctx.setup205ActionCenterHtml(base);
+const inventory=inventoryHtml.split('All outstanding tasks (3)')[1].split('</details>')[0];
+for (const name of ['Partly worked','Future','Deferred']) assert(inventory.includes(name));
+assert(!inventory.includes('Reported done'));
+assert(inventory.includes('data-205-action="planning" data-id="3"'));
+assert(inventory.includes('Current/future assignment exists'));
+assert(inventory.includes('Deferred'));
+assert(inventoryHtml.includes('Task 2 · Partly worked'));
+console.log('PASS complete outstanding inventory: scheduled, partial, deferred; complete excluded');

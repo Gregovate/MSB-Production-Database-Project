@@ -61,6 +61,7 @@ const controls = {
   'setup-board205-schedule-shift':{value:'MORNING'},
 };
 context.document.getElementById = id => controls[id];
+context.board205ScheduleExistingNotice = () => {};
 context.board205PlannedCrewForShift = () => 4;
 select.value = 'NEW_CREW';
 captainSelect.value = '8';
@@ -70,5 +71,9 @@ assert.equal(size.readOnly,false);
 select.value = '101';
 context.board205ScheduleCaptainVisibility();
 assert.equal(size.value,4, 'Existing crew staffing stays authoritative');
-assert.equal(size.readOnly,true);
+assert.equal(size.readOnly,false);
+context.board205PlannedCrewForShift = () => null;
+context.board205ScheduleCaptainVisibility();
+assert.equal(size.value,'');
+assert.equal(size.readOnly,false);
 console.log('PASS new Captain defaults to one; existing crew size is preserved');

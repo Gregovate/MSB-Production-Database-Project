@@ -1001,3 +1001,171 @@ The related Perform Work QC/history search and `performed_on` labor-attribution
 findings remain independently owned by #205/#122; do not silently combine
 them into this already accepted date-migration release or require new reports
 to conceal stale historical exceptions.
+
+## November 11 — existing crew staffing in Schedule Annual Task (#205)
+
+The scheduling dialog permits staffing entry for existing crews, including unknown
+AM/PM counts and a Captain selected through the inline add picker who already has
+a crew that day. Existing confirmed counts prefill; unknown stays blank until
+entered. The count includes the Captain and applies to all tasks for that crew
+and period. The dialog explains this shared scope. Cancel writes nothing.
+
+Save reuses the existing crew-with-tasks transaction and governed crew/assignment
+commands. For an existing crew the server reads and validates its day, preserves
+the other period and Captain, and updates only the selected period together with
+the assignment. Assignment rejection rolls back staffing. No actual work reports,
+Captain permissions, or historical movement protections change. The new-crew and
+group-drop paths retain their prior behavior. Regression must exercise editable
+unknown/known counts, reused Captains, invalid counts, cross-day rejection and
+rollback on assignment failure; protected disposable browser review is required.
+
+### Same-day assignment catch-up — November 11 review correction
+
+Ready to Schedule describes readiness and absence of future scheduling; it does
+not prove absence of a past assignment. Schedule Annual Task names the selected
+annual task and checks for an existing assignment on the selected day. Show that
+assignment's date, period and Captain before Save, with Open existing assignment
+and Report Work / review report actions. Reported history remains immovable;
+unworked assignments can use the existing edit path. No duplicate assignment is
+created. Changing to a different day allows normal continuation or retrospective
+scheduling. Catch-up reporting uses the existing Manager record report handler,
+including completed-day/assignment visibility, without fabricating schedules or
+removing historical guards. A duplicate-day guard remains authoritative for races.
+
+### Scheduling backlog versus work awaiting reports — November 11
+
+An active assignment remains scheduled even after its work date passes. Missing
+reports do not return it to Ready to Schedule or prove it needs continuation.
+Future scheduling takes precedence. Reported IN_PROGRESS work without a future
+assignment is Needs Rescheduling even when older occurrences await reports.
+Otherwise classify tasks with active unreported assignments as SCHEDULED before
+readiness classification. Keep them in Perform Work for catch-up; exclude from
+the default scheduling backlog and schedulable printout. An explicitly selected
+Scheduled finder filter may still inspect them. Hard-blocker visibility must not
+bypass this separation. Cancelled days do not reserve an assignment.
+
+Reported unfinished tasks with no future assignment remain eligible for
+continuation, independently of older occurrences awaiting reports. Never-scheduled tasks remain eligible under
+existing readiness/prerequisite rules. Completed tasks retain completion. Preserve
+the full assignment/report data and catch-up actions; this is classification, not
+a data repair, automatic completion, new report, or reassignment.
+
+### Perform Work task identity — November 11 review
+
+Past-assignment review rows and collapsed Perform Work headings display the
+same reusable Task number used in the scheduling Catalog beside the task name.
+Season-only tasks without a reusable identity display Annual Task plus their
+annual identity, explicitly distinguished. Each dated occurrence retains its own
+assignment/report identity; repeated names or dates must not be merged. This is
+presentation only and does not alter scheduling or report behavior.
+
+When one task has several dated assignments awaiting review, repeat its visible
+Task number and name alongside each date/crew/period; retain distinct report
+actions for the original assignment identities. Label a shared percentage
+Overall task progress, never imply that percentage was reported on each day.
+
+### Prevent unresolved-assignment duplication — November 11
+
+Before creating any new dated occurrence, resolve outstanding unreported active
+assignments for that annual task: Report Work for actual work; Move existing
+assignment after confirming no work occurred; or Unschedule unworked assignment.
+Continuation remains allowed after prior work is reported and no other active
+occurrence awaits reporting. Completed annual tasks cannot receive new scheduling.
+All existing reported history remains untouched. No automatic completion, report,
+merge or deletion is permitted, including the eight audited review cases.
+
+UI checks cover Schedule and both task-drop paths. The common database INSERT
+boundary independently enforces this for all writers, including legacy creation
+commands and API callers. A BEFORE INSERT trigger serializes creation per annual
+task with a row lock, excludes cancelled days, matches assignment-linked and
+legacy date/shift-linked reports, and rejects unresolved occurrences with an
+actionable message. It does not run on assignment UPDATE, so governed unworked
+moves/removals remain available. Changes to reported history keep existing guards.
+Migration080 changes command enforcement only; existing assignments are retained.
+
+Scheduled board cards must also display the same Task/Annual Task identity in
+their title, not only Perform Work and the scheduling dialog. This is necessary
+to distinguish Task178 Tent/Sign from Task184 Stands/Wraps during acceptance.
+
+The scheduling dialog explicitly labels Edit existing assignment versus Schedule
+Annual Task. Editing shows original date, period, crew/Captain and states that
+Save updates that same assignment rather than creating another occurrence.
+
+### Explicit no-work confirmation for editing a past assignment
+
+Opening an existing assignment is not permission to move work that occurred.
+Before any change of date, shift or crew on a past unreported assignment, the
+operator must explicitly confirm no work was performed. The dialog shows a
+separate confirmation and Report Work action. Without confirmation, preserve
+inputs, do not save placement or staffing, and state the required decision inside
+the dialog. Planned crew-size-only correction does not imply moving actual work
+and remains allowed. Past unreported drag/drop moves require the same explicit
+no-work confirmation. Existing report/history command guards remain authoritative.
+
+The no-work confirmation must have a minimum 24px checkbox aligned beside its
+statement and a minimum 44px clickable label. Resolving one historical assignment
+must not silently resolve other dated occurrences: each requires actual reporting
+or an explicit no-work unschedule decision.
+
+Perform Work collapsed cards and past-assignment review entries must identify
+stage key/name and scene, or explicitly Stage-level/Site-wide, before Report Work.
+Use the owning annual task scope when the assignment projection lacks fields.
+
+### Inspect explicit NOT READY tasks from the Action Center
+
+The NOT READY count must open a matching list derived from the same k.notReady
+collection, including unscheduled tasks outside the upcoming seven-day window.
+Each row shows Task/Annual Task number, name, Stage/Scene and readiness note,
+with the existing guarded Review readiness action. Opening the count expands
+and focuses the list; no writes or email occur. Completed/deferred tasks follow
+the existing KPI classifier and must not leak into this unfinished-work list.
+
+### Complete outstanding-task inventory
+
+The Manager Action Center must expose every incomplete annual task, including
+deferred tasks explicitly labeled Deferred. A complete outstanding-task list
+uses k.incomplete once per annual task and shows Task/Annual Task number, name,
+Stage/Scene, execution/scheduling/readiness state, documented readiness reason
+and current blocker reasons. Existing planning navigation remains authoritative.
+All task-bearing Action Center sections, including shift workload task lists,
+show task numbers consistently. Exception counts remain overlapping subsets;
+no readiness flag or work report is inferred or changed from note wording.
+
+Action Center readiness navigation must use the annual state controls, not the
+reusable Planning Info editor. Unstarted work uses Annual Readiness (state and
+reason). Started work retains historical-note protection and may explicitly
+confirm Mark ready through the existing readiness-state command. Rows expose
+separate scheduling and exact dated Report Work actions; all duplicate/history
+guards remain in effect. Planning Info is separately labeled as task guidance.
+
+### Past-work reporting presentation
+
+Past Perform Work days are reporting follow-up, not staffing forecasts. Suppress
+planned crew/minimum/estimated labor, effort/short-crew badges, shift capacity
+and staffing/overload warnings for past dates. Show actual reported totals only
+in past day summaries. Retain captain, task identity/scope, date/period, report
+status and exact report/no-work actions. Crew lane is unnecessary in past
+follow-up labels. Today/future staffing presentation and stored history stay
+unchanged. Actual crew/time entry remains available inside Report Work.
+
+Report Work must be visible in every collapsed Perform Work assignment summary.
+Completed assignments instead show Review Work History. Use the same existing
+exact-assignment handler and avoid duplicate reporting buttons. Clicking this
+action opens the report form without toggling the card closed. Other secondary
+actions remain inside the expanded card.
+
+### PR482 accepted release profile
+
+Accepted application37a02e2d9460d115e1d7255833b264a6bb5d8d80/V0.3.111
+is deployed by a profile of setup_maintenance_deploy.py using the existing #37
+maintenance/snapshot/preservation/ONLINE sequence. Reuse CalendarRelease ONLINE,
+whole-business-row fingerprint and isolated regression gates, and the existing
+exact Git-blob transport/foreground Windows SCP+SSH wrapper. No new infrastructure.
+Release tooling is merged separately from the pinned accepted application identity.
+Current live source is captured in the journal, required clean and an ancestor
+of the accepted source; the Setup database delta must be exactly migration080.
+Any other baseline/delta stops before maintenance. Apply only080 after freeze and
+snapshot validation; verify exact function body, owner, fixed search path, revoked
+PUBLIC execution and enabled BEFORE INSERT row trigger. No Production test rows.
+Preserve all business rows and the shared checkout. Failure retains journal and
+snapshot; never automatically retry, invent inverse SQL or reopen writers.

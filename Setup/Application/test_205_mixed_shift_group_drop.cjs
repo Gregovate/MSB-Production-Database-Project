@@ -14,7 +14,9 @@ let sent=[],alerts=[],preserve=false,confirmations=0;
 const ctx={
  Number,Set,Map,Promise,
  appState:{access:{can_manage_setup:true}},
- setupBoard205State:{dragged:null},
+ setupBoard205State:{dragged:null,board:{work_days:[]}},
+ nextAssignmentReported:()=>false,
+ nextSetupLocalDate:()=>'2026-11-11',
  board205EnsureCrewSaved:async()=>true,
  board205DraggedAssignmentItems:()=>selected,
  board205ConfirmAssignmentGroupPlacement:(_items,_crewId,_shift,keep)=>{
@@ -33,6 +35,9 @@ const ctx={
  window:{alert:msg=>{throw Error('Unexpected operator alert: '+msg)}},
 };
 vm.createContext(ctx);
+const helperStart=source.indexOf('function board205PastUnreportedMove(');
+const helperEnd=source.indexOf('\nfunction board205ScheduleExistingAssignment(',helperStart);
+vm.runInContext(source.slice(helperStart,helperEnd),ctx);
 vm.runInContext(source.slice(start,end),ctx);
 (async()=>{
  const drag={kind:'assignments',ids:[81,82]};

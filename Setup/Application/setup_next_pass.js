@@ -1323,7 +1323,7 @@ function nextAssignmentReviewLabel(task) {
   const percent = task?.latest_work_report?.percent_complete ?? task?.percent_complete;
   const hasReports = Number(task?.progress_entries || 0) > 0 || task?.latest_work_report || Number(percent || 0) > 0;
   return hasReports
-    ? `Task progress: ${percent == null ? 'reported' : percent + '% reported'} — scheduled assignment needs review`
+    ? `Overall task progress: ${percent == null ? 'reported' : percent + '%'} — this dated assignment needs review`
     : 'LATE — NO WORK REPORTED';
 }
 
@@ -1378,10 +1378,26 @@ function nextCanRescheduleNoWork(assignment, task = null) {
   );
 }
 
+// Use the Catalog number when present; season-only work has annual identity.
+function nextPerformTaskNumberLabel(task) {
+  const reusable = Number(task?.setup_task_id || 0);
+  if (Number.isSafeInteger(reusable) && reusable > 0) return `Task ${reusable}`;
+  const annual = Number(task?.setup_session_task_id || 0);
+  return Number.isSafeInteger(annual) && annual > 0 ? `Annual Task ${annual}` : 'Task';
+}
+
+// #205: repeated task names require annual stage/scene context before reporting.
+function nextPerformTaskScopeLabel(task) {
+  if (!task?.stage_id && !task?.stage_key && !task?.stage_name) return 'Site-wide / Infrastructure';
+  const stage = `Stage ${task.stage_key || '—'}${task.stage_name ? ' — ' + task.stage_name : ''}`;
+  return `${stage} / ${task.scene_name || 'Stage-level'}`;
+}
+
 function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
   const captain = crew?.captain_display_name || 'Captain TBD';
+  const past = Boolean(assignment.work_date && assignment.work_date < nextSetupLocalDate());
   const late = nextAssignmentLate(assignment, assignment.work_date, task);
   const status = nextAnnualTaskComplete(task) ? 'COMPLETE' : nextAssignmentReported(assignment)
     ? nextAssignmentReportedLabel(assignment)
@@ -1403,26 +1419,26 @@ function nextPerformAssignmentCard(assignment) {
       data-session-task-id="${assignment.setup_session_task_id}"
       data-task-id="${assignment.setup_task_id}">
       <summary>
-        <span><strong>${escapeHtml(assignment.task_name)}</strong>
-          <span class="muted"> · ${escapeHtml(nextTaskScopeLabel(assignment))}</span>
+        <span><strong>${escapeHtml(nextPerformTaskNumberLabel(task))} · ${escapeHtml(assignment.task_name)}</strong>
+          <span class="muted"> · ${escapeHtml(nextPerformTaskScopeLabel({...assignment, ...task}))}</span>
         </span>
         <span class="next-perform-assignment-pills">
-          <span class="setup-board205-badge effort-${escapeHtml(effort)}">${escapeHtml(effortLabel)}</span>
-          ${shortCrew ? `<span class="setup-board205-badge short-crew-badge" title="Planned crew ${escapeHtml(plannedCrew)} / minimum ${escapeHtml(minimumCrew)}">SHORT CREW</span>` : ''}
+          ${past ? '' : `<span class="setup-board205-badge effort-${escapeHtml(effort)}">${escapeHtml(effortLabel)}</span>`}
+          ${!past && shortCrew ? `<span class="setup-board205-badge short-crew-badge" title="Planned crew ${escapeHtml(plannedCrew)} / minimum ${escapeHtml(minimumCrew)}">SHORT CREW</span>` : ''}
           <span class="pill setup-work-status" ${late ? 'style="background:#a40000;color:#fff;border:2px solid #a40000;font-weight:900"' : ''} data-work-status="${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span>
         </span>
+        <button type="button" class="small next-report-work">${annualComplete ? 'Review Work History' : 'Report Work'}</button>
       </summary>
-      <div class="next-perform-assignment-context">
+      ${past ? `<div class="next-perform-assignment-context">Captain: ${escapeHtml(captain)}</div>` : `<div class="next-perform-assignment-context">
         Crew ${escapeHtml(assignment.crew_lane || '—')} · ${escapeHtml(captain)}
         · Planned crew ${escapeHtml(plannedCrew ?? 'TBD')}
         · Expected ${escapeHtml(formatMinutes(task.expected_duration_minutes))}
         · Est. labor ${escapeHtml(plannedLabor)}
-      </div>
+      </div>`}
       ${readinessWarning}
       ${late ? nextScheduleWarning(nextAssignmentReviewLabel(task) + " · Review this assignment’s date and existing reports before recording work") : ''}
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
-        <button type="button" class="small next-report-work">${annualComplete ? 'Review Work History' : 'Report Work'}</button>
         ${nextCanRescheduleNoWork(assignment, task) ? '<button type="button" class="small secondary next-reschedule-no-work">Reschedule · No work performed</button>' : ''}
         <button type="button" class="small next-report-problem next-report-correction-action"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Task Feedback requires Production Crew or Manager access"'}>Task Feedback</button>
       </div>
@@ -1939,7 +1955,8 @@ function nextLateWorkSummary(assignments, board) {
     const crew = (board.crews || []).find((c) => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
     const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
     const captain = crew?.captain_display_name || 'CAPTAIN TBD';
-    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(item.task_name || 'Task')}</strong> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
+    const task = (board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item;
+    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(nextPerformTaskNumberLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item))} · ${escapeHtml(item.task_name || 'Task')}</strong><div class="muted">${escapeHtml(nextPerformTaskScopeLabel({...item, ...task}))}</div> · ${escapeHtml(day?.work_date || item.work_date || '')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
   }).join('')}</section>`;
 }
 
@@ -2244,19 +2261,17 @@ function setup205ActionCenterHtml(board, model) {
   const today = nextSetupLocalDate();
   const dayPlus = n => new Date(Date.parse(today + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
   const imminentThrough = dayPlus(7);
-  const context = t => [
-    t?.stage_name || t?.stage_key || 'Site-wide',
-    t?.scene_name || null
-  ].filter(Boolean).join(' / ');
+  const context = t => nextPerformTaskScopeLabel(t);
+  const taskLabel = t => nextPerformTaskNumberLabel(t) + ' · ' + (t?.task_name || 'Task');
   const assignmentLabel = a => {
     const t = taskById.get(Number(a.setup_session_task_id));
     const d = dayById.get(Number(a.setup_work_day_id));
     const c = crewById.get(Number(a.setup_work_day_crew_id));
     const shift = a.shift_code === 'MORNING' ? 'AM' : a.shift_code === 'AFTERNOON' ? 'PM' : 'All Day';
-    return '<strong>' + safe(t?.task_name || a.task_name || 'Task') + '</strong> · ' +
+    return '<strong>' + safe(taskLabel(t || a)) + '</strong> · ' +
       safe(context(t)) + ' · Setup Day ' + safe(d?.setup_day_number ?? a.setup_day_number ?? '—') +
-      ' / ' + safe(a.work_date || d?.work_date || 'unknown date') + ' · Crew ' +
-      safe(c?.crew_code || a.crew_lane || '—') + ' ' + safe(shift) +
+      ' / ' + safe(a.work_date || d?.work_date || 'unknown date') +
+      ((a.work_date || d?.work_date || '') < today ? ' · ' : ' · Crew ' + safe(c?.crew_code || a.crew_lane || '—') + ' ') + safe(shift) +
       ' · ' + safe(c?.captain_display_name || 'Captain TBD');
   };
   const button = (action, id, label) => '<button type="button" class="small secondary setup205-action" data-205-action="' +
@@ -2265,12 +2280,44 @@ function setup205ActionCenterHtml(board, model) {
     safe(title) + ' (' + rows.length + ')</summary><p class="muted">' + safe(explanatory) +
     '</p><ul>' + (rows.length ? rows.map(x => '<li>' + x + '</li>').join('') : '<li>None</li>') +
     '</ul></details>';
+  // Use existing annual state commands; Planning Info edits reusable guidance.
+  const taskActions = t => {
+    const started = Boolean(t.progress_entries || t.actual_started_at || t.actual_completed_at);
+    return (started && t.readiness_state !== 'NOT_READY' ? '' : button(started ? 'mark-ready' : 'readiness',t.setup_session_task_id,
+      started ? 'Mark ready' : 'Review readiness')) + ' ' +
+      button('schedule',t.setup_session_task_id,'Schedule / resolve assignment') + ' ' +
+      button('planning',t.setup_session_task_id,'Edit task guidance') +
+      (board.assignments || []).filter(a => Number(a.setup_session_task_id) === Number(t.setup_session_task_id))
+        .map(a => ' ' + button('report',a.setup_work_day_task_id,
+          'Report Work / review · ' + (dayById.get(Number(a.setup_work_day_id))?.work_date || a.work_date || 'date not recorded'))).join('');
+  };
+  // #205: the headline count and inspectable list share exactly the same tasks.
+  const notReady = k.notReady.map(t => '<strong>' + safe(nextPerformTaskNumberLabel(t)) +
+    ' · ' + safe(t.task_name) + '</strong><div>' + safe(nextPerformTaskScopeLabel(t)) +
+    '</div><p><strong>Readiness reason:</strong> ' + safe(t.readiness_note || 'Reason not documented') +
+    '</p>' + taskActions(t));
+  // #205: every unfinished annual task appears once, even without an exception.
+  const outstanding = k.incomplete.slice().sort((a,b) =>
+    Number(a.setup_task_id || a.setup_session_task_id) - Number(b.setup_task_id || b.setup_session_task_id)
+    || Number(a.setup_session_task_id) - Number(b.setup_session_task_id)).map(t => {
+    const blockers = (k.blocked.find(row => Number(row.task.setup_session_task_id)
+      === Number(t.setup_session_task_id))?.reasons || []);
+    const scheduling = t.execution_status === 'DEFERRED' ? 'Deferred'
+      : Number(t.future_assignment_count || 0) > 0 ? 'Current/future assignment exists'
+      : t.execution_status === 'IN_PROGRESS' ? 'Needs continuation' : 'No current/future assignment';
+    return '<strong>' + safe(taskLabel(t)) + '</strong><div>' + safe(context(t)) + '</div><p>' +
+      safe(t.execution_status || 'Status not recorded') + ' · ' + safe(scheduling) +
+      ' · Readiness: ' + safe(t.readiness_state || 'Not recorded') +
+      (blockers.length ? ' · ' + safe(blockers.join('; ')) : '') + '</p>' +
+      (t.readiness_note ? '<p><strong>Readiness note:</strong> ' + safe(t.readiness_note) + '</p>' : '') +
+      taskActions(t);
+  });
   const missed = k.overdue.map(a => '<span>' + assignmentLabel(a) +
     ' · ' + safe(nextAssignmentReviewLabel(taskById.get(Number(a.setup_session_task_id)))) + '. ' +
     button('report',a.setup_work_day_task_id,
       taskById.get(Number(a.setup_session_task_id))?.effective_complete
         ? 'Review original / Correct report' : 'Review original / Report Work') + '</span>');
-  const continuations = k.needsRescheduling.map(t => '<strong>' + safe(t.task_name) +
+  const continuations = k.needsRescheduling.map(t => '<strong>' + safe(taskLabel(t)) +
     '</strong> · ' + safe(context(t)) + ' · ' + safe(t.percent_complete ?? 0) +
     '% reported; no current/future continuation. ' +
     setup205LatestWorkReportHtml(t, button) +
@@ -2292,7 +2339,7 @@ function setup205ActionCenterHtml(board, model) {
       ...(t.readiness_state === 'NOT_READY' ? ['NOT READY: ' + (t.readiness_note || 'reason not documented')] : [])
     ];
     return assignmentLabel(a) + ' — ' + safe(reasons.join('; ')) +
-      ' ' + button('planning',t.setup_session_task_id,'Review readiness');
+      ' ' + taskActions(t);
   });
   // Real scheduled execution consumes elapsed linear time in each crew/shift.
   // Avoid treating logistics-only Pick demand or unestimated work as free capacity.
@@ -2311,7 +2358,7 @@ function setup205ActionCenterHtml(board, model) {
     const mins = Number(t?.expected_duration_minutes);
     if (t?.expected_duration_minutes == null || !Number.isFinite(mins) || mins <= 0) g.unknown++;
     else g.known += mins;
-    g.items.push(t?.task_name || a.task_name || 'Task');
+    g.items.push(taskLabel(t || a) + ' · ' + context(t || a));
   }
   const allCapacityGroups = [...workloadGroups.values()];
   const overCapacity = allCapacityGroups
@@ -2352,7 +2399,7 @@ function setup205ActionCenterHtml(board, model) {
     '<h3>Manager Setup Action Center</h3>' +
     '<p><strong>' + k.overdue.length + ' past assignments to check</strong> · ' +
       '<strong>' + k.needsRescheduling.length + ' started tasks without future work</strong> · ' +
-      '<strong>' + k.notReady.length + ' tasks marked NOT READY</strong></p>' +
+      '<button type="button" class="secondary setup205-action" data-205-action="not-ready" aria-controls="setup205-not-ready-tasks">' + k.notReady.length + ' tasks marked NOT READY — view tasks</button></p>' +
     '<details class="setup205-action-help"><summary>What do these task counts mean?</summary>' +
       '<p>These categories overlap and must not be added together. ' +
       k.blocked.length + ' different unfinished tasks need a prerequisite, Work Order or readiness decision; ' +
@@ -2365,8 +2412,11 @@ function setup205ActionCenterHtml(board, model) {
     '<p class="muted">Choose a task below to report actual work, move an assignment where no work happened, ' +
     'or plan unfinished work. Reported history is protected; a confirmed no-work reschedule preserves the original schedule in the audit. ' +
     'No email is sent from this screen.</p>' +
+    section('All outstanding tasks',outstanding,'Every unfinished task appears once, including scheduled, blocked, NOT READY and deferred work. The other lists are overlapping follow-up categories.') +
     section('Past occurrences awaiting reports',missed,'Unfinished tasks only. Review the dated assignment and existing progress; completed tasks are excluded.') +
     section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
+    '<div id="setup205-not-ready-tasks" tabindex="-1">' +
+    section('Tasks marked NOT READY',notReady,'All unfinished tasks explicitly marked NOT READY, including tasks without a scheduled assignment.') + '</div>' +
     section('Upcoming scheduled readiness exceptions (7 days)',imminent,'Hard prerequisite/Work Order gates and independent NOT READY conditions can overlap.') +
     section('Upcoming linear-hour overloads (7 days)',overCapacity,'These crews have more planned task duration than the shift permits, before weather, travel or unestimated tasks. This is not available labor forecast.') +
     section('Scheduled assignments without Captain',captainTbd,'A Captain TBD or unverified organizational mailbox must be followed up by a Manager.') +
@@ -2378,7 +2428,7 @@ function setup205ActionCenterHtml(board, model) {
 // Stable email links delegate to the existing guarded Manager screens.
 async function setup205OpenManagerRecord(action, id) {
   if (!appState.access?.can_manage_setup) throw new Error('Setup Manager permission required.');
-  if (!Number.isSafeInteger(id) || id < 1 || !['report','planning','schedule','day'].includes(action))
+  if (!Number.isSafeInteger(id) || id < 1 || !['report','planning','schedule','day','readiness','mark-ready'].includes(action))
     throw new Error('Invalid Manager record link.');
   if (action === 'report') {
     if (await navigateSetupView('perform') === false) return;
@@ -2401,11 +2451,19 @@ async function setup205OpenManagerRecord(action, id) {
     details.scrollIntoView({block:'center',behavior:'auto'});
     await loadNextTaskExecution(details,false);
     details.querySelector('.next-performed-on')?.focus();
-  } else if (action === 'schedule' ||
+  } else if (action === 'schedule' || action === 'readiness' || action === 'mark-ready' ||
              action === 'planning') {
     if (await navigateSetupView('schedule') === false) return;
     if (action === 'schedule') {
       board205OpenScheduleDialog({kind:'task',id});
+    } else if (action === 'readiness' || action === 'mark-ready') {
+      const task = (setupBoard205State.board.tasks || []).find(t => Number(t.setup_session_task_id) === id);
+      if (!task) throw new Error('Annual task not found. Refresh current actions.');
+      if (action === 'readiness') board205OpenAnnualHoldDialog(task);
+      else if (task.readiness_state === 'NOT_READY' && window.confirm(
+        `Mark ${nextPerformTaskNumberLabel(task)} · ${task.task_name} READY for this season? This changes readiness only; it does not report or complete work.`)) {
+        await board205SetReadiness(task);
+      }
     } else {
       board205OpenPlanningInfoDialog(id);
     }
@@ -2425,6 +2483,14 @@ function setup205WireActionCenter(root) {
     event.preventDefault();
     event.stopPropagation();
     if (!appState.access?.can_manage_setup) return;
+    if (button.dataset["205Action"] === 'not-ready') {
+      const list = root.querySelector('#setup205-not-ready-tasks');
+      const details = list?.querySelector('details');
+      if (details) details.open = true;
+      list?.scrollIntoView({block:'start', behavior:'smooth'});
+      list?.focus({preventScroll:true});
+      return;
+    }
     const id = Number(button.dataset.id);
     if (!Number.isSafeInteger(id) || id < 1) return;
     try {
@@ -2495,7 +2561,8 @@ function renderNextExecution() {
     );
     // Evaluate the entire day, not a Captain-filtered subset that could hide late work.
     const wholeDay = allAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
-    const dayCanCollapse = day.work_date < nextSetupLocalDate()
+    const pastDay = day.work_date < nextSetupLocalDate();
+    const dayCanCollapse = pastDay
       && wholeDay.length > 0 && wholeDay.every(item => nextAssignmentInactive(item, nextPerformTask(item.setup_session_task_id)));
     const lateCount = wholeDay.filter((item) => nextAssignmentLate(item, day.work_date, nextPerformTask(item.setup_session_task_id))).length;
     const scopedDayAssignments = scopedAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
@@ -2511,6 +2578,7 @@ function renderNextExecution() {
         </div>
         ${lateCount ? nextScheduleWarning(`${lateCount} PAST ASSIGNMENT${lateCount === 1 ? '' : 'S'} TO REVIEW`) : ''}
         ${(() => {
+          if (pastDay) return `<p>${scopedDayAssignments.filter(nextAssignmentReported).length} tasks reported · ${reportedPersonHours} actual person-hours reported</p>`;
           const crewShifts = ['MORNING', 'AFTERNOON'].flatMap((shift) =>
             [...new Set(dayAssignments.filter((a) => a.shift_code === shift).map((a) => Number(a.setup_work_day_crew_id)))]
               .map((id) => nextPerformShiftWorkload(dayAssignments.filter((a) => a.shift_code === shift && Number(a.setup_work_day_crew_id) === id), shift))
@@ -2543,9 +2611,9 @@ function renderNextExecution() {
                   .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
                 return `
                   <div class="next-perform-crew">
-                    <h5>Crew ${escapeHtml(crew?.crew_code || crewItems[0]?.crew_lane || '—')} · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</h5>
-                    ${crew?.captain_person_id == null ? nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN') : ''}
-                    ${nextPerformWorkloadLabel(crewItems, shift)}
+                    <h5>${pastDay ? 'Captain: ' : `Crew ${escapeHtml(crew?.crew_code || crewItems[0]?.crew_lane || '—')} · `}${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</h5>
+                    ${!pastDay && crew?.captain_person_id == null ? nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN') : ''}
+                    ${pastDay ? '' : nextPerformWorkloadLabel(crewItems, shift)}
                     ${crewItems.map(nextPerformAssignmentCard).join('')}
                   </div>`;
               }).join('')}
@@ -2608,6 +2676,7 @@ function renderNextExecution() {
   target.querySelectorAll('.next-perform-assignment').forEach((details) => {
     details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {
       event.preventDefault();
+      event.stopPropagation();
       details.open = true;
       await loadNextTaskExecution(details, true);
     });

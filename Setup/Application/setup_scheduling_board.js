@@ -1662,6 +1662,12 @@ function board205QueueTasks() {
     .filter((task) => {
       const family = board205FinderStatusFamily(task);
       const hardBlocked = board205HasHardBlock(task);
+      // A past assignment awaiting its report belongs in Perform Work, not
+      // the ready backlog. Hard-blocker visibility must not reintroduce it.
+      if ((Number(task.unworked_assignment_count || 0) > 0
+          || Number(task.future_assignment_count || 0) > 0)
+          && !board205NeedsContinuation(task)
+          && !statuses.has('SCHEDULED')) return false;
 
       // Blocking ON hides only tasks whose hard prerequisite is incomplete.
       // A Work Order gate task itself remains visible; downstream tasks are
@@ -1730,6 +1736,7 @@ function board205SchedulableTasksForReport() {
       && !board205HasHardBlock(task)
       && board205FinderStatusFamily(task) === 'READY'
       && Number(task.future_assignment_count || 0) === 0
+      && (Number(task.unworked_assignment_count || 0) === 0 || board205NeedsContinuation(task))
     ))
     .sort((a, b) => board205FinderCompare(a, b, 'STAGE'));
 }
@@ -1919,7 +1926,7 @@ function board205AssignmentCard(item) {
       ${locked && board205NeedsContinuation(task) ? '<div class="setup-board205-warning" style="font-weight:800">ANNUAL TASK UNFINISHED — NEEDS RESCHEDULING</div>' : ''}
       ${locked && board205ContinuationScheduled(task) ? '<div class="setup-board205-meta" style="font-weight:800">Annual task unfinished — continuation scheduled elsewhere</div>' : ''}
       <div class="setup-board205-task-title">
-        <span>${board205Esc(item.task_name)}</span>
+        <span>${board205Esc(nextPerformTaskNumberLabel(task))} · ${board205Esc(item.task_name)}</span>
         <span class="setup-board205-badge setup-work-status" data-work-status="${board205Esc(status)}">${board205Esc(status.replaceAll('_', ' '))}</span>
         ${task.task_origin === 'SEASON_ONLY' ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
@@ -2956,6 +2963,7 @@ async function board205DropToNewCrew(dragged, dayId, targetShift) {
     const task = board205Task(dragged.id);
     if (!task || task.effective_complete || task.task_action_type === 'GATE'
         || !board205RequireEstimates(task)) return;
+    if (!board205RequireResolvedTaskAssignments(task)) return;
     items = [{kind:'task', id:Number(task.setup_session_task_id), shift:targetShift}];
   } else {
     const ids = dragged.kind === 'assignments' ? dragged.ids || []
@@ -2969,6 +2977,8 @@ async function board205DropToNewCrew(dragged, dayId, targetShift) {
       setAlert('Legacy All Day assignments require separate review. Nothing moved.', 'error');
       return;
     }
+    if (assigned.some(item => board205PastUnreportedMove(item, dayId, item.shift_code, 0))
+        && !window.confirm('Confirm: no work was performed on the past unreported assignments being moved. If work happened, Cancel and Report Work first. Move them?')) return;
     items = assigned.map(item => ({
       kind:'assignment', id:Number(item.setup_work_day_task_id), shift:item.shift_code
     }));
@@ -3030,6 +3040,7 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
     if (dragged.kind === 'task') {
       const task = board205Task(dragged.id);
       if (!task || task.effective_complete || task.task_action_type === 'GATE') return;
+      if (!board205RequireResolvedTaskAssignments(task)) return;
       if (!board205ConfirmPlacement(task, crewId, shift)) return;
       const sortOrder = requestedSort == null ? board205EndSort(dayId, shift, crewId) : requestedSort;
       await api('api/setup/scheduling-board/assignments', commandOptions('POST', {
@@ -3052,6 +3063,9 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
     const preserveShifts = items.length > 1 &&
       new Set(items.map(item => item.shift_code)).size > 1 &&
       items.some(item => Number(item.setup_work_day_id) !== Number(dayId));
+    if (items.some(item => board205PastUnreportedMove(item, dayId,
+        preserveShifts ? item.shift_code : shift, crewId)) && !window.confirm(
+        'Confirm: no work was performed on the past unreported assignments being moved. If work happened, Cancel and Report Work first. Move them?')) return;
     if (!board205ConfirmAssignmentGroupPlacement(items, crewId, shift, preserveShifts)) return;
 
     const sortByShift = new Map();
@@ -3130,7 +3144,7 @@ async function board205NudgeAssignment(item, direction) {
 
 async function board205RemoveAssignment(item) {
   if (!item || item.historical_locked) return;
-  if (!window.confirm(`Remove "${item.task_name}" from this future work period and return it to Needs Scheduling?`)) return;
+  if (!window.confirm(`No work was performed on this assignment. Unschedule "${item.task_name}"? The scheduling audit is retained; no work report will be created.`)) return;
   try {
     await api(`api/setup/scheduling-board/assignments/${item.setup_work_day_task_id}`, commandOptions('DELETE'));
     await board205Load();
@@ -3313,10 +3327,11 @@ function board205ScheduleCaptainVisibility() {
   const crew = adding ? board205CrewsForDay(dayId).find(
     item => Number(item.captain_person_id) === Number(select.value || 0))
     : board205CrewsForDay(dayId).find(item => String(item.setup_work_day_crew_id) === crewId);
-  size.readOnly = Boolean(crew);
+  board205ScheduleExistingNotice();
+  size.readOnly = false;
   size.value = crew ? (board205PlannedCrewForShift(crew, shift) ?? '') : (select.value ? '1' : '');
   note.textContent = crew
-    ? 'Current crew size for this period. Change shared crew staffing on the board.'
+    ? 'Includes the Captain. Changes apply to all tasks for this crew and work period.'
     : 'Total people, including the Captain. Starts at 1; increase for additional crew.';
 }
 
@@ -3332,10 +3347,107 @@ function board205PopulateScenes() {
 }
 
 
+// Readiness does not imply that a past day has no assignment for this task.
+function board205PastUnreportedMove(item, dayId, shift, crewId) {
+  if (!item || nextAssignmentReported(item) || item.historical_locked) return false;
+  const day = (setupBoard205State.board.work_days || []).find(row =>
+    Number(row.setup_work_day_id) === Number(item.setup_work_day_id));
+  const date = day?.work_date || item.work_date;
+  return Boolean(date && date < nextSetupLocalDate() && (
+    Number(item.setup_work_day_id) !== Number(dayId)
+    || String(item.shift_code) !== String(shift)
+    || Number(item.setup_work_day_crew_id) !== Number(crewId)));
+}
+
+function board205ScheduleExistingAssignment() {
+  const target = setupBoard205State.scheduleTarget;
+  if (target?.kind !== 'task') return null;
+  const dayId = Number(document.getElementById('setup-board205-schedule-day')?.value || 0);
+  const board = setupBoard205State.board;
+  const assignments = (board.assignments || []).filter(item =>
+    Number(item.setup_session_task_id) === Number(target.id));
+  // Same-day duplicates are rejected even when a report already exists.
+  return assignments.find(item => Number(item.setup_work_day_id) === dayId)
+    || assignments.find(item => !nextAssignmentReported(item)
+      && String((board.work_days || []).find(day => Number(day.setup_work_day_id)
+        === Number(item.setup_work_day_id))?.day_status || item.day_status || '').toUpperCase() !== 'CANCELLED')
+    || null;
+}
+
+function board205RequireResolvedTaskAssignments(task) {
+  const board = setupBoard205State.board;
+  const pending = (board.assignments || []).some(item =>
+    Number(item.setup_session_task_id) === Number(task?.setup_session_task_id)
+    && !nextAssignmentReported(item)
+    && String((board.work_days || []).find(day => Number(day.setup_work_day_id)
+      === Number(item.setup_work_day_id))?.day_status || item.day_status || '').toUpperCase() !== 'CANCELLED');
+  if (!pending) return true;
+  board205OpenScheduleDialog({kind:'task', id:Number(task.setup_session_task_id)});
+  return false;
+}
+
+function board205ScheduleExistingNotice() {
+  const notice = document.getElementById('setup-board205-schedule-existing');
+  const save = document.getElementById('setup-board205-schedule-save');
+  const heading = document.getElementById('setup-board205-schedule-task-name');
+  const target = setupBoard205State.scheduleTarget;
+  const assignment = target?.kind === 'assignment' ? board205Assignment(target.id) : null;
+  const task = board205Task(assignment?.setup_session_task_id || target?.id);
+  const mode = document.getElementById('setup-board205-schedule-heading');
+  const original = document.getElementById('setup-board205-schedule-original');
+  if (mode) mode.textContent = assignment ? 'Edit existing assignment' : 'Schedule Annual Task';
+  if (save) save.textContent = assignment ? 'Save existing assignment' : 'Save Assignment';
+  const noWorkRow = document.getElementById('setup-board205-schedule-no-work-row');
+  if (noWorkRow) noWorkRow.hidden = !assignment;
+  if (original) {
+    original.hidden = !assignment;
+    const crew = assignment ? board205CrewRow(assignment.setup_work_day_crew_id) : null;
+    const day = assignment ? (setupBoard205State.board.work_days || []).find(row =>
+      Number(row.setup_work_day_id) === Number(assignment.setup_work_day_id)) : null;
+    original.textContent = assignment ? `Editing the existing assignment from ${day?.work_date || assignment.work_date} · ${assignment.shift_code} · Crew ${crew?.crew_code || assignment.crew_lane || ''} · ${crew?.captain_display_name || 'Captain not assigned'}. Saving updates this assignment; it does not create another.` : '';
+  }
+  if (heading) heading.textContent = task ? `Task ${task.setup_task_id || task.setup_session_task_id} · ${task.task_name}` : '';
+  const existing = board205ScheduleExistingAssignment();
+  if (save) save.disabled = Boolean(existing);
+  if (!notice) return;
+  notice.hidden = !existing;
+  if (!existing) { notice.replaceChildren(); return; }
+  const crew = board205CrewRow(existing.setup_work_day_crew_id);
+  const day = (setupBoard205State.board.work_days || []).find(row =>
+    Number(row.setup_work_day_id) === Number(existing.setup_work_day_id));
+  notice.innerHTML = `<p>This task already has an assignment on ${board205Esc(day?.work_date || existing.work_date)} · ${board205Esc(existing.shift_code)} · Crew ${board205Esc(crew?.crew_code || '')} · ${board205Esc(crew?.captain_display_name || 'Captain not assigned')}. Resolve that assignment before scheduling another date: report actual work, or move/unschedule it if no work occurred.</p>
+    <button type="button" class="secondary" data-existing-open>Open existing assignment</button>
+    <button type="button" data-existing-report>Report Work / review report</button>
+    ${!existing.historical_locked && !nextAssignmentReported(existing) ? '<button type="button" class="secondary" data-existing-move>Move — no work performed</button><button type="button" class="secondary" data-existing-unschedule>Unschedule — no work performed</button>' : ''}`;
+  notice.querySelector('[data-existing-open]').addEventListener('click', () => {
+    document.getElementById('setup-board205-schedule-dialog').close();
+    if (existing.historical_locked) board205RevealScheduledAssignment(existing);
+    else board205OpenScheduleDialog({kind:'assignment', id:Number(existing.setup_work_day_task_id)});
+  });
+  notice.querySelector('[data-existing-move]')?.addEventListener('click', async () => {
+    document.getElementById('setup-board205-schedule-dialog').close();
+    try {
+      await setup205OpenManagerRecord('report', Number(existing.setup_work_day_task_id));
+      nextOpenRescheduleNoWorkDialog(Number(existing.setup_work_day_task_id));
+    } catch (error) { setAlert(error.message || error, 'error'); }
+  });
+  notice.querySelector('[data-existing-unschedule]')?.addEventListener('click', async () => {
+    await board205RemoveAssignment(existing);
+    board205ScheduleExistingNotice();
+  });
+  notice.querySelector('[data-existing-report]').addEventListener('click', async () => {
+    document.getElementById('setup-board205-schedule-dialog').close();
+    try { await setup205OpenManagerRecord('report', Number(existing.setup_work_day_task_id)); }
+    catch (error) { setAlert(error.message || error, 'error'); }
+  });
+}
+
 function board205OpenScheduleDialog(target) {
   const dialog = document.getElementById('setup-board205-schedule-dialog');
   if (!dialog) return;
   setupBoard205State.scheduleTarget = target;
+  const noWork = document.getElementById('setup-board205-schedule-no-work');
+  if (noWork) noWork.checked = false;
   document.getElementById('setup-board205-schedule-captain').innerHTML =
     board205CaptainOptions().replace('>TBD</option>', '>Choose Captain</option>');
   board205PopulateDialogSelects();
@@ -3358,6 +3470,10 @@ async function board205SubmitScheduleDialog(event) {
   event.preventDefault();
   const target = setupBoard205State.scheduleTarget;
   if (!target || !appState.access?.can_manage_setup) return;
+  if (board205ScheduleExistingAssignment()) {
+    board205ScheduleExistingNotice();
+    return;
+  }
   const dayId = Number(document.getElementById('setup-board205-schedule-day').value || 0);
   const shift = document.getElementById('setup-board205-schedule-shift').value;
   const crewChoice = document.getElementById('setup-board205-schedule-crew').value;
@@ -3373,7 +3489,7 @@ async function board205SubmitScheduleDialog(event) {
   const creatingCrew = addingCaptain && !existingCrew;
   if (!creatingCrew && !crewId) return;
   const sizeValue = document.getElementById('setup-board205-schedule-size').value;
-  const crewSize = creatingCrew && sizeValue !== '' ? Number(sizeValue) : null;
+  const crewSize = sizeValue !== '' ? Number(sizeValue) : null;
   if (crewSize != null && (!Number.isInteger(crewSize) || crewSize < 1)) {
     setAlert('Crew size must be a whole number of at least 1, or blank if unknown.', 'error');
     return;
@@ -3391,38 +3507,32 @@ async function board205SubmitScheduleDialog(event) {
       || Number(item.setup_work_day_crew_id) !== Number(crewId)
     )
   );
+  if (item && board205PastUnreportedMove(item, dayId, shift, crewId)
+      && !document.getElementById('setup-board205-schedule-no-work')?.checked) {
+    const original = document.getElementById('setup-board205-schedule-original');
+    if (original) original.textContent = 'Not saved. Report actual work, or confirm that no work was performed before moving this assignment.';
+    document.getElementById('setup-board205-schedule-no-work')?.focus();
+    return;
+  }
   if (changedPlacement && !board205ConfirmPlacement(task, crewId, shift, crewSize)) return;
 
   try {
     setBusy(true);
     const sortOrder = board205EndSort(dayId, shift, crewId);
-    if (creatingCrew) {
+    if (creatingCrew || crewId) {
       const payload = {
         captain_person_id: captainId,
+        existing_crew_id: creatingCrew ? null : crewId,
+        staffing_shift: creatingCrew ? null : shift,
         am_planned_crew_count: shift === 'MORNING' ? crewSize : null,
         pm_planned_crew_count: shift === 'AFTERNOON' ? crewSize : null,
-        items: [{kind: target.kind, id: Number(target.id), shift}]
+        items: [{kind: target.kind, id: Number(target.id), shift, sort_order: sortOrder}]
       };
       // Group drag retains original shifts; only this explicit single move overrides it.
       if (target.kind === 'assignment') payload.assignment_shift = shift;
       const result = await api(`api/setup/scheduling-board/work-days/${dayId}/crews/with-tasks`,
         commandOptions('POST', payload));
       crewId = Number(result.crew.setup_work_day_crew_id);
-    } else if (target.kind === 'task') {
-      await api('api/setup/scheduling-board/assignments', commandOptions('POST', {
-        setup_work_day_id: dayId,
-        setup_session_task_id: target.id,
-        shift_code: shift,
-        setup_work_day_crew_id: crewId,
-        sort_order: sortOrder
-      }));
-    } else {
-      await api(`api/setup/scheduling-board/assignments/${target.id}`, commandOptions('PATCH', {
-        setup_work_day_id: dayId,
-        shift_code: shift,
-        setup_work_day_crew_id: crewId,
-        sort_order: sortOrder
-      }));
     }
     if (task) await board205MaybeLearnCaptainForTask(task, crewId, captainId);
     document.getElementById('setup-board205-schedule-dialog').close();
@@ -4140,7 +4250,14 @@ function board205InstallView() {
 
     <dialog id="setup-board205-schedule-dialog" class="setup-board205-dialog">
       <form id="setup-board205-schedule-dialog-form">
-        <h3>Schedule Annual Task</h3>
+        <h3 id="setup-board205-schedule-heading">Schedule Annual Task</h3>
+        <p id="setup-board205-schedule-task-name"></p>
+        <p id="setup-board205-schedule-original" class="muted" hidden></p>
+        <div id="setup-board205-schedule-no-work-row" hidden>
+          <label><input id="setup-board205-schedule-no-work" type="checkbox"><span>No work was performed on this assignment. Move it instead of reporting work.</span></label>
+          <button type="button" class="secondary" id="setup-board205-schedule-report-existing">Report Work / review report</button>
+        </div>
+        <div id="setup-board205-schedule-existing" role="status" hidden></div>
         <div class="setup-board205-form-grid">
           <label>Setup Day<select id="setup-board205-schedule-day" required></select></label>
           <label>Work period<select id="setup-board205-schedule-shift"><option value="MORNING">Morning</option><option value="AFTERNOON">Afternoon</option></select></label>
@@ -4148,7 +4265,7 @@ function board205InstallView() {
           <label id="setup-board205-schedule-captain-row" hidden>Captain<select id="setup-board205-schedule-captain" disabled></select><span class="muted">Adds this Captain to the selected day when you save. </span></label>
         </div>
         <label>Crew size<input id="setup-board205-schedule-size" type="number" min="1" step="1" placeholder="Unknown"><span id="setup-board205-schedule-size-note" class="muted"></span></label>
-        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Assignment</button></menu>
+        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button id="setup-board205-schedule-save" type="submit">Save Assignment</button></menu>
       </form>
     </dialog>
 
@@ -4346,6 +4463,13 @@ function board205InstallView() {
   document.getElementById('setup-board205-add-reusable')?.addEventListener('click', () => { void board205ChooseReusableTask(); });
   document.getElementById('setup-board205-add-season-only')?.addEventListener('click', board205ChooseSeasonOnlyTask);
   document.getElementById('setup-board205-delete-season-task')?.addEventListener('click', () => { void board205DeleteSeasonTask(); });
+  document.getElementById('setup-board205-schedule-report-existing')?.addEventListener('click', async () => {
+    const target = setupBoard205State.scheduleTarget;
+    if (target?.kind !== 'assignment') return;
+    document.getElementById('setup-board205-schedule-dialog').close();
+    try { await setup205OpenManagerRecord('report', Number(target.id)); }
+    catch (error) { setAlert(error.message || error, 'error'); }
+  });
   document.getElementById('setup-board205-schedule-dialog-form').addEventListener('submit', board205SubmitScheduleDialog);
   document.getElementById('setup-board205-schedule-crew').addEventListener('change', board205ScheduleCaptainVisibility);
   document.getElementById('setup-board205-schedule-shift').addEventListener('change', board205ScheduleCaptainVisibility);

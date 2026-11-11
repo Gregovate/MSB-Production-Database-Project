@@ -34,7 +34,7 @@ const ctx={console,Intl,Date,Number,String,Math,Set,Map,
   nextCanRescheduleNoWork:()=>false,
 };
 vm.createContext(ctx);
-for(const name of ['nextAssignmentReported','nextAnnualTaskComplete','nextAssignmentInactive','nextAssignmentReviewLabel','nextSetupLocalDate','nextAssignmentLate','nextAssignmentReportedLabel','nextScheduleWarning','nextSetupAssignmentStatus','nextPerformAssignmentStatus','nextPerformAssignmentCard','nextFilterPerformAssignments','nextPerformShiftWorkload','nextLateWorkSummary','setup205DeadlineKpiModel'])load(source,name);
+for(const name of ['nextAssignmentReported','nextAnnualTaskComplete','nextAssignmentInactive','nextAssignmentReviewLabel','nextSetupLocalDate','nextAssignmentLate','nextAssignmentReportedLabel','nextScheduleWarning','nextSetupAssignmentStatus','nextPerformAssignmentStatus','nextPerformTaskNumberLabel','nextPerformTaskScopeLabel','nextPerformAssignmentCard','nextFilterPerformAssignments','nextPerformShiftWorkload','nextLateWorkSummary','setup205DeadlineKpiModel'])load(source,name);
 ctx.nextSetupLocalDate=()=> '2026-11-03';
 for(const name of ['board205DayViewState','board205ShowReportedTaskCards','board205ActiveAssignmentsFor','board205AmCapacity','board205ShiftWorkload'])load(schedule,name);
 assert.equal(ctx.setup205DeadlineKpiModel(board,2026).overdue.length,7);
@@ -48,11 +48,11 @@ for(const a of assignments.slice(0,4)){
  assert.equal(ctx.nextAssignmentReported(a),false,'never fabricate a report');
  const card=ctx.nextPerformAssignmentCard(a);
  assert(card.includes('data-work-status="COMPLETE"'));
- assert(!card.includes('LATE') && !card.includes('scheduled assignment needs review'));
+ assert(!card.includes('LATE') && !card.includes('this dated assignment needs review'));
 }
 for(const a of assignments.slice(4,8)){
  const card=ctx.nextPerformAssignmentCard(a);
- assert(card.includes('Task progress:') && card.includes('scheduled assignment needs review'));
+ assert(card.includes('Overall task progress:') && card.includes('this dated assignment needs review'));
  assert(!card.includes('NO WORK REPORTED'));
 }
 assert(ctx.nextPerformAssignmentCard(assignments[8]).includes('NO WORK REPORTED'));
@@ -71,3 +71,57 @@ assert.equal(ctx.nextAssignmentLate(assignments[0],'2026-10-23',{execution_statu
 assert.equal(ctx.nextAssignmentLate(assignments[0],'2026-10-23',{execution_status:'PLANNED',effective_complete:true,linked_work_order_gate:true}),false);
 assert.equal(JSON.stringify(board),before,'all input history and labor stay unchanged');
 console.log('PASS completed follow-up: 11 assignments -> 7 active; history, partial progress, completion, reopening, dates and workload');
+
+assert.equal(ctx.nextPerformTaskNumberLabel({setup_task_id:184,setup_session_task_id:900}),'Task 184');
+assert.equal(ctx.nextPerformTaskNumberLabel({setup_task_id:null,setup_session_task_id:900}),'Annual Task 900');
+const duplicateDays={...board,tasks:[{...tasks[3],setup_task_id:184}],work_days:[
+ {setup_work_day_id:1,work_date:'2026-10-23'}, {setup_work_day_id:2,work_date:'2026-10-24'}]};
+const twoDates=[{...assignments[4]}, {...assignments[4],setup_work_day_task_id:999,setup_work_day_id:2}];
+const datedSummary=ctx.nextLateWorkSummary(twoDates,duplicateDays);
+assert.equal((datedSummary.match(/Task 184/g)||[]).length,2);
+assert(datedSummary.includes('2026-10-23') && datedSummary.includes('2026-10-24'));
+assert(datedSummary.includes('data-assignment-id="304"') && datedSummary.includes('data-assignment-id="999"'));
+assert(datedSummary.includes('Overall task progress:'));
+console.log('PASS visible reusable/annual task identity and distinct dated reports with overall progress');
+
+assert(schedule.includes('<span>${board205Esc(nextPerformTaskNumberLabel(task))} · ${board205Esc(item.task_name)}</span>'));
+
+// Reused names must retain scope without expanding a task or opening Report Work.
+const scopedTask={...tasks[3],stage_id:4,stage_key:'04',stage_name:'Food Collection',scene_name:'Logo Tree'};
+const scopedBoard={...board,tasks:[scopedTask]};
+assert(ctx.nextLateWorkSummary([assignments[4]],scopedBoard).includes('Stage 04 — Food Collection / Logo Tree'));
+const oldTask=ctx.nextPerformTask;
+ctx.nextPerformTask=()=>scopedTask;
+assert(ctx.nextPerformAssignmentCard(assignments[4]).includes('Stage 04 — Food Collection / Logo Tree'));
+ctx.nextPerformTask=oldTask;
+assert.equal(ctx.nextPerformTaskScopeLabel({...scopedTask,scene_name:null}),'Stage 04 — Food Collection / Stage-level');
+assert.equal(ctx.nextPerformTaskScopeLabel({}),'Site-wide / Infrastructure');
+assert(ctx.nextLateWorkSummary([assignments[4]],{...scopedBoard,tasks:[{...scopedTask,scene_name:'<unsafe>'}]}).includes('&lt;unsafe>'));
+console.log('PASS stage/scene context before Report Work, stage-level/site-wide fallbacks and escaped scope');
+
+// Past follow-up hides stale staffing forecasts; today's operational view retains them.
+const historicalCard=ctx.nextPerformAssignmentCard(assignments[4]);
+assert(!historicalCard.includes('Planned crew'));
+assert(!historicalCard.includes('Est. labor'));
+assert(!historicalCard.includes('EFFORT TBD'));
+assert(historicalCard.includes('Captain:'));
+assert(historicalCard.includes('next-report-work'));
+const currentCard=ctx.nextPerformAssignmentCard({...assignments[4],work_date:'2026-11-03'});
+assert(currentCard.includes('Planned crew'));
+assert(currentCard.includes('Est. labor'));
+const pastSummary=ctx.nextLateWorkSummary(assignments,board);
+assert(!pastSummary.includes(' · Crew '));
+assert(pastSummary.includes('2026-10-23'));
+console.log('PASS past-work cards omit staffing forecasts; today keeps staffing and past report identity remains');
+
+// Reporting action remains in the visible summary for collapsed past/current/future cards.
+for (const work_date of ['2026-10-23','2026-11-03','2026-11-04']) {
+ const card=ctx.nextPerformAssignmentCard({...assignments[4],work_date});
+ const summary=card.split('<summary>')[1].split('</summary>')[0];
+ assert(summary.includes('next-report-work'));
+ assert(summary.includes('Report Work'));
+ assert.equal((card.match(/class="small next-report-work"/g)||[]).length,1);
+}
+const completedSummary=ctx.nextPerformAssignmentCard(assignments[0]).split('<summary>')[1].split('</summary>')[0];
+assert(completedSummary.includes('Review Work History'));
+console.log('PASS visible report action in collapsed past/current/future summary and completed history');

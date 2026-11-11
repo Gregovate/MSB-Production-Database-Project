@@ -289,6 +289,8 @@ class SetupSchedulingBoardRepository:
                         WHEN st.execution_status = 'IN_PROGRESS'
                              AND coalesce(sched.future_assignment_count, 0) = 0
                             THEN 'NEEDS_SCHEDULING_AGAIN'
+                        WHEN coalesce(sched.unworked_assignment_count, 0) > 0
+                            THEN 'SCHEDULED'
                         WHEN coalesce(dep.prerequisites_complete, true) IS NOT TRUE
                             THEN 'BLOCKED'
                         WHEN st.annual_readiness_state = 'NOT_READY'
@@ -831,6 +833,8 @@ class SetupSchedulingBoardRepository:
         self, *, email: str, work_day_id: int, items: list[dict[str, Any]],
         captain_person_id: int | None = None,
         assignment_shift: str | None = None,
+        existing_crew_id: int | None = None,
+        staffing_shift: str | None = None,
         am_planned_crew_count: int | None = None,
         pm_planned_crew_count: int | None = None,
     ) -> dict[str, Any]:
@@ -840,6 +844,12 @@ class SetupSchedulingBoardRepository:
         If any task cannot move (real progress, duplicate, wrong Session),
         rollback removes the new crew and preserves ALL old placements.
         """
+        if existing_crew_id is not None and (
+            type(existing_crew_id) is not int or existing_crew_id < 1
+            or staffing_shift not in ("MORNING", "AFTERNOON")
+            or len(items) != 1
+        ):
+            raise SetupSchedulingBoardRepositoryError("Choose one task and AM or PM for an existing crew")
         if not (1 <= len(items) <= 25):
             raise SetupSchedulingBoardRepositoryError(
                 "Drop one to 25 scheduled or unscheduled tasks into a new crew"
@@ -851,6 +861,10 @@ class SetupSchedulingBoardRepository:
             raise SetupSchedulingBoardRepositoryError(
                 "Choose AM or PM for one existing assignment"
             )
+        if existing_crew_id is not None and staffing_shift != (
+            items[0].get("shift") if items[0].get("kind") == "task" else assignment_shift
+        ):
+            raise SetupSchedulingBoardRepositoryError("Staffing and assignment work periods must match")
         for count in (am_planned_crew_count, pm_planned_crew_count):
             if count is not None and (type(count) is not int or count < 1):
                 raise SetupSchedulingBoardRepositoryError(
@@ -867,20 +881,37 @@ class SetupSchedulingBoardRepository:
                 raise SetupSchedulingBoardRepositoryError(
                     "Cannot create a crew on a cancelled Setup workday"
                 )
-            cur.execute(
-                "SELECT * FROM ops.add_setup_work_day_crew(%s,%s)",
-                (email, work_day_id),
-            )
-            crew = self._one(cur, "New Setup workday crew was not created")
-            new_crew_id = int(crew["setup_work_day_crew_id"])
-            if any(value is not None for value in (captain_person_id, am_planned_crew_count, pm_planned_crew_count)):
-                # Preserve Captain identity in the same transaction as crew creation
-                # and assignment moves. Failure rolls back the entire operation.
+            if existing_crew_id is not None:
+                # Read current staffing; all writes still use the governed SQL command.
+                cur.execute(
+                    "SELECT * FROM ops.setup_work_day_crew "
+                    "WHERE setup_work_day_crew_id = %s AND setup_work_day_id = %s",
+                    (existing_crew_id, work_day_id),
+                )
+                crew = self._one(cur, "Crew does not belong to the selected Setup day")
+                new_crew_id = existing_crew_id
+                am = am_planned_crew_count if staffing_shift == "MORNING" else crew["am_planned_crew_count"]
+                pm = pm_planned_crew_count if staffing_shift == "AFTERNOON" else crew["pm_planned_crew_count"]
                 cur.execute(
                     "SELECT * FROM ops.update_setup_work_day_crew(%s,%s,%s,%s,%s)",
-                    (email, new_crew_id, am_planned_crew_count, pm_planned_crew_count, captain_person_id),
+                    (email, new_crew_id, am, pm, crew["captain_person_id"]),
                 )
-                crew = self._one(cur, "Unable to assign the destination Captain")
+                crew = self._one(cur, "Unable to update crew staffing")
+            else:
+                cur.execute(
+                    "SELECT * FROM ops.add_setup_work_day_crew(%s,%s)",
+                    (email, work_day_id),
+                )
+                crew = self._one(cur, "New Setup workday crew was not created")
+                new_crew_id = int(crew["setup_work_day_crew_id"])
+                if any(value is not None for value in (captain_person_id, am_planned_crew_count, pm_planned_crew_count)):
+                    # Preserve Captain identity in the same transaction as crew creation
+                    # and assignment moves. Failure rolls back the entire operation.
+                    cur.execute(
+                        "SELECT * FROM ops.update_setup_work_day_crew(%s,%s,%s,%s,%s)",
+                        (email, new_crew_id, am_planned_crew_count, pm_planned_crew_count, captain_person_id),
+                    )
+                    crew = self._one(cur, "Unable to assign the destination Captain")
             placed = []
             for index, item in enumerate(items):
                 kind = item["kind"]
@@ -908,7 +939,7 @@ class SetupSchedulingBoardRepository:
                         "SELECT * FROM ops.update_setup_work_day_assignment("
                         "%s,%s,%s,%s,%s,%s)",
                         (email, assignment_id, work_day_id, shift,
-                         new_crew_id, (index + 1) * 10),
+                         new_crew_id, (int(item.get("sort_order", 10)) if existing_crew_id is not None else (index + 1) * 10)),
                     )
                 elif kind == "task":
                     session_task_id = int(item["id"])
@@ -934,7 +965,7 @@ class SetupSchedulingBoardRepository:
                         "SELECT * FROM ops.create_setup_work_day_assignment("
                         "%s,%s,%s,%s,%s,%s)",
                         (email, work_day_id, session_task_id, shift,
-                         new_crew_id, (index + 1) * 10),
+                         new_crew_id, (int(item.get("sort_order", 10)) if existing_crew_id is not None else (index + 1) * 10)),
                     )
                 else:
                     raise SetupSchedulingBoardRepositoryError("Unsupported dragged task kind")

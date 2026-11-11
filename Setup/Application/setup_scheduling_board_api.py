@@ -157,6 +157,7 @@ def api_setup_scheduling_board_crew_with_tasks(
             raise SetupCommandError("Choose AM or PM for a new task")
         normalized.append({
             "kind": item["kind"], "id": number,
+            "sort_order": required_int(item.get("sort_order", 10), "sort_order"),
             # Existing assignment shifts are read authoritatively by the server.
             "shift": shift if item["kind"] == "task" else None,
         })
@@ -169,6 +170,8 @@ def api_setup_scheduling_board_crew_with_tasks(
     result = repo().add_crew_with_tasks(
         email=email, work_day_id=setup_work_day_id, items=normalized,
         assignment_shift=assignment_shift,
+        existing_crew_id=nullable_int(payload.get("existing_crew_id"), "existing_crew_id"),
+        staffing_shift=payload.get("staffing_shift"),
         am_planned_crew_count=nullable_int(payload.get("am_planned_crew_count"), "am_planned_crew_count"),
         pm_planned_crew_count=nullable_int(payload.get("pm_planned_crew_count"), "pm_planned_crew_count"),
         captain_person_id=nullable_int(payload.get("captain_person_id"), "captain_person_id"),

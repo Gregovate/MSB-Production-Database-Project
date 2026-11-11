@@ -6,7 +6,7 @@ const source = fs.readFileSync(__dirname + '/setup_scheduling_board.js', 'utf8')
 assert.match(source, /addEventListener\('change', board205ScheduleCaptainVisibility\)/);
 const begin = source.indexOf('async function board205SubmitScheduleDialog(');
 const end = source.indexOf('\nasync function board205AddWorkDay(', begin);
-async function run({kind='task', choice='NEW_CREW', captain='8', existing=false, fail=false, allow=true, size='4'}={}) {
+async function run({kind='task', choice='NEW_CREW', captain='8', existing=false, fail=false, allow=true, size='4', duplicate=false, pastMove=false, noWork=false}={}) {
   const calls=[]; let closed=false; let loaded=false; const errors=[];
   const controls={
     'setup-board205-schedule-day':{value:'17'},
@@ -14,6 +14,8 @@ async function run({kind='task', choice='NEW_CREW', captain='8', existing=false,
     'setup-board205-schedule-crew':{value:choice},
     'setup-board205-schedule-captain':{value:captain},
     'setup-board205-schedule-size':{value:size},
+    'setup-board205-schedule-no-work':{checked:noWork,focus(){}},
+    'setup-board205-schedule-original':{textContent:''},
     'setup-board205-schedule-dialog':{close(){closed=true;}},
   };
   const task={setup_session_task_id:23, percent_complete:40};
@@ -21,6 +23,9 @@ async function run({kind='task', choice='NEW_CREW', captain='8', existing=false,
     document:{getElementById:id=>controls[id]},
     appState:{access:{can_manage_setup:allow}},
     setupBoard205State:{scheduleTarget:{kind,id:kind==='task'?23:41}},
+    board205PastUnreportedMove:()=>pastMove,
+    board205ScheduleExistingAssignment:()=>duplicate?{setup_work_day_task_id:71}:null,
+    board205ScheduleExistingNotice:()=>{},
     board205CaptainCandidate:id=>id===8?{person_id:8}:null,
     board205CrewsForDay:()=>existing?[{setup_work_day_crew_id:101,captain_person_id:8}]:[],
     board205Assignment:()=>({setup_work_day_id:10,setup_session_task_id:23,shift_code:'MORNING',setup_work_day_crew_id:50}),
@@ -37,6 +42,9 @@ async function run({kind='task', choice='NEW_CREW', captain='8', existing=false,
   return {calls,closed,loaded,errors,task};
 }
 (async()=>{
+  assert.equal((await run({duplicate:true})).calls.length,0,'Duplicate assignment cannot save staffing or placement');
+  assert.equal((await run({kind:'assignment',pastMove:true})).calls.length,0,'Past edit cannot bypass report/no-work decision');
+  assert.equal((await run({kind:'assignment',pastMove:true,noWork:true})).calls.length,1,'Explicit no-work confirmation permits the existing move');
   const continuation=await run();
   assert.equal(continuation.calls.length,1);
   assert.match(continuation.calls[0].url,/work-days\/17\/crews\/with-tasks$/);
@@ -53,10 +61,13 @@ async function run({kind='task', choice='NEW_CREW', captain='8', existing=false,
   assert.equal(move.calls[0].body.assignment_shift,'AFTERNOON');
   assert.equal(move.calls[0].body.items[0].id,41);
   const reuse=await run({existing:true});
-  assert.equal(reuse.calls[0].url,'api/setup/scheduling-board/assignments');
-  assert.equal(reuse.calls[0].body.setup_work_day_crew_id,101);
+  assert.match(reuse.calls[0].url,/crews\/with-tasks$/);
+  assert.equal(reuse.calls[0].body.existing_crew_id,101);
+  assert.equal(reuse.calls[0].body.pm_planned_crew_count,4);
+  assert.equal(reuse.calls[0].body.staffing_shift,'AFTERNOON');
+  assert.equal((await run({choice:'102',size:'1.5'})).calls.length,0);
   const ordinary=await run({choice:'102'});
-  assert.equal(ordinary.calls[0].body.setup_work_day_crew_id,102);
+  assert.equal(ordinary.calls[0].body.existing_crew_id,102);
   const failed=await run({fail:true});
   assert.equal(failed.closed,false);assert.equal(failed.loaded,false);
   assert.deepEqual(failed.errors,['Locked']);
