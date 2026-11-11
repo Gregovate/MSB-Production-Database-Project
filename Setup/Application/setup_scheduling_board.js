@@ -2963,6 +2963,7 @@ async function board205DropToNewCrew(dragged, dayId, targetShift) {
     const task = board205Task(dragged.id);
     if (!task || task.effective_complete || task.task_action_type === 'GATE'
         || !board205RequireEstimates(task)) return;
+    if (!board205RequireResolvedTaskAssignments(task)) return;
     items = [{kind:'task', id:Number(task.setup_session_task_id), shift:targetShift}];
   } else {
     const ids = dragged.kind === 'assignments' ? dragged.ids || []
@@ -3037,6 +3038,7 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
     if (dragged.kind === 'task') {
       const task = board205Task(dragged.id);
       if (!task || task.effective_complete || task.task_action_type === 'GATE') return;
+      if (!board205RequireResolvedTaskAssignments(task)) return;
       if (!board205ConfirmPlacement(task, crewId, shift)) return;
       const sortOrder = requestedSort == null ? board205EndSort(dayId, shift, crewId) : requestedSort;
       await api('api/setup/scheduling-board/assignments', commandOptions('POST', {
@@ -3137,7 +3139,7 @@ async function board205NudgeAssignment(item, direction) {
 
 async function board205RemoveAssignment(item) {
   if (!item || item.historical_locked) return;
-  if (!window.confirm(`Remove "${item.task_name}" from this future work period and return it to Needs Scheduling?`)) return;
+  if (!window.confirm(`No work was performed on this assignment. Unschedule "${item.task_name}"? The scheduling audit is retained; no work report will be created.`)) return;
   try {
     await api(`api/setup/scheduling-board/assignments/${item.setup_work_day_task_id}`, commandOptions('DELETE'));
     await board205Load();
@@ -3345,9 +3347,27 @@ function board205ScheduleExistingAssignment() {
   const target = setupBoard205State.scheduleTarget;
   if (target?.kind !== 'task') return null;
   const dayId = Number(document.getElementById('setup-board205-schedule-day')?.value || 0);
-  return (setupBoard205State.board.assignments || []).find(item =>
-    Number(item.setup_session_task_id) === Number(target.id)
-    && Number(item.setup_work_day_id) === dayId) || null;
+  const board = setupBoard205State.board;
+  const assignments = (board.assignments || []).filter(item =>
+    Number(item.setup_session_task_id) === Number(target.id));
+  // Same-day duplicates are rejected even when a report already exists.
+  return assignments.find(item => Number(item.setup_work_day_id) === dayId)
+    || assignments.find(item => !nextAssignmentReported(item)
+      && String((board.work_days || []).find(day => Number(day.setup_work_day_id)
+        === Number(item.setup_work_day_id))?.day_status || item.day_status || '').toUpperCase() !== 'CANCELLED')
+    || null;
+}
+
+function board205RequireResolvedTaskAssignments(task) {
+  const board = setupBoard205State.board;
+  const pending = (board.assignments || []).some(item =>
+    Number(item.setup_session_task_id) === Number(task?.setup_session_task_id)
+    && !nextAssignmentReported(item)
+    && String((board.work_days || []).find(day => Number(day.setup_work_day_id)
+      === Number(item.setup_work_day_id))?.day_status || item.day_status || '').toUpperCase() !== 'CANCELLED');
+  if (!pending) return true;
+  board205OpenScheduleDialog({kind:'task', id:Number(task.setup_session_task_id)});
+  return false;
 }
 
 function board205ScheduleExistingNotice() {
@@ -3366,13 +3386,25 @@ function board205ScheduleExistingNotice() {
   const crew = board205CrewRow(existing.setup_work_day_crew_id);
   const day = (setupBoard205State.board.work_days || []).find(row =>
     Number(row.setup_work_day_id) === Number(existing.setup_work_day_id));
-  notice.innerHTML = `<p>This task already has an assignment on ${board205Esc(day?.work_date || existing.work_date)} · ${board205Esc(existing.shift_code)} · Crew ${board205Esc(crew?.crew_code || '')} · ${board205Esc(crew?.captain_display_name || 'Captain not assigned')}. Use that assignment to catch up on work or choose another day.</p>
+  notice.innerHTML = `<p>This task already has an assignment on ${board205Esc(day?.work_date || existing.work_date)} · ${board205Esc(existing.shift_code)} · Crew ${board205Esc(crew?.crew_code || '')} · ${board205Esc(crew?.captain_display_name || 'Captain not assigned')}. Resolve that assignment before scheduling another date: report actual work, or move/unschedule it if no work occurred.</p>
     <button type="button" class="secondary" data-existing-open>Open existing assignment</button>
-    <button type="button" data-existing-report>Report Work / review report</button>`;
+    <button type="button" data-existing-report>Report Work / review report</button>
+    ${!existing.historical_locked && !nextAssignmentReported(existing) ? '<button type="button" class="secondary" data-existing-move>Move — no work performed</button><button type="button" class="secondary" data-existing-unschedule>Unschedule — no work performed</button>' : ''}`;
   notice.querySelector('[data-existing-open]').addEventListener('click', () => {
     document.getElementById('setup-board205-schedule-dialog').close();
     if (existing.historical_locked) board205RevealScheduledAssignment(existing);
     else board205OpenScheduleDialog({kind:'assignment', id:Number(existing.setup_work_day_task_id)});
+  });
+  notice.querySelector('[data-existing-move]')?.addEventListener('click', async () => {
+    document.getElementById('setup-board205-schedule-dialog').close();
+    try {
+      await setup205OpenManagerRecord('report', Number(existing.setup_work_day_task_id));
+      nextOpenRescheduleNoWorkDialog(Number(existing.setup_work_day_task_id));
+    } catch (error) { setAlert(error.message || error, 'error'); }
+  });
+  notice.querySelector('[data-existing-unschedule]')?.addEventListener('click', async () => {
+    await board205RemoveAssignment(existing);
+    board205ScheduleExistingNotice();
   });
   notice.querySelector('[data-existing-report]').addEventListener('click', async () => {
     document.getElementById('setup-board205-schedule-dialog').close();

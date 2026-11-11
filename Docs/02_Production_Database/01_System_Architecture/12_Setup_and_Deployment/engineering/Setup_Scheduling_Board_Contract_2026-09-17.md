@@ -1063,3 +1063,22 @@ When one task has several dated assignments awaiting review, repeat its visible
 Task number and name alongside each date/crew/period; retain distinct report
 actions for the original assignment identities. Label a shared percentage
 Overall task progress, never imply that percentage was reported on each day.
+
+### Prevent unresolved-assignment duplication — November 11
+
+Before creating any new dated occurrence, resolve outstanding unreported active
+assignments for that annual task: Report Work for actual work; Move existing
+assignment after confirming no work occurred; or Unschedule unworked assignment.
+Continuation remains allowed after prior work is reported and no other active
+occurrence awaits reporting. Completed annual tasks cannot receive new scheduling.
+All existing reported history remains untouched. No automatic completion, report,
+merge or deletion is permitted, including the eight audited review cases.
+
+UI checks cover Schedule and both task-drop paths. The common database INSERT
+boundary independently enforces this for all writers, including legacy creation
+commands and API callers. A BEFORE INSERT trigger serializes creation per annual
+task with a row lock, excludes cancelled days, matches assignment-linked and
+legacy date/shift-linked reports, and rejects unresolved occurrences with an
+actionable message. It does not run on assignment UPDATE, so governed unworked
+moves/removals remain available. Changes to reported history keep existing guards.
+Migration080 changes command enforcement only; existing assignments are retained.

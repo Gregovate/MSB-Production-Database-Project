@@ -98,3 +98,38 @@ Presentation-only revision retains V0.3.109; setup_next_pass.js browser asset pi
 is refreshed to2026-11-11.109.1. Retest new exact SHA. Existing catch-up and
 staffing acceptance remains pending; no new Production permission. Check Task184
 on both dates, Task185, season-only identity, and unchanged report links.
+
+## Enforcement candidate — V0.3.110-reschedule-resolution
+
+Source SHA will be pinned in PR482. Not deployed or PostgreSQL/browser accepted.
+Migration080 installs a per-annual-task serializing BEFORE INSERT guard. Every
+new occurrence must resolve prior active missing reports, even through legacy
+commands or direct INSERT. COMPLETE cannot receive new work. Existing data and
+all UPDATE-based governed no-work moves remain untouched. This is preventive
+enforcement, not automatic cleanup of the eight audit cases.
+
+Schedule and task drops identify outstanding work and offer existing Report Work,
+Move — no work performed, and Unschedule — no work performed actions. Changing
+the destination date cannot bypass resolution. Reported partial work with no
+outstanding missing reports may receive a new continuation. Shared staffing and
+assignment saves remain atomic. No auto-report, auto-completion or silent deletion.
+
+Local gate: 986 application tests, executable dialog/action checks, Node syntax,
+and PostgreSQL parser checks on migration/PLpgSQL/validation. These are not a
+claim of live PostgreSQL behavioral acceptance.
+
+Use the existing disposable wrapper on8898 and exact SHA/ref, ExpectedVersion
+V0.3.110-reschedule-resolution, with MigrationPaths
+Setup/Database/080_prevent_unreported_setup_assignment_duplicates.sql and
+ValidationPaths Setup/Acceptance/setup_205_unreported_assignment_guard_validation.sql.
+Validation exercises current and legacy insert signatures rejecting unresolved
+occurrences, and a real reported partial task accepting a new continuation, all
+inside rollback. Stop if the current clone lacks an appropriate fixture.
+
+Browser: attempt a new date for Task184 with missing Nov6/7 reports; it must
+require resolution first. Test Report Work, no-work move, no-work unschedule and
+Cancel; each dated history/report remains truthful. Test task-drop/new-crew-drop
+as well as Schedule. After actual report or explicit no-work resolution in the
+clone, test valid partial continuation. Ensure successful staffing persistence.
+CLEAN EXIT required. Production migration/deployment remains separately approved
+under current Server Management maintenance/snapshot/rollback authority.

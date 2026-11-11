@@ -488,4 +488,4 @@ def test_206_kit_inventory_followup_assets_are_cache_busted() -> None:
     page = text(BASE_DIR / "kit_inventory.html")
 
     assert "setup_kit_inventory.css?v=2026-10-16.2" in page
-    assert "setup_kit_inventory.js?v=2026-11-11.109" in page
+    assert "setup_kit_inventory.js?v=2026-11-11.110" in page

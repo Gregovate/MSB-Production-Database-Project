@@ -16,17 +16,20 @@ const controls = {
     querySelector:selector=>({addEventListener:(_,callback)=>{callbacks[selector]=callback;}})},
   'setup-board205-schedule-dialog':{close(){}},
 };
-const opened=[],reported=[],revealed=[];
+const opened=[],reported=[],revealed=[],moved=[];
 const context = {
   document:{getElementById:id=>controls[id]},
   setupBoard205State:{scheduleTarget:{kind:'task',id:530},board:{assignments:[existing],
     work_days:[{setup_work_day_id:38,work_date:'2026-11-10'}]}},
+  nextAssignmentReported:item=>Number(item.work_report_count || 0)>0,
   board205Task:()=>({setup_task_id:185,setup_session_task_id:530,task_name:'Traffic Lanes'}),
   board205Assignment:()=>existing,
   board205CrewRow:()=>({crew_code:'A',captain_display_name:'Rick Hoffmann'}),
   board205Esc:String, board205OpenScheduleDialog:target=>opened.push(target),
   board205RevealScheduledAssignment:item=>revealed.push(item),
   setup205OpenManagerRecord:async(action,id)=>reported.push([action,id]),
+  nextOpenRescheduleNoWorkDialog:id=>moved.push(id),
+  board205RemoveAssignment:async item=>{context.setupBoard205State.board.assignments=[];},
   setAlert:message=>{throw Error(message);},
 };
 vm.createContext(context);vm.runInContext(source.slice(begin,end),context);
@@ -44,10 +47,29 @@ vm.createContext(context);vm.runInContext(source.slice(begin,end),context);
   assert.deepEqual(reported,[['report',71]],'Use the actual assignment, not reusable task ID');
   controls['setup-board205-schedule-day'].value='39';
   context.board205ScheduleExistingNotice();
-  assert.equal(controls['setup-board205-schedule-save'].disabled,false);
-  assert.equal(controls['setup-board205-schedule-existing'].hidden,true);
+  assert.equal(controls['setup-board205-schedule-save'].disabled,true,'Changing day cannot bypass unresolved assignment');
+  assert.equal(controls['setup-board205-schedule-existing'].hidden,false);
+  existing.work_report_count=1;
+  context.board205ScheduleExistingNotice();
+  assert.equal(controls['setup-board205-schedule-save'].disabled,false,'Reported partial work may continue on another day');
   context.setupBoard205State.scheduleTarget={kind:'assignment',id:71};
   controls['setup-board205-schedule-day'].value='38';
   assert.equal(context.board205ScheduleExistingAssignment(),null,'Editing itself is not a duplicate');
+  context.setupBoard205State.scheduleTarget={kind:'task',id:530};
+  controls['setup-board205-schedule-day'].value='39';
+  existing.historical_locked=false; existing.work_report_count=0;
+  assert.equal(context.board205RequireResolvedTaskAssignments({setup_session_task_id:530}),false);
+  assert.equal(opened.at(-1).kind,'task');
+  context.board205ScheduleExistingNotice();
+  await callbacks['[data-existing-move]']();
+  assert.equal(moved.at(-1),71,'Use the governed no-work move flow');
+  await callbacks['[data-existing-unschedule]']();
+  assert.equal(context.board205RequireResolvedTaskAssignments({setup_session_task_id:530}),true);
+  context.setupBoard205State.board.assignments=[existing];
+  existing.work_report_count=1;
+  assert.equal(context.board205RequireResolvedTaskAssignments({setup_session_task_id:530}),true);
+  existing.work_report_count=0;
+  context.setupBoard205State.board.work_days[0].day_status='CANCELLED';
+  assert.equal(context.board205RequireResolvedTaskAssignments({setup_session_task_id:530}),true);
   console.log('PASS task185 same-day catch-up: identity, unworked edit, protected history, reporting and another day');
 })().catch(error=>{console.error(error);process.exitCode=1;});
