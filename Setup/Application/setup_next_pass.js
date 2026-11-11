@@ -2595,8 +2595,16 @@ function nextQcEnsureDiscovery() {
   }
   if (qc) {
     el('next-qc-search').value = nextQcDiscovery.search;
-    if (fixes) window.setupQcRenderFixes?.();
-    else nextQcRenderResults();
+    if (fixes) {
+      const host = el('next-qc-fixes-list');
+      if (typeof window.setupQcRenderFixes !== 'function') {
+        host.textContent = 'QC repairs are unavailable: QC browser module did not load.';
+      } else {
+        void Promise.resolve(window.setupQcRenderFixes()).catch(error => {
+          host.textContent = 'QC repairs could not load: ' + (error.message || error);
+        });
+      }
+    } else nextQcRenderResults();
   }
 }
 function nextQcRenderResults() {
@@ -2628,7 +2636,18 @@ function nextQcRenderResults() {
       </div>
     </article>`;
   }).join('') || '<p class="muted">No final QC tasks match. Try Stage, Scene or annual task number.</p>';
-  window.setupQcRenderCurrent?.();
+  // Fail visibly when the QC module or API fails; never leave a blank record.
+  if (nextQcDiscovery.selectedTaskId != null) {
+    const host = target.querySelector('[data-qc-detail="' + Number(nextQcDiscovery.selectedTaskId) + '"]');
+    if (typeof window.setupQcRenderCurrent !== 'function') {
+      if (host) host.textContent = 'QC reporting is unavailable: QC browser module did not load.';
+    } else {
+      void Promise.resolve(window.setupQcRenderCurrent()).catch(error => {
+        if (host?.isConnected) host.textContent =
+          'QC reporting could not load: ' + (error.message || error);
+      });
+    }
+  }
 }
 
 function renderNextExecution() {
