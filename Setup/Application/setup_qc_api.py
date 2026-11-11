@@ -52,7 +52,7 @@ def api_setup_qc_action() -> Response:
     data=json_body()
     action=str(data.get("action") or "").strip().upper()
     allowed={"CLAIM_AUDIT","REPORT","OBSERVATION","CLAIM_REPAIR","REPAIRED",
-             "RETEST_PASS","RETEST_FAIL","LINK_INTAKE"}
+             "RETEST_PASS","RETEST_FAIL","REOPEN","LINK_INTAKE"}
     if action not in allowed:
         raise SetupCommandError("Unknown QC action")
     cmd={
