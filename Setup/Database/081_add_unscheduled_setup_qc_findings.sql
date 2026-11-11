@@ -200,4 +200,104 @@ REVOKE ALL ON FUNCTION ops.setup_qc_command(text,text,bigint,bigint,text,text,te
   FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ops.setup_qc_command(text,text,bigint,bigint,text,text,text,text,integer)
   TO fieldwiring_app;
+
+-- Views are narrowly exposed by authenticated functions; the application
+-- role has NO direct SELECT privileges on QC/Intake tables.
+CREATE FUNCTION ops.setup_qc_snapshot(p_email text,p_year integer)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = pg_catalog,ops,ref
+AS $function$
+DECLARE v_result jsonb;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM ref.setup_browser_capabilities(p_email) c
+      WHERE c.can_read_setup) THEN
+    RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='QC read requires authenticated Setup access';
+  END IF;
+  SELECT jsonb_build_object(
+    'findings',coalesce((
+      SELECT jsonb_agg(row_to_json(rows)::jsonb ORDER BY rows.stage_key,rows.qc_finding_id)
+      FROM (
+        SELECT f.qc_finding_id,f.setup_session_task_id,f.title,f.location_detail,
+          f.discovery_phase,f.status,f.created_at,f.updated_at,
+          f.created_by_person_id,f.claimed_by_person_id,
+          coalesce(nullif(btrim(concat_ws(' ',cp.first_name,cp.last_name)),''),cp.email) AS reporter,
+          coalesce(nullif(btrim(concat_ws(' ',rp.first_name,rp.last_name)),''),rp.email) AS repair_owner,
+          t.annual_task_name AS task_name,s.stage_key,s.stage_name,ls.scene_name,
+          coalesce((
+            SELECT jsonb_agg(jsonb_build_object(
+              'id',e.qc_event_id,'type',e.event_type,'note',e.note,
+              'person_id',e.person_id,'at',e.created_at,
+              'person',coalesce(nullif(btrim(concat_ws(' ',p.first_name,p.last_name)),''),p.email))
+              ORDER BY e.created_at,e.qc_event_id)
+            FROM ops.setup_qc_event e
+            LEFT JOIN ref.person p ON p.person_id=e.person_id
+            WHERE e.qc_finding_id=f.qc_finding_id
+          ),'[]'::jsonb) AS events,
+          coalesce((
+            SELECT jsonb_agg(l.intake_id ORDER BY l.intake_id)
+            FROM ops.setup_qc_intake_link l
+            WHERE l.qc_finding_id=f.qc_finding_id
+          ),'[]'::jsonb) AS linked_intake_ids
+        FROM ops.setup_qc_finding f
+        JOIN ops.setup_session_task t ON t.setup_session_task_id=f.setup_session_task_id
+        JOIN ops.setup_session ss ON ss.setup_session_id=t.setup_session_id
+        LEFT JOIN ref.stage s ON s.stage_id=t.annual_stage_id
+        LEFT JOIN ref.lor_scene ls ON ls.lor_scene_id=t.annual_lor_scene_id
+        LEFT JOIN ref.person cp ON cp.person_id=f.created_by_person_id
+        LEFT JOIN ref.person rp ON rp.person_id=f.claimed_by_person_id
+        WHERE ss.season_year=p_year
+      ) rows
+    ),'[]'::jsonb),
+    'auditors',coalesce((
+      SELECT jsonb_agg(jsonb_build_object(
+          'setup_session_task_id',a.setup_session_task_id,'person_id',a.person_id,
+          'claimed_at',a.claimed_at,
+          'auditor',coalesce(nullif(btrim(concat_ws(' ',p.first_name,p.last_name)),''),p.email))
+          ORDER BY a.setup_session_task_id,a.claimed_at)
+      FROM ops.setup_qc_auditor a
+      JOIN ops.setup_session_task t ON t.setup_session_task_id=a.setup_session_task_id
+      JOIN ops.setup_session ss ON ss.setup_session_id=t.setup_session_id
+      JOIN ref.person p ON p.person_id=a.person_id
+      WHERE ss.season_year=p_year
+    ),'[]'::jsonb)
+  ) INTO v_result;
+  RETURN v_result;
+END
+$function$;
+REVOKE ALL ON FUNCTION ops.setup_qc_snapshot(text,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.setup_qc_snapshot(text,integer) TO fieldwiring_app;
+
+CREATE FUNCTION ops.setup_qc_intake_candidates(p_email text,p_year integer)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path=pg_catalog,ops,ref,stage
+AS $function$
+DECLARE v_result jsonb;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM ref.setup_browser_capabilities(p_email) c
+      WHERE c.can_manage_setup) THEN
+    RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Only Setup Managers can review Intake';
+  END IF;
+  SELECT coalesce(jsonb_agg(row_to_json(rows)::jsonb ORDER BY rows.intake_id DESC),'[]'::jsonb)
+    INTO v_result
+  FROM (
+    SELECT i.intake_id,i.problem_raw,i.stage_id,
+      s.stage_name,s.stage_key,i.submitter_name_raw,
+      i.source_form_name,i.updated_at,
+      coalesce((
+        SELECT jsonb_agg(l.qc_finding_id ORDER BY l.qc_finding_id)
+        FROM ops.setup_qc_intake_link l WHERE l.intake_id=i.intake_id
+      ),'[]'::jsonb) AS linked_findings
+    FROM stage.work_order_intake i
+    LEFT JOIN ref.stage s ON s.stage_id=i.stage_id
+    WHERE i.target_year=p_year
+      AND NOT EXISTS (
+        SELECT 1 FROM ops.work_order w WHERE w.source_intake_id=i.intake_id)
+    ORDER BY i.intake_id DESC LIMIT 300
+  ) rows;
+  RETURN v_result;
+END
+$function$;
+REVOKE ALL ON FUNCTION ops.setup_qc_intake_candidates(text,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.setup_qc_intake_candidates(text,integer) TO fieldwiring_app;
+
 COMMIT;
