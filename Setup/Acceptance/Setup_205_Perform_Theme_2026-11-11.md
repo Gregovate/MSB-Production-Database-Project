@@ -28,3 +28,29 @@ Check current-day summary, healthy/warning/overloaded shift banners, task cards,
 Report Work and readiness dialogs in light and dark mode. Check after refresh
 and with OS dark preference if available. CLEAN EXIT, then separate Production
 approval. Current Production remains unchanged during this preview.
+
+## First host preview stopped —191445Z
+
+Operator returned1 failed/974 passed/13 skipped. Failing contrast wrapper invoked
+Node unconditionally, unlike existing Node-based tests which skip only when
+Node is unavailable. Corrected wrapper to existing runtime detection policy;
+Node-present assertion failures still propagate. No application changes.
+Exact exception text was not included in the pasted summary; missing Node is
+consistent with other skipped tests, not independently proven from that summary.
+Retained report /home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20261111T191445.txt.
+Cleanup PASS: Production fingerprint23c6576ae8be2c0bac58a61edf723ba5 unchanged;
+live SHA37a02e2 unchanged. No resumable preview. Re-run only corrected candidate.
+
+Full operator console subsequently confirms FileNotFoundError [Errno2] 'node'.
+Cause proven: missing optional Node runtime, not a contrast assertion failure.
+Corrected wrapper follows established skip-only-if-missing policy. Engineering
+run987 tests PASS and direct light/dark/system-dark contrast checks PASS.
+
+## Node removed at operator direction
+
+Greg explicitly prohibited Node for this correction. Removed the new CJS fixture
+and subprocess wrapper entirely. Replaced them with pure-Python tests calculating
+WCAG text contrast from shipped CSS palettes for light/dark/system-dark, plus
+checks that shipped daily/shift markup uses those verified foreground/background
+pairs. No new Node requirement, skip workaround, installer or service dependency.
+These checks do not claim browser rendering; operator review remains required.
