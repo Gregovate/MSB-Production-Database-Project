@@ -86,3 +86,62 @@ def fetch_wiring_candidates(cur: Any, ticket: dict[str, Any]) -> dict[str, Any]:
         "notice": ("Select the exact wiring/verify step; a Stage match alone does "
                    "not establish who worked on it or who caused a defect.")
     }
+
+
+def fetch_related_requests(cur: Any, ticket: dict[str, Any]) -> dict[str, Any]:
+    """Find same-Stage reports for Manager comparison before Intake promotion.
+
+    Same Stage is discovery evidence, not proof of duplicate symptoms. Show all
+    existing native WO cases and pending Intake reports; never invent matches
+    to a selected annual task, fault cause or individual.
+    """
+    stage_id, stage_name = stage_scope(ticket)
+    if stage_id is None and stage_name:
+        cur.execute("""
+            SELECT stage_id FROM ref.stage
+            WHERE lower(btrim(stage_name))=lower(btrim(%s))
+            ORDER BY stage_id LIMIT 2
+        """, (stage_name,))
+        stages = [dict(r) for r in cur.fetchall()]
+        if len(stages) == 1:
+            stage_id = safe_identity(stages[0]["stage_id"])
+    if stage_id is None:
+        return {"scope":"UNRESOLVED_STAGE","reports":[],
+                "notice":"Confirm an exact Stage before comparing repair requests."}
+    cur.execute("""
+        WITH cases AS (
+          SELECT ('INTAKE-' || i.intake_id) AS ticket,
+                 i.problem_raw::text AS problem, i.notes_raw::text AS notes,
+                 i.updated_at AS changed_at,
+                 'INTAKE_REQUEST'::text AS kind,
+                 CASE WHEN i.triage_dropdown='1' THEN 'AWAITING_MANAGER_REVIEW'
+                      ELSE 'HANDLED_OR_NEEDS_REVIEW' END AS status,
+                 NULL::integer AS source_intake_id,
+                 i.intake_id AS intake_id
+          FROM stage.work_order_intake i
+          WHERE i.stage_id=%s
+             OR (i.stage_id IS NULL AND lower(btrim(i.stage_raw))=
+                 (SELECT lower(btrim(stage_name)) FROM ref.stage WHERE stage_id=%s))
+          UNION ALL
+          SELECT ('WO-' || w.work_order_id), w.problem::text, w.notes::text,
+                 w.updated_at, 'WORK_ORDER',
+                 CASE WHEN w.date_completed IS NOT NULL THEN 'COMPLETED'
+                      WHEN NOT w.is_active THEN 'INACTIVE'
+                      ELSE 'OPEN' END,
+                 w.source_intake_id, NULL::integer
+          FROM ops.work_order w WHERE w.stage_id=%s
+        )
+        SELECT ticket, problem, notes, changed_at, kind, status,
+               source_intake_id, intake_id
+        FROM cases
+        WHERE ticket <> %s
+        ORDER BY
+          CASE WHEN status IN ('OPEN','AWAITING_MANAGER_REVIEW') THEN 0 ELSE 1 END,
+          changed_at DESC NULLS LAST, ticket DESC
+        LIMIT 100
+    """, (stage_id,stage_id,stage_id,ticket.get("ticket")))
+    reports=[dict(row) for row in cur.fetchall()]
+    return {"scope":"SAME_STAGE_REVIEW","stage_id":stage_id,
+            "reports":reports,
+            "notice":("Potential related reports are NOT proven duplicates. Compare "
+                      "symptoms and physical sections before choosing the canonical Work Order.")}
