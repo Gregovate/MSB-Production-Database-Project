@@ -280,8 +280,9 @@ BEGIN
   SELECT coalesce(jsonb_agg(row_to_json(rows)::jsonb ORDER BY rows.intake_id DESC),'[]'::jsonb)
     INTO v_result
   FROM (
-    SELECT i.intake_id,i.problem_raw,i.stage_id,
+    SELECT i.intake_id,i.problem_raw,i.notes_raw,i.stage_id,
       s.stage_name,s.stage_key,i.submitter_name_raw,
+      (to_jsonb(i)->>'photo_url_raw') AS photo_url_raw,
       i.source_form_name,i.updated_at,
       coalesce((
         SELECT jsonb_agg(l.qc_finding_id ORDER BY l.qc_finding_id)
