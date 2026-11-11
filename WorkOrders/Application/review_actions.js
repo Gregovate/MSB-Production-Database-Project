@@ -513,15 +513,38 @@
         relatedList.textContent = "No other current Intake or Work Order found for this Stage.";
       }
       const steps = byId("review-intake-wiring-steps");
-      for (const item of wiring.candidates || []) {
-        const line = document.createElement("p");
-        line.textContent = "Candidate annual wiring/verify task #" +
-          item.setup_session_task_id + " · " + item.task_name +
-          " — not linked and no individual fault attributed";
-        steps.append(line);
+      // Same Stage can have several distinct wiring scopes. The Manager
+      // selects ONE exact annual task; none is selected automatically.
+      const candidates = (wiring.candidates || []).filter(item =>
+        Number.isSafeInteger(Number(item.setup_session_task_id)) &&
+        Number(item.setup_session_task_id) > 0 &&
+        /^PLUG IN\\s*&\\s*VERIFY\\s*:\\s*Wire\\b/i.test(item.task_name || ""));
+      if (candidates.length) {
+        const label = document.createElement("label");
+        label.htmlFor = "review-intake-wiring-task";
+        label.textContent = "Select the original wiring/verify task";
+        const picker = document.createElement("select");
+        picker.id = "review-intake-wiring-task";
+        picker.name = "review-intake-wiring-task";
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "Choose a wiring/verify step — no automatic match";
+        picker.append(empty);
+        for (const item of candidates) {
+          const option = document.createElement("option");
+          option.value = String(item.setup_session_task_id);
+          option.textContent = "#" + item.setup_session_task_id + " · " +
+            item.task_name + " · " + (item.execution_status || "Status not recorded");
+          picker.append(option);
+        }
+        steps.append(label, picker);
+        const notice = document.createElement("p");
+        notice.className = "subtle";
+        notice.textContent = "Stage candidates only. Selection does not assign blame or persist an original-work link in this draft.";
+        steps.append(notice);
+      } else {
+        steps.textContent = "No eligible wiring/verify task for this Stage. A normal Work Order requires no Setup link.";
       }
-      if (!steps.childElementCount) steps.textContent =
-        "No eligible wiring/verify task confirmed; this does not block unrelated Work Orders.";
       byId("review-intake-related-status").textContent =
         "Review related reports before promotion. Same Stage does not prove the same problem.";
       approvalLoadedFor = ticketKey;
@@ -693,9 +716,18 @@
           !byId("review-intake-checked").checked) {
         throw new Error("Review related repair requests and confirm this is a distinct Work Order before promotion.");
       }
-      if (byId("review-intake-setup-association").value === "review" &&
-          byId("review-intake-wiring-steps").childElementCount === 0) {
-        throw new Error("Original wiring/verify step is not established. Do not guess a Setup task.");
+      if (byId("review-intake-setup-association").value === "review") {
+        const selected = document.getElementById("review-intake-wiring-task");
+        if (!selected || !/^[1-9]\\d*$/.test(selected.value)) {
+          throw new Error("Select the exact original PLUG IN & VERIFY wiring task or choose No Setup association.");
+        }
+        // This phase does not persist the task relationship. Never silently
+        // promote as though original-work attribution were recorded.
+        throw new Error(
+          "The selected wiring task #" + selected.value +
+          " is not yet persisted by the governed promotion command. " +
+          "Approval is held until the database link is implemented."
+        );
       }
     }
     let summary = validate();
