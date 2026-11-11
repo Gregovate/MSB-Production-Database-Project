@@ -1187,3 +1187,45 @@ remain authoritative. Current shared source is captured for drift detection,
 never promoted. Reuse committed-byte transport and foreground SCP+SSH wrapper.
 No SQL, migration replay, Node, new infrastructure or database rollback archive.
 Briefly pause Setup edits for the existing source-only preservation interval.
+
+
+## November 11 — Post-PR483 final QC discovery first phase (#122/#205)
+
+**Source baseline:** PR482 migration080 and its frozen business-history guard;
+PR483 theme contrast fix `3ee52204e64e9d14bc7a9e2306a736645855f0ae`.
+Do not replace or bypass these controls.
+
+**Actual source of final QC:** The 2026 `ops.setup_session_task` annual
+tasks matching *Plug in Network to controller and watch display against
+2 minute Test show*. Production read-only evidence found 38 distinct annual
+tasks with 27 never scheduled. Each may be Stage-, Scene-, or
+incompletely-scoped; exact `setup_session_task_id` is identity.
+Repeated titles under the same Stage must not be collapsed.
+
+**First bounded implementation:** Add a `QC Check` selector to existing
+Setup **Perform Work**. It draws from `setup_scheduling_board_repository.board`
+authoritative annual tasks rather than `board.assignments`. Search matches
+annual task ID, reusable task ID, Stage, Scene, title and status, even when
+there is no scheduled work day or assigned crew. Render exact annual task,
+current execution state, assignment-history count and unmet-prerequisite
+indicator. Preserve existing Scheduled Work controls/reporting, PR482 no-work
+guard and PR483 dark/light theme styles. This is READ ONLY and deliberately
+does **not** indicate QC PASS from annual `COMPLETE`, nor create synthetic
+work assignments. New JS/CSS asset pins separate the preview from stale
+browser cache.
+
+**Not an accepted QC system yet:** Saving authenticated auditor self-claims,
+one/many detailed findings, repair self-claims, repair records, two-minute
+retest and final QC signoff requires a governed PostgreSQL and protected
+backend transaction. Preserve historical Intake observations with audited
+many-to-many links rather than destructive migration or duplicate native
+Work Orders. Never mistake Issue #419 Work Order promotion for pre-opening QC.
+INTAKE-86 has already been separately promoted by operator; reconcile
+84/85/87 against Racing Arches final annual QC #598 only by explicit Manager
+confirmation, preserving original reporter and section-level evidence.
+
+**Acceptance:** Source gates plus actual disposable current-Production
+Manager/Crew browser review must show all 38 tasks including all 27
+unscheduled, search by exact task and Scene, no scheduling mutation, and
+controls with contrast/legibility in light and dark. No Production release
+of a partial QC system without express operator acceptance.
