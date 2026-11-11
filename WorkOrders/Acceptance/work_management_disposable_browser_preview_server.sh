@@ -25,7 +25,8 @@ if [[ ! "$PREVIEW_EMAIL" =~ ^[a-zA-Z0-9._%+-]+@sheboyganlights[.]org$ ]]; then
   echo "HOLD: approved MSB human reviewer email required"; exit 2
 fi
 if [[ "$CANDIDATE_REF" != "fix/work-orders-identity-reconciliation" &&
-      "$CANDIDATE_REF" != "fix/419-work-order-clarification" ]]; then
+      "$CANDIDATE_REF" != "fix/419-work-order-clarification" &&
+      "$CANDIDATE_REF" != "feature/122-unified-ticket-setup-accountability-20261111" ]]; then
   echo "HOLD: #419 source branch changed; review target ancestry first"; exit 2
 fi
 if [[ "$MODE" != "start" && "$MODE" != "resume" && "$MODE" != "validate_v1" &&
