@@ -274,7 +274,9 @@ BEGIN
         'problem',i.problem_raw,'notes',i.notes_raw,
         'updated_at',i.updated_at) ORDER BY i.intake_id DESC)
       FROM stage.work_order_intake i
-      WHERE i.target_year=p_year
+      WHERE (i.target_year=p_year OR
+        (i.target_year IS NULL AND extract(year FROM i.updated_at AT TIME ZONE
+          'America/Chicago')::integer=p_year))
         AND NOT EXISTS (SELECT 1 FROM ops.work_order w
           WHERE w.source_intake_id=i.intake_id)
         AND NOT EXISTS (SELECT 1 FROM ops.setup_qc_intake_link l
@@ -310,7 +312,9 @@ BEGIN
       ),'[]'::jsonb) AS linked_findings
     FROM stage.work_order_intake i
     LEFT JOIN ref.stage s ON s.stage_id=i.stage_id
-    WHERE i.target_year=p_year
+    WHERE (i.target_year=p_year OR
+        (i.target_year IS NULL AND extract(year FROM i.updated_at AT TIME ZONE
+          'America/Chicago')::integer=p_year))
       AND NOT EXISTS (
         SELECT 1 FROM ops.work_order w WHERE w.source_intake_id=i.intake_id)
     ORDER BY i.intake_id DESC LIMIT 300
