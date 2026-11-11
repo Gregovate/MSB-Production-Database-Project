@@ -1018,3 +1018,16 @@ Captain permissions, or historical movement protections change. The new-crew and
 group-drop paths retain their prior behavior. Regression must exercise editable
 unknown/known counts, reused Captains, invalid counts, cross-day rejection and
 rollback on assignment failure; protected disposable browser review is required.
+
+### Same-day assignment catch-up — November 11 review correction
+
+Ready to Schedule describes readiness and absence of future scheduling; it does
+not prove absence of a past assignment. Schedule Annual Task names the selected
+annual task and checks for an existing assignment on the selected day. Show that
+assignment's date, period and Captain before Save, with Open existing assignment
+and Report Work / review report actions. Reported history remains immovable;
+unworked assignments can use the existing edit path. No duplicate assignment is
+created. Changing to a different day allows normal continuation or retrospective
+scheduling. Catch-up reporting uses the existing Manager record report handler,
+including completed-day/assignment visibility, without fabricating schedules or
+removing historical guards. A duplicate-day guard remains authoritative for races.

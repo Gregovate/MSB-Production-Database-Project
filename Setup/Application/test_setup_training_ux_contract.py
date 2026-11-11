@@ -16,7 +16,7 @@ def read_db(name: str) -> str:
 
 def test_training_ux_assets_are_loaded_after_live_review_fixes():
     html = read("production.html")
-    live_index = html.index("setup_live_review_fixes.js?v=2026-11-11.107")
+    live_index = html.index("setup_live_review_fixes.js?v=2026-11-11.108")
     training_index = html.index("setup_training_ux.js?v=2026-09-24.2")
     assigned_index = html.index("setup_assigned_review.js?v=2026-09-08.2")
     refinement_index = html.index("setup_training_review_refinement.js?v=2026-09-24.4")

@@ -42,7 +42,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.107-schedule-crew-size"
+PRODUCTION_VERSION = "V0.3.108-schedule-catch-up"
 
 # #222 lightweight Production request instrumentation.
 #

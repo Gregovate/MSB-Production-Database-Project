@@ -61,6 +61,7 @@ const controls = {
   'setup-board205-schedule-shift':{value:'MORNING'},
 };
 context.document.getElementById = id => controls[id];
+context.board205ScheduleExistingNotice = () => {};
 context.board205PlannedCrewForShift = () => 4;
 select.value = 'NEW_CREW';
 captainSelect.value = '8';

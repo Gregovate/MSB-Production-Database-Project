@@ -3313,6 +3313,7 @@ function board205ScheduleCaptainVisibility() {
   const crew = adding ? board205CrewsForDay(dayId).find(
     item => Number(item.captain_person_id) === Number(select.value || 0))
     : board205CrewsForDay(dayId).find(item => String(item.setup_work_day_crew_id) === crewId);
+  board205ScheduleExistingNotice();
   size.readOnly = false;
   size.value = crew ? (board205PlannedCrewForShift(crew, shift) ?? '') : (select.value ? '1' : '');
   note.textContent = crew
@@ -3331,6 +3332,47 @@ function board205PopulateScenes() {
   scene.disabled = !stageId;
 }
 
+
+// Readiness does not imply that a past day has no assignment for this task.
+function board205ScheduleExistingAssignment() {
+  const target = setupBoard205State.scheduleTarget;
+  if (target?.kind !== 'task') return null;
+  const dayId = Number(document.getElementById('setup-board205-schedule-day')?.value || 0);
+  return (setupBoard205State.board.assignments || []).find(item =>
+    Number(item.setup_session_task_id) === Number(target.id)
+    && Number(item.setup_work_day_id) === dayId) || null;
+}
+
+function board205ScheduleExistingNotice() {
+  const notice = document.getElementById('setup-board205-schedule-existing');
+  const save = document.getElementById('setup-board205-schedule-save');
+  const heading = document.getElementById('setup-board205-schedule-task-name');
+  const target = setupBoard205State.scheduleTarget;
+  const assignment = target?.kind === 'assignment' ? board205Assignment(target.id) : null;
+  const task = board205Task(assignment?.setup_session_task_id || target?.id);
+  if (heading) heading.textContent = task ? `Task ${task.setup_task_id || task.setup_session_task_id} · ${task.task_name}` : '';
+  const existing = board205ScheduleExistingAssignment();
+  if (save) save.disabled = Boolean(existing);
+  if (!notice) return;
+  notice.hidden = !existing;
+  if (!existing) { notice.replaceChildren(); return; }
+  const crew = board205CrewRow(existing.setup_work_day_crew_id);
+  const day = (setupBoard205State.board.work_days || []).find(row =>
+    Number(row.setup_work_day_id) === Number(existing.setup_work_day_id));
+  notice.innerHTML = `<p>This task already has an assignment on ${board205Esc(day?.work_date || existing.work_date)} · ${board205Esc(existing.shift_code)} · Crew ${board205Esc(crew?.crew_code || '')} · ${board205Esc(crew?.captain_display_name || 'Captain not assigned')}. Use that assignment to catch up on work or choose another day.</p>
+    <button type="button" class="secondary" data-existing-open>Open existing assignment</button>
+    <button type="button" data-existing-report>Report Work / review report</button>`;
+  notice.querySelector('[data-existing-open]').addEventListener('click', () => {
+    document.getElementById('setup-board205-schedule-dialog').close();
+    if (existing.historical_locked) board205RevealScheduledAssignment(existing);
+    else board205OpenScheduleDialog({kind:'assignment', id:Number(existing.setup_work_day_task_id)});
+  });
+  notice.querySelector('[data-existing-report]').addEventListener('click', async () => {
+    document.getElementById('setup-board205-schedule-dialog').close();
+    try { await setup205OpenManagerRecord('report', Number(existing.setup_work_day_task_id)); }
+    catch (error) { setAlert(error.message || error, 'error'); }
+  });
+}
 
 function board205OpenScheduleDialog(target) {
   const dialog = document.getElementById('setup-board205-schedule-dialog');
@@ -3358,6 +3400,10 @@ async function board205SubmitScheduleDialog(event) {
   event.preventDefault();
   const target = setupBoard205State.scheduleTarget;
   if (!target || !appState.access?.can_manage_setup) return;
+  if (board205ScheduleExistingAssignment()) {
+    board205ScheduleExistingNotice();
+    return;
+  }
   const dayId = Number(document.getElementById('setup-board205-schedule-day').value || 0);
   const shift = document.getElementById('setup-board205-schedule-shift').value;
   const crewChoice = document.getElementById('setup-board205-schedule-crew').value;
@@ -4128,6 +4174,8 @@ function board205InstallView() {
     <dialog id="setup-board205-schedule-dialog" class="setup-board205-dialog">
       <form id="setup-board205-schedule-dialog-form">
         <h3>Schedule Annual Task</h3>
+        <p id="setup-board205-schedule-task-name"></p>
+        <div id="setup-board205-schedule-existing" role="status" hidden></div>
         <div class="setup-board205-form-grid">
           <label>Setup Day<select id="setup-board205-schedule-day" required></select></label>
           <label>Work period<select id="setup-board205-schedule-shift"><option value="MORNING">Morning</option><option value="AFTERNOON">Afternoon</option></select></label>
@@ -4135,7 +4183,7 @@ function board205InstallView() {
           <label id="setup-board205-schedule-captain-row" hidden>Captain<select id="setup-board205-schedule-captain" disabled></select><span class="muted">Adds this Captain to the selected day when you save. </span></label>
         </div>
         <label>Crew size<input id="setup-board205-schedule-size" type="number" min="1" step="1" placeholder="Unknown"><span id="setup-board205-schedule-size-note" class="muted"></span></label>
-        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Assignment</button></menu>
+        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button id="setup-board205-schedule-save" type="submit">Save Assignment</button></menu>
       </form>
     </dialog>
 

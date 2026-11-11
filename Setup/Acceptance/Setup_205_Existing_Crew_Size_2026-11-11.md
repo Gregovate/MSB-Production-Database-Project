@@ -34,3 +34,26 @@ remain unchanged. Add Captain picker choosing an existing Captain must reuse his
 crew. Test a new Captain, changing selected day/period, Cancel without writes,
 invalid count and rejected historical move. All writes go to disposable clone.
 Exit through reusable preview CLEAN EXIT before Production approval.
+
+## Review correction — V0.3.108-schedule-catch-up
+
+Greg confirmed V107 allows entry for Rick's existing crew but saving Task185
+onto November10 rejects a duplicate day assignment. Task185 is Ready to Schedule,
+not a continuation task. Left readiness checks future scheduling; the SQL duplicate
+guard correctly covers past assignments too. No V107 save-persistence PASS exists.
+Preview CLEAN EXIT was operator confirmed. Production approval remains pending.
+
+V108 adds task identity and a selected-day existing-assignment notice. Open
+existing assignment edits unworked assignments through the established dialog;
+reported history is revealed without allowing moves. Report Work / review report
+uses setup205OpenManagerRecord on the exact work-day assignment, including
+completed-day visibility. No duplicate is created, no actual work is changed by
+opening, and selecting another day restores normal Save behavior.
+
+Retest Task185 on Day38: see its existing assignment and identity before Save;
+open it and update crew size if unworked. Use Report Work / review report to
+catch up on the real occurrence. Confirm persisted staffing after refresh, other
+period/Captain unchanged, Cancel writes nothing. A reported occurrence must
+remain reviewable without becoming movable. Then test another day and both
+new/existing Captain paths. Reuse the same wrapper/ref/port with V108 and its
+new exact candidate SHA. CLEAN EXIT required; no Production changes authorized.

@@ -6,7 +6,7 @@ const source = fs.readFileSync(__dirname + '/setup_scheduling_board.js', 'utf8')
 assert.match(source, /addEventListener\('change', board205ScheduleCaptainVisibility\)/);
 const begin = source.indexOf('async function board205SubmitScheduleDialog(');
 const end = source.indexOf('\nasync function board205AddWorkDay(', begin);
-async function run({kind='task', choice='NEW_CREW', captain='8', existing=false, fail=false, allow=true, size='4'}={}) {
+async function run({kind='task', choice='NEW_CREW', captain='8', existing=false, fail=false, allow=true, size='4', duplicate=false}={}) {
   const calls=[]; let closed=false; let loaded=false; const errors=[];
   const controls={
     'setup-board205-schedule-day':{value:'17'},
@@ -21,6 +21,8 @@ async function run({kind='task', choice='NEW_CREW', captain='8', existing=false,
     document:{getElementById:id=>controls[id]},
     appState:{access:{can_manage_setup:allow}},
     setupBoard205State:{scheduleTarget:{kind,id:kind==='task'?23:41}},
+    board205ScheduleExistingAssignment:()=>duplicate?{setup_work_day_task_id:71}:null,
+    board205ScheduleExistingNotice:()=>{},
     board205CaptainCandidate:id=>id===8?{person_id:8}:null,
     board205CrewsForDay:()=>existing?[{setup_work_day_crew_id:101,captain_person_id:8}]:[],
     board205Assignment:()=>({setup_work_day_id:10,setup_session_task_id:23,shift_code:'MORNING',setup_work_day_crew_id:50}),
@@ -37,6 +39,7 @@ async function run({kind='task', choice='NEW_CREW', captain='8', existing=false,
   return {calls,closed,loaded,errors,task};
 }
 (async()=>{
+  assert.equal((await run({duplicate:true})).calls.length,0,'Duplicate assignment cannot save staffing or placement');
   const continuation=await run();
   assert.equal(continuation.calls.length,1);
   assert.match(continuation.calls[0].url,/work-days\/17\/crews\/with-tasks$/);

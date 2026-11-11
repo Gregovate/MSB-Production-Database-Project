@@ -94,7 +94,7 @@ def test_catalog_exposes_contextual_stage_scene_and_broad_print_launchers() -> N
     production = read("production.html")
     js = read("setup_planning_summary.js")
 
-    assert 'setup_planning_summary.js?v=2026-11-11.107' in production
+    assert 'setup_planning_summary.js?v=2026-11-11.108' in production
     assert "Print Planning Summary…" in js
     assert "button.className = 'planning-summary-launch-button';" in js
     assert "button.className = 'secondary';" not in js

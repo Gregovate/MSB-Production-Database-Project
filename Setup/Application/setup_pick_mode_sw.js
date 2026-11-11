@@ -6,7 +6,7 @@ const SHELL = [
   'assets/setup_pick_list.css?v=2026-10-05.1',
   'assets/setup_pick_mode.css?v=2026-10-01.5',
   'assets/qrcode.min.js?v=1',
-  'assets/setup_pick_list.js?v=2026-11-11.107',
+  'assets/setup_pick_list.js?v=2026-11-11.108',
   'assets/setup_pick_mode.js?v=2026-10-06.1'
 ];
 
