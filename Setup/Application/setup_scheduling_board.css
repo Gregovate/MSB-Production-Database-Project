@@ -2307,3 +2307,22 @@ html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-cre
 html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="E"] { background-color:#502d3b; }
 html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="F"],
 html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="F"] { background-color:#23434d; }
+
+/* #205: keep the no-work decision readable and operable beside its checkbox. */
+#setup-board205-schedule-no-work-row > label {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.5rem 0;
+  cursor: pointer;
+}
+
+#setup-board205-schedule-no-work {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  flex: 0 0 24px;
+  margin: 0;
+}

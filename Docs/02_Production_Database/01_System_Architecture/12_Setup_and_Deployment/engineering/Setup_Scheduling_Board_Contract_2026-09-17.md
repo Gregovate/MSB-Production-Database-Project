@@ -1101,3 +1101,8 @@ inputs, do not save placement or staffing, and state the required decision insid
 the dialog. Planned crew-size-only correction does not imply moving actual work
 and remains allowed. Past unreported drag/drop moves require the same explicit
 no-work confirmation. Existing report/history command guards remain authoritative.
+
+The no-work confirmation must have a minimum 24px checkbox aligned beside its
+statement and a minimum 44px clickable label. Resolving one historical assignment
+must not silently resolve other dated occurrences: each requires actual reporting
+or an explicit no-work unschedule decision.

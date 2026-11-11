@@ -177,3 +177,14 @@ and attempt Save without checking no-work: no write must occur. Confirm no-work
 and test movement of that same occurrence, not insertion of another. Test direct
 Report Work, staffing-only changes, and drag/drop confirmation. Verify original
 actual history remains protected. Then CLEAN EXIT for separate Production gate.
+
+## V111 checkbox presentation follow-up
+
+Operator confirmed moving the November6 Task184 occurrence to November11.
+November7 remains a separate unresolved occurrence; moving the first must not
+fabricate a report or erase the second. If no work happened November7, explicitly
+unschedule that occurrence rather than moving it alongside November11.
+The no-work label now aligns a 24px checkbox with its statement, a 44px minimum
+clickable label, and scoped rules overriding the generic stacked form layout.
+Asset revision111.1; runtime remains V0.3.111-explicit-no-work. Browser acceptance
+of this presentation adjustment is pending. Production unchanged.

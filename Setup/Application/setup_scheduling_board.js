@@ -4254,7 +4254,7 @@ function board205InstallView() {
         <p id="setup-board205-schedule-task-name"></p>
         <p id="setup-board205-schedule-original" class="muted" hidden></p>
         <div id="setup-board205-schedule-no-work-row" hidden>
-          <label><input id="setup-board205-schedule-no-work" type="checkbox"> No work was performed on this assignment. Move it instead of reporting work.</label>
+          <label><input id="setup-board205-schedule-no-work" type="checkbox"><span>No work was performed on this assignment. Move it instead of reporting work.</span></label>
           <button type="button" class="secondary" id="setup-board205-schedule-report-existing">Report Work / review report</button>
         </div>
         <div id="setup-board205-schedule-existing" role="status" hidden></div>
