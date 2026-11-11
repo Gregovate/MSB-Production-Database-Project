@@ -872,10 +872,10 @@ function installNextTabs() {
   perform.id = 'perform-view'; perform.className = 'view';
   perform.innerHTML = `
     <div class="card">
-      <div class="section-title"><div><div class="eyebrow">Captain / field execution</div><h2>Perform Setup Work</h2></div></div>
+      <div class="section-title"><div><div class="eyebrow" id="next-perform-eyebrow">Captain / field execution</div><h2 id="next-perform-heading">Perform Setup Work</h2></div></div>
       <div id="next-perform-global-kpis" class="next-perform-global-kpis" aria-label="Whole Setup completion and Manager action center"></div>
       <div id="setup-perform-milestones"></div>
-      <p class="muted">Only scheduled work appears here. Work is organized by Setup Day, AM/PM, and Crew/Captain. Report Work records actual crew, elapsed time, and percent complete against the exact scheduled assignment.</p>
+      <p class="muted" id="next-perform-description">Only scheduled work appears here. Work is organized by Setup Day, AM/PM, and Crew/Captain. Report Work records actual crew, elapsed time, and percent complete against the exact scheduled assignment.</p>
       <div class="next-perform-toolbar">
         <label>Captain
           <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
@@ -2585,6 +2585,15 @@ function nextQcEnsureDiscovery() {
   el('next-qc-work-tab').setAttribute('aria-pressed', String(!qc));
   el('next-qc-check-tab').setAttribute('aria-pressed', String(qc && !fixes));
   el('next-qc-fixes-tab').setAttribute('aria-pressed', String(fixes));
+  // Never label QC Check / Report Fixes as scheduled field execution.
+  const heading=el('next-perform-heading');
+  if (heading) heading.textContent=fixes ? 'Report Fixes' : qc ? 'QC Check' : 'Perform Setup Work';
+  const eyebrow=el('next-perform-eyebrow');
+  if (eyebrow) eyebrow.textContent=qc ? 'Quality control / field verification' : 'Captain / field execution';
+  const description=el('next-perform-description');
+  if (description) description.hidden=qc;
+  const milestones=el('setup-perform-milestones');
+  if (milestones) milestones.hidden=qc;
   const list = el('next-perform-list');
   const existingToolbar = list?.previousElementSibling;
   if (existingToolbar?.classList?.contains('next-perform-toolbar')) existingToolbar.hidden = qc;
