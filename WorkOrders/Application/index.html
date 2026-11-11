@@ -254,6 +254,23 @@
             </div>
             <p id="intake-mapping-status" class="subtle" role="status"></p>
           </fieldset>
+          <fieldset id="review-intake-approval-links" hidden>
+            <legend>Required before promotion · Original wiring step and related requests</legend>
+            <p class="subtle">The recorded Stage is only a search scope. Compare problems below;
+              an unrelated request in the same Stage is not automatically a duplicate.
+              Only a PLUG IN &amp; VERIFY wiring step can be associated with the original work.</p>
+            <div id="review-intake-related-status" role="status">Choose Promote &amp; Assign to review related requests.</div>
+            <div id="review-intake-wiring-steps"></div>
+            <div id="review-intake-related-requests"></div>
+            <label>
+              <input id="review-intake-checked" type="checkbox">
+              I checked the wiring/verify step and related Intake/Work Orders.
+              This is a distinct repair, not a duplicate of an existing Work Order.
+            </label>
+            <p class="subtle">If an existing Work Order covers the same problem, use
+              <strong>Mark duplicate of an existing Work Order</strong> instead of
+              promoting a second repair. Original requests and reporters remain recorded.</p>
+          </fieldset>
           <fieldset id="review-create-fields" hidden>
             <legend id="review-work-order-legend">New internal Work Order</legend>
             <label for="review-problem">Describe the work</label>
