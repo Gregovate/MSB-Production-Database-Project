@@ -5,7 +5,7 @@ from flask import Blueprint, Response, jsonify, request
 import psycopg2
 
 from setup_api import (
-    SetupAuthenticationError, SetupCommandError, require_reader,
+    SetupAuthenticationError, SetupCommandError, require_reader, require_manager,
     require_setup_command, json_body, setup_database_dsn
 )
 from setup_qc_repository import SetupQcRepository
@@ -36,6 +36,13 @@ def api_setup_qc_read() -> Response:
     require_reader()
     year=qc_integer(request.args.get("season_year"),"season_year")
     return jsonify(qc=qc_repo().snapshot(year))
+
+
+@setup_qc_api.get("/api/setup/qc/intake-candidates")
+def api_setup_qc_intake_candidates() -> Response:
+    require_manager()
+    year=qc_integer(request.args.get("season_year"),"season_year")
+    return jsonify(intake_candidates=qc_repo().intake_candidates(year))
 
 
 @setup_qc_api.post("/api/setup/qc/action")
