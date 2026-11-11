@@ -63,6 +63,33 @@ class SetupQcRepository:
                 auditors=[dict(row) for row in cur.fetchall()]
         return {'findings':findings,'auditors':auditors}
 
+    def intake_candidates(self, season_year: int) -> list[dict]:
+        """Review original unpromoted Intake; never mutate it or infer QC identity."""
+        with psycopg2.connect(self.dsn) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                  SELECT i.intake_id,i.problem_raw,i.stage_id,
+                         s.stage_name,s.stage_key,i.submitter_name_raw,
+                         i.source_form_name,i.updated_at,
+                         coalesce(links.linked_findings,'[]'::jsonb) AS linked_findings
+                  FROM stage.work_order_intake i
+                  LEFT JOIN ref.stage s ON s.stage_id=i.stage_id
+                  LEFT JOIN LATERAL (
+                    SELECT jsonb_agg(l.qc_finding_id ORDER BY l.qc_finding_id)
+                      AS linked_findings
+                    FROM ops.setup_qc_intake_link l
+                    WHERE l.intake_id=i.intake_id
+                  ) links ON true
+                  WHERE i.target_year=%s
+                    AND NOT EXISTS (
+                      SELECT 1 FROM ops.work_order w
+                      WHERE w.source_intake_id=i.intake_id
+                    )
+                  ORDER BY i.intake_id DESC
+                  LIMIT 300
+                """,(season_year,))
+                return [dict(row) for row in cur.fetchall()]
+
     def command(self, email: str, payload: dict) -> dict:
         with psycopg2.connect(self.dsn) as conn:
             # Installed fieldwiring_app defaults to read-only; explicitly opt in
