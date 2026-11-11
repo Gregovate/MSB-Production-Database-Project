@@ -47,6 +47,8 @@ try {
        -LocalReviewBranch $LocalBranch `
        -PreviewEmail $ReviewerEmail `
        -ExpectedVersion $ExpectedVersion `
+       -MigrationPaths @('Setup/Database/081_add_unscheduled_setup_qc_findings.sql') `
+       -ValidationPaths @('Setup/Acceptance/setup_122_qc_disposable_acceptance.sql') `
        -AllowConcurrentProductionWrites
     if (-not $?) { throw 'HOLD: disposable browser preview did not exit cleanly.' }
     $cleanExit = $true
