@@ -65,6 +65,9 @@ class SetupQcRepository:
 
     def command(self, email: str, payload: dict) -> dict:
         with psycopg2.connect(self.dsn) as conn:
+            # Installed fieldwiring_app defaults to read-only; explicitly opt in
+            # only for the narrow authenticated SECURITY DEFINER QC command.
+            conn.set_session(readonly=False, autocommit=False)
             with conn.cursor() as cur:
                 cur.execute("""
                    SELECT ops.setup_qc_command(
