@@ -66,8 +66,12 @@ def test_original_intake_is_reviewed_and_never_auto_promoted():
     assert 'DELETE FROM stage.work_order_intake' not in SQL
     assert 'UPDATE stage.work_order_intake' not in SQL
     assert 'INSERT INTO ops.work_order' not in SQL
-    assert 'LINK_INTAKE' in JS
-    assert 'Original Intake remains unchanged' in JS
+    # Historical Intake is retained in PostgreSQL, never entered via QC.
+    assert 'LINK_INTAKE' not in JS
+    assert 'data-qc-link-intake' not in JS
+    assert 'data-qc-problem' in JS
+    assert 'data-qc-evidence' in JS
+    assert "api/setup/session-tasks/" not in JS
 
 
 def test_two_minute_final_signoff_is_not_faked():
@@ -107,8 +111,9 @@ def test_qc_entry_not_blocked_by_manager_intake_retrieval():
     assert "Loading QC findings and report controls" in view
     assert 'data-qc-action="REPORT"' in view
     assert 'data-qc-action="CLAIM_AUDIT"' in view
-    assert 'data-qc-intake-items' in view
-    assert "void reviewIntake().then" in view
+    assert 'data-qc-problem' in view
+    assert 'data-qc-evidence' in view
+    assert "reviewIntake" not in view
     assert "if (!host.isConnected" in view
 
 
@@ -118,3 +123,15 @@ def test_qc_writes_share_exact_finding_and_annual_task():
     assert 'data-qc-action="RETEST_PASS"' in JS
     assert 'data-qc-action="RETEST_FAIL"' in JS
     assert "setup_session_task_id:targetId" in JS
+
+
+def test_qc_feedback_uses_familiar_form_without_work_order_intake():
+    existing=(ROOT/'setup_next_pass.js').read_text()
+    assert 'What did you find?' in existing
+    assert 'Suggested correction / evidence' in existing
+    assert 'What did you find?' in JS
+    assert 'Suggested correction / evidence' in JS
+    assert 'data-qc-problem' in JS and 'data-qc-evidence' in JS
+    assert "api('api/setup/qc/action'" in JS
+    assert '/correction-intake' not in JS
+    assert 'LINK_INTAKE' not in JS
