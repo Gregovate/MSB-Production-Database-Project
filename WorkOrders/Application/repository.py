@@ -688,6 +688,23 @@ class WorkManagementRepository:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             return fetch_wiring_candidates(cur, record)
 
+    def intake_approval_review(
+        self, *, actor: dict[str, Any], ticket_key: str,
+    ) -> dict[str, Any]:
+        """Manager-only candidate comparison, no promotion or duplicate action."""
+        if not actor.get("can_manage"):
+            raise WorkManagementError("Manager review required.", 403)
+        record = self.ticket(actor=actor, ticket_key=ticket_key)
+        if record["type"] not in ("INTAKE_REQUEST", "TASK_FEEDBACK"):
+            raise WorkManagementError("Select an Intake request for approval.", 400)
+        from setup_accountability import fetch_related_requests, fetch_wiring_candidates
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            related = fetch_related_requests(cur, record)
+            wiring = fetch_wiring_candidates(cur, record)
+        return {"source_ticket":ticket_key, "related":related, "wiring":wiring,
+                "promotion_approved":False,
+                "notice":"Review possible duplicate reports and the precise wiring/verify step before promotion."}
+
     def related_information(
         self, *, actor: dict[str, Any], ticket_key: str,
     ) -> dict[str, Any]:
