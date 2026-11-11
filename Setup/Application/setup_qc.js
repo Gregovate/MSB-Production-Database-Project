@@ -7,18 +7,6 @@
   let snapshot = { findings: [], auditors: [] };
   let loadedYear = null;
   let pending = null;
-  let intakeCandidates = [];
-  let intakeLoadedYear = null;
-  async function reviewIntake() {
-    if (!appState.access?.can_manage_setup) return [];
-    if (intakeLoadedYear !== Number(appState.seasonYear)) {
-      const payload=await api(
-        `api/setup/qc/intake-candidates?season_year=${encodeURIComponent(appState.seasonYear)}`);
-      intakeCandidates=payload.intake_candidates || [];
-      intakeLoadedYear=Number(appState.seasonYear);
-    }
-    return intakeCandidates;
-  }
   const html = value => escapeHtml(String(value ?? ''));
   const localTime = value => value
     ? new Date(value).toLocaleString('en-US', {
@@ -121,30 +109,22 @@
       let note=noteField?.value?.trim() || '';
       const targetId=Number(btn.dataset.qcTask || id ||
         snapshot.findings.find(x=>Number(x.qc_finding_id)===finding)?.setup_session_task_id);
-      if (action==='LINK_INTAKE') {
-        const intakeId=Number(host.querySelector('[data-qc-link-intake]')?.value||0);
-        const findingId=Number(host.querySelector('[data-qc-link-finding]')?.value||0);
-        const rationale=host.querySelector('[data-qc-link-rationale]')?.value?.trim();
-        if (!intakeId || !findingId || !rationale) {
-          setAlert('Choose the original Intake, existing finding, and link rationale.','error');
-          return;
-        }
-        await command({action, setup_session_task_id:targetId,
-          qc_finding_id:findingId,intake_id:intakeId,note:rationale});
-        return;
-      }
       if (action==='CLAIM_AUDIT') {
         await command({action,setup_session_task_id:targetId});
         return;
       }
       if (action==='REPORT') {
-        const title=host.querySelector('[data-qc-title]')?.value?.trim();
-        note=host.querySelector('[data-qc-description]')?.value?.trim();
+        const problem=host.querySelector('[data-qc-problem]')?.value?.trim() || '';
+        const evidence=host.querySelector('[data-qc-evidence]')?.value?.trim() || '';
         const phase=host.querySelector('[data-qc-phase]')?.value;
-        const location=host.querySelector('[data-qc-location]')?.value?.trim();
-        if (!title || !note) { setAlert('Describe the problem before saving.','error');return; }
+        const location=host.querySelector('[data-qc-location]')?.value?.trim() || '';
+        if (!problem) { setAlert('Enter what you found before saving.','error');return; }
+        // Familiar Task Feedback form, but QC task-scoped storage only.
+        // No Work Order Intake submission, Manager triage or calendar mutation.
+        const title=problem.slice(0,200);
+        const detail=evidence ? problem+'\n\nSuggested correction / evidence:\n'+evidence : problem;
         await command({action,setup_session_task_id:targetId,title,
-          note,discovery_phase:phase,location_detail:location});
+          note:detail,discovery_phase:phase,location_detail:location});
         return;
       }
       if (action==='CLAIM_REPAIR' && !note) note='Claimed repair';
@@ -164,11 +144,8 @@
     const findings=taskFindings(id);
     const selectedQcTask=nextQcAnnualTasks().find(
       t=>Number(t.setup_session_task_id)===Number(id));
-    const unlinkedIntake=(snapshot.unreconciled_intake || []).filter(
-      i=>i.stage_id != null && Number(i.stage_id)===Number(selectedQcTask?.stage_id));
-    // Intake is a separate, manager-only read. Never hold up QC entry for it.
-    const relevantIntake=[];
-    const auditors=(snapshot.auditors || []).filter(x=>Number(x.setup_session_task_id)===Number(id));
+    const auditors=(snapshot.auditors || []).filter(
+      x=>Number(x.setup_session_task_id)===Number(id));
     host.innerHTML=`
       <div class="next-qc-record">
         <div><strong>QC auditors:</strong>
@@ -178,103 +155,33 @@
         <h4>Previously reported problems (${findings.length})</h4>
         ${findings.length ? findings.map(f=>findingMarkup(f,false)).join('')
           : '<p>No QC findings saved yet for this task.</p>'}
-        ${unlinkedIntake.length ? `<section class="next-qc-finding">
-          <h4>Earlier Intake reports needing review (${unlinkedIntake.length})</h4>
-          <p class="muted">These original reports are visible to avoid duplicate problems.
-            A Manager must reconcile them to exact QC findings before they appear in Report Fixes.</p>
-          ${unlinkedIntake.map(i=>`<details><summary>INTAKE-${Number(i.intake_id)}
-              · ${html((i.problem||'').slice(0,140))}</summary>
-              <div class="muted">${html(i.submitter_name)} ·
-                ${html(localTime(i.updated_at))}</div>
-              <div class="next-qc-note">${html(i.problem)}</div>
-              <div class="next-qc-note">${html(i.notes||'')}</div></details>`).join('')}
-        </section>` : ''}
-        ${appState.access?.can_manage_setup ? `<section class="next-qc-finding">
-          <h4>Manager: reconcile existing Work Order Intake</h4>
-          <p class="muted">Original Intake remains unchanged. Confirm the exact defect and link
-            it to one or more QC findings; do not link the separate promoted GFCI Work Order.
-            Create distinct QC findings first for separate physical defects.</p>
-          <label>Unpromoted Intake from this Stage
-            <select data-qc-link-intake>
-              <option value="">Choose original Intake</option>
-              ${relevantIntake.map(i=>`<option value="${Number(i.intake_id)}">
-                INTAKE-${Number(i.intake_id)} · ${html((i.problem_raw||'').slice(0,150))}
-              </option>`).join('')}
-            </select>
-          </label>
-          <details data-qc-intake-review><summary>Review original Intake descriptions (loading…)</summary><div data-qc-intake-items>
-            ${relevantIntake.map(i=>`<div class="next-qc-finding">
-               <strong>INTAKE-${Number(i.intake_id)}</strong> · ${html(i.submitter_name_raw)}
-               <div class="muted">${html(localTime(i.updated_at))} ·
-                 linked findings ${html((i.linked_findings||[]).join(', ')||'none')}</div>
-               <div class="next-qc-note">${html(i.problem_raw)}</div>
-               ${i.notes_raw ? `<div class="next-qc-note"><strong>Original notes:</strong> ${html(i.notes_raw)}</div>` : ""}
-               ${i.photo_url_raw ? `<div class="muted">Photo reference: ${html(i.photo_url_raw)}</div>` : ""}
-              </div>`).join('')}</div>
-          </details>
-          <label>Existing QC problem
-            <select data-qc-link-finding>
-              <option value="">Choose finding to corroborate</option>
-              ${findings.map(f=>`<option value="${Number(f.qc_finding_id)}">
-                 #${Number(f.qc_finding_id)} · ${html(f.title)}
-              </option>`).join('')}
-            </select>
-          </label>
-          <label>Why these are the same issue?
-            <textarea rows="3" maxlength="2000" data-qc-link-rationale
-              placeholder="Confirm arch / channel / failure and overlapping evidence"></textarea>
-          </label>
-          <button type="button" class="small secondary" data-qc-action="LINK_INTAKE"
-            data-qc-task="${id}">Link original Intake to QC finding</button>
-        </section>` : ''}
-        <form class="next-qc-new" onsubmit="return false">
+        <form class="next-qc-new next-problem-form" onsubmit="return false">
           <h4>Report a problem on QC #${id}</h4>
-          <p class="muted">You can report failures during installation or initial power-up, even before final QC is ready.</p>
-          <label>Problem / affected Display <input data-qc-title required maxlength="200" placeholder="e.g., Arch 3 — red string out"></label>
-          <label>Exact location / channel <input data-qc-location maxlength="500" placeholder="Arch, section, controller/channel if known"></label>
-          <label>When found <select data-qc-phase>
-            <option value="INITIAL_POWER">Initial Power-Up</option>
-            <option value="INSTALLATION">Installation</option>
-            <option value="FINAL_TEST">Final Test</option>
-            <option value="OTHER">Other</option>
-          </select></label>
-          <label>Detailed findings <textarea data-qc-description rows="7" maxlength="6000"
-            placeholder="What worked, what did not, and how to reproduce it"></textarea></label>
+          <p class="muted">This uses the familiar Task Feedback form. The report is saved
+            directly to QC #${id}, not Work Order Intake. No schedule is required.</p>
+          <label>What did you find?
+            <textarea class="next-problem-text" data-qc-problem rows="4"
+              maxlength="200" required placeholder="Describe the failure or observation"></textarea>
+          </label>
+          <label>Suggested correction / evidence <span class="muted">(optional)</span>
+            <textarea class="next-suggestion-text" data-qc-evidence rows="5"
+              maxlength="2000" placeholder="Details, affected section, symptoms or suggested fix"></textarea>
+          </label>
+          <label>Exact location / channel <span class="muted">(optional)</span>
+            <input data-qc-location maxlength="500" placeholder="Display, arch, channel or section">
+          </label>
+          <label>When found
+            <select data-qc-phase>
+              <option value="INITIAL_POWER">Initial Power-Up</option>
+              <option value="INSTALLATION">Installation</option>
+              <option value="FINAL_TEST">Final Test</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
           <button type="button" data-qc-action="REPORT" data-qc-task="${id}">Save QC Problem</button>
-        </form>
+                </form>
       </div>`;
     bindControls(host,id);
-    if (appState.access?.can_manage_setup) {
-      // Update only Manager Intake fields so unsaved QC notes are never erased.
-      void reviewIntake().then(all => {
-        if (!host.isConnected || nextQcDiscovery.selectedTaskId !== id ||
-            nextQcDiscovery.mode !== 'qc') return;
-        const candidates=all.filter(i=>Number(i.stage_id)===Number(selectedQcTask?.stage_id));
-        const picker=host.querySelector('[data-qc-link-intake]');
-        if (picker) {
-          const previous=picker.value;
-          picker.innerHTML='<option value="">Choose original Intake</option>'+
-            candidates.map(i=>`<option value="${Number(i.intake_id)}">INTAKE-${Number(i.intake_id)} · ${html((i.problem_raw||'').slice(0,150))}</option>`).join('');
-          if ([...picker.options].some(option=>option.value===previous)) picker.value=previous;
-        }
-        const details=host.querySelector('[data-qc-intake-review]');
-        if (details) {
-          details.querySelector('summary').textContent='Review original Intake descriptions ('+candidates.length+')';
-          const items=details.querySelector('[data-qc-intake-items]');
-          items.innerHTML=candidates.map(i=>`<div class="next-qc-finding">
-            <strong>INTAKE-${Number(i.intake_id)}</strong> · ${html(i.submitter_name_raw)}
-            <div class="muted">${html(localTime(i.updated_at))} · linked findings ${html((i.linked_findings||[]).join(', ')||'none')}</div>
-            <div class="next-qc-note">${html(i.problem_raw)}</div>
-            ${i.notes_raw ? `<div class="next-qc-note"><strong>Original notes:</strong> ${html(i.notes_raw)}</div>` : ''}
-            ${i.photo_url_raw ? `<div class="muted">Photo reference: ${html(i.photo_url_raw)}</div>` : ''}
-          </div>`).join('');
-        }
-      }).catch(error=>{
-        setAlert('Original Intake review temporarily unavailable: '+(error.message||error),'error');
-        const details=host.querySelector('[data-qc-intake-review]');
-        if (details) details.querySelector('summary').textContent='Original Intake review unavailable';
-      });
-    }
   };
   window.setupQcRenderFixes=async function() {
     const host=document.getElementById('next-qc-fixes-list');
