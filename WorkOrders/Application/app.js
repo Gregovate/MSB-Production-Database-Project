@@ -544,7 +544,48 @@
       photos.append(item);
     }
     $("ticket-photos").hidden = !photos.children.length;
+    const wiringSection = $("wiring-accountability");
+    wiringSection.hidden = !state.actor?.can_manage;
+    $("wiring-accountability-steps").replaceChildren();
+    setText("wiring-accountability-status",
+      state.actor?.can_manage ? "Looking up Stage wiring/verify steps…" : "");
+    if (state.actor?.can_manage) void loadWiringAccountability(row.ticket);
     document.dispatchEvent(new CustomEvent("wo419:ticket", { detail: row }));
+  }
+
+  async function loadWiringAccountability(ticket) {
+    try {
+      const data = await getJson("/api/work-orders/tickets/" +
+        encodeURIComponent(ticket) + "/wiring-accountability");
+      if (state.selected !== ticket) return;
+      const evidence = data.wiring_accountability || {};
+      const steps = evidence.candidates || [];
+      setText("wiring-accountability-status", evidence.notice ||
+        "No eligible wiring/verify Setup step found.");
+      const target = $("wiring-accountability-steps");
+      target.replaceChildren();
+      for (const task of steps) {
+        const row = document.createElement("p");
+        const strong = document.createElement("strong");
+        strong.textContent = task.task_name || "Wiring verification";
+        const details = document.createElement("span");
+        details.className = "subtle";
+        details.textContent = " · Annual task #" + task.setup_session_task_id +
+          " · " + (task.execution_status || "Unknown status") +
+          " · CANDIDATE ONLY — not linked or attributed";
+        row.append(strong, details);
+        target.append(row);
+      }
+      if (!steps.length) {
+        const empty = document.createElement("p");
+        empty.textContent = "No eligible PLUG IN & VERIFY wiring step established for this Stage.";
+        target.append(empty);
+      }
+    } catch (exc) {
+      if (state.selected === ticket) {
+        setText("wiring-accountability-status", String(exc.message || exc));
+      }
+    }
   }
 
   function originalNotesWithoutRecordedProgress(raw, events) {
