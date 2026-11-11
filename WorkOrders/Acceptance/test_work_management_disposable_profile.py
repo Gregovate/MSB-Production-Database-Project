@@ -543,7 +543,7 @@ def test_v1_browser_reuses_same_preview_runner_with_native_sql_not_clonecommands
     assert 'from v1_runtime import V1Repository' in backend
     assert 'from v1_runtime import V1Commands' in backend
     assert 'V1Repository().access(email)' in entry
-    assert runner.index('echo "PASS: V1 native SQL installed') < runner.index(
+    assert runner.index('echo "PASS: installed V1 functions preserved; clone-only privileges restored') < runner.index(
         '--- Start pinned Work Management reviewer'
     )
 
