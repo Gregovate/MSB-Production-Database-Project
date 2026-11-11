@@ -48,7 +48,8 @@ def test_qc_mode_keeps_existing_scheduled_reporting_intact():
     render = segment("function renderNextExecution() {", "const allAssignments =")
     assert "nextEnsurePerformToolbar();" in render
     assert "nextQcEnsureDiscovery();" in render
-    assert "if (nextQcDiscovery.mode === 'qc') return;" in render
+    # Both QC Check and Report Fixes must bypass scheduled-work rendering.
+    assert "if (nextQcDiscovery.mode !== 'work') return;" in render
     assert "next-perform-list" in render
     assert "next-perform-show-completed" in JS
     assert "submitNextCorrectionIntake" in JS
@@ -81,7 +82,8 @@ def test_qc_report_and_fixes_share_the_exact_same_finding_identity():
     assert 'CLAIM_REPAIR' in client and 'REPAIRED' in client
     assert 'RETEST_PASS' in client and 'RETEST_FAIL' in client
     assert 'INITIAL_POWER' in client
-    assert 'rows="7"' in client
+    assert 'data-qc-problem' in client
+    assert 'data-qc-evidence' in client
     assert 'setup_qc.js?v=2026-11-11.112.2' in HTML
     assert 'Setup/Application' not in client  # no raw file-loading or synthetic work items
 
