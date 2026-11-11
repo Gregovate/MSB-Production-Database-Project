@@ -33,16 +33,16 @@ def qc_integer(value, label: str, *, optional=False):
 
 @setup_qc_api.get("/api/setup/qc")
 def api_setup_qc_read() -> Response:
-    require_reader()
+    _repo,email,_access=require_reader()
     year=qc_integer(request.args.get("season_year"),"season_year")
-    return jsonify(qc=qc_repo().snapshot(year))
+    return jsonify(qc=qc_repo().snapshot(email,year))
 
 
 @setup_qc_api.get("/api/setup/qc/intake-candidates")
 def api_setup_qc_intake_candidates() -> Response:
-    require_manager()
+    _repo,email,_access=require_manager()
     year=qc_integer(request.args.get("season_year"),"season_year")
-    return jsonify(intake_candidates=qc_repo().intake_candidates(year))
+    return jsonify(intake_candidates=qc_repo().intake_candidates(email,year))
 
 
 @setup_qc_api.post("/api/setup/qc/action")
