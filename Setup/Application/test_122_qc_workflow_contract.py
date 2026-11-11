@@ -85,4 +85,5 @@ def test_disposable_preview_always_includes_081_and_rollback_validation():
     assert 'Setup/Acceptance/setup_122_qc_disposable_acceptance.sql' in PREVIEW
     validation=(ROOT.parent/'Acceptance/setup_122_qc_disposable_acceptance.sql').read_text()
     assert 'ROLLBACK;' in validation
-    assert 'SETUP' not in validation or True
+    assert 'FROM ops.setup_work_day_task' in validation
+    assert 'v_before<>v_after' in validation
