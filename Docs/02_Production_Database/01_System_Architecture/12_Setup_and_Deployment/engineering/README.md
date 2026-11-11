@@ -1,5 +1,9 @@
 # Setup and Deployment Engineering
 
+## #486 open-tab update detection — engineering draft
+
+[Browser update and draft-protection contract](Setup_Browser_Update_and_Draft_Protection_Contract_2026-11-11.md) records the confirmed same-version freshness gap, existing guard limitations, proposed Python artifact revision and mandatory all-form draft inventory/acceptance before implementation. Main Setup page first; no runtime or Production change.
+
 ## Shared email ownership — 2026-10-22
 
 [Email System Integration](../../Email_System_Integration.md) links the single Server Management delivery authority, [#97](https://github.com/Gregovate/MSB-Server-Management/issues/97). #205 retains Setup digest/report meaning, audience rules and content; #122 coordinates Setup releases. The later Manager SMTP sender and [October22 recovery evidence](Setup_205_Manager_Mail_Recovery_2026-10-22.md) supersede the earlier paused Directus transport proposal as the recorded implementation. Do not revive that proposal or fork another sender. Runtime consolidation is pending; historical business requirements and acceptance remain preserved.
