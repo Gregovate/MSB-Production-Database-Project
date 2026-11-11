@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS ops.setup_qc_event (
   qc_event_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   qc_finding_id bigint NOT NULL REFERENCES ops.setup_qc_finding(qc_finding_id),
   event_type text NOT NULL CHECK (event_type IN
-    ('REPORTED','OBSERVATION','CLAIMED','REPAIRED','RETEST_PASS','RETEST_FAIL','INTAKE_LINK')),
+    ('REPORTED','OBSERVATION','CLAIMED','REPAIRED','RETEST_PASS','RETEST_FAIL','REOPEN','INTAKE_LINK')),
   person_id integer NOT NULL REFERENCES ref.person(person_id),
   note text NOT NULL CHECK (length(btrim(note)) BETWEEN 1 AND 6000),
   created_at timestamptz NOT NULL DEFAULT clock_timestamp()
@@ -152,7 +152,7 @@ BEGIN
         VALUES(p_finding,'INTAKE_LINK',v_person,'INTAKE-'||p_intake_id||': '||v_note);
     END IF;
   ELSE
-    IF v_action NOT IN ('OBSERVATION','CLAIM_REPAIR','REPAIRED','RETEST_PASS','RETEST_FAIL')
+    IF v_action NOT IN ('OBSERVATION','CLAIM_REPAIR','REPAIRED','RETEST_PASS','RETEST_FAIL','REOPEN')
        OR v_note IS NULL OR length(v_note)>6000 THEN
       RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Known QC action and note (1-6000) required';
     END IF;
@@ -176,6 +176,12 @@ BEGIN
       UPDATE ops.setup_qc_finding SET status='AWAITING_RETEST',
         claimed_by_person_id=v_person,updated_at=clock_timestamp()
         WHERE qc_finding_id=p_finding;
+    ELSIF v_action='REOPEN' THEN
+      IF v_status<>'VERIFIED' THEN
+        RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Only a previously verified finding may be reopened';
+      END IF;
+      UPDATE ops.setup_qc_finding SET status='OPEN',claimed_by_person_id=NULL,
+        updated_at=clock_timestamp() WHERE qc_finding_id=p_finding;
     ELSIF v_action IN ('RETEST_PASS','RETEST_FAIL') THEN
       IF v_status<>'AWAITING_RETEST' THEN
         RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Repair must await retest before verification';
@@ -191,6 +197,7 @@ BEGIN
         WHEN 'REPAIRED' THEN 'REPAIRED'
         WHEN 'RETEST_PASS' THEN 'RETEST_PASS'
         WHEN 'RETEST_FAIL' THEN 'RETEST_FAIL'
+        WHEN 'REOPEN' THEN 'REOPEN'
         ELSE 'OBSERVATION' END,v_person,v_note);
   END IF;
   RETURN jsonb_build_object('action',v_action,'finding_id',p_finding,'person_id',v_person);
