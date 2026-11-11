@@ -90,9 +90,13 @@ def test_no_writing_and_manager_only_contract():
     assert "ops.setup_task_progress" not in sql  # least-privilege until reviewed
     assert "/api/work-orders/tickets/<key>/wiring-accountability" in (
         ROOT/"backend.py").read_text()
+    # A Stage-only candidate must not clutter the normal Intake detail view.
     ui = (ROOT/"app.js").read_text()
-    assert "CANDIDATE ONLY — not linked or attributed" in ui
-    assert 'state.actor?.can_manage' in ui
+    html = (ROOT/"index.html").read_text()
+    assert 'wiring-accountability-steps' not in ui
+    assert 'id="wiring-accountability"' not in html
+    assert 'id="review-intake-wiring-review"' in html
+    assert 'id="review-intake-setup-association"' in html
 
 
 def test_clone_reader_does_not_gain_duplicate_table_access():
