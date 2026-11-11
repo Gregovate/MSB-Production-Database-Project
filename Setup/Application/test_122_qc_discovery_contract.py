@@ -61,3 +61,12 @@ def test_theme_safe_read_only_qc_and_fresh_asset_pins():
     assert 'setup_next_pass.js?v=2026-11-11.111.9' in HTML
     assert 'setup_next_pass.css?v=2026-11-11.111.9' in HTML
     assert "V0.3.111-explicit-no-work" in (APP / "production_backend.py").read_text()
+
+
+def test_final_qc_regex_and_multiword_search_are_executable_javascript_patterns():
+    # A literal double backslash matches backslash+s, not spaces; it can
+    # silently return zero QC tasks even when the annual tasks are present.
+    assert r"/plug\s+in\s+network\s+to\s+controller.*2\s+minute\s+test\s+show/i" in JS
+    assert r"/plug\\s+in" not in JS
+    assert r"query.split(/\s+/)" in JS
+    assert r"query.split(/\\s+/)" not in JS
