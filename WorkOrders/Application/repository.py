@@ -676,6 +676,18 @@ class WorkManagementRepository:
             row["setup_context"] = context
             return row
 
+    def wiring_accountability(
+        self, *, actor: dict[str, Any], ticket_key: str,
+    ) -> dict[str, Any]:
+        """Manager-only, read-only candidate wiring step for an existing ticket."""
+        if not actor.get("can_manage"):
+            raise WorkManagementError("Manager review required.", 403)
+        # ticket() enforces existing row-level ticket authorization first.
+        record = self.ticket(actor=actor, ticket_key=ticket_key)
+        from setup_accountability import fetch_wiring_candidates
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            return fetch_wiring_candidates(cur, record)
+
     def related_information(
         self, *, actor: dict[str, Any], ticket_key: str,
     ) -> dict[str, Any]:
