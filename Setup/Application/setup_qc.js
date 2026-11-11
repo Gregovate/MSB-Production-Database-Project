@@ -160,6 +160,10 @@
     catch (error) { host.textContent='QC details unavailable: '+(error.message||error);return; }
     if (!host.isConnected || id!==nextQcDiscovery.selectedTaskId) return;
     const findings=taskFindings(id);
+    const selectedQcTask=nextQcAnnualTasks().find(
+      t=>Number(t.setup_session_task_id)===Number(id));
+    const unlinkedIntake=(snapshot.unreconciled_intake || []).filter(
+      i=>i.stage_id != null && Number(i.stage_id)===Number(selectedQcTask?.stage_id));
     let relevantIntake=[];
     if (appState.access?.can_manage_setup) {
       try {
@@ -180,7 +184,18 @@
         </div>
         <h4>Previously reported problems (${findings.length})</h4>
         ${findings.length ? findings.map(f=>findingMarkup(f,false)).join('')
-          : '<p>No QC problems recorded in the new finding ledger yet. Historical Intake reconciliation remains a separate Manager-reviewed step.</p>'}
+          : '<p>No QC findings saved yet for this task.</p>'}
+        ${unlinkedIntake.length ? `<section class="next-qc-finding">
+          <h4>Earlier Intake reports needing review (${unlinkedIntake.length})</h4>
+          <p class="muted">These original reports are visible to avoid duplicate problems.
+            A Manager must reconcile them to exact QC findings before they appear in Report Fixes.</p>
+          ${unlinkedIntake.map(i=>`<details><summary>INTAKE-${Number(i.intake_id)}
+              · ${html((i.problem||'').slice(0,140))}</summary>
+              <div class="muted">${html(i.submitter_name)} ·
+                ${html(localTime(i.updated_at))}</div>
+              <div class="next-qc-note">${html(i.problem)}</div>
+              <div class="next-qc-note">${html(i.notes||'')}</div></details>`).join('')}
+        </section>` : ''}
         ${appState.access?.can_manage_setup ? `<section class="next-qc-finding">
           <h4>Manager: reconcile existing Work Order Intake</h4>
           <p class="muted">Original Intake remains unchanged. Confirm the exact defect and link
