@@ -38,7 +38,7 @@ try {
     $wasCreated = $true
     Set-Location -LiteralPath $Review
     Write-Host "PR485 TEST CANDIDATE: $CandidateSha"
-    Write-Host 'Run QC Check from Setup > Perform Work. This phase is READ ONLY.'
+    Write-Host 'Test Scheduled Work / QC Check / Report Fixes. QC writes remain disposable.'
     Write-Host 'Production unchanged; ordinary Production activity can continue.'
     & (Join-Path $Review 'Setup\Acceptance\run_setup_disposable_browser_preview.ps1') `
        -PreviewPort 8898 `
