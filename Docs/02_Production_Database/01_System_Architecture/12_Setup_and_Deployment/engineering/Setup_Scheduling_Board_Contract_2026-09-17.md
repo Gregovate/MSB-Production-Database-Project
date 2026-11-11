@@ -1229,3 +1229,61 @@ Manager/Crew browser review must show all 38 tasks including all 27
 unscheduled, search by exact task and Scene, no scheduling mutation, and
 controls with contrast/legibility in light and dark. No Production release
 of a partial QC system without express operator acceptance.
+
+
+## November 11 — QC persistent findings implementation candidate (081, #122/#205)
+
+**Correction to previous first-phase boundary:** PR485 now also contains a
+*NOT YET APPROVED / NOT DEPLOYED* governed clone-only QC persistence
+candidate. It remains an explicit three-view workflow inside existing
+**Perform Work**:
+- **Scheduled Work** unchanged (PR482 reports/no-work and PR483 theme).
+- **QC Check** searches all 38 annual two-minute test-show tasks independent
+  of scheduled assignments. An authorized Crew member can report a problem
+  on the exact annual QC task before final readiness, add corroborating
+  observations to previous findings, or self-assign as QC auditor without
+  creating a calendar, crew, Captain or work report.
+- **Report Fixes** shows the same unresolved findings across Stage/Scene.
+  A Crew member can claim a repair, record repair notes, and mark
+  `AWAITING_RETEST`. An authorized Crew tester records a functional retest
+  pass or fail. The finding is `VERIFIED` only on recorded retest pass.
+  A failed retest reopens the same finding rather than creating another.
+
+**Governed storage:** `ops.setup_qc_auditor`, `ops.setup_qc_finding`,
+`ops.setup_qc_event`, `ops.setup_qc_intake_link` are supplemental
+task-scoped evidence, NOT a duplicate annual-task master. Migration
+`081_add_unscheduled_setup_qc_findings.sql` grants no direct application
+QC/Intake table writes or reads. Only signed-in Manager/Production Crew
+via `ref.setup_execution_actor` can mutate narrow
+`ops.setup_qc_command`; independent SQL-owned authorized read
+projections support client UI. All events preserve person/time; browser
+displays timestamps in America/Chicago.
+
+**Legacy Intake reconciliation:** A Manager-only original-Intake view shows
+unpromoted 2026 Intake, Stage and raw original problem details.
+The Manager creates exact distinct QC findings and deliberately links each
+applicable original Intake ID to one or several existing QC findings after
+confirming same physical failure. Many original reports can link to the same
+finding. Original source rows are not deleted or updated by QC.
+The GFCI Intake promoted separately by operator must remain Work Orders,
+must never create another QC repair, and is rejected if already promoted.
+Original Intake preservation and duplicate suppression require clone proof.
+
+**Safety boundary:** Claiming an audit or marking repaired NEVER marks the
+Setup annual task `COMPLETE` or records final two-minute QC PASS.
+The final approval stage and prerequisite/report gate are NOT yet implemented
+in this source and must not be represented as complete. Final QC approval
+requires a separately reviewed guarded implementation using the existing
+dependency graph and current report evidence. No 080 migration replay.
+No Production deployment from draft PR485 without accepted disposable
+081 migration, precise browser workflows in both themes, Crew/Manager
+negative authorization, source preservation and explicit operator approval.
+
+**Disposable test:** Existing Server Management browser preview on port 8898
+pins candidate SHA and restores a fresh current-Production clone, applies
+081 on that clone, runs
+`Setup/Acceptance/setup_122_qc_disposable_acceptance.sql` within
+a transaction rolled back, then permits protected browser review. No
+Production writes. Test with #598 Racing Arches NOT_READY/unscheduled,
+multiple findings and differing reporters; demonstrate the repair queue
+shares identical finding IDs. Do not promote historical Intake for this test.
