@@ -2539,14 +2539,15 @@ function nextQcEnsureDiscovery() {
       <div class="next-qc-tabs" role="group" aria-label="Perform Work activity">
         <button type="button" class="small secondary" id="next-qc-work-tab">Scheduled Work</button>
         <button type="button" class="small secondary" id="next-qc-check-tab">QC Check</button>
+        <button type="button" class="small secondary" id="next-qc-fixes-tab">Report Fixes</button>
       </div>
       <div id="next-qc-content" hidden>
         <label for="next-qc-search"><strong>Find final QC task</strong></label>
         <input id="next-qc-search" type="search" placeholder="Search Stage, Scene or task number">
         <div id="next-qc-count" class="muted" role="status"></div>
         <div id="next-qc-list"></div>
-        <p class="muted">Task discovery only. QC self-assignment, findings, repairs, and final
-          approval are not enabled until their protected database workflow passes acceptance.</p>
+        <div id="next-qc-fixes-list" hidden></div>
+        <p class="muted">Final QC approval remains gated by actual prerequisites and an approved test; repairs alone never complete QC.</p>
       </div>`;
     toolbar.insertBefore(section, toolbar.firstChild);
     el('next-qc-work-tab').addEventListener('click', () => {
@@ -2555,6 +2556,10 @@ function nextQcEnsureDiscovery() {
     });
     el('next-qc-check-tab').addEventListener('click', () => {
       nextQcDiscovery.mode = 'qc';
+      renderNextExecution();
+    });
+    el('next-qc-fixes-tab').addEventListener('click', () => {
+      nextQcDiscovery.mode = 'fixes';
       renderNextExecution();
     });
     el('next-qc-search').addEventListener('input', event => {
@@ -2570,10 +2575,16 @@ function nextQcEnsureDiscovery() {
       nextQcRenderResults();
     });
   }
-  const qc = nextQcDiscovery.mode === 'qc';
+  const qc = nextQcDiscovery.mode !== 'work';
+  const fixes = nextQcDiscovery.mode === 'fixes';
   el('next-qc-content').hidden = !qc;
+  el('next-qc-search').hidden = fixes;
+  el('next-qc-count').hidden = fixes;
+  el('next-qc-list').hidden = fixes;
+  el('next-qc-fixes-list').hidden = !fixes;
   el('next-qc-work-tab').setAttribute('aria-pressed', String(!qc));
-  el('next-qc-check-tab').setAttribute('aria-pressed', String(qc));
+  el('next-qc-check-tab').setAttribute('aria-pressed', String(qc && !fixes));
+  el('next-qc-fixes-tab').setAttribute('aria-pressed', String(fixes));
   const list = el('next-perform-list');
   const existingToolbar = list?.previousElementSibling;
   if (existingToolbar?.classList?.contains('next-perform-toolbar')) existingToolbar.hidden = qc;
@@ -2584,7 +2595,8 @@ function nextQcEnsureDiscovery() {
   }
   if (qc) {
     el('next-qc-search').value = nextQcDiscovery.search;
-    nextQcRenderResults();
+    if (fixes) window.setupQcRenderFixes?.();
+    else nextQcRenderResults();
   }
 }
 function nextQcRenderResults() {
@@ -2611,11 +2623,12 @@ function nextQcRenderResults() {
         <p>${escapeHtml(task.task_name)}</p>
         <p class="muted">Execution: ${escapeHtml(task.execution_status || 'Unknown')}
           · ${assignmentCount ? assignmentCount+' assignment(s) recorded' : 'Never scheduled'}${escapeHtml(blockers)}</p>
-        <p class="muted">No QC PASS or repair status is inferred from the task's execution status.
-          Existing task reporting remains unchanged.</p>
+        <p class="muted">No QC PASS or repair status is inferred from annual task completion.</p>
+        <div class="next-qc-task-detail" data-qc-detail="${id}"></div>
       </div>
     </article>`;
   }).join('') || '<p class="muted">No final QC tasks match. Try Stage, Scene or annual task number.</p>';
+  window.setupQcRenderCurrent?.();
 }
 
 function renderNextExecution() {
