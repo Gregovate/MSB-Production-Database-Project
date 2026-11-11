@@ -473,6 +473,65 @@
     showForm();
   }
 
+  // Manager preapproval: related tickets must be reviewed for every Intake.
+  // Original Setup wiring is OPTIONAL: ordinary show operations and repairs
+  // must never be forced onto an unrelated annual Setup task.
+  let approvalSerial = 0;
+  let approvalLoadedFor = null;
+  async function loadIntakeApproval(ticketKey) {
+    const serial = ++approvalSerial;
+    approvalLoadedFor = null;
+    byId("review-intake-checked").checked = false;
+    byId("review-intake-related-requests").replaceChildren();
+    byId("review-intake-wiring-steps").replaceChildren();
+    byId("review-intake-setup-association").value = "not_applicable";
+    byId("review-intake-wiring-review").hidden = true;
+    byId("review-intake-related-status").textContent = "Checking related requests and current Work Orders…";
+    try {
+      const response = await fetch(appBase + "/api/work-orders/tickets/" +
+        encodeURIComponent(ticketKey) + "/intake-approval-review",
+        {credentials:"same-origin",cache:"no-store"});
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Approval review unavailable.");
+      if (serial !== approvalSerial || model.ticket?.ticket !== ticketKey) return;
+      const result = data.intake_approval_review || {};
+      const related = result.related || {};
+      const wiring = result.wiring || {};
+      const relatedList = byId("review-intake-related-requests");
+      for (const item of related.reports || []) {
+        const line = document.createElement("p");
+        const link = document.createElement("a");
+        link.href = appBase + "/?ticket=" + encodeURIComponent(item.ticket);
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = item.ticket;
+        line.append(link, document.createTextNode(" · " + (item.status || "Unreviewed") +
+          " · " + (item.problem || "No description recorded")));
+        relatedList.append(line);
+      }
+      if (!relatedList.childElementCount) {
+        relatedList.textContent = "No other current Intake or Work Order found for this Stage.";
+      }
+      const steps = byId("review-intake-wiring-steps");
+      for (const item of wiring.candidates || []) {
+        const line = document.createElement("p");
+        line.textContent = "Candidate annual wiring/verify task #" +
+          item.setup_session_task_id + " · " + item.task_name +
+          " — not linked and no individual fault attributed";
+        steps.append(line);
+      }
+      if (!steps.childElementCount) steps.textContent =
+        "No eligible wiring/verify task confirmed; this does not block unrelated Work Orders.";
+      byId("review-intake-related-status").textContent =
+        "Review related reports before promotion. Same Stage does not prove the same problem.";
+      approvalLoadedFor = ticketKey;
+    } catch (exc) {
+      if (serial !== approvalSerial || model.ticket?.ticket !== ticketKey) return;
+      byId("review-intake-related-status").textContent =
+        "Could not verify related requests: " + (exc.message || exc);
+    }
+  }
+
   function showForm() {
     const kind = byId("review-action").value;
     const form = byId("review-action-form");
@@ -489,6 +548,11 @@
     byId("review-setup-choice").hidden = !["create", "promote"].includes(kind);
     byId("review-cancel-fields").hidden = kind !== "cancel";
     byId("review-intake-comparison").hidden = !(kind === "promote" && model.ticket?.type === "INTAKE_REQUEST");
+    const intakeApproval = kind === "promote" && model.ticket?.type === "INTAKE_REQUEST";
+    byId("review-intake-approval-links").hidden = !intakeApproval;
+    if (intakeApproval && model.ticket?.ticket !== approvalLoadedFor) {
+      void loadIntakeApproval(model.ticket.ticket);
+    }
     byId("review-link-setup-fields").hidden = kind !== "link_setup";
     byId("review-person-fields").hidden =
       !model.actor?.can_manage ||
@@ -624,6 +688,16 @@
     if (kind === "duplicate" && (!/^WO-[1-9][0-9]{0,8}$/.test(byId("duplicate-original").value.trim().toUpperCase()) ||
         byId("duplicate-reason").value.trim().length < 10))
       throw new Error("Enter the original WO number and a reason of at least 10 characters.");
+    if (kind === "promote") {
+      if (approvalLoadedFor !== model.ticket?.ticket ||
+          !byId("review-intake-checked").checked) {
+        throw new Error("Review related repair requests and confirm this is a distinct Work Order before promotion.");
+      }
+      if (byId("review-intake-setup-association").value === "review" &&
+          byId("review-intake-wiring-steps").childElementCount === 0) {
+        throw new Error("Original wiring/verify step is not established. Do not guess a Setup task.");
+      }
+    }
     let summary = validate();
     if (kind === "duplicate") {
       const originalKey = byId("duplicate-original").value.trim().toUpperCase();
@@ -778,6 +852,8 @@
   });
   document.addEventListener("wo419:ticket", (event) => {
     model.ticket = event.detail;
+    ++approvalSerial;
+    approvalLoadedFor = null;
     model.intakeStatusVerified = true;
     byId("review-action-form").querySelectorAll("fieldset").forEach(el => { el.disabled = false; });
     byId("review-submit").disabled = false;
