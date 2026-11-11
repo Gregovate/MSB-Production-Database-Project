@@ -1323,7 +1323,7 @@ function nextAssignmentReviewLabel(task) {
   const percent = task?.latest_work_report?.percent_complete ?? task?.percent_complete;
   const hasReports = Number(task?.progress_entries || 0) > 0 || task?.latest_work_report || Number(percent || 0) > 0;
   return hasReports
-    ? `Task progress: ${percent == null ? 'reported' : percent + '% reported'} — scheduled assignment needs review`
+    ? `Overall task progress: ${percent == null ? 'reported' : percent + '%'} — this dated assignment needs review`
     : 'LATE — NO WORK REPORTED';
 }
 
@@ -1378,6 +1378,14 @@ function nextCanRescheduleNoWork(assignment, task = null) {
   );
 }
 
+// Use the Catalog number when present; season-only work has annual identity.
+function nextPerformTaskNumberLabel(task) {
+  const reusable = Number(task?.setup_task_id || 0);
+  if (Number.isSafeInteger(reusable) && reusable > 0) return `Task ${reusable}`;
+  const annual = Number(task?.setup_session_task_id || 0);
+  return Number.isSafeInteger(annual) && annual > 0 ? `Annual Task ${annual}` : 'Task';
+}
+
 function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
@@ -1403,7 +1411,7 @@ function nextPerformAssignmentCard(assignment) {
       data-session-task-id="${assignment.setup_session_task_id}"
       data-task-id="${assignment.setup_task_id}">
       <summary>
-        <span><strong>${escapeHtml(assignment.task_name)}</strong>
+        <span><strong>${escapeHtml(nextPerformTaskNumberLabel(task))} · ${escapeHtml(assignment.task_name)}</strong>
           <span class="muted"> · ${escapeHtml(nextTaskScopeLabel(assignment))}</span>
         </span>
         <span class="next-perform-assignment-pills">
@@ -1939,7 +1947,7 @@ function nextLateWorkSummary(assignments, board) {
     const crew = (board.crews || []).find((c) => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
     const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
     const captain = crew?.captain_display_name || 'CAPTAIN TBD';
-    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(item.task_name || 'Task')}</strong> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
+    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(nextPerformTaskNumberLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item))} · ${escapeHtml(item.task_name || 'Task')}</strong> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
   }).join('')}</section>`;
 }
 

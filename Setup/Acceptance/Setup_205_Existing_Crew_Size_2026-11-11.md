@@ -83,3 +83,18 @@ schedulable print but present in Perform Work / scheduled search. Confirm report
 catch-up works, a genuine continuation stays available and an unscheduled task
 can be assigned with editable existing-crew size; refresh confirms persistence.
 Finish reusable CLEAN EXIT before Production approval.
+
+## Perform Work identity clarification — V109 presentation revision
+
+Operator confirms Task185 disappeared from Needs Scheduling: backlog gate PASS.
+Perform Work review showed missing visible task numbers and repeated overall
+75% beside distinct dated assignments. Display Catalog Task numbers in the past
+review summary and collapsed assignment headings; season-only work says Annual
+Task with annual ID. Percentages explicitly say Overall task progress and each
+review remains tied to its original dated assignment. Do not merge November6
+and November7 reports or infer two separate 75% reports.
+
+Presentation-only revision retains V0.3.109; setup_next_pass.js browser asset pin
+is refreshed to2026-11-11.109.1. Retest new exact SHA. Existing catch-up and
+staffing acceptance remains pending; no new Production permission. Check Task184
+on both dates, Task185, season-only identity, and unchanged report links.

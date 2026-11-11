@@ -1049,3 +1049,17 @@ continuation, independently of older occurrences awaiting reports. Never-schedul
 existing readiness/prerequisite rules. Completed tasks retain completion. Preserve
 the full assignment/report data and catch-up actions; this is classification, not
 a data repair, automatic completion, new report, or reassignment.
+
+### Perform Work task identity — November 11 review
+
+Past-assignment review rows and collapsed Perform Work headings display the
+same reusable Task number used in the scheduling Catalog beside the task name.
+Season-only tasks without a reusable identity display Annual Task plus their
+annual identity, explicitly distinguished. Each dated occurrence retains its own
+assignment/report identity; repeated names or dates must not be merged. This is
+presentation only and does not alter scheduling or report behavior.
+
+When one task has several dated assignments awaiting review, repeat its visible
+Task number and name alongside each date/crew/period; retain distinct report
+actions for the original assignment identities. Label a shared percentage
+Overall task progress, never imply that percentage was reported on each day.

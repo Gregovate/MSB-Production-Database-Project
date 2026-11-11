@@ -34,7 +34,7 @@ const ctx={console,Intl,Date,Number,String,Math,Set,Map,
   nextCanRescheduleNoWork:()=>false,
 };
 vm.createContext(ctx);
-for(const name of ['nextAssignmentReported','nextAnnualTaskComplete','nextAssignmentInactive','nextAssignmentReviewLabel','nextSetupLocalDate','nextAssignmentLate','nextAssignmentReportedLabel','nextScheduleWarning','nextSetupAssignmentStatus','nextPerformAssignmentStatus','nextPerformAssignmentCard','nextFilterPerformAssignments','nextPerformShiftWorkload','nextLateWorkSummary','setup205DeadlineKpiModel'])load(source,name);
+for(const name of ['nextAssignmentReported','nextAnnualTaskComplete','nextAssignmentInactive','nextAssignmentReviewLabel','nextSetupLocalDate','nextAssignmentLate','nextAssignmentReportedLabel','nextScheduleWarning','nextSetupAssignmentStatus','nextPerformAssignmentStatus','nextPerformTaskNumberLabel','nextPerformAssignmentCard','nextFilterPerformAssignments','nextPerformShiftWorkload','nextLateWorkSummary','setup205DeadlineKpiModel'])load(source,name);
 ctx.nextSetupLocalDate=()=> '2026-11-03';
 for(const name of ['board205DayViewState','board205ShowReportedTaskCards','board205ActiveAssignmentsFor','board205AmCapacity','board205ShiftWorkload'])load(schedule,name);
 assert.equal(ctx.setup205DeadlineKpiModel(board,2026).overdue.length,7);
@@ -48,11 +48,11 @@ for(const a of assignments.slice(0,4)){
  assert.equal(ctx.nextAssignmentReported(a),false,'never fabricate a report');
  const card=ctx.nextPerformAssignmentCard(a);
  assert(card.includes('data-work-status="COMPLETE"'));
- assert(!card.includes('LATE') && !card.includes('scheduled assignment needs review'));
+ assert(!card.includes('LATE') && !card.includes('this dated assignment needs review'));
 }
 for(const a of assignments.slice(4,8)){
  const card=ctx.nextPerformAssignmentCard(a);
- assert(card.includes('Task progress:') && card.includes('scheduled assignment needs review'));
+ assert(card.includes('Overall task progress:') && card.includes('this dated assignment needs review'));
  assert(!card.includes('NO WORK REPORTED'));
 }
 assert(ctx.nextPerformAssignmentCard(assignments[8]).includes('NO WORK REPORTED'));
@@ -71,3 +71,15 @@ assert.equal(ctx.nextAssignmentLate(assignments[0],'2026-10-23',{execution_statu
 assert.equal(ctx.nextAssignmentLate(assignments[0],'2026-10-23',{execution_status:'PLANNED',effective_complete:true,linked_work_order_gate:true}),false);
 assert.equal(JSON.stringify(board),before,'all input history and labor stay unchanged');
 console.log('PASS completed follow-up: 11 assignments -> 7 active; history, partial progress, completion, reopening, dates and workload');
+
+assert.equal(ctx.nextPerformTaskNumberLabel({setup_task_id:184,setup_session_task_id:900}),'Task 184');
+assert.equal(ctx.nextPerformTaskNumberLabel({setup_task_id:null,setup_session_task_id:900}),'Annual Task 900');
+const duplicateDays={...board,tasks:[{...tasks[3],setup_task_id:184}],work_days:[
+ {setup_work_day_id:1,work_date:'2026-10-23'}, {setup_work_day_id:2,work_date:'2026-10-24'}]};
+const twoDates=[{...assignments[4]}, {...assignments[4],setup_work_day_task_id:999,setup_work_day_id:2}];
+const datedSummary=ctx.nextLateWorkSummary(twoDates,duplicateDays);
+assert.equal((datedSummary.match(/Task 184/g)||[]).length,2);
+assert(datedSummary.includes('2026-10-23') && datedSummary.includes('2026-10-24'));
+assert(datedSummary.includes('data-assignment-id="304"') && datedSummary.includes('data-assignment-id="999"'));
+assert(datedSummary.includes('Overall task progress:'));
+console.log('PASS visible reusable/annual task identity and distinct dated reports with overall progress');
