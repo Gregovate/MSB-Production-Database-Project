@@ -259,12 +259,24 @@
     catch (error) { host.textContent='QC repair list unavailable: '+(error.message||error);return; }
     const active=snapshot.findings.filter(f=>f.status!=='VERIFIED');
     host.innerHTML=`<h3>Report Fixes · ${active.length} outstanding issues</h3>
+      <label>Find problem <input type="search" data-qc-fix-search
+        placeholder="Search Stage, Scene, issue, Display or channel"></label>
       <p class="muted">Same records reported under QC Check. Repair Complete requires a functional retest.</p>
-      ${active.length ? active.map(f=>`<div class="next-qc-fix-group">
+      ${active.length ? active.map(f=>`<div class="next-qc-fix-group" data-qc-fix-group>
         <strong>${html(f.stage_key)} ${html(f.stage_name)}
           · ${html(f.scene_name || 'Stage-level')} · QC #${f.setup_session_task_id}</strong>
         ${findingMarkup(f,true)}</div>`).join('') :
         '<p>No outstanding QC findings in the new ledger.</p>'}`;
     bindControls(host,null);
+    if (!host.dataset.qcFixSearchBound) {
+      host.dataset.qcFixSearchBound='1';
+      host.addEventListener('input', event=>{
+        if (!event.target.matches('[data-qc-fix-search]')) return;
+        const query=event.target.value.trim().toLowerCase();
+        host.querySelectorAll('[data-qc-fix-group]').forEach(card=>{
+          card.hidden=!card.textContent.toLowerCase().includes(query);
+        });
+      });
+    }
   };
 })();
