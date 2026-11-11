@@ -87,3 +87,34 @@ def test_disposable_preview_always_includes_081_and_rollback_validation():
     assert 'ROLLBACK;' in validation
     assert 'FROM ops.setup_work_day_task' in validation
     assert 'v_before<>v_after' in validation
+
+
+def test_qc_modes_own_their_panel_and_do_not_fall_through_to_scheduled_work():
+    """The operator saw Report Fixes with the Scheduled Work panel rendered below it."""
+    ui=(ROOT/'setup_next_pass.js').read_text()
+    assert "if (nextQcDiscovery.mode !== 'work') return;" in ui
+    assert "if (nextQcDiscovery.mode === 'qc') return;" not in ui
+    assert "window.setupQcRenderFixes?.();" in ui
+    assert 'data-qc-detail="${id}"' in ui
+
+
+def test_qc_entry_not_blocked_by_manager_intake_retrieval():
+    """The problem-entry form must render even if manager-only Intake is slow."""
+    view=JS.split("window.setupQcRenderCurrent=async function()",1)[1].split(
+        "window.setupQcRenderFixes=async function()",1)[0]
+    before_render=view.split("host.innerHTML=",1)[0]
+    assert "await reviewIntake()" not in before_render
+    assert "Loading QC findings and report controls" in view
+    assert 'data-qc-action="REPORT"' in view
+    assert 'data-qc-action="CLAIM_AUDIT"' in view
+    assert 'data-qc-intake-items' in view
+    assert "void reviewIntake().then" in view
+    assert "if (!host.isConnected" in view
+
+
+def test_qc_writes_share_exact_finding_and_annual_task():
+    assert 'data-qc-action="CLAIM_REPAIR"' in JS
+    assert 'data-qc-action="REPAIRED"' in JS
+    assert 'data-qc-action="RETEST_PASS"' in JS
+    assert 'data-qc-action="RETEST_FAIL"' in JS
+    assert "setup_session_task_id:targetId" in JS
