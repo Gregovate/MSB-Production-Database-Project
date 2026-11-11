@@ -136,7 +136,9 @@ BEGIN
       JOIN ops.setup_session_task t ON t.setup_session_task_id=p_annual_task
       JOIN ops.setup_session ss ON ss.setup_session_id=t.setup_session_id
       WHERE i.intake_id=p_intake_id
-        AND i.target_year=ss.season_year
+        AND (i.target_year=ss.season_year OR
+          (i.target_year IS NULL AND extract(year FROM i.updated_at
+            AT TIME ZONE 'America/Chicago')::integer=ss.season_year))
     ) THEN
       RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Intake must belong to the same Setup season';
     END IF;
