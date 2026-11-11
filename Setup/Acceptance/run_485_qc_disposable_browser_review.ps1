@@ -58,7 +58,7 @@ try {
         if ($LASTEXITCODE -eq 0 -and ([string]$actual).Trim() -ceq $CandidateSha -and $dirty.Count -eq 0) {
             & git -C $PrimaryRepo worktree remove $Review
             if ($LASTEXITCODE -ne 0) { Write-Warning "Preserve review path for inspection: $Review" }
-            else { & git -C $PrimaryRepo branch -d $LocalBranch | Out-Null }
+            else { & git -C $PrimaryRepo branch -D $LocalBranch | Out-Null }
         } else {
             Write-Warning "HOLD: preserving unexpected changed worktree: $Review"
         }
