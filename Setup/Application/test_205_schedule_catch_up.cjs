@@ -3,12 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(__dirname+'/setup_scheduling_board.js','utf8');
-const begin = source.indexOf('function board205ScheduleExistingAssignment(');
+const begin = source.indexOf('function board205PastUnreportedMove(');
 const end = source.indexOf('function board205OpenScheduleDialog(',begin);
 const callbacks = {};
 const existing = {setup_work_day_task_id:71, setup_session_task_id:530,
   setup_work_day_id:38,setup_work_day_crew_id:12,shift_code:'MORNING',historical_locked:false};
 const controls = {
+  'setup-board205-schedule-heading':{textContent:''},
+  'setup-board205-schedule-original':{hidden:true,textContent:''},
   'setup-board205-schedule-day':{value:'38'},
   'setup-board205-schedule-save':{disabled:false},
   'setup-board205-schedule-task-name':{textContent:''},
@@ -21,6 +23,7 @@ const context = {
   document:{getElementById:id=>controls[id]},
   setupBoard205State:{scheduleTarget:{kind:'task',id:530},board:{assignments:[existing],
     work_days:[{setup_work_day_id:38,work_date:'2026-11-10'}]}},
+  nextSetupLocalDate:()=> '2026-11-11',
   nextAssignmentReported:item=>Number(item.work_report_count || 0)>0,
   board205Task:()=>({setup_task_id:185,setup_session_task_id:530,task_name:'Traffic Lanes'}),
   board205Assignment:()=>existing,
@@ -34,6 +37,8 @@ const context = {
 };
 vm.createContext(context);vm.runInContext(source.slice(begin,end),context);
 (async()=>{
+  assert.equal(context.board205PastUnreportedMove(existing,39,'MORNING',12),true);
+  assert.equal(context.board205PastUnreportedMove(existing,38,'MORNING',12),false);
   context.board205ScheduleExistingNotice();
   assert.equal(controls['setup-board205-schedule-save'].disabled,true);
   assert.match(controls['setup-board205-schedule-task-name'].textContent,/185.*Traffic Lanes/);
@@ -55,6 +60,10 @@ vm.createContext(context);vm.runInContext(source.slice(begin,end),context);
   context.setupBoard205State.scheduleTarget={kind:'assignment',id:71};
   controls['setup-board205-schedule-day'].value='38';
   assert.equal(context.board205ScheduleExistingAssignment(),null,'Editing itself is not a duplicate');
+  context.board205ScheduleExistingNotice();
+  assert.equal(controls['setup-board205-schedule-heading'].textContent,'Edit existing assignment');
+  assert.match(controls['setup-board205-schedule-original'].textContent,/2026-11-10.*Saving updates this assignment/);
+  assert.equal(controls['setup-board205-schedule-save'].textContent,'Save existing assignment');
   context.setupBoard205State.scheduleTarget={kind:'task',id:530};
   controls['setup-board205-schedule-day'].value='39';
   existing.historical_locked=false; existing.work_report_count=0;

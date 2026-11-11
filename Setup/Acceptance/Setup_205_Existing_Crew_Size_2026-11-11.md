@@ -133,3 +133,47 @@ as well as Schedule. After actual report or explicit no-work resolution in the
 clone, test valid partial continuation. Ensure successful staffing persistence.
 CLEAN EXIT required. Production migration/deployment remains separately approved
 under current Server Management maintenance/snapshot/rollback authority.
+
+## Scheduling-board identity follow-up
+
+Operator reports Task184 allowed onto Rich's crew despite older unreported
+occurrences. Provided board crop shows Setup Tent and Food Collection Sign
+(Task178), while Perform Work shows Task184 Stands/Wraps. No header/version or
+assignment ID is visible in that board crop; do not assert either user error or
+a proven V110 database-guard bypass. Obtain visible Client version and exact
+Task/assignment identity before classifying.
+
+Board cards now include reusable Task or explicit Annual Task number, sharing
+the Perform Work label helper. V110 presentation-only asset pin110.1 for board.
+986 application tests and Node syntax pass; no new schema changes beyond080.
+Current-clone acceptance of080 and reported Task184 behavior remain pending.
+
+Operator's later V110 screenshot confirms the Task184 unresolved Nov6 notice,
+report/no-work actions, and disabled Save despite choosing another date. This
+is a visible guard PASS, not yet a staffing/move/report persistence acceptance.
+Dialog now explicitly identifies Edit existing assignment and original scope;
+Save existing assignment updates that occurrence rather than adding another.
+
+## V0.3.111-explicit-no-work — close the existing-edit bypass
+
+Greg correctly identified that opening the existing assignment hid the resolution
+notice and allowed a move without an explicit no-work decision. V111 requires
+a separate no-work checkbox before changing date/period/crew on a past unreported
+assignment. Without confirmation, Save writes neither placement nor staffing and
+shows the decision inside the dialog. Report Work is available directly there.
+Planned staffing-only corrections retain their independent meaning and do not
+require declaring no work. Past unreported group/day/cell drops also require
+explicit no-work confirmation. Existing guarded Report Work/move/history and
+080 INSERT enforcement remain unchanged.
+
+Board cards now display Task numbers. Existing-edit mode and original date,
+period, crew/Captain are explicit. Tests exercise past movement detection and
+submit refusal/approval, report action and unchanged staffing-only route.
+986 application tests and syntax checks PASS. No Production changes.
+
+Retest exact V111 SHA using the same080 migration and validation paths in the
+existing disposable wrapper. Open Task184's existing past assignment; change date
+and attempt Save without checking no-work: no write must occur. Confirm no-work
+and test movement of that same occurrence, not insertion of another. Test direct
+Report Work, staffing-only changes, and drag/drop confirmation. Verify original
+actual history remains protected. Then CLEAN EXIT for separate Production gate.

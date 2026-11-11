@@ -83,3 +83,5 @@ assert(datedSummary.includes('2026-10-23') && datedSummary.includes('2026-10-24'
 assert(datedSummary.includes('data-assignment-id="304"') && datedSummary.includes('data-assignment-id="999"'));
 assert(datedSummary.includes('Overall task progress:'));
 console.log('PASS visible reusable/annual task identity and distinct dated reports with overall progress');
+
+assert(schedule.includes('<span>${board205Esc(nextPerformTaskNumberLabel(task))} · ${board205Esc(item.task_name)}</span>'));

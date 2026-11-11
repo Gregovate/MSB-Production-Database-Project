@@ -1082,3 +1082,22 @@ legacy date/shift-linked reports, and rejects unresolved occurrences with an
 actionable message. It does not run on assignment UPDATE, so governed unworked
 moves/removals remain available. Changes to reported history keep existing guards.
 Migration080 changes command enforcement only; existing assignments are retained.
+
+Scheduled board cards must also display the same Task/Annual Task identity in
+their title, not only Perform Work and the scheduling dialog. This is necessary
+to distinguish Task178 Tent/Sign from Task184 Stands/Wraps during acceptance.
+
+The scheduling dialog explicitly labels Edit existing assignment versus Schedule
+Annual Task. Editing shows original date, period, crew/Captain and states that
+Save updates that same assignment rather than creating another occurrence.
+
+### Explicit no-work confirmation for editing a past assignment
+
+Opening an existing assignment is not permission to move work that occurred.
+Before any change of date, shift or crew on a past unreported assignment, the
+operator must explicitly confirm no work was performed. The dialog shows a
+separate confirmation and Report Work action. Without confirmation, preserve
+inputs, do not save placement or staffing, and state the required decision inside
+the dialog. Planned crew-size-only correction does not imply moving actual work
+and remains allowed. Past unreported drag/drop moves require the same explicit
+no-work confirmation. Existing report/history command guards remain authoritative.

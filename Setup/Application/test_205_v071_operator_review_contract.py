@@ -47,9 +47,9 @@ def test_day_and_crew_identity_and_visible_actions():
 
 def test_version_and_asset_pins_change_together():
     html = source("production.html")
-    assert "2026-11-11.110" in html
-    assert "V0.3.110-reschedule-resolution" in source("production_backend.py")
-    assert "V0.3.110-reschedule-resolution" in source("setup_catalog_dirty_guard.js")
+    assert "2026-11-11.111" in html
+    assert "V0.3.111-explicit-no-work" in source("production_backend.py")
+    assert "V0.3.111-explicit-no-work" in source("setup_catalog_dirty_guard.js")
 
 
 def test_new_crew_move_preserves_captain_inside_one_guarded_transaction():
