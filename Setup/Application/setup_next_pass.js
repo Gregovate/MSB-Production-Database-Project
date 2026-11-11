@@ -2637,7 +2637,9 @@ function renderNextExecution() {
   const board = setupNextState.performBoard || {};
   nextEnsurePerformToolbar();
   nextQcEnsureDiscovery();
-  if (nextQcDiscovery.mode === 'qc') return;
+  // Both QC modes own the visible Perform Work panel. Do not render the
+  // Scheduled Work list over Report Fixes (or expose stale scheduled controls).
+  if (nextQcDiscovery.mode !== 'work') return;
   nextRenderPerformCaptainFilter();
   const allAssignments = (board.assignments || []).slice();
   const scopedAssignments = nextPerformCaptainScopedAssignments(allAssignments);
