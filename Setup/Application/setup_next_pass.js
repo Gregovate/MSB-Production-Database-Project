@@ -2505,7 +2505,7 @@ function setup205WireActionCenter(root) {
 // Final QC is NOT a scheduled work assignment and NEVER creates work reports.
 const nextQcDiscovery = {mode: 'work', search: '', selectedTaskId: null};
 function nextIsFinalShowQc(task) {
-  return /plug\\s+in\\s+network\\s+to\\s+controller.*2\\s+minute\\s+test\\s+show/i.test(
+  return /plug\s+in\s+network\s+to\s+controller.*2\s+minute\s+test\s+show/i.test(
     String(task?.task_name || task?.annual_task_name || '')
   );
 }
@@ -2519,7 +2519,7 @@ function nextQcAnnualTasks() {
 }
 function nextQcFilteredTasks() {
   const query = nextQcDiscovery.search.trim().toLowerCase();
-  const words = query.split(/\\s+/).filter(Boolean);
+  const words = query.split(/\s+/).filter(Boolean);
   return nextQcAnnualTasks().filter(task => {
     const searchable = [task.setup_session_task_id, task.setup_task_id,
       task.stage_key, task.stage_name, task.scene_name, task.task_name,
