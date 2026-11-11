@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS ops.setup_qc_event (
 CREATE INDEX IF NOT EXISTS setup_qc_event_finding_idx
   ON ops.setup_qc_event(qc_finding_id,created_at,qc_event_id);
 CREATE TABLE IF NOT EXISTS ops.setup_qc_intake_link (
-  intake_id integer NOT NULL REFERENCES stage.work_order_intake(id),
+  intake_id integer NOT NULL REFERENCES stage.work_order_intake(intake_id),
   qc_finding_id bigint NOT NULL REFERENCES ops.setup_qc_finding(qc_finding_id),
   linked_by_person_id integer NOT NULL REFERENCES ref.person(person_id),
   linked_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -131,7 +131,7 @@ BEGIN
        OR length(v_note)>2000 THEN
       RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Manager-reviewed Intake link and rationale required';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM stage.work_order_intake WHERE id=p_intake_id) THEN
+    IF NOT EXISTS (SELECT 1 FROM stage.work_order_intake WHERE intake_id=p_intake_id) THEN
       RAISE EXCEPTION USING ERRCODE='P0002',MESSAGE='Original Intake not found';
     END IF;
     -- Intake remains intact; never duplicate its original message as a new WO.
