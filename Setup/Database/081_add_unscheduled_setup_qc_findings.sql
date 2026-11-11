@@ -266,6 +266,19 @@ BEGIN
       JOIN ops.setup_session ss ON ss.setup_session_id=t.setup_session_id
       JOIN ref.person p ON p.person_id=a.person_id
       WHERE ss.season_year=p_year
+    ),'[]'::jsonb),
+    'unreconciled_intake',coalesce((
+      SELECT jsonb_agg(jsonb_build_object(
+        'intake_id',i.intake_id,'stage_id',i.stage_id,
+        'submitter_name',i.submitter_name_raw,
+        'problem',i.problem_raw,'notes',i.notes_raw,
+        'updated_at',i.updated_at) ORDER BY i.intake_id DESC)
+      FROM stage.work_order_intake i
+      WHERE i.target_year=p_year
+        AND NOT EXISTS (SELECT 1 FROM ops.work_order w
+          WHERE w.source_intake_id=i.intake_id)
+        AND NOT EXISTS (SELECT 1 FROM ops.setup_qc_intake_link l
+          WHERE l.intake_id=i.intake_id)
     ),'[]'::jsonb)
   ) INTO v_result;
   RETURN v_result;
