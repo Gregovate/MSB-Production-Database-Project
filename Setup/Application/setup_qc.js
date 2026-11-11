@@ -196,6 +196,8 @@
                <div class="muted">${html(localTime(i.updated_at))} ·
                  linked findings ${html((i.linked_findings||[]).join(', ')||'none')}</div>
                <div class="next-qc-note">${html(i.problem_raw)}</div>
+               ${i.notes_raw ? `<div class="next-qc-note"><strong>Original notes:</strong> ${html(i.notes_raw)}</div>` : ""}
+               ${i.photo_url_raw ? `<div class="muted">Photo reference: ${html(i.photo_url_raw)}</div>` : ""}
               </div>`).join('')}
           </details>
           <label>Existing QC problem
