@@ -98,3 +98,18 @@ assert.equal(ctx.nextPerformTaskScopeLabel({...scopedTask,scene_name:null}),'Sta
 assert.equal(ctx.nextPerformTaskScopeLabel({}),'Site-wide / Infrastructure');
 assert(ctx.nextLateWorkSummary([assignments[4]],{...scopedBoard,tasks:[{...scopedTask,scene_name:'<unsafe>'}]}).includes('&lt;unsafe>'));
 console.log('PASS stage/scene context before Report Work, stage-level/site-wide fallbacks and escaped scope');
+
+// Past follow-up hides stale staffing forecasts; today's operational view retains them.
+const historicalCard=ctx.nextPerformAssignmentCard(assignments[4]);
+assert(!historicalCard.includes('Planned crew'));
+assert(!historicalCard.includes('Est. labor'));
+assert(!historicalCard.includes('EFFORT TBD'));
+assert(historicalCard.includes('Captain:'));
+assert(historicalCard.includes('next-report-work'));
+const currentCard=ctx.nextPerformAssignmentCard({...assignments[4],work_date:'2026-11-03'});
+assert(currentCard.includes('Planned crew'));
+assert(currentCard.includes('Est. labor'));
+const pastSummary=ctx.nextLateWorkSummary(assignments,board);
+assert(!pastSummary.includes(' · Crew '));
+assert(pastSummary.includes('2026-10-23'));
+console.log('PASS past-work cards omit staffing forecasts; today keeps staffing and past report identity remains');

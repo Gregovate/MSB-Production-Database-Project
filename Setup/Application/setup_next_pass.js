@@ -1397,6 +1397,7 @@ function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
   const captain = crew?.captain_display_name || 'Captain TBD';
+  const past = Boolean(assignment.work_date && assignment.work_date < nextSetupLocalDate());
   const late = nextAssignmentLate(assignment, assignment.work_date, task);
   const status = nextAnnualTaskComplete(task) ? 'COMPLETE' : nextAssignmentReported(assignment)
     ? nextAssignmentReportedLabel(assignment)
@@ -1422,17 +1423,17 @@ function nextPerformAssignmentCard(assignment) {
           <span class="muted"> · ${escapeHtml(nextPerformTaskScopeLabel({...assignment, ...task}))}</span>
         </span>
         <span class="next-perform-assignment-pills">
-          <span class="setup-board205-badge effort-${escapeHtml(effort)}">${escapeHtml(effortLabel)}</span>
-          ${shortCrew ? `<span class="setup-board205-badge short-crew-badge" title="Planned crew ${escapeHtml(plannedCrew)} / minimum ${escapeHtml(minimumCrew)}">SHORT CREW</span>` : ''}
+          ${past ? '' : `<span class="setup-board205-badge effort-${escapeHtml(effort)}">${escapeHtml(effortLabel)}</span>`}
+          ${!past && shortCrew ? `<span class="setup-board205-badge short-crew-badge" title="Planned crew ${escapeHtml(plannedCrew)} / minimum ${escapeHtml(minimumCrew)}">SHORT CREW</span>` : ''}
           <span class="pill setup-work-status" ${late ? 'style="background:#a40000;color:#fff;border:2px solid #a40000;font-weight:900"' : ''} data-work-status="${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span>
         </span>
       </summary>
-      <div class="next-perform-assignment-context">
+      ${past ? `<div class="next-perform-assignment-context">Captain: ${escapeHtml(captain)}</div>` : `<div class="next-perform-assignment-context">
         Crew ${escapeHtml(assignment.crew_lane || '—')} · ${escapeHtml(captain)}
         · Planned crew ${escapeHtml(plannedCrew ?? 'TBD')}
         · Expected ${escapeHtml(formatMinutes(task.expected_duration_minutes))}
         · Est. labor ${escapeHtml(plannedLabor)}
-      </div>
+      </div>`}
       ${readinessWarning}
       ${late ? nextScheduleWarning(nextAssignmentReviewLabel(task) + " · Review this assignment’s date and existing reports before recording work") : ''}
       <div class="next-perform-actions">
@@ -1955,7 +1956,7 @@ function nextLateWorkSummary(assignments, board) {
     const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
     const captain = crew?.captain_display_name || 'CAPTAIN TBD';
     const task = (board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item;
-    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(nextPerformTaskNumberLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item))} · ${escapeHtml(item.task_name || 'Task')}</strong><div class="muted">${escapeHtml(nextPerformTaskScopeLabel({...item, ...task}))}</div> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
+    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(nextPerformTaskNumberLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item))} · ${escapeHtml(item.task_name || 'Task')}</strong><div class="muted">${escapeHtml(nextPerformTaskScopeLabel({...item, ...task}))}</div> · ${escapeHtml(day?.work_date || item.work_date || '')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
   }).join('')}</section>`;
 }
 
@@ -2269,8 +2270,8 @@ function setup205ActionCenterHtml(board, model) {
     const shift = a.shift_code === 'MORNING' ? 'AM' : a.shift_code === 'AFTERNOON' ? 'PM' : 'All Day';
     return '<strong>' + safe(taskLabel(t || a)) + '</strong> · ' +
       safe(context(t)) + ' · Setup Day ' + safe(d?.setup_day_number ?? a.setup_day_number ?? '—') +
-      ' / ' + safe(a.work_date || d?.work_date || 'unknown date') + ' · Crew ' +
-      safe(c?.crew_code || a.crew_lane || '—') + ' ' + safe(shift) +
+      ' / ' + safe(a.work_date || d?.work_date || 'unknown date') +
+      ((a.work_date || d?.work_date || '') < today ? ' · ' : ' · Crew ' + safe(c?.crew_code || a.crew_lane || '—') + ' ') + safe(shift) +
       ' · ' + safe(c?.captain_display_name || 'Captain TBD');
   };
   const button = (action, id, label) => '<button type="button" class="small secondary setup205-action" data-205-action="' +
@@ -2560,7 +2561,8 @@ function renderNextExecution() {
     );
     // Evaluate the entire day, not a Captain-filtered subset that could hide late work.
     const wholeDay = allAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
-    const dayCanCollapse = day.work_date < nextSetupLocalDate()
+    const pastDay = day.work_date < nextSetupLocalDate();
+    const dayCanCollapse = pastDay
       && wholeDay.length > 0 && wholeDay.every(item => nextAssignmentInactive(item, nextPerformTask(item.setup_session_task_id)));
     const lateCount = wholeDay.filter((item) => nextAssignmentLate(item, day.work_date, nextPerformTask(item.setup_session_task_id))).length;
     const scopedDayAssignments = scopedAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
@@ -2576,6 +2578,7 @@ function renderNextExecution() {
         </div>
         ${lateCount ? nextScheduleWarning(`${lateCount} PAST ASSIGNMENT${lateCount === 1 ? '' : 'S'} TO REVIEW`) : ''}
         ${(() => {
+          if (pastDay) return `<p>${scopedDayAssignments.filter(nextAssignmentReported).length} tasks reported · ${reportedPersonHours} actual person-hours reported</p>`;
           const crewShifts = ['MORNING', 'AFTERNOON'].flatMap((shift) =>
             [...new Set(dayAssignments.filter((a) => a.shift_code === shift).map((a) => Number(a.setup_work_day_crew_id)))]
               .map((id) => nextPerformShiftWorkload(dayAssignments.filter((a) => a.shift_code === shift && Number(a.setup_work_day_crew_id) === id), shift))
@@ -2608,9 +2611,9 @@ function renderNextExecution() {
                   .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
                 return `
                   <div class="next-perform-crew">
-                    <h5>Crew ${escapeHtml(crew?.crew_code || crewItems[0]?.crew_lane || '—')} · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</h5>
-                    ${crew?.captain_person_id == null ? nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN') : ''}
-                    ${nextPerformWorkloadLabel(crewItems, shift)}
+                    <h5>${pastDay ? 'Captain: ' : `Crew ${escapeHtml(crew?.crew_code || crewItems[0]?.crew_lane || '—')} · `}${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</h5>
+                    ${!pastDay && crew?.captain_person_id == null ? nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN') : ''}
+                    ${pastDay ? '' : nextPerformWorkloadLabel(crewItems, shift)}
                     ${crewItems.map(nextPerformAssignmentCard).join('')}
                   </div>`;
               }).join('')}

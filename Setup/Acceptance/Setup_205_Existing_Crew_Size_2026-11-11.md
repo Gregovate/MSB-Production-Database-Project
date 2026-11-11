@@ -246,3 +246,18 @@ exact dated Report Work actions. Guarded scheduling still resolves prior work;
 marking Ready does not report completion. Tests cover both readiness destinations
 and existing permissions/navigation. 986 application tests PASS; new exact source
 needs disposable acceptance/CLEAN EXIT. No Production changes.
+
+## V111 compact past-work review (asset111.6)
+
+Operator PASS: missing-report navigation opens exact task; readiness opens correct
+fix controls on17bf25d. Operator requests removal of irrelevant historical crew
+planning clutter. Past Perform Work day summaries now show actual reported totals,
+not planned staffing/minimums/overload warnings. Past crew sections retain Captain
+but omit crew lanes and workload/capacity banners. Past task cards omit planned
+crew, estimates/labor, effort/short-crew badges; actual Report Work entry remains.
+Past follow-up labels retain task/scope/date/period/Captain without crew lane.
+Today/future staffing stays visible. No history, reports, routing or state changed.
+986 tests PASS before final shared-label cleanup; exact final test result follows.
+Presentation-only V111 remains; disposable acceptance/CLEAN EXIT pending.
+
+Final source verification: 986 application tests and Node syntax PASS.

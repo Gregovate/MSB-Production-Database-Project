@@ -1137,3 +1137,13 @@ reason). Started work retains historical-note protection and may explicitly
 confirm Mark ready through the existing readiness-state command. Rows expose
 separate scheduling and exact dated Report Work actions; all duplicate/history
 guards remain in effect. Planning Info is separately labeled as task guidance.
+
+### Past-work reporting presentation
+
+Past Perform Work days are reporting follow-up, not staffing forecasts. Suppress
+planned crew/minimum/estimated labor, effort/short-crew badges, shift capacity
+and staffing/overload warnings for past dates. Show actual reported totals only
+in past day summaries. Retain captain, task identity/scope, date/period, report
+status and exact report/no-work actions. Crew lane is unnecessary in past
+follow-up labels. Today/future staffing presentation and stored history stay
+unchanged. Actual crew/time entry remains available inside Report Work.
