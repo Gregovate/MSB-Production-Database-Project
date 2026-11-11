@@ -7,6 +7,18 @@
   let snapshot = { findings: [], auditors: [] };
   let loadedYear = null;
   let pending = null;
+  let intakeCandidates = [];
+  let intakeLoadedYear = null;
+  async function reviewIntake() {
+    if (!appState.access?.can_manage_setup) return [];
+    if (intakeLoadedYear !== Number(appState.seasonYear)) {
+      const payload=await api(
+        `api/setup/qc/intake-candidates?season_year=${encodeURIComponent(appState.seasonYear)}`);
+      intakeCandidates=payload.intake_candidates || [];
+      intakeLoadedYear=Number(appState.seasonYear);
+    }
+    return intakeCandidates;
+  }
   const html = value => escapeHtml(String(value ?? ''));
   const localTime = value => value
     ? new Date(value).toLocaleString('en-US', {
@@ -105,6 +117,18 @@
       let note=noteField?.value?.trim() || '';
       const targetId=Number(btn.dataset.qcTask || id ||
         snapshot.findings.find(x=>Number(x.qc_finding_id)===finding)?.setup_session_task_id);
+      if (action==='LINK_INTAKE') {
+        const intakeId=Number(host.querySelector('[data-qc-link-intake]')?.value||0);
+        const findingId=Number(host.querySelector('[data-qc-link-finding]')?.value||0);
+        const rationale=host.querySelector('[data-qc-link-rationale]')?.value?.trim();
+        if (!intakeId || !findingId || !rationale) {
+          setAlert('Choose the original Intake, existing finding, and link rationale.','error');
+          return;
+        }
+        await command({action, setup_session_task_id:targetId,
+          qc_finding_id:findingId,intake_id:intakeId,note:rationale});
+        return;
+      }
       if (action==='CLAIM_AUDIT') {
         await command({action,setup_session_task_id:targetId});
         return;
@@ -132,6 +156,17 @@
     catch (error) { host.textContent='QC details unavailable: '+(error.message||error);return; }
     if (!host.isConnected || id!==nextQcDiscovery.selectedTaskId) return;
     const findings=taskFindings(id);
+    let relevantIntake=[];
+    if (appState.access?.can_manage_setup) {
+      try {
+        const selected=nextQcAnnualTasks().find(
+          t=>Number(t.setup_session_task_id)===Number(id));
+        const all=await reviewIntake();
+        relevantIntake=all.filter(i=>Number(i.stage_id)===Number(selected?.stage_id));
+      } catch (error) {
+        setAlert('Original Intake review temporarily unavailable: '+(error.message||error),'error');
+      }
+    }
     const auditors=snapshot.auditors.filter(x=>Number(x.setup_session_task_id)===Number(id));
     host.innerHTML=`
       <div class="next-qc-record">
@@ -142,6 +177,42 @@
         <h4>Previously reported problems (${findings.length})</h4>
         ${findings.length ? findings.map(f=>findingMarkup(f,false)).join('')
           : '<p>No QC problems recorded in the new finding ledger yet. Historical Intake reconciliation remains a separate Manager-reviewed step.</p>'}
+        ${appState.access?.can_manage_setup ? `<section class="next-qc-finding">
+          <h4>Manager: reconcile existing Work Order Intake</h4>
+          <p class="muted">Original Intake remains unchanged. Confirm the exact defect and link
+            it to one or more QC findings; do not link the separate promoted GFCI Work Order.
+            Create distinct QC findings first for separate physical defects.</p>
+          <label>Unpromoted Intake from this Stage
+            <select data-qc-link-intake>
+              <option value="">Choose original Intake</option>
+              ${relevantIntake.map(i=>`<option value="${Number(i.intake_id)}">
+                INTAKE-${Number(i.intake_id)} · ${html((i.problem_raw||'').slice(0,150))}
+              </option>`).join('')}
+            </select>
+          </label>
+          <details><summary>Review original Intake descriptions (${relevantIntake.length})</summary>
+            ${relevantIntake.map(i=>`<div class="next-qc-finding">
+               <strong>INTAKE-${Number(i.intake_id)}</strong> · ${html(i.submitter_name_raw)}
+               <div class="muted">${html(localTime(i.updated_at))} ·
+                 linked findings ${html((i.linked_findings||[]).join(', ')||'none')}</div>
+               <div class="next-qc-note">${html(i.problem_raw)}</div>
+              </div>`).join('')}
+          </details>
+          <label>Existing QC problem
+            <select data-qc-link-finding>
+              <option value="">Choose finding to corroborate</option>
+              ${findings.map(f=>`<option value="${Number(f.qc_finding_id)}">
+                 #${Number(f.qc_finding_id)} · ${html(f.title)}
+              </option>`).join('')}
+            </select>
+          </label>
+          <label>Why these are the same issue?
+            <textarea rows="3" maxlength="2000" data-qc-link-rationale
+              placeholder="Confirm arch / channel / failure and overlapping evidence"></textarea>
+          </label>
+          <button type="button" class="small secondary" data-qc-action="LINK_INTAKE"
+            data-qc-task="${id}">Link original Intake to QC finding</button>
+        </section>` : ''}
         <form class="next-qc-new" onsubmit="return false">
           <h4>Report a problem on QC #${id}</h4>
           <p class="muted">You can report failures during installation or initial power-up, even before final QC is ready.</p>
