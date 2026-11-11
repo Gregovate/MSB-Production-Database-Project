@@ -98,7 +98,8 @@ def test_qc_modes_own_their_panel_and_do_not_fall_through_to_scheduled_work():
     ui=(ROOT/'setup_next_pass.js').read_text()
     assert "if (nextQcDiscovery.mode !== 'work') return;" in ui
     assert "if (nextQcDiscovery.mode === 'qc') return;" not in ui
-    assert "window.setupQcRenderFixes?.();" in ui
+    assert "typeof window.setupQcRenderFixes !== 'function'" in ui
+    assert "window.setupQcRenderFixes()" in ui
     assert 'data-qc-detail="${id}"' in ui
 
 
