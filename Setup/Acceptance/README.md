@@ -1,6 +1,10 @@
+## November 11 Perform Work theme correction
+
+[Theme contrast candidate](Setup_205_Perform_Theme_2026-11-11.md): PR482 server deployment PASS; protected Production review exposed daily-summary dark contrast. Source-only follow-up; preview in both themes pending.
+
 ## November 11 existing-crew staffing repair
 
-[Candidate and browser checks](Setup_205_Existing_Crew_Size_2026-11-11.md): editable existing crew size, atomic staffing/placement; browser acceptance pending.
+[Candidate and browser checks](Setup_205_Existing_Crew_Size_2026-11-11.md): editable existing crew size, atomic staffing/placement; final disposable PASS and PR482 server deployment PASS. Production theme follow-up remains open.
 
 ## November 8 local-calendar blocker candidate
 

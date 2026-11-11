@@ -1169,3 +1169,12 @@ snapshot validation; verify exact function body, owner, fixed search path, revok
 PUBLIC execution and enabled BEFORE INSERT row trigger. No Production test rows.
 Preserve all business rows and the shared checkout. Failure retains journal and
 snapshot; never automatically retry, invent inverse SQL or reopen writers.
+
+### Perform Work theme contrast
+
+Daily staffing summaries must pair the existing --card background with --text,
+not an undefined --surface fallback and inherited text. Shift-status banners
+must use paired --warning/--warning-soft or --success/--success-soft tokens.
+The same rendered current-day summary and status cases must be checked under
+explicit light/dark themes and OS-preferred dark mode before acceptance.
+This is presentation only; calculations, reporting and scheduling do not change.

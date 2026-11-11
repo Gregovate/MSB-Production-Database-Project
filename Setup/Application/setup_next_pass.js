@@ -1879,8 +1879,8 @@ function nextPerformWorkloadLabel(items, shift) {
       w.notReady ? w.notReady + ' NOT READY' : ''].filter(Boolean).join(' · ')
     : '';
   const warning = !staffed || w.overload > 0 || w.unknown > 0 || w.notReady > 0;
-  const color = warning ? '#835900' : '#146044';
-  const background = warning ? '#fff6dd' : '#eaf8f0';
+  const color = warning ? 'var(--warning, #9a5a00)' : 'var(--success, #277a43)';
+  const background = warning ? 'var(--warning-soft, #fff4df)' : 'var(--success-soft, #eaf6ee)';
   return `<div role="status" style="position:sticky;top:0;z-index:3;border:2px solid ${color};border-radius:7px;padding:7px 10px;margin:6px 0;background:${background};color:${color};font-weight:700">
     ${status} · ${hours(w.known)} hours scheduled${detail}${exception}
   </div>`;
@@ -2586,8 +2586,8 @@ function renderNextExecution() {
           const overloaded = crewShifts.filter((w) => w.overload > 0).length;
           const unknown = crewShifts.reduce((n, w) => n + w.unknown, 0);
           const notReady = crewShifts.reduce((n, w) => n + w.notReady, 0);
-          const color = overloaded ? '#9d2424' : unknown || notReady ? '#835900' : '#146044';
-          return `<div role="status" style="border:3px solid ${color};border-radius:8px;padding:12px;margin:8px 0;background:var(--surface, #f7f7f7);font-size:1.05rem;font-weight:700;white-space:pre-line">
+          const color = overloaded ? 'var(--danger, #a4382d)' : unknown || notReady ? 'var(--warning, #9a5a00)' : 'var(--success, #277a43)';
+          return `<div role="status" style="border:3px solid ${color};border-radius:8px;padding:12px;margin:8px 0;background:var(--card, #fff);color:var(--text, #18212b);font-size:1.05rem;font-weight:700;white-space:pre-line">
             ${escapeHtml(nextDayStaffingSummary(scopedAssignments.filter((a) => Number(a.setup_work_day_id) === Number(day.setup_work_day_id)), (board.crews || []).filter((c) => Number(c.setup_work_day_id) === Number(day.setup_work_day_id) && (setupNextState.performCaptainFilter === 'ALL' || Number(c.captain_person_id) === Number(String(setupNextState.performCaptainFilter).split(':')[1]))), board.tasks || []))}<br>${day.work_date < nextSetupLocalDate() ? `${scopedDayAssignments.filter(nextAssignmentReported).length} tasks reported · ${reportedPersonHours} actual person-hours reported so far` : ''}${overloaded || unknown || notReady ? '<br>Warnings:' : ''}${overloaded ? ` ${overloaded} crew shifts overloaded` : ''}${unknown ? ` · ${unknown} missing time estimates` : ''}${notReady ? ` · ${notReady} tasks not ready` : ''}
           </div>`;
         })()}
