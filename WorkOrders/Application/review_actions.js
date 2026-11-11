@@ -865,6 +865,10 @@
     drawActions();
   });
   byId("review-action").addEventListener("change", actionChanged);
+  byId("review-intake-setup-association").addEventListener("change", () => {
+    byId("review-intake-wiring-review").hidden =
+      byId("review-intake-setup-association").value !== "review";
+  });
   byId("create-work-order").addEventListener("click", openCreate);
   byId("manager-assign-button").addEventListener("click", openManagerAssignment);
   // All remaining work forms share one explicit Cancel/Back action.
