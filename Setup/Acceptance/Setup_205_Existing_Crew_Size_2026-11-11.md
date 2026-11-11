@@ -188,3 +188,19 @@ The no-work label now aligns a 24px checkbox with its statement, a 44px minimum
 clickable label, and scoped rules overriding the generic stacked form layout.
 Asset revision111.1; runtime remains V0.3.111-explicit-no-work. Browser acceptance
 of this presentation adjustment is pending. Production unchanged.
+
+## V111 scope presentation follow-up (asset111.2)
+
+Greg completed CLEAN EXIT and corrected Task184 in Production independently.
+Do not undo those corrections for testing. Perform Work collapsed cards and
+past-assignment summaries now show annual Stage key/name and Scene, with explicit
+Stage-level or Site-wide fallback, using owning task scope rather than the
+assignment projection alone. Regression covers both renderers and escaped names.
+The read-only setup_205_duplicate_unreported_readonly_audit.sql identifies unfinished
+2026 tasks with at least two unmatched assignments, ordered by task/date/assignment.
+Current results must be supplied from Production or a fresh clone; no replacement
+duplicate has yet been confirmed. Existing historical audit is not current proof.
+Presentation only: retain V0.3.111-explicit-no-work; no Production changes.
+
+Validation: 986 application tests PASS; Node syntax PASS; audit SQL parser PASS.
+Real audit results and exact-candidate browser acceptance remain pending.

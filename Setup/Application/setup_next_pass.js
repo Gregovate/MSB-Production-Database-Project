@@ -1386,6 +1386,13 @@ function nextPerformTaskNumberLabel(task) {
   return Number.isSafeInteger(annual) && annual > 0 ? `Annual Task ${annual}` : 'Task';
 }
 
+// #205: repeated task names require annual stage/scene context before reporting.
+function nextPerformTaskScopeLabel(task) {
+  if (!task?.stage_id && !task?.stage_key && !task?.stage_name) return 'Site-wide / Infrastructure';
+  const stage = `Stage ${task.stage_key || '—'}${task.stage_name ? ' — ' + task.stage_name : ''}`;
+  return `${stage} / ${task.scene_name || 'Stage-level'}`;
+}
+
 function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
@@ -1412,7 +1419,7 @@ function nextPerformAssignmentCard(assignment) {
       data-task-id="${assignment.setup_task_id}">
       <summary>
         <span><strong>${escapeHtml(nextPerformTaskNumberLabel(task))} · ${escapeHtml(assignment.task_name)}</strong>
-          <span class="muted"> · ${escapeHtml(nextTaskScopeLabel(assignment))}</span>
+          <span class="muted"> · ${escapeHtml(nextPerformTaskScopeLabel({...assignment, ...task}))}</span>
         </span>
         <span class="next-perform-assignment-pills">
           <span class="setup-board205-badge effort-${escapeHtml(effort)}">${escapeHtml(effortLabel)}</span>
@@ -1947,7 +1954,8 @@ function nextLateWorkSummary(assignments, board) {
     const crew = (board.crews || []).find((c) => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
     const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
     const captain = crew?.captain_display_name || 'CAPTAIN TBD';
-    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(nextPerformTaskNumberLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item))} · ${escapeHtml(item.task_name || 'Task')}</strong> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
+    const task = (board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item;
+    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(nextPerformTaskNumberLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item))} · ${escapeHtml(item.task_name || 'Task')}</strong><div class="muted">${escapeHtml(nextPerformTaskScopeLabel({...item, ...task}))}</div> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
   }).join('')}</section>`;
 }
 

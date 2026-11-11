@@ -34,7 +34,7 @@ const ctx={console,Intl,Date,Number,String,Math,Set,Map,
   nextCanRescheduleNoWork:()=>false,
 };
 vm.createContext(ctx);
-for(const name of ['nextAssignmentReported','nextAnnualTaskComplete','nextAssignmentInactive','nextAssignmentReviewLabel','nextSetupLocalDate','nextAssignmentLate','nextAssignmentReportedLabel','nextScheduleWarning','nextSetupAssignmentStatus','nextPerformAssignmentStatus','nextPerformTaskNumberLabel','nextPerformAssignmentCard','nextFilterPerformAssignments','nextPerformShiftWorkload','nextLateWorkSummary','setup205DeadlineKpiModel'])load(source,name);
+for(const name of ['nextAssignmentReported','nextAnnualTaskComplete','nextAssignmentInactive','nextAssignmentReviewLabel','nextSetupLocalDate','nextAssignmentLate','nextAssignmentReportedLabel','nextScheduleWarning','nextSetupAssignmentStatus','nextPerformAssignmentStatus','nextPerformTaskNumberLabel','nextPerformTaskScopeLabel','nextPerformAssignmentCard','nextFilterPerformAssignments','nextPerformShiftWorkload','nextLateWorkSummary','setup205DeadlineKpiModel'])load(source,name);
 ctx.nextSetupLocalDate=()=> '2026-11-03';
 for(const name of ['board205DayViewState','board205ShowReportedTaskCards','board205ActiveAssignmentsFor','board205AmCapacity','board205ShiftWorkload'])load(schedule,name);
 assert.equal(ctx.setup205DeadlineKpiModel(board,2026).overdue.length,7);
@@ -85,3 +85,16 @@ assert(datedSummary.includes('Overall task progress:'));
 console.log('PASS visible reusable/annual task identity and distinct dated reports with overall progress');
 
 assert(schedule.includes('<span>${board205Esc(nextPerformTaskNumberLabel(task))} · ${board205Esc(item.task_name)}</span>'));
+
+// Reused names must retain scope without expanding a task or opening Report Work.
+const scopedTask={...tasks[3],stage_id:4,stage_key:'04',stage_name:'Food Collection',scene_name:'Logo Tree'};
+const scopedBoard={...board,tasks:[scopedTask]};
+assert(ctx.nextLateWorkSummary([assignments[4]],scopedBoard).includes('Stage 04 — Food Collection / Logo Tree'));
+const oldTask=ctx.nextPerformTask;
+ctx.nextPerformTask=()=>scopedTask;
+assert(ctx.nextPerformAssignmentCard(assignments[4]).includes('Stage 04 — Food Collection / Logo Tree'));
+ctx.nextPerformTask=oldTask;
+assert.equal(ctx.nextPerformTaskScopeLabel({...scopedTask,scene_name:null}),'Stage 04 — Food Collection / Stage-level');
+assert.equal(ctx.nextPerformTaskScopeLabel({}),'Site-wide / Infrastructure');
+assert(ctx.nextLateWorkSummary([assignments[4]],{...scopedBoard,tasks:[{...scopedTask,scene_name:'<unsafe>'}]}).includes('&lt;unsafe>'));
+console.log('PASS stage/scene context before Report Work, stage-level/site-wide fallbacks and escaped scope');

@@ -1106,3 +1106,7 @@ The no-work confirmation must have a minimum 24px checkbox aligned beside its
 statement and a minimum 44px clickable label. Resolving one historical assignment
 must not silently resolve other dated occurrences: each requires actual reporting
 or an explicit no-work unschedule decision.
+
+Perform Work collapsed cards and past-assignment review entries must identify
+stage key/name and scene, or explicitly Stage-level/Site-wide, before Report Work.
+Use the owning annual task scope when the assignment projection lacks fields.
