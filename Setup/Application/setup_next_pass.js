@@ -2279,11 +2279,22 @@ function setup205ActionCenterHtml(board, model) {
     safe(title) + ' (' + rows.length + ')</summary><p class="muted">' + safe(explanatory) +
     '</p><ul>' + (rows.length ? rows.map(x => '<li>' + x + '</li>').join('') : '<li>None</li>') +
     '</ul></details>';
+  // Use existing annual state commands; Planning Info edits reusable guidance.
+  const taskActions = t => {
+    const started = Boolean(t.progress_entries || t.actual_started_at || t.actual_completed_at);
+    return (started && t.readiness_state !== 'NOT_READY' ? '' : button(started ? 'mark-ready' : 'readiness',t.setup_session_task_id,
+      started ? 'Mark ready' : 'Review readiness')) + ' ' +
+      button('schedule',t.setup_session_task_id,'Schedule / resolve assignment') + ' ' +
+      button('planning',t.setup_session_task_id,'Edit task guidance') +
+      (board.assignments || []).filter(a => Number(a.setup_session_task_id) === Number(t.setup_session_task_id))
+        .map(a => ' ' + button('report',a.setup_work_day_task_id,
+          'Report Work / review · ' + (dayById.get(Number(a.setup_work_day_id))?.work_date || a.work_date || 'date not recorded'))).join('');
+  };
   // #205: the headline count and inspectable list share exactly the same tasks.
   const notReady = k.notReady.map(t => '<strong>' + safe(nextPerformTaskNumberLabel(t)) +
     ' · ' + safe(t.task_name) + '</strong><div>' + safe(nextPerformTaskScopeLabel(t)) +
     '</div><p><strong>Readiness reason:</strong> ' + safe(t.readiness_note || 'Reason not documented') +
-    '</p>' + button('planning', t.setup_session_task_id, 'Review readiness'));
+    '</p>' + taskActions(t));
   // #205: every unfinished annual task appears once, even without an exception.
   const outstanding = k.incomplete.slice().sort((a,b) =>
     Number(a.setup_task_id || a.setup_session_task_id) - Number(b.setup_task_id || b.setup_session_task_id)
@@ -2298,7 +2309,7 @@ function setup205ActionCenterHtml(board, model) {
       ' · Readiness: ' + safe(t.readiness_state || 'Not recorded') +
       (blockers.length ? ' · ' + safe(blockers.join('; ')) : '') + '</p>' +
       (t.readiness_note ? '<p><strong>Readiness note:</strong> ' + safe(t.readiness_note) + '</p>' : '') +
-      button('planning',t.setup_session_task_id,'Review task / readiness');
+      taskActions(t);
   });
   const missed = k.overdue.map(a => '<span>' + assignmentLabel(a) +
     ' · ' + safe(nextAssignmentReviewLabel(taskById.get(Number(a.setup_session_task_id)))) + '. ' +
@@ -2327,7 +2338,7 @@ function setup205ActionCenterHtml(board, model) {
       ...(t.readiness_state === 'NOT_READY' ? ['NOT READY: ' + (t.readiness_note || 'reason not documented')] : [])
     ];
     return assignmentLabel(a) + ' — ' + safe(reasons.join('; ')) +
-      ' ' + button('planning',t.setup_session_task_id,'Review readiness');
+      ' ' + taskActions(t);
   });
   // Real scheduled execution consumes elapsed linear time in each crew/shift.
   // Avoid treating logistics-only Pick demand or unestimated work as free capacity.
@@ -2416,7 +2427,7 @@ function setup205ActionCenterHtml(board, model) {
 // Stable email links delegate to the existing guarded Manager screens.
 async function setup205OpenManagerRecord(action, id) {
   if (!appState.access?.can_manage_setup) throw new Error('Setup Manager permission required.');
-  if (!Number.isSafeInteger(id) || id < 1 || !['report','planning','schedule','day'].includes(action))
+  if (!Number.isSafeInteger(id) || id < 1 || !['report','planning','schedule','day','readiness','mark-ready'].includes(action))
     throw new Error('Invalid Manager record link.');
   if (action === 'report') {
     if (await navigateSetupView('perform') === false) return;
@@ -2439,11 +2450,19 @@ async function setup205OpenManagerRecord(action, id) {
     details.scrollIntoView({block:'center',behavior:'auto'});
     await loadNextTaskExecution(details,false);
     details.querySelector('.next-performed-on')?.focus();
-  } else if (action === 'schedule' ||
+  } else if (action === 'schedule' || action === 'readiness' || action === 'mark-ready' ||
              action === 'planning') {
     if (await navigateSetupView('schedule') === false) return;
     if (action === 'schedule') {
       board205OpenScheduleDialog({kind:'task',id});
+    } else if (action === 'readiness' || action === 'mark-ready') {
+      const task = (setupBoard205State.board.tasks || []).find(t => Number(t.setup_session_task_id) === id);
+      if (!task) throw new Error('Annual task not found. Refresh current actions.');
+      if (action === 'readiness') board205OpenAnnualHoldDialog(task);
+      else if (task.readiness_state === 'NOT_READY' && window.confirm(
+        `Mark ${nextPerformTaskNumberLabel(task)} · ${task.task_name} READY for this season? This changes readiness only; it does not report or complete work.`)) {
+        await board205SetReadiness(task);
+      }
     } else {
       board205OpenPlanningInfoDialog(id);
     }

@@ -234,3 +234,15 @@ changed based on apparently satisfied notes. Regression covers full inventory,
 scheduled/partial/deferred inclusion and completed exclusion. 986 tests and Node
 syntax PASS. Retain presentation-only V0.3.111-explicit-no-work. New exact source
 requires browser acceptance and CLEAN EXIT; no Production changes.
+
+## V111 correct readiness destination (asset111.5)
+
+Operator rejected Review readiness opening Planning Info, which edits guidance
+without annual state controls. It now opens existing Annual Readiness for work
+without progress; started NOT READY work offers explicit-confirmation Mark ready
+through existing readiness-state endpoint while preserving protected notes. Task
+rows additionally expose Schedule / resolve assignment, Edit task guidance and
+exact dated Report Work actions. Guarded scheduling still resolves prior work;
+marking Ready does not report completion. Tests cover both readiness destinations
+and existing permissions/navigation. 986 application tests PASS; new exact source
+needs disposable acceptance/CLEAN EXIT. No Production changes.

@@ -20,7 +20,7 @@ const assignment={
 const all={checked:false};
 const setupNextState={performCaptainFilter:'CAPTAIN:42',performCaptainFilterTouched:false};
 const appState={access:{can_manage_setup:true}};
-const setupBoard205State={board:{work_days:[{setup_work_day_id:9,work_date:'2026-10-14'}]}};
+const setupBoard205State={board:{tasks:[{setup_session_task_id:202,task_name:'Mailbox',readiness_state:'NOT_READY'}],work_days:[{setup_work_day_id:9,work_date:'2026-10-14'}]}};
 const ctx={
  Number, String, appState,setupNextState,setupBoard205State,
  navigateSetupView: async name=>{visited.push(name);return true;},
@@ -31,6 +31,10 @@ const ctx={
  renderNextExecution:()=>redrawn++,
  loadNextTaskExecution:async()=>historyLoaded++,
  board205OpenScheduleDialog:o=>opened.push(o),
+ window:{confirm:()=>true},
+ nextPerformTaskNumberLabel:()=> 'Task 123',
+ board205SetReadiness:async t=>opened.push(['mark-ready',t.setup_session_task_id]),
+ board205OpenAnnualHoldDialog:t=>opened.push(['readiness',t.setup_session_task_id]),
  board205OpenPlanningInfoDialog:id=>opened.push(['planning',id]),
  board205FocusWorkDate:date=>opened.push(['day',date]),
  setAlert:msg=>alerts.push(msg)
@@ -83,6 +87,11 @@ async function click(action,id){
  assert.equal(visited.at(-1),'schedule');
  assert.equal(opened.at(-1).kind,'task');
  assert.equal(opened.at(-1).id,202);
+ await click('mark-ready',202);
+ assert.equal(opened.at(-1)[0],'mark-ready');
+ await click('readiness',202);
+ assert.equal(opened.at(-1)[0],'readiness');
+ assert.equal(opened.at(-1)[1],202);
  await click('planning',202);
  assert.equal(opened.at(-1)[0],'planning');
  assert.equal(opened.at(-1)[1],202);

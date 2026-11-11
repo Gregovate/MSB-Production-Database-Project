@@ -1130,3 +1130,10 @@ and current blocker reasons. Existing planning navigation remains authoritative.
 All task-bearing Action Center sections, including shift workload task lists,
 show task numbers consistently. Exception counts remain overlapping subsets;
 no readiness flag or work report is inferred or changed from note wording.
+
+Action Center readiness navigation must use the annual state controls, not the
+reusable Planning Info editor. Unstarted work uses Annual Readiness (state and
+reason). Started work retains historical-note protection and may explicitly
+confirm Mark ready through the existing readiness-state command. Rows expose
+separate scheduling and exact dated Report Work actions; all duplicate/history
+guards remain in effect. Planning Info is separately labeled as task guidance.
