@@ -54,3 +54,15 @@ WCAG text contrast from shipped CSS palettes for light/dark/system-dark, plus
 checks that shipped daily/shift markup uses those verified foreground/background
 pairs. No new Node requirement, skip workaround, installer or service dependency.
 These checks do not claim browser rendering; operator review remains required.
+
+## Accepted theme release gate
+
+Greg confirmed PASS on fdf1549e4215c305cb82b3e6e70e327ade574dd2,
+then reusable preview CLEAN EXIT and explicit Production approval. Existing
+PR482 application37a02e2 is the exact expected live rollback source.
+Release profile reuses305 source installer, not the482 migration runner. Current
+Server Management Setup_Source_Only_Application_Deployment_Runbook.md retrieved
+and read for this step. No SQL/maintenance/archive; restart only Setup. Existing
+source gates/rollback/fingerprint apply; briefly pause edits for preservation.
+Tooling/doc/test-only follow-up preserves every accepted runtime file.
+Actual Production report and protected live theme check remain pending.

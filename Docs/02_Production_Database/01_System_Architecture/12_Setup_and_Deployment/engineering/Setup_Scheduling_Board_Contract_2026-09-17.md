@@ -1178,3 +1178,12 @@ must use paired --warning/--warning-soft or --success/--success-soft tokens.
 The same rendered current-day summary and status cases must be checked under
 explicit light/dark themes and OS-preferred dark mode before acceptance.
 This is presentation only; calculations, reporting and scheduling do not change.
+
+Theme follow-up release reuses the accepted305 source-only installer with a
+pinned profile: fdf1549e accepted application,37a02e2 rollback, unchanged V111.
+Existing forward ancestry, no-Database-delta, exact UI date, detached regression,
+fingerprint, Setup-only promotion/restart/health, source rollback and cleanup
+remain authoritative. Current shared source is captured for drift detection,
+never promoted. Reuse committed-byte transport and foreground SCP+SSH wrapper.
+No SQL, migration replay, Node, new infrastructure or database rollback archive.
+Briefly pause Setup edits for the existing source-only preservation interval.
