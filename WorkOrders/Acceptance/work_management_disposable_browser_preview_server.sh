@@ -592,9 +592,11 @@ WO447_INSTALLED_PHASE2
       printf '%s\n' "REVOKE ALL ON FUNCTION ops.work_management_reconcile_actor(text) FROM PUBLIC;"
       printf '%s\n' "GRANT EXECUTE ON FUNCTION ops.work_management_reconcile_actor(text) TO work_management_app;"
     fi
-    cat "$WORKTREE/WorkOrders/Database/005_work_management_wo_followup.sql"
+    # Current Production has migration005 installed. Never replay CREATE FUNCTION.
+    # The --no-acl clone restore needs only exact, role-scoped grants rebuilt.
+    cat "$WORKTREE/WorkOrders/Acceptance/wo481_installed_followup_clone_grants.sql"
   } | psql_clone
-  echo "PASS: V1 proposed native schema/functions installed on disposable clone"
+  echo "PASS: installed native V1 schema verified; clone-only privileges restored"
   # The fixture tests real manager-only Create, idempotency, Crew Progress +
   # Complete, public Intake Promote, true native actor, and held notifications.
   # All sample data is ROLLED BACK, then the entire clone is torn down.
@@ -658,9 +660,11 @@ WO447_INSTALLED_PHASE2
       printf '%s\n' "REVOKE ALL ON FUNCTION ops.work_management_reconcile_actor(text) FROM PUBLIC;"
       printf '%s\n' "GRANT EXECUTE ON FUNCTION ops.work_management_reconcile_actor(text) TO work_management_app;"
     fi
-    cat "$WORKTREE/WorkOrders/Database/005_work_management_wo_followup.sql"
+    # Current Production has migration005 installed. Never replay CREATE FUNCTION.
+    # The --no-acl clone restore needs only exact, role-scoped grants rebuilt.
+    cat "$WORKTREE/WorkOrders/Acceptance/wo481_installed_followup_clone_grants.sql"
   } | psql_clone
-  echo "PASS: V1 native SQL installed inside private restored clone only"
+  echo "PASS: installed V1 functions preserved; clone-only privileges restored"
   {
     printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
     printf '%s\n' "SET msb.wo419_v1_reviewer_email='$PREVIEW_EMAIL';"
