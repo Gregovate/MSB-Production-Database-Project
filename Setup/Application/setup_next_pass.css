@@ -1069,3 +1069,42 @@ body:not(.setup-schedule-view) #next-perform-list {
   color: var(--text, #172b43);
 }
 .next-qc-row [hidden], #next-qc-content[hidden] { display: none !important; }
+
+/* #122 QC task reporting, shared repairs: PR483 contrast tokens. */
+.next-qc-record,.next-qc-finding,.next-qc-fix-group {
+  padding: 0.8rem;
+  margin: 0.8rem 0;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.6rem;
+  background: var(--card, var(--panel, #fff));
+  color: var(--text, #172b43);
+}
+.next-qc-record h4 { margin: 0.9rem 0 0.45rem; }
+.next-qc-record label,.next-qc-finding label {
+  display: block;
+  margin: 0.65rem 0;
+  color: var(--text, #172b43);
+}
+.next-qc-record input,.next-qc-record textarea,.next-qc-record select,
+.next-qc-finding textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: 0.3rem 0;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.4rem;
+  padding: 0.6rem;
+  background: var(--card, var(--panel, #fff));
+  color: var(--text, #172b43);
+}
+.next-qc-record textarea,.next-qc-finding textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+.next-qc-record textarea[data-qc-description] { min-height: 12rem; }
+.next-qc-state { font-weight: 600; margin-left: 0.65rem; }
+.next-qc-events { padding-left: 1.3rem; }
+.next-qc-events li { margin: 0.7rem 0; }
+.next-qc-note { white-space: pre-wrap; overflow-wrap: anywhere; }
+.next-qc-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
