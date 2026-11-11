@@ -430,20 +430,20 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.108-schedule-catch-up"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.108-schedule-catch-up';" in guard
+    assert 'PRODUCTION_VERSION = "V0.3.109-scheduling-backlog"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.109-scheduling-backlog';" in guard
     assert "msb-setup-pick-mode-v19-local-calendar" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
-    assert "setup_pick_list.js?v=2026-11-11.108" in pick_sw
-    assert "setup_pick_list.js?v=2026-11-11.108" in pick_html
+    assert "setup_pick_list.js?v=2026-11-11.109" in pick_sw
+    assert "setup_pick_list.js?v=2026-11-11.109" in pick_html
     assert "setup_pick_mode.js?v=2026-10-06.1" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-06.1" in pick_html
     assert "msb-setup-record-location-v24-local-calendar" in location_sw
     assert "setup_record_location.css?v=2026-10-10.62" in location_sw
     assert "setup_record_location.css?v=2026-10-10.62" in location_html
-    assert "setup_record_location.js?v=2026-11-11.108" in location_sw
-    assert "setup_record_location.js?v=2026-11-11.108" in location_html
+    assert "setup_record_location.js?v=2026-11-11.109" in location_sw
+    assert "setup_record_location.js?v=2026-11-11.109" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():

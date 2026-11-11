@@ -1662,6 +1662,12 @@ function board205QueueTasks() {
     .filter((task) => {
       const family = board205FinderStatusFamily(task);
       const hardBlocked = board205HasHardBlock(task);
+      // A past assignment awaiting its report belongs in Perform Work, not
+      // the ready backlog. Hard-blocker visibility must not reintroduce it.
+      if ((Number(task.unworked_assignment_count || 0) > 0
+          || Number(task.future_assignment_count || 0) > 0)
+          && !board205NeedsContinuation(task)
+          && !statuses.has('SCHEDULED')) return false;
 
       // Blocking ON hides only tasks whose hard prerequisite is incomplete.
       // A Work Order gate task itself remains visible; downstream tasks are
@@ -1730,6 +1736,7 @@ function board205SchedulableTasksForReport() {
       && !board205HasHardBlock(task)
       && board205FinderStatusFamily(task) === 'READY'
       && Number(task.future_assignment_count || 0) === 0
+      && (Number(task.unworked_assignment_count || 0) === 0 || board205NeedsContinuation(task))
     ))
     .sort((a, b) => board205FinderCompare(a, b, 'STAGE'));
 }

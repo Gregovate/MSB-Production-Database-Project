@@ -57,3 +57,29 @@ period/Captain unchanged, Cancel writes nothing. A reported occurrence must
 remain reviewable without becoming movable. Then test another day and both
 new/existing Captain paths. Reuse the same wrapper/ref/port with V108 and its
 new exact candidate SHA. CLEAN EXIT required; no Production changes authorized.
+
+## Simplified backlog — V0.3.109-scheduling-backlog
+
+V108 operator review confirmed the same-day assignment lookup and prominent
+Report Work action. Greg rejected showing Task185 as ready in the first place.
+V108 preview CLEAN EXIT confirmed. No Production approval or deployment.
+
+V109 classifies active unreported assignments as SCHEDULED regardless of whether
+the date has passed. Unstarted tasks remain in Perform Work for catch-up and do not appear
+in the default Ready scheduling backlog or its schedulable printout. Explicit
+Scheduled inspection still works. Hard-blocker visibility cannot accidentally
+reintroduce them. Reported unfinished tasks with no future assignment remain continuations, even
+when another historical occurrence still awaits a report. All scheduled
+occurrences remain in Perform Work for reporting or Needs Report review. Never-scheduled tasks retain normal rules.
+Assignments, reports, completion and actual effort remain unchanged.
+
+986 application tests PASS, including an executable queue regression covering
+Task185, past unreported work, partial reports, future assignments, completed work,
+print output and blocker visibility. No SQL migrations.
+
+Retest exact new SHA with the existing wrapper/ref on8898, version
+V0.3.109-scheduling-backlog. Task185 must be absent from default Ready tasks and
+schedulable print but present in Perform Work / scheduled search. Confirm report
+catch-up works, a genuine continuation stays available and an unscheduled task
+can be assigned with editable existing-crew size; refresh confirms persistence.
+Finish reusable CLEAN EXIT before Production approval.

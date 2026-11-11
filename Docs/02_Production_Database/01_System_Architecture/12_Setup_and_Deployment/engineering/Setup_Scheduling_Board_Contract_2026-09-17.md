@@ -1031,3 +1031,21 @@ created. Changing to a different day allows normal continuation or retrospective
 scheduling. Catch-up reporting uses the existing Manager record report handler,
 including completed-day/assignment visibility, without fabricating schedules or
 removing historical guards. A duplicate-day guard remains authoritative for races.
+
+### Scheduling backlog versus work awaiting reports — November 11
+
+An active assignment remains scheduled even after its work date passes. Missing
+reports do not return it to Ready to Schedule or prove it needs continuation.
+Future scheduling takes precedence. Reported IN_PROGRESS work without a future
+assignment is Needs Rescheduling even when older occurrences await reports.
+Otherwise classify tasks with active unreported assignments as SCHEDULED before
+readiness classification. Keep them in Perform Work for catch-up; exclude from
+the default scheduling backlog and schedulable printout. An explicitly selected
+Scheduled finder filter may still inspect them. Hard-blocker visibility must not
+bypass this separation. Cancelled days do not reserve an assignment.
+
+Reported unfinished tasks with no future assignment remain eligible for
+continuation, independently of older occurrences awaiting reports. Never-scheduled tasks remain eligible under
+existing readiness/prerequisite rules. Completed tasks retain completion. Preserve
+the full assignment/report data and catch-up actions; this is classification, not
+a data repair, automatic completion, new report, or reassignment.

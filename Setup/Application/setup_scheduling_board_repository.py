@@ -289,6 +289,8 @@ class SetupSchedulingBoardRepository:
                         WHEN st.execution_status = 'IN_PROGRESS'
                              AND coalesce(sched.future_assignment_count, 0) = 0
                             THEN 'NEEDS_SCHEDULING_AGAIN'
+                        WHEN coalesce(sched.unworked_assignment_count, 0) > 0
+                            THEN 'SCHEDULED'
                         WHEN coalesce(dep.prerequisites_complete, true) IS NOT TRUE
                             THEN 'BLOCKED'
                         WHEN st.annual_readiness_state = 'NOT_READY'
