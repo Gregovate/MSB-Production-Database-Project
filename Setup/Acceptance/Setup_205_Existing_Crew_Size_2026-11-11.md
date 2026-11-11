@@ -306,3 +306,20 @@ Broader historical Acceptance suite:260 passed,8 skipped,14 failures and4 errors
 in old release-pin/object fixtures in this shallow checkout; not claimed PASS.
 New482 profile and existing maintenance tests16 PASS; combined targeted suite1012
 PASS. Required hosted checks must pass with full checkout before merge.
+
+## Final closeout after PR483 theme follow-up
+
+PR482 maintenance/database/source deployment PASS returned by Greg, report
+/home/msbadmin/setup-deployment-reports/PR482-080-20261111T190258Z.
+Application37a02e2d9460d115e1d7255833b264a6bb5d8d80/V0.3.111;
+integration/tooling605d86a5e7bf8a27bc4234aab16e54fccea5998a. Snapshot
+/home/msbadmin/backups/setup-205/msb-pre-pr482-080-PR482-080-20261111T190258Z.dump
+SHA2565b3fbf21946dc07e3886c20f60855495f86ffce4aed6d820f4126b2bcb55f610.
+Migration080, database validation and return ONLINE passed. Subsequent protected
+review found only theme contrast; accepted source-only PR483 corrected it.
+Current Setup isfdf1549e4215c305cb82b3e6e70e327ade574dd2, same V111,
+report/home/msbadmin/setup-deployment-reports/PR483-Source-20261111T192732Z;
+Greg confirmed live browser PASS. See theme acceptance record. No080 replay.
+Original missing-report/ready/crew-size/scoping/visible-report acceptance retained.
+Recurring stale open browser after updates remains separate #205 follow-up;
+QC work is outside this release. Local review cleanup not yet confirmed.
