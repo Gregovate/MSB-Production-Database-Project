@@ -273,3 +273,36 @@ Regression renders past/today/future/completed summaries, confirms the visible
 action and one button per card. 986 application tests and Node syntax PASS.
 Presentation-only V111 retained. Exact final candidate browser acceptance and
 CLEAN EXIT remain required. No Production changes.
+
+## Production approval and release preparation — November11
+
+Greg confirmed final PASS on37a02e2d9460d115e1d7255833b264a6bb5d8d80,
+then CLEAN EXIT and explicitly requested Release to production. Authority retrieved
+from current MSB-Server-Management Production_Database_Change_Deployment_Runbook.md
+and Production_Database_Maintenance_Mode.md. Migration080 makes this
+DATABASE-CHANGING. The new482 release profile reuses the existing controller
+orchestrator,478 gates and committed-byte transport; it installs exactly accepted
+application37a02e2 and080 after merge, not the tooling commit's application tests.
+Current Setup/shared rollback source IDs are captured and journaled in ONLINE
+preflight; clean source, ancestry and exactly080 database delta are mandatory.
+No Production has been mutated during preparation. Actual report/snapshot/ONLINE
+and protected browser evidence remain pending.
+
+Release checks exposed two repository test fixture dependencies missed by the
+application pytest suite: isolated mixed-shift test did not load the new move
+helper, and external GIS version-pin assertion retained106. Corrected tests only;
+accepted runtime JS/HTML/CSS/Python and migration unchanged. PR evidence field
+Infrastructure reuse / exception added. All10 standalone Setup workflow Node
+fixtures PASS; combined application/release/catalog-contract suite1012 PASS;
+generated release SQL parses. Final release checks rerun before merge.
+
+Failure: STOP, retain printed report and maintenance state, do not rerun or use
+the dashboard. Inspect journal and controller under the governing runbook.
+Success: retain report/snapshot path+hash, verify live Report Work/readiness, then
+close out deployment records and remove only this review worktree, returning to
+updated primary main. Wrapper removes its own clean temporary worktree and bundle.
+
+Broader historical Acceptance suite:260 passed,8 skipped,14 failures and4 errors
+in old release-pin/object fixtures in this shallow checkout; not claimed PASS.
+New482 profile and existing maintenance tests16 PASS; combined targeted suite1012
+PASS. Required hosted checks must pass with full checkout before merge.

@@ -497,3 +497,5 @@ live Scan acceptance remain separate gates.
 ## #205 October31 Manager brief actionability
 
 [Candidate and exact no-send acceptance gates](Setup_205_Manager_Brief_Actionability_2026-10-31.md). Reuses the existing disposable browser runner; no migration or SMTP action.
+
+PR482 approved release: `run_setup_482_release.ps1 -ReleaseSha <merged-tooling-sha>` performs ONLINE preflight; add `-Deploy` for the separately approved maintenance/snapshot/080/source/ONLINE sequence. See [acceptance record](Setup_205_Existing_Crew_Size_2026-11-11.md). Do not rerun a STOP.

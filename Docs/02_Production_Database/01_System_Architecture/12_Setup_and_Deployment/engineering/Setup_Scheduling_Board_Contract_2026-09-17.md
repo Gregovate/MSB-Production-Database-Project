@@ -1153,3 +1153,19 @@ Completed assignments instead show Review Work History. Use the same existing
 exact-assignment handler and avoid duplicate reporting buttons. Clicking this
 action opens the report form without toggling the card closed. Other secondary
 actions remain inside the expanded card.
+
+### PR482 accepted release profile
+
+Accepted application37a02e2d9460d115e1d7255833b264a6bb5d8d80/V0.3.111
+is deployed by a profile of setup_maintenance_deploy.py using the existing #37
+maintenance/snapshot/preservation/ONLINE sequence. Reuse CalendarRelease ONLINE,
+whole-business-row fingerprint and isolated regression gates, and the existing
+exact Git-blob transport/foreground Windows SCP+SSH wrapper. No new infrastructure.
+Release tooling is merged separately from the pinned accepted application identity.
+Current live source is captured in the journal, required clean and an ancestor
+of the accepted source; the Setup database delta must be exactly migration080.
+Any other baseline/delta stops before maintenance. Apply only080 after freeze and
+snapshot validation; verify exact function body, owner, fixed search path, revoked
+PUBLIC execution and enabled BEFORE INSERT row trigger. No Production test rows.
+Preserve all business rows and the shared checkout. Failure retains journal and
+snapshot; never automatically retry, invent inverse SQL or reopen writers.
