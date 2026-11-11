@@ -1,3 +1,7 @@
+## November 11 existing-crew staffing repair
+
+[Candidate and browser checks](Setup_205_Existing_Crew_Size_2026-11-11.md): editable existing crew size, atomic staffing/placement; browser acceptance pending.
+
 ## November 8 local-calendar blocker candidate
 
 [#122 DBG-2026-021 review scope](Setup_122_Local_Calendar_Candidate_2026-11-08.md)

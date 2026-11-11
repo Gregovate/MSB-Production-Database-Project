@@ -53,10 +53,13 @@ async function run({kind='task', choice='NEW_CREW', captain='8', existing=false,
   assert.equal(move.calls[0].body.assignment_shift,'AFTERNOON');
   assert.equal(move.calls[0].body.items[0].id,41);
   const reuse=await run({existing:true});
-  assert.equal(reuse.calls[0].url,'api/setup/scheduling-board/assignments');
-  assert.equal(reuse.calls[0].body.setup_work_day_crew_id,101);
+  assert.match(reuse.calls[0].url,/crews\/with-tasks$/);
+  assert.equal(reuse.calls[0].body.existing_crew_id,101);
+  assert.equal(reuse.calls[0].body.pm_planned_crew_count,4);
+  assert.equal(reuse.calls[0].body.staffing_shift,'AFTERNOON');
+  assert.equal((await run({choice:'102',size:'1.5'})).calls.length,0);
   const ordinary=await run({choice:'102'});
-  assert.equal(ordinary.calls[0].body.setup_work_day_crew_id,102);
+  assert.equal(ordinary.calls[0].body.existing_crew_id,102);
   const failed=await run({fail:true});
   assert.equal(failed.closed,false);assert.equal(failed.loaded,false);
   assert.deepEqual(failed.errors,['Locked']);

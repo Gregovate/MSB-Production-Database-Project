@@ -4,7 +4,7 @@ const CACHE_NAME = 'msb-setup-record-location-v24-local-calendar';
 const SHELL = [
   './',
   'assets/setup_record_location.css?v=2026-10-10.62',
-  'assets/setup_record_location.js?v=2026-11-08.106',
+  'assets/setup_record_location.js?v=2026-11-11.107',
   'location-references.json'
 ];
 

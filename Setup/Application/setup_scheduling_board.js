@@ -3313,10 +3313,10 @@ function board205ScheduleCaptainVisibility() {
   const crew = adding ? board205CrewsForDay(dayId).find(
     item => Number(item.captain_person_id) === Number(select.value || 0))
     : board205CrewsForDay(dayId).find(item => String(item.setup_work_day_crew_id) === crewId);
-  size.readOnly = Boolean(crew);
+  size.readOnly = false;
   size.value = crew ? (board205PlannedCrewForShift(crew, shift) ?? '') : (select.value ? '1' : '');
   note.textContent = crew
-    ? 'Current crew size for this period. Change shared crew staffing on the board.'
+    ? 'Includes the Captain. Changes apply to all tasks for this crew and work period.'
     : 'Total people, including the Captain. Starts at 1; increase for additional crew.';
 }
 
@@ -3373,7 +3373,7 @@ async function board205SubmitScheduleDialog(event) {
   const creatingCrew = addingCaptain && !existingCrew;
   if (!creatingCrew && !crewId) return;
   const sizeValue = document.getElementById('setup-board205-schedule-size').value;
-  const crewSize = creatingCrew && sizeValue !== '' ? Number(sizeValue) : null;
+  const crewSize = sizeValue !== '' ? Number(sizeValue) : null;
   if (crewSize != null && (!Number.isInteger(crewSize) || crewSize < 1)) {
     setAlert('Crew size must be a whole number of at least 1, or blank if unknown.', 'error');
     return;
@@ -3396,33 +3396,20 @@ async function board205SubmitScheduleDialog(event) {
   try {
     setBusy(true);
     const sortOrder = board205EndSort(dayId, shift, crewId);
-    if (creatingCrew) {
+    if (creatingCrew || crewId) {
       const payload = {
         captain_person_id: captainId,
+        existing_crew_id: creatingCrew ? null : crewId,
+        staffing_shift: creatingCrew ? null : shift,
         am_planned_crew_count: shift === 'MORNING' ? crewSize : null,
         pm_planned_crew_count: shift === 'AFTERNOON' ? crewSize : null,
-        items: [{kind: target.kind, id: Number(target.id), shift}]
+        items: [{kind: target.kind, id: Number(target.id), shift, sort_order: sortOrder}]
       };
       // Group drag retains original shifts; only this explicit single move overrides it.
       if (target.kind === 'assignment') payload.assignment_shift = shift;
       const result = await api(`api/setup/scheduling-board/work-days/${dayId}/crews/with-tasks`,
         commandOptions('POST', payload));
       crewId = Number(result.crew.setup_work_day_crew_id);
-    } else if (target.kind === 'task') {
-      await api('api/setup/scheduling-board/assignments', commandOptions('POST', {
-        setup_work_day_id: dayId,
-        setup_session_task_id: target.id,
-        shift_code: shift,
-        setup_work_day_crew_id: crewId,
-        sort_order: sortOrder
-      }));
-    } else {
-      await api(`api/setup/scheduling-board/assignments/${target.id}`, commandOptions('PATCH', {
-        setup_work_day_id: dayId,
-        shift_code: shift,
-        setup_work_day_crew_id: crewId,
-        sort_order: sortOrder
-      }));
     }
     if (task) await board205MaybeLearnCaptainForTask(task, crewId, captainId);
     document.getElementById('setup-board205-schedule-dialog').close();

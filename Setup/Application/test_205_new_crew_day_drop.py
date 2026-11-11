@@ -28,6 +28,9 @@ class FakeCursor:
         self.calls.append((sql, params))
         if "SELECT setup_session_id, day_status FROM ops.setup_work_day" in sql:
             self.result = {"setup_session_id":2,"day_status":"CANCELLED" if self.cancelled else "PLANNED"}
+        elif "FROM ops.setup_work_day_crew " in sql:
+            self.result = {"setup_work_day_crew_id":101, "am_planned_crew_count":6,
+                           "pm_planned_crew_count":None, "captain_person_id":8}
         elif "ops.add_setup_work_day_crew" in sql:
             self.result = {"setup_work_day_crew_id":99,"crew_code":"C","crew_number":3}
         elif "ops.update_setup_work_day_crew" in sql:
@@ -204,3 +207,64 @@ def test_invalid_new_crew_size_writes_nothing(count):
         repo.add_crew_with_tasks(email="manager@sheboyganlights.org", work_day_id=17,
             items=[{"kind":"task","id":23,"shift":"MORNING"}], am_planned_crew_count=count)
     assert cur.calls == []
+
+
+def test_existing_crew_staffing_and_placement_are_atomic():
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    repository = SetupSchedulingBoardRepository.__new__(SetupSchedulingBoardRepository)
+    @contextmanager
+    def connect():
+        yield connection
+    repository.write_connect = connect
+    repository.add_crew_with_tasks(email="manager@example.org", work_day_id=17,
+        items=[{"kind":"task", "id":23, "shift":"AFTERNOON"}],
+        existing_crew_id=101, staffing_shift="AFTERNOON", pm_planned_crew_count=4)
+    updates = [params for sql, params in cursor.calls if "ops.update_setup_work_day_crew" in sql]
+    assert updates == [("manager@example.org",101,6,4,8)]
+    assert not any("ops.add_setup_work_day_crew" in sql for sql, _ in cursor.calls)
+    assert connection.commits == 1
+
+
+def test_existing_crew_assignment_failure_never_commits_staffing():
+    cursor = FakeCursor(fail_on_update=1)
+    connection = FakeConnection(cursor)
+    repository = SetupSchedulingBoardRepository.__new__(SetupSchedulingBoardRepository)
+    @contextmanager
+    def connect():
+        yield connection
+    repository.write_connect = connect
+    with pytest.raises(RuntimeError):
+        repository.add_crew_with_tasks(email="manager@example.org", work_day_id=17,
+            items=[{"kind":"assignment", "id":41}], existing_crew_id=101,
+            staffing_shift="AFTERNOON", assignment_shift="AFTERNOON", pm_planned_crew_count=4)
+    assert connection.commits == 0
+
+
+@pytest.mark.parametrize("count", [0,-1,1.5,True])
+def test_existing_crew_invalid_staffing_writes_nothing(count):
+    cur = FakeCursor()
+    repo, conn = fake_repository(cur)
+    with pytest.raises(SetupSchedulingBoardRepositoryError):
+        repo.add_crew_with_tasks(email="manager@example.org", work_day_id=17,
+            items=[{"kind":"task","id":23,"shift":"MORNING"}],
+            existing_crew_id=101, staffing_shift="MORNING", am_planned_crew_count=count)
+    assert cur.calls == []
+    assert conn.commits == 0
+
+
+def test_existing_crew_wrong_day_never_updates_staffing():
+    cur = FakeCursor()
+    repo, conn = fake_repository(cur)
+    original = cur.execute
+    def execute(sql, params):
+        original(sql, params)
+        if "FROM ops.setup_work_day_crew " in sql:
+            cur.result = None
+    cur.execute = execute
+    with pytest.raises(SetupSchedulingBoardRepositoryError):
+        repo.add_crew_with_tasks(email="manager@example.org", work_day_id=17,
+            items=[{"kind":"task","id":23,"shift":"MORNING"}],
+            existing_crew_id=101, staffing_shift="MORNING", am_planned_crew_count=4)
+    assert not any("ops.update_setup_work_day_crew" in sql for sql, _ in cur.calls)
+    assert conn.commits == 0

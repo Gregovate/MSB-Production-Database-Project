@@ -1001,3 +1001,20 @@ The related Perform Work QC/history search and `performed_on` labor-attribution
 findings remain independently owned by #205/#122; do not silently combine
 them into this already accepted date-migration release or require new reports
 to conceal stale historical exceptions.
+
+## November 11 — existing crew staffing in Schedule Annual Task (#205)
+
+The scheduling dialog permits staffing entry for existing crews, including unknown
+AM/PM counts and a Captain selected through the inline add picker who already has
+a crew that day. Existing confirmed counts prefill; unknown stays blank until
+entered. The count includes the Captain and applies to all tasks for that crew
+and period. The dialog explains this shared scope. Cancel writes nothing.
+
+Save reuses the existing crew-with-tasks transaction and governed crew/assignment
+commands. For an existing crew the server reads and validates its day, preserves
+the other period and Captain, and updates only the selected period together with
+the assignment. Assignment rejection rolls back staffing. No actual work reports,
+Captain permissions, or historical movement protections change. The new-crew and
+group-drop paths retain their prior behavior. Regression must exercise editable
+unknown/known counts, reused Captains, invalid counts, cross-day rejection and
+rollback on assignment failure; protected disposable browser review is required.
