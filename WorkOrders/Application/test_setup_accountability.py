@@ -93,3 +93,17 @@ def test_no_writing_and_manager_only_contract():
     ui = (ROOT/"app.js").read_text()
     assert "CANDIDATE ONLY — not linked or attributed" in ui
     assert 'state.actor?.can_manage' in ui
+
+
+def test_clone_reader_does_not_gain_duplicate_table_access():
+    # Current Production clone may already contain migration005, while the
+    # legacy fieldwiring_app read harness intentionally lacks its SELECT grant.
+    # Verify the read projection checks permissions before selecting the table.
+    source = (ROOT / "repository.py").read_text()
+    begin = source.index("duplicate_relation = cur.fetchone() or {}")
+    section = source[begin:begin + 1100]
+    assert "duplicate_lookup_available" in section
+    assert 'if row["duplicate_lookup_available"]:' in section
+    assert "has_table_privilege(current_user" in source
+    assert "GRANT SELECT" not in section
+    assert "ops.work_management_duplicate_link WHERE source_ticket" in section
