@@ -32,6 +32,7 @@ from setup_assignment_api import setup_assignment_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_planning_summary_api import setup_planning_summary_api
 from setup_scheduling_board_api import setup_scheduling_board_api
+from setup_qc_api import setup_qc_api
 from setup_work_order_intake_api import setup_work_order_intake_api
 from setup_material_readiness_api import setup_material_readiness_api
 from setup_movement_api import setup_movement_api
@@ -200,6 +201,7 @@ app.register_blueprint(setup_assignment_api)
 app.register_blueprint(setup_prerequisite_order_api)
 app.register_blueprint(setup_planning_summary_api)
 app.register_blueprint(setup_scheduling_board_api)
+app.register_blueprint(setup_qc_api)
 app.register_blueprint(setup_work_order_intake_api)
 app.register_blueprint(setup_material_readiness_api)
 app.register_blueprint(setup_movement_api)
