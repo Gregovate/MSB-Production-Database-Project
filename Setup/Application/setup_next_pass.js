@@ -2501,11 +2501,130 @@ function setup205WireActionCenter(root) {
   });
 }
 
+// #122 QC discovery: existing annual task identity is authoritative.
+// Final QC is NOT a scheduled work assignment and NEVER creates work reports.
+const nextQcDiscovery = {mode: 'work', search: '', selectedTaskId: null};
+function nextIsFinalShowQc(task) {
+  return /plug\\s+in\\s+network\\s+to\\s+controller.*2\\s+minute\\s+test\\s+show/i.test(
+    String(task?.task_name || task?.annual_task_name || '')
+  );
+}
+function nextQcAnnualTasks() {
+  // Scheduling Board contains all included annual tasks, including unscheduled
+  // and NOT_READY tasks. Do not derive this list from board.assignments.
+  return (setupNextState.performBoard.tasks || []).filter(nextIsFinalShowQc)
+    .sort((a,b) => String(a.stage_name || '').localeCompare(String(b.stage_name || ''), undefined,
+      {numeric:true}) || String(a.scene_name || '').localeCompare(String(b.scene_name || ''),
+      undefined, {numeric:true}) || Number(a.setup_session_task_id)-Number(b.setup_session_task_id));
+}
+function nextQcFilteredTasks() {
+  const query = nextQcDiscovery.search.trim().toLowerCase();
+  const words = query.split(/\\s+/).filter(Boolean);
+  return nextQcAnnualTasks().filter(task => {
+    const searchable = [task.setup_session_task_id, task.setup_task_id,
+      task.stage_key, task.stage_name, task.scene_name, task.task_name,
+      task.execution_status, task.readiness_state, task.annual_readiness_state].join(' ').toLowerCase();
+    return words.every(word => searchable.includes(word));
+  });
+}
+function nextQcEnsureDiscovery() {
+  const toolbar = el('next-perform-list')?.parentElement;
+  if (!toolbar) return;
+  let section = el('next-qc-discovery');
+  if (!section) {
+    section = document.createElement('section');
+    section.id = 'next-qc-discovery';
+    section.className = 'next-qc-discovery';
+    section.innerHTML = `
+      <div class="next-qc-tabs" role="group" aria-label="Perform Work activity">
+        <button type="button" class="small secondary" id="next-qc-work-tab">Scheduled Work</button>
+        <button type="button" class="small secondary" id="next-qc-check-tab">QC Check</button>
+      </div>
+      <div id="next-qc-content" hidden>
+        <label for="next-qc-search"><strong>Find final QC task</strong></label>
+        <input id="next-qc-search" type="search" placeholder="Search Stage, Scene or task number">
+        <div id="next-qc-count" class="muted" role="status"></div>
+        <div id="next-qc-list"></div>
+        <p class="muted">Task discovery only. QC self-assignment, findings, repairs, and final
+          approval are not enabled until their protected database workflow passes acceptance.</p>
+      </div>`;
+    toolbar.insertBefore(section, toolbar.firstChild);
+    el('next-qc-work-tab').addEventListener('click', () => {
+      nextQcDiscovery.mode = 'work';
+      renderNextExecution();
+    });
+    el('next-qc-check-tab').addEventListener('click', () => {
+      nextQcDiscovery.mode = 'qc';
+      renderNextExecution();
+    });
+    el('next-qc-search').addEventListener('input', event => {
+      nextQcDiscovery.search = event.target.value;
+      nextQcRenderResults();
+    });
+    el('next-qc-list').addEventListener('click', event => {
+      const button = event.target.closest('button[data-qc-task-id]');
+      if (!button) return;
+      const id = Number(button.dataset.qcTaskId);
+      if (!nextQcAnnualTasks().some(task => Number(task.setup_session_task_id) === id)) return;
+      nextQcDiscovery.selectedTaskId = id;
+      nextQcRenderResults();
+    });
+  }
+  const qc = nextQcDiscovery.mode === 'qc';
+  el('next-qc-content').hidden = !qc;
+  el('next-qc-work-tab').setAttribute('aria-pressed', String(!qc));
+  el('next-qc-check-tab').setAttribute('aria-pressed', String(qc));
+  const list = el('next-perform-list');
+  const existingToolbar = list?.previousElementSibling;
+  if (existingToolbar?.classList?.contains('next-perform-toolbar')) existingToolbar.hidden = qc;
+  if (list) list.hidden = qc;
+  for (const id of ['next-perform-global-kpis', 'next-perform-kpis']) {
+    const node = el(id);
+    if (node) node.hidden = qc;
+  }
+  if (qc) {
+    el('next-qc-search').value = nextQcDiscovery.search;
+    nextQcRenderResults();
+  }
+}
+function nextQcRenderResults() {
+  const target = el('next-qc-list');
+  if (!target) return;
+  const rows = nextQcFilteredTasks();
+  el('next-qc-count').textContent = rows.length + ' of ' + nextQcAnnualTasks().length
+    + ' final QC annual tasks shown — includes never-scheduled tasks';
+  const allAssignments = setupNextState.performBoard.assignments || [];
+  target.innerHTML = rows.map(task => {
+    const id = Number(task.setup_session_task_id);
+    const assignmentCount = allAssignments.filter(a => Number(a.setup_session_task_id) === id).length;
+    const selected = nextQcDiscovery.selectedTaskId === id;
+    const scope = task.scene_name ? task.scene_name : 'No Scene assigned';
+    const blockers = Number(task.prerequisite_count || 0) && !task.prerequisites_complete
+      ? ' · Prerequisite work incomplete' : '';
+    return `<article class="next-qc-row">
+      <button type="button" class="small secondary next-qc-open" data-qc-task-id="${id}"
+         aria-expanded="${selected}" aria-controls="next-qc-task-${id}">
+        <strong>${escapeHtml(task.stage_name || 'Site-wide')}</strong>
+        <span>${escapeHtml(scope)} · QC #${id}</span>
+      </button>
+      <div id="next-qc-task-${id}" ${selected ? '' : 'hidden'}>
+        <p>${escapeHtml(task.task_name)}</p>
+        <p class="muted">Execution: ${escapeHtml(task.execution_status || 'Unknown')}
+          · ${assignmentCount ? assignmentCount+' assignment(s) recorded' : 'Never scheduled'}${escapeHtml(blockers)}</p>
+        <p class="muted">No QC PASS or repair status is inferred from the task's execution status.
+          Existing task reporting remains unchanged.</p>
+      </div>
+    </article>`;
+  }).join('') || '<p class="muted">No final QC tasks match. Try Stage, Scene or annual task number.</p>';
+}
+
 function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
   const board = setupNextState.performBoard || {};
   nextEnsurePerformToolbar();
+  nextQcEnsureDiscovery();
+  if (nextQcDiscovery.mode === 'qc') return;
   nextRenderPerformCaptainFilter();
   const allAssignments = (board.assignments || []).slice();
   const scopedAssignments = nextPerformCaptainScopedAssignments(allAssignments);
