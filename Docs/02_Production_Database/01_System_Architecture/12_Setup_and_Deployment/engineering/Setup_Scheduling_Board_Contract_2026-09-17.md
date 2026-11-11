@@ -1119,3 +1119,14 @@ Each row shows Task/Annual Task number, name, Stage/Scene and readiness note,
 with the existing guarded Review readiness action. Opening the count expands
 and focuses the list; no writes or email occur. Completed/deferred tasks follow
 the existing KPI classifier and must not leak into this unfinished-work list.
+
+### Complete outstanding-task inventory
+
+The Manager Action Center must expose every incomplete annual task, including
+deferred tasks explicitly labeled Deferred. A complete outstanding-task list
+uses k.incomplete once per annual task and shows Task/Annual Task number, name,
+Stage/Scene, execution/scheduling/readiness state, documented readiness reason
+and current blocker reasons. Existing planning navigation remains authoritative.
+All task-bearing Action Center sections, including shift workload task lists,
+show task numbers consistently. Exception counts remain overlapping subsets;
+no readiness flag or work report is inferred or changed from note wording.

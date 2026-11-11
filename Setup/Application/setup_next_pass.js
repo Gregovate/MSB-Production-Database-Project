@@ -2260,16 +2260,14 @@ function setup205ActionCenterHtml(board, model) {
   const today = nextSetupLocalDate();
   const dayPlus = n => new Date(Date.parse(today + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
   const imminentThrough = dayPlus(7);
-  const context = t => [
-    t?.stage_name || t?.stage_key || 'Site-wide',
-    t?.scene_name || null
-  ].filter(Boolean).join(' / ');
+  const context = t => nextPerformTaskScopeLabel(t);
+  const taskLabel = t => nextPerformTaskNumberLabel(t) + ' · ' + (t?.task_name || 'Task');
   const assignmentLabel = a => {
     const t = taskById.get(Number(a.setup_session_task_id));
     const d = dayById.get(Number(a.setup_work_day_id));
     const c = crewById.get(Number(a.setup_work_day_crew_id));
     const shift = a.shift_code === 'MORNING' ? 'AM' : a.shift_code === 'AFTERNOON' ? 'PM' : 'All Day';
-    return '<strong>' + safe(t?.task_name || a.task_name || 'Task') + '</strong> · ' +
+    return '<strong>' + safe(taskLabel(t || a)) + '</strong> · ' +
       safe(context(t)) + ' · Setup Day ' + safe(d?.setup_day_number ?? a.setup_day_number ?? '—') +
       ' / ' + safe(a.work_date || d?.work_date || 'unknown date') + ' · Crew ' +
       safe(c?.crew_code || a.crew_lane || '—') + ' ' + safe(shift) +
@@ -2286,12 +2284,28 @@ function setup205ActionCenterHtml(board, model) {
     ' · ' + safe(t.task_name) + '</strong><div>' + safe(nextPerformTaskScopeLabel(t)) +
     '</div><p><strong>Readiness reason:</strong> ' + safe(t.readiness_note || 'Reason not documented') +
     '</p>' + button('planning', t.setup_session_task_id, 'Review readiness'));
+  // #205: every unfinished annual task appears once, even without an exception.
+  const outstanding = k.incomplete.slice().sort((a,b) =>
+    Number(a.setup_task_id || a.setup_session_task_id) - Number(b.setup_task_id || b.setup_session_task_id)
+    || Number(a.setup_session_task_id) - Number(b.setup_session_task_id)).map(t => {
+    const blockers = (k.blocked.find(row => Number(row.task.setup_session_task_id)
+      === Number(t.setup_session_task_id))?.reasons || []);
+    const scheduling = t.execution_status === 'DEFERRED' ? 'Deferred'
+      : Number(t.future_assignment_count || 0) > 0 ? 'Current/future assignment exists'
+      : t.execution_status === 'IN_PROGRESS' ? 'Needs continuation' : 'No current/future assignment';
+    return '<strong>' + safe(taskLabel(t)) + '</strong><div>' + safe(context(t)) + '</div><p>' +
+      safe(t.execution_status || 'Status not recorded') + ' · ' + safe(scheduling) +
+      ' · Readiness: ' + safe(t.readiness_state || 'Not recorded') +
+      (blockers.length ? ' · ' + safe(blockers.join('; ')) : '') + '</p>' +
+      (t.readiness_note ? '<p><strong>Readiness note:</strong> ' + safe(t.readiness_note) + '</p>' : '') +
+      button('planning',t.setup_session_task_id,'Review task / readiness');
+  });
   const missed = k.overdue.map(a => '<span>' + assignmentLabel(a) +
     ' · ' + safe(nextAssignmentReviewLabel(taskById.get(Number(a.setup_session_task_id)))) + '. ' +
     button('report',a.setup_work_day_task_id,
       taskById.get(Number(a.setup_session_task_id))?.effective_complete
         ? 'Review original / Correct report' : 'Review original / Report Work') + '</span>');
-  const continuations = k.needsRescheduling.map(t => '<strong>' + safe(t.task_name) +
+  const continuations = k.needsRescheduling.map(t => '<strong>' + safe(taskLabel(t)) +
     '</strong> · ' + safe(context(t)) + ' · ' + safe(t.percent_complete ?? 0) +
     '% reported; no current/future continuation. ' +
     setup205LatestWorkReportHtml(t, button) +
@@ -2332,7 +2346,7 @@ function setup205ActionCenterHtml(board, model) {
     const mins = Number(t?.expected_duration_minutes);
     if (t?.expected_duration_minutes == null || !Number.isFinite(mins) || mins <= 0) g.unknown++;
     else g.known += mins;
-    g.items.push(t?.task_name || a.task_name || 'Task');
+    g.items.push(taskLabel(t || a) + ' · ' + context(t || a));
   }
   const allCapacityGroups = [...workloadGroups.values()];
   const overCapacity = allCapacityGroups
@@ -2386,6 +2400,7 @@ function setup205ActionCenterHtml(board, model) {
     '<p class="muted">Choose a task below to report actual work, move an assignment where no work happened, ' +
     'or plan unfinished work. Reported history is protected; a confirmed no-work reschedule preserves the original schedule in the audit. ' +
     'No email is sent from this screen.</p>' +
+    section('All outstanding tasks',outstanding,'Every unfinished task appears once, including scheduled, blocked, NOT READY and deferred work. The other lists are overlapping follow-up categories.') +
     section('Past occurrences awaiting reports',missed,'Unfinished tasks only. Review the dated assignment and existing progress; completed tasks are excluded.') +
     section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
     '<div id="setup205-not-ready-tasks" tabindex="-1">' +

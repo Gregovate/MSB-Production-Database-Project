@@ -220,3 +220,17 @@ Exact new candidate browser acceptance pending; Production remains unchanged.
 Operator reports the read-only duplicate audit returned zero rows after their
 Production corrections; this is not proof of attempted INSERT rejection.
 Recurring retained browser code after updates remains a separate follow-up.
+
+## V111 complete outstanding inventory (asset111.4)
+
+Operator confirmed NOT READY inspection is useful and supplied full Action Center
+text. Task numbers were missing in other action sections and the exceptions did
+not enumerate every remaining task. Added All outstanding tasks from k.incomplete,
+once per annual task, including future-scheduled and deferred work. Rows show
+identity, Stage/Scene, execution/scheduling/readiness state, blocker reasons,
+readiness note and existing guarded planning action. Added task identity throughout
+assignment, continuation and overloaded-shift task lists. No stored flags/reports
+changed based on apparently satisfied notes. Regression covers full inventory,
+scheduled/partial/deferred inclusion and completed exclusion. 986 tests and Node
+syntax PASS. Retain presentation-only V0.3.111-explicit-no-work. New exact source
+requires browser acceptance and CLEAN EXIT; no Production changes.

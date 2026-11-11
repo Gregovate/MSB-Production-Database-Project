@@ -187,3 +187,14 @@ assert(readinessHtml.includes('Stage test / Scene test'));
 assert(readinessHtml.includes('Wait for grass cutting'));
 assert(readinessHtml.includes('data-205-action="planning" data-id="999"'));
 console.log('PASS NOT READY headline and full matching readiness worklist');
+
+// All incomplete work remains inspectable, not just exception subsets.
+const inventoryHtml=ctx.setup205ActionCenterHtml(base);
+const inventory=inventoryHtml.split('All outstanding tasks (3)')[1].split('</details>')[0];
+for (const name of ['Partly worked','Future','Deferred']) assert(inventory.includes(name));
+assert(!inventory.includes('Reported done'));
+assert(inventory.includes('data-205-action="planning" data-id="3"'));
+assert(inventory.includes('Current/future assignment exists'));
+assert(inventory.includes('Deferred'));
+assert(inventoryHtml.includes('Task 2 · Partly worked'));
+console.log('PASS complete outstanding inventory: scheduled, partial, deferred; complete excluded');
