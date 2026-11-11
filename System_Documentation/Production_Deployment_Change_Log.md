@@ -9,6 +9,24 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## November 11 — PR482 Setup scheduling/reporting server PASS; theme follow-up pending
+
+Operator returned maintenance runner PASS at 13:02:58 America/Chicago (19:02:58 UTC).
+Setup application `37a02e2d9460d115e1d7255833b264a6bb5d8d80` / `V0.3.111-explicit-no-work`;
+merged-main/tooling `605d86a5e7bf8a27bc4234aab16e54fccea5998a`. Migration080 committed;
+freeze, validated snapshot, database/row-preservation checks and return-to-service PASS.
+
+- Report: `/home/msbadmin/setup-deployment-reports/PR482-080-20261111T190258Z`.
+- Snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr482-080-PR482-080-20261111T190258Z.dump`.
+- Snapshot SHA256: `5b3fbf21946dc07e3886c20f60855495f86ffce4aed6d820f4126b2bcb55f610`.
+
+Evidence is operator-returned, not an independent host probe. Final disposable PASS,
+CLEAN EXIT and Production approval preceded deployment. Protected Production review
+then exposed a dark-theme daily-summary contrast defect; source-only correction
+is in review. Do not claim complete browser closeout or replay migration080.
+Review worktree cleanup remains pending the follow-up. See
+[theme acceptance](../Setup/Acceptance/Setup_205_Perform_Theme_2026-11-11.md).
+
 ## October 26 — PR463 equipment/location Production server deployment PASS
 
 Greg returned the governed runner's successful receipt for the run starting 2026-10-26 15:54:09 UTC (10:54:09 America/Chicago). This is operator-returned evidence; no independent host probe or protected browser/physical Scan acceptance is claimed.
