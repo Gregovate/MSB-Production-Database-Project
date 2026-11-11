@@ -9,6 +9,25 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## November 11 — PR483 Setup theme source and protected browser PASS
+
+Greg returned source installer PASS for the run starting13:27:32 America/Chicago (19:27:32 UTC),
+then protected Production browser PASS with screenshot. Installed Setup
+`fdf1549e4215c305cb82b3e6e70e327ade574dd2` / `V0.3.111-explicit-no-work`,
+next-pass asset111.8; merged-main/tooling `3ee52204e64e9d14bc7a9e2306a736645855f0ae`.
+
+- Report: `/home/msbadmin/setup-deployment-reports/PR483-Source-20261111T192732Z`.
+- Rollback source: `37a02e2d9460d115e1d7255833b264a6bb5d8d80`. No rollback reported.
+- Existing source installer PASS verifies exact source, Setup-only restart/health,
+  focused tests, unchanged Production fingerprint and unchanged shared checkout.
+  Numerical fingerprints/shared SHA remain in retained report; no fresh host probe claimed.
+- No SQL,080 replay, database archive, maintenance, environment/proxy/service-shape change.
+- New theme regression is pure Python; no Node dependency. Corrected preview
+  passed both themes, CLEAN EXIT and explicit approval preceded deployment.
+
+Documentation closeout is not another deployment. Local review cleanup remains
+unconfirmed. [Accepted theme evidence](../Setup/Acceptance/Setup_205_Perform_Theme_2026-11-11.md).
+
 ## November 11 — PR482 Setup scheduling/reporting server PASS; theme follow-up pending
 
 Operator returned maintenance runner PASS at 13:02:58 America/Chicago (19:02:58 UTC).
@@ -23,7 +42,7 @@ freeze, validated snapshot, database/row-preservation checks and return-to-servi
 Evidence is operator-returned, not an independent host probe. Final disposable PASS,
 CLEAN EXIT and Production approval preceded deployment. Protected Production review
 then exposed a dark-theme daily-summary contrast defect; source-only correction
-is in review. Do not claim complete browser closeout or replay migration080.
+PR483 is now deployed and protected browser accepted (see newer entry). Do not replay migration080.
 Review worktree cleanup remains pending the follow-up. See
 [theme acceptance](../Setup/Acceptance/Setup_205_Perform_Theme_2026-11-11.md).
 
