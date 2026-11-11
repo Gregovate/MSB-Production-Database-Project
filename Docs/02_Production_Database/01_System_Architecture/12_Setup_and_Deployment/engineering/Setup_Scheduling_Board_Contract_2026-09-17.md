@@ -1287,3 +1287,16 @@ a transaction rolled back, then permits protected browser review. No
 Production writes. Test with #598 Racing Arches NOT_READY/unscheduled,
 multiple findings and differing reporters; demonstrate the repair queue
 shares identical finding IDs. Do not promote historical Intake for this test.
+
+
+## November 11 — Operator correction: Intake FORM, not Intake workflow (PR485)
+
+**Latest operator direction supersedes prior QC reporting UI assumptions.**
+
+- Reuse the existing Setup **Task Feedback / Intake form presentation** ("What did you find?" and "Suggested correction / evidence") for the QC Check reporting action. It is a familiar input pattern, not a request to route QC through Work Order Intake.
+- Submit directly to the exact annual two-minute QC task using `api/setup/qc/action` / `ops.setup_qc_command` action `REPORT`. No new `stage.work_order_intake` record, Manager Intake triage, work order promotion, scheduled assignment, or work-day creation. Reports are possible in `NOT_READY` without an audit self-claim.
+- The same persistent QC findings and their distinct IDs appear under **Report Fixes** for claimed repairs and functional retests. The final annual QC PASS remains independently gated and not implemented in PR485.
+- Prior unpromoted Intake records are historical evidence and **must not be deleted, rewritten, or auto-promoted**. The prior Manager reconciliation proposal is not the operator's chosen QC entry interface; it is not a dependency to capture new findings. Do not show that legacy reconciliation interface on the normal QC Check form. Reconsider any historical reconciliation separately before authorizing it; never imply it is required for ordinary QC reporting.
+- Browser acceptance must show the actual form and writable record, then the SAME finding in Report Fixes, in light/dark and Manager/Crew roles. An empty panel, visible scheduled-work view under Report Fixes, or route to Work Order Intake is a failure.
+
+This amendment is the controlling statement for the QC entry workflow where it differs from older November 11 text above.
