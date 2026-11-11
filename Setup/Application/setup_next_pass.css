@@ -1022,3 +1022,50 @@ body:not(.setup-schedule-view) #next-perform-list {
 @media print {
   .next-perform-day { box-shadow: none; break-inside: auto; }
 }
+
+/* #122 read-only QC discovery on existing Perform Work screen.
+   Theme tokens follow the accepted PR483 light/dark pairing. */
+.next-qc-discovery {
+  margin: 0 0 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.65rem;
+  background: var(--card, var(--panel, #fff));
+  color: var(--text, #172b43);
+}
+.next-qc-tabs { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.6rem; }
+.next-qc-tabs button[aria-pressed="true"] {
+  outline: 2px solid var(--text, #172b43);
+  outline-offset: 2px;
+  font-weight: 700;
+}
+#next-qc-content { margin-top: 0.8rem; }
+#next-qc-search {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  min-height: 2.5rem;
+  padding: 0.6rem;
+  margin: 0.3rem 0 0.7rem;
+  background: var(--card, var(--panel, #fff));
+  color: var(--text, #172b43);
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.4rem;
+}
+.next-qc-row {
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--border, #d9e0e8);
+}
+.next-qc-open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+}
+.next-qc-row [id^="next-qc-task-"] {
+  padding: 0.55rem 0.8rem;
+  color: var(--text, #172b43);
+}
+.next-qc-row [hidden], #next-qc-content[hidden] { display: none !important; }
