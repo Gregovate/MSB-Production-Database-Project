@@ -100,7 +100,11 @@
          <textarea rows="3" maxlength="6000" data-qc-observation="${f.qc_finding_id}"
           placeholder="Additional details or corroborating observation"></textarea></label>
          <button type="button" class="small secondary" data-qc-action="OBSERVATION"
-           data-qc-id="${f.qc_finding_id}">Add Observation</button>`}
+           data-qc-id="${f.qc_finding_id}">Add Observation</button>
+         ${status==='VERIFIED'
+           ? `<button type="button" class="small secondary"
+             data-qc-action="REOPEN" data-qc-id="${f.qc_finding_id}">
+             Reopen — Still Broken</button>` : ''}`}
     </section>`;
   }
   function bindControls(host, id) {
@@ -111,7 +115,7 @@
       if (!btn || !host.contains(btn)) return;
       const action=btn.dataset.qcAction;
       const finding=Number(btn.dataset.qcId||0);
-      const noteField=action==='OBSERVATION'
+      const noteField=['OBSERVATION','REOPEN'].includes(action)
         ? host.querySelector(`[data-qc-observation="${finding}"]`)
         : host.querySelector(`[data-qc-fix-note="${finding}"]`);
       let note=noteField?.value?.trim() || '';
