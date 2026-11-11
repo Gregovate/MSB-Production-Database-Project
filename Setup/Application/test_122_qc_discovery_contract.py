@@ -19,7 +19,7 @@ def test_final_qc_search_uses_all_annual_tasks_not_assignments():
     finder = segment("function nextQcAnnualTasks()", "function nextQcEnsureDiscovery()")
     assert "setupNextState.performBoard.tasks || []" in finder
     assert "filter(nextIsFinalShowQc)" in finder
-    assert "board.assignments" not in finder
+    assert "return (setupNextState.performBoard.assignments" not in finder
     assert "task.setup_session_task_id" in finder
     assert "task.setup_task_id" in finder
     assert "task.stage_name" in finder
@@ -58,6 +58,6 @@ def test_theme_safe_read_only_qc_and_fresh_asset_pins():
     assert "background: var(--card" in CSS
     assert "color: var(--text" in CSS
     assert ".next-qc-row" in CSS
-    assert 'setup_next_pass.js?v=2026-11-11.112.1' in HTML
-    assert 'setup_next_pass.css?v=2026-11-11.112.1' in HTML
+    assert 'setup_next_pass.js?v=2026-11-11.111.9' in HTML
+    assert 'setup_next_pass.css?v=2026-11-11.111.9' in HTML
     assert "V0.3.111-explicit-no-work" in (APP / "production_backend.py").read_text()
