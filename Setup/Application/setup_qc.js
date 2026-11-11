@@ -147,6 +147,7 @@
           note,discovery_phase:phase,location_detail:location});
         return;
       }
+      if (action==='CLAIM_REPAIR' && !note) note='Claimed repair';
       if (!note) { setAlert('Enter a repair, retest or observation note.','error'); return; }
       await command({action,setup_session_task_id:targetId,qc_finding_id:finding,note});
     });
