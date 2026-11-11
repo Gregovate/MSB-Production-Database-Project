@@ -40,7 +40,10 @@ const followupSource = fs.readFileSync(__dirname + '/setup_next_pass.js', 'utf8'
 vm.runInContext(followupSource.slice(followupSource.indexOf('function nextAssignmentReported('), followupSource.indexOf('function nextAssignmentReportedLabel(')), ctx);
 
 vm.runInContext(source.slice(start,end),ctx);
+const readinessDetails={open:false};
+let readinessFocused=0,readinessScrolled=0;
 const root={
+ querySelector:()=>({querySelector:()=>readinessDetails,focus:()=>readinessFocused++,scrollIntoView:()=>readinessScrolled++}),
  dataset:{},
  addEventListener:(type,fn)=>{assert.equal(type,'click'); callback=fn;},
  contains:()=>true
@@ -59,6 +62,11 @@ async function click(action,id){
  assert.equal(stopped,1);
 }
 (async()=>{
+ await click('not-ready',0);
+ assert.equal(readinessDetails.open,true);
+ assert.equal(readinessFocused,1);
+ assert.equal(readinessScrolled,1);
+ assert.equal(visited.length,0,'inspection does not navigate away or write');
  await click('report',101);
  assert.equal(visited.at(-1),'perform');
  assert.equal(setupNextState.performCaptainFilter,'ALL');

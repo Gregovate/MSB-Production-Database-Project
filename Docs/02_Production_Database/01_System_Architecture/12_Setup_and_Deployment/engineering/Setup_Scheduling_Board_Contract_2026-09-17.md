@@ -1110,3 +1110,12 @@ or an explicit no-work unschedule decision.
 Perform Work collapsed cards and past-assignment review entries must identify
 stage key/name and scene, or explicitly Stage-level/Site-wide, before Report Work.
 Use the owning annual task scope when the assignment projection lacks fields.
+
+### Inspect explicit NOT READY tasks from the Action Center
+
+The NOT READY count must open a matching list derived from the same k.notReady
+collection, including unscheduled tasks outside the upcoming seven-day window.
+Each row shows Task/Annual Task number, name, Stage/Scene and readiness note,
+with the existing guarded Review readiness action. Opening the count expands
+and focuses the list; no writes or email occur. Completed/deferred tasks follow
+the existing KPI classifier and must not leak into this unfinished-work list.

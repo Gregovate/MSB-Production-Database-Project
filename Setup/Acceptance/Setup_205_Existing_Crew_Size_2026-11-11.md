@@ -204,3 +204,19 @@ Presentation only: retain V0.3.111-explicit-no-work; no Production changes.
 
 Validation: 986 application tests PASS; Node syntax PASS; audit SQL parser PASS.
 Real audit results and exact-candidate browser acceptance remain pending.
+
+## V111 NOT READY inspection follow-up (asset111.3)
+
+Operator accepted task scope display after refreshing the browser on89c8afe.
+The Action Center's nine NOT READY tasks had a count but no full matching list.
+The count now opens/focuses a Tasks marked NOT READY section derived directly
+from k.notReady, including unscheduled work outside the upcoming seven days.
+Rows identify Task/Annual Task, Stage/Scene, readiness reason and existing
+guarded Review readiness action. No new writes or notifications.
+Executable regression verifies count/list membership, unscheduled scope and
+opening/focusing without navigating away. 986 application tests and Node syntax
+PASS. Presentation/navigation only; retain V0.3.111-explicit-no-work.
+Exact new candidate browser acceptance pending; Production remains unchanged.
+Operator reports the read-only duplicate audit returned zero rows after their
+Production corrections; this is not proof of attempted INSERT rejection.
+Recurring retained browser code after updates remains a separate follow-up.

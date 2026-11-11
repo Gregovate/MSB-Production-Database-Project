@@ -2281,6 +2281,11 @@ function setup205ActionCenterHtml(board, model) {
     safe(title) + ' (' + rows.length + ')</summary><p class="muted">' + safe(explanatory) +
     '</p><ul>' + (rows.length ? rows.map(x => '<li>' + x + '</li>').join('') : '<li>None</li>') +
     '</ul></details>';
+  // #205: the headline count and inspectable list share exactly the same tasks.
+  const notReady = k.notReady.map(t => '<strong>' + safe(nextPerformTaskNumberLabel(t)) +
+    ' · ' + safe(t.task_name) + '</strong><div>' + safe(nextPerformTaskScopeLabel(t)) +
+    '</div><p><strong>Readiness reason:</strong> ' + safe(t.readiness_note || 'Reason not documented') +
+    '</p>' + button('planning', t.setup_session_task_id, 'Review readiness'));
   const missed = k.overdue.map(a => '<span>' + assignmentLabel(a) +
     ' · ' + safe(nextAssignmentReviewLabel(taskById.get(Number(a.setup_session_task_id)))) + '. ' +
     button('report',a.setup_work_day_task_id,
@@ -2368,7 +2373,7 @@ function setup205ActionCenterHtml(board, model) {
     '<h3>Manager Setup Action Center</h3>' +
     '<p><strong>' + k.overdue.length + ' past assignments to check</strong> · ' +
       '<strong>' + k.needsRescheduling.length + ' started tasks without future work</strong> · ' +
-      '<strong>' + k.notReady.length + ' tasks marked NOT READY</strong></p>' +
+      '<button type="button" class="secondary setup205-action" data-205-action="not-ready" aria-controls="setup205-not-ready-tasks">' + k.notReady.length + ' tasks marked NOT READY — view tasks</button></p>' +
     '<details class="setup205-action-help"><summary>What do these task counts mean?</summary>' +
       '<p>These categories overlap and must not be added together. ' +
       k.blocked.length + ' different unfinished tasks need a prerequisite, Work Order or readiness decision; ' +
@@ -2383,6 +2388,8 @@ function setup205ActionCenterHtml(board, model) {
     'No email is sent from this screen.</p>' +
     section('Past occurrences awaiting reports',missed,'Unfinished tasks only. Review the dated assignment and existing progress; completed tasks are excluded.') +
     section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
+    '<div id="setup205-not-ready-tasks" tabindex="-1">' +
+    section('Tasks marked NOT READY',notReady,'All unfinished tasks explicitly marked NOT READY, including tasks without a scheduled assignment.') + '</div>' +
     section('Upcoming scheduled readiness exceptions (7 days)',imminent,'Hard prerequisite/Work Order gates and independent NOT READY conditions can overlap.') +
     section('Upcoming linear-hour overloads (7 days)',overCapacity,'These crews have more planned task duration than the shift permits, before weather, travel or unestimated tasks. This is not available labor forecast.') +
     section('Scheduled assignments without Captain',captainTbd,'A Captain TBD or unverified organizational mailbox must be followed up by a Manager.') +
@@ -2441,6 +2448,14 @@ function setup205WireActionCenter(root) {
     event.preventDefault();
     event.stopPropagation();
     if (!appState.access?.can_manage_setup) return;
+    if (button.dataset["205Action"] === 'not-ready') {
+      const list = root.querySelector('#setup205-not-ready-tasks');
+      const details = list?.querySelector('details');
+      if (details) details.open = true;
+      list?.scrollIntoView({block:'start', behavior:'smooth'});
+      list?.focus({preventScroll:true});
+      return;
+    }
     const id = Number(button.dataset.id);
     if (!Number.isSafeInteger(id) || id < 1) return;
     try {
