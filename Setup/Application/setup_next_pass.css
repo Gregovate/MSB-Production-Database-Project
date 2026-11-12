@@ -1111,6 +1111,7 @@ body:not(.setup-schedule-view) #next-perform-list {
 
 /* #485 QC status colors use explicit dark text on light state surfaces in
    both themes. Text labels carry the meaning independently of color. */
+.next-qc-discovery .next-qc-open[data-qc-state="review"],
 .next-qc-discovery .next-qc-open[data-qc-state="open"] { background: #fff; color: #172033; }
 .next-qc-discovery .next-qc-open[data-qc-state="findings"],
 .next-qc-discovery .next-qc-finding[data-qc-state="OPEN"],

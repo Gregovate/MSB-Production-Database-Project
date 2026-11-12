@@ -19,12 +19,13 @@
     f => Number(f.setup_session_task_id) === Number(id)
   );
   function paintTaskStates() {
-    // Exact annual identity owns the color; ordinary completion is not QC PASS.
+    // Exact annual identity owns the color. All findings verified still awaits
+    // auditor final signoff; never show a green area before that gate exists.
     document.querySelectorAll('[data-qc-task-id]').forEach(button => {
       const findings=taskFindings(button.dataset.qcTaskId);
       const active=findings.filter(f=>f.status!=='VERIFIED');
       const retest=active.filter(f=>f.status==='AWAITING_RETEST').length;
-      button.dataset.qcState=active.length ? 'findings' : findings.length ? 'verified' : 'open';
+      button.dataset.qcState=active.length ? 'findings' : findings.length ? 'review' : 'open';
       const label=button.querySelector('[data-qc-task-status]');
       if (label) label.textContent=active.length
         ? `${active.length} open${retest ? ' · '+retest+' verification needed' : ' · Needs repair'}`

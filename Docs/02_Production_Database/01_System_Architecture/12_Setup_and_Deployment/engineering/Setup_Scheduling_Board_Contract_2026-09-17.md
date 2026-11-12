@@ -1454,24 +1454,37 @@ One click claims a finding; only recording the repair requires repair notes.
 Auditor assignment is optional for reporting and separate from the quick entry
 form. Retest evidence and final-signoff gates remain as specified below.
 
-### Visible QC status and active-list rules — 2026-11-11 local
+### Visible QC status and final handoff — 2026-11-11 local
 
-Stage/Scene selectors show white for areas with no recorded findings, yellow
-while any finding is unresolved, and green when every recorded finding is
-verified. Always display a text status as well as color. Waiting repairs say
-“Verification needed”; mixed lists show the number awaiting verification.
-A repaired but unverified finding keeps the area yellow. Adding any new finding
-turns a previously green area yellow again; mixed verified/unverified findings
-always remain yellow. Recompute this on every save and when revisiting the view.
-Green means the recorded findings have passed retest, not final annual QC:
-label it “Findings verified · Final QC pending” until final signoff exists.
-Do not infer colors or final approval from annual READY/COMPLETE flags.
+Stage/Scene selectors are white while awaiting QC with no unresolved findings,
+yellow while any finding is unresolved, and green only after final annual QC
+signoff. Always display a text status as well as color. Repaired but unverified
+findings remain unresolved: show “Verification needed” and keep the area yellow.
+Before final signoff, any new finding turns the area yellow again, even when
+all earlier findings were verified. Recompute status after saves and on re-entry.
+All findings verified is only “Findings verified · Final QC pending”; it is not
+a green area and does not close the task.
 
-Verified findings leave both active QC Check and Report Fixes immediately.
-Keep attributed history and the ability to reopen a recurring failure in a
-collapsed verified-history section, outside the active list. Removing a finding
-from the active list never deletes it. Remove the QC task-details block from
-the reporting screen. Maintain readable state labels and controls in both themes.
+The auditor who claims that exact annual QC task records the final actual test
+result and signs off the Stage/Scene. Persist the auditor identity, timestamp
+and test evidence. Enforce the final-signoff gates below in the database.
+Neither recording a repair nor verifying an individual finding can substitute
+for that auditor's final annual signoff.
+
+After that final signoff, retain the completed Stage/Scene as green history and
+remove it from the active QC area list. Future problems for that finalized area
+use the Work Order system, not new/reopened Setup QC findings. Enforce that
+boundary in server commands, not only by hiding buttons. Preserve all Setup
+findings, repair/retest history and final evidence. Do not automatically create
+Work Orders or move existing findings as a side effect of final signoff.
+This final signoff and handoff is required implementation, not yet available;
+keep the final control closed until implemented and accepted.
+
+Individually verified findings leave both active QC Check and Report Fixes
+immediately. Retain them in collapsed verified history. Before final annual
+signoff, a recurring failure can reopen the same finding and turn the area
+yellow. Remove the QC task-details block from the reporting screen. Maintain
+readable state labels and controls in both themes.
 
 ### One finding through report, repair and verification
 

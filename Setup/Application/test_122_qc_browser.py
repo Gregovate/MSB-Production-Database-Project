@@ -118,17 +118,17 @@ addEventListener('load',()=>setTimeout(async()=>{
   qcFixture.findings.forEach(f=>f.status='VERIFIED');
   await setupQcRenderCurrent();
   const area=document.querySelector('[data-qc-task-id="598"]');
-  assert(area.dataset.qcState==='verified','All-verified area is not green');
+  assert(area.dataset.qcState==='review','Finding verification bypassed final auditor signoff');
   assert(area.textContent.includes('Final QC pending'),'Finding verification implied annual PASS');
   for(const theme of ['light','dark']) {
     document.documentElement.dataset.theme=theme;
-    assert(getComputedStyle(area).backgroundColor==='rgb(220, 252, 231)','Green area lost its state color');
+    assert(getComputedStyle(area).backgroundColor==='rgb(255, 255, 255)','Pending final signoff incorrectly shows green');
     assert(getComputedStyle(document.querySelector('[data-qc-task-id="483"]')).backgroundColor==='rgb(255, 255, 255)','Open area is not white');
   }
   // Simulate a second browser's new finding, then revisit the repairs screen.
   qcFixture.findings.push({qc_finding_id:80,setup_session_task_id:598,title:'Other worker report',status:'OPEN',events:[]});
   await setupQcRenderCurrent();
-  assert(document.querySelector('[data-qc-task-id="598"]').dataset.qcState==='findings','New finding did not turn green area yellow');
+  assert(document.querySelector('[data-qc-task-id="598"]').dataset.qcState==='findings','New finding did not turn pending area yellow');
   // A new finding alongside a repaired/unverified finding also stays yellow.
   qcFixture.findings[0].status='AWAITING_RETEST';
   await setupQcRenderCurrent();
