@@ -47,3 +47,6 @@ Wording/layout follow-up: confirm the existing two-minute QC tasks show the appr
 
 
 Correction082 supersedes the source-only/presentation-only approach above. The launcher applies only082 to the current-Production disposable clone. Verify saved Catalog task name and completion point, reload the editor, and confirm the same wording remains. Under All Repairs, record a repair claimed by another worker; confirm it awaits area sign-off, the original claim remains, and the REPAIRED history names the completing operator. Keep final sign-off gates and signed-area boundary. No Production application before explicit release approval.
+
+
+Production authorization, 2026-11-12: Greg reported PASS, CLEAN EXIT and requested deployment for exact candidate57a8c2049cbb1e78fba48beb2f66a359703d5e16. Use run_setup_489_release.ps1 with its merged tooling SHA. The application target remains the accepted candidate; only correction082 is applied. Existing maintenance controller owns freeze, validated rollback snapshot, migration, read-only validation and ONLINE proof. Release preserves all QC/history rows; fingerprints allow only approved wording/audit-column changes on matched catalog/2026 annual tasks. Protected live check and server receipt remain pending.
