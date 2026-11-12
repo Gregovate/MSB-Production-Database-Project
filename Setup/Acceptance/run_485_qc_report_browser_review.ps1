@@ -1,4 +1,4 @@
-<# 
+<#
 PR #485 source-only report/control follow-up, current-Production disposable QC Check browser review.
 - Exact commit; one temporary detached-source review branch; no Production writes.
 - Uses EXISTING Setup acceptance runner, port 8898 and Server Management profile.

@@ -1177,4 +1177,4 @@ body:not(.setup-schedule-view) #next-perform-list {
 .next-qc-discovery button[data-qc-action]:hover:not(:disabled) { box-shadow:0 0 0 3px #94a3b8; }
 .next-qc-report { display:inline-block; margin:.75rem 0; padding:.65rem 1rem; background:#075985; color:#fff; border-radius:.4rem; font-size:18px; font-weight:700; }
 .next-qc-report[hidden] { display:none; }
-.tab.active { background:#075985; color:#fff; border:2px solid #075985; }
+button.tab[data-view="perform"].active { background:#075985; color:#fff; border:2px solid #075985; }
