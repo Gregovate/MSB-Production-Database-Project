@@ -72,7 +72,6 @@ def db():
         with conn.cursor() as cur:
             cur.execute(FIXTURE)
             cur.execute((Path(__file__).parents[1]/'Database/081_add_unscheduled_setup_qc_findings.sql').read_text())
-            cur.execute((Path(__file__).parents[1]/'Database/082_correct_qc_wording_and_shared_repairs.sql').read_text())
         yield conn
     finally:
         conn.close()
@@ -81,7 +80,16 @@ def db():
         admin.close()
 
 
-def test_actual_final_gate_and_post_signoff_boundary(db):
+@pytest.fixture
+def corrected_db(db):
+    # Keep the original081 fixture for its historical deployment validator.
+    with db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/082_correct_qc_wording_and_shared_repairs.sql').read_text())
+    return db
+
+
+def test_actual_final_gate_and_post_signoff_boundary(corrected_db):
+    db = corrected_db
     def query(statement, args=()):
         with db.cursor() as cur:
             cur.execute(statement, args)
@@ -146,7 +154,8 @@ def test_actual_final_gate_and_post_signoff_boundary(db):
     assert query('SELECT count(*) FROM stage.work_order_intake')==0
 
 
-def test_saved_wording_and_another_workers_repair(db):
+def test_saved_wording_and_another_workers_repair(corrected_db):
+    db = corrected_db
     with db.cursor() as cur:
         cur.execute("SELECT task_name,completion_point FROM ref.setup_task WHERE setup_task_id=120")
         name, completion = cur.fetchone()
