@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const CLIENT_BUILD = 'V0.3.111-explicit-no-work';
+  const CLIENT_BUILD = 'V0.3.112-qc-findings';
   const CLIENT_BADGE = `Client ${CLIENT_BUILD.split('-')[0]}`;
   const reusableFieldIds = new Set([
     'edit-task-name',
