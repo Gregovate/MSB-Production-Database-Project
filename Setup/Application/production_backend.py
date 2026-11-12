@@ -32,6 +32,7 @@ from setup_assignment_api import setup_assignment_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_planning_summary_api import setup_planning_summary_api
 from setup_scheduling_board_api import setup_scheduling_board_api
+from setup_qc_api import setup_qc_api
 from setup_work_order_intake_api import setup_work_order_intake_api
 from setup_material_readiness_api import setup_material_readiness_api
 from setup_movement_api import setup_movement_api
@@ -42,7 +43,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.111-explicit-no-work"
+PRODUCTION_VERSION = "V0.3.121-qc-compact"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -82,6 +83,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_review_usability.js",
         "setup_next_pass.css",
         "setup_next_pass.js",
+        # QC controls must be served by the same explicit asset boundary.
+        "setup_qc.js",
         "setup_predecessor_drag.css",
         "setup_predecessor_drag.js",
         "setup_prerequisite_editor.css",
@@ -200,6 +203,7 @@ app.register_blueprint(setup_assignment_api)
 app.register_blueprint(setup_prerequisite_order_api)
 app.register_blueprint(setup_planning_summary_api)
 app.register_blueprint(setup_scheduling_board_api)
+app.register_blueprint(setup_qc_api)
 app.register_blueprint(setup_work_order_intake_api)
 app.register_blueprint(setup_material_readiness_api)
 app.register_blueprint(setup_movement_api)

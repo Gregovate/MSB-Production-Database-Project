@@ -1187,3 +1187,531 @@ remain authoritative. Current shared source is captured for drift detection,
 never promoted. Reuse committed-byte transport and foreground SCP+SSH wrapper.
 No SQL, migration replay, Node, new infrastructure or database rollback archive.
 Briefly pause Setup edits for the existing source-only preservation interval.
+
+
+## QC engineering authority
+
+The [current agreed QC workflow](#current-agreed-qc-workflow) below is the
+controlling design for this workstream. Earlier dated QC sections retain
+engineering and acceptance history; conflicting interpretations are superseded
+by that section. Issues track unfinished work. PR485 implements and proves
+conformance to this document; PR text and comments do not establish or change
+the design.
+
+## November 11 — Post-PR483 final QC discovery first phase (#122/#205)
+
+**Source baseline:** PR482 migration080 and its frozen business-history guard;
+PR483 theme contrast fix `3ee52204e64e9d14bc7a9e2306a736645855f0ae`.
+Do not replace or bypass these controls.
+
+**Actual source of final QC:** The 2026 `ops.setup_session_task` annual
+tasks matching *Plug in Network to controller and watch display against
+2 minute Test show*. Production read-only evidence found 38 distinct annual
+tasks with 27 never scheduled. Each may be Stage-, Scene-, or
+incompletely-scoped; exact `setup_session_task_id` is identity.
+Repeated titles under the same Stage must not be collapsed.
+
+**First bounded implementation:** Add a `QC Check` selector to existing
+Setup **Perform Work**. It draws from `setup_scheduling_board_repository.board`
+authoritative annual tasks rather than `board.assignments`. Search matches
+annual task ID, reusable task ID, Stage, Scene, title and status, even when
+there is no scheduled work day or assigned crew. Render exact annual task,
+current execution state, assignment-history count and unmet-prerequisite
+indicator. Preserve existing Scheduled Work controls/reporting, PR482 no-work
+guard and PR483 dark/light theme styles. This is READ ONLY and deliberately
+does **not** indicate QC PASS from annual `COMPLETE`, nor create synthetic
+work assignments. New JS/CSS asset pins separate the preview from stale
+browser cache.
+
+**Not an accepted QC system yet:** Saving authenticated auditor self-claims,
+one/many detailed findings, repair self-claims, repair records, two-minute
+retest and final QC signoff requires a governed PostgreSQL and protected
+backend transaction. Preserve historical Intake observations with audited
+many-to-many links rather than destructive migration or duplicate native
+Work Orders. Never mistake Issue #419 Work Order promotion for pre-opening QC.
+INTAKE-86 has already been separately promoted by operator; reconcile
+84/85/87 against Racing Arches final annual QC #598 only by explicit Manager
+confirmation, preserving original reporter and section-level evidence.
+
+**Acceptance:** Source gates plus actual disposable current-Production
+Manager/Crew browser review must show all 38 tasks including all 27
+unscheduled, search by exact task and Scene, no scheduling mutation, and
+controls with contrast/legibility in light and dark. No Production release
+of a partial QC system without express operator acceptance.
+
+
+## November 11 — QC persistent findings implementation candidate (081, #122/#205)
+
+**Correction to previous first-phase boundary:** PR485 now also contains a
+*NOT YET APPROVED / NOT DEPLOYED* governed clone-only QC persistence
+candidate. It remains an explicit three-view workflow inside existing
+**Perform Work**:
+- **Scheduled Work** unchanged (PR482 reports/no-work and PR483 theme).
+- **QC Check** searches all 38 annual two-minute test-show tasks independent
+  of scheduled assignments. An authorized Crew member can report a problem
+  on the exact annual QC task before final readiness, add corroborating
+  observations to previous findings, or self-assign as QC auditor without
+  creating a calendar, crew, Captain or work report.
+- **Report Fixes** shows the same unresolved findings across Stage/Scene.
+  A Crew member can claim a repair, record repair notes, and mark
+  `AWAITING_RETEST`. An authorized Crew tester records a functional retest
+  pass or fail. The finding is `VERIFIED` only on recorded retest pass.
+  A failed retest reopens the same finding rather than creating another.
+
+**Governed storage:** `ops.setup_qc_auditor`, `ops.setup_qc_finding`,
+`ops.setup_qc_event`, `ops.setup_qc_intake_link` are supplemental
+task-scoped evidence, NOT a duplicate annual-task master. Migration
+`081_add_unscheduled_setup_qc_findings.sql` grants no direct application
+QC/Intake table writes or reads. Only signed-in Manager/Production Crew
+via `ref.setup_execution_actor` can mutate narrow
+`ops.setup_qc_command`; independent SQL-owned authorized read
+projections support client UI. All events preserve person/time; browser
+displays timestamps in America/Chicago.
+
+**Legacy Intake reconciliation:** A Manager-only original-Intake view shows
+unpromoted 2026 Intake, Stage and raw original problem details.
+The Manager creates exact distinct QC findings and deliberately links each
+applicable original Intake ID to one or several existing QC findings after
+confirming same physical failure. Many original reports can link to the same
+finding. Original source rows are not deleted or updated by QC.
+The GFCI Intake promoted separately by operator must remain Work Orders,
+must never create another QC repair, and is rejected if already promoted.
+Original Intake preservation and duplicate suppression require clone proof.
+
+**Safety boundary:** Claiming an audit or marking repaired NEVER marks the
+Setup annual task `COMPLETE` or records final two-minute QC PASS.
+The final approval stage and prerequisite/report gate are NOT yet implemented
+in this source and must not be represented as complete. Final QC approval
+requires a separately reviewed guarded implementation using the existing
+dependency graph and current report evidence. No 080 migration replay.
+No Production deployment from draft PR485 without accepted disposable
+081 migration, precise browser workflows in both themes, Crew/Manager
+negative authorization, source preservation and explicit operator approval.
+
+**Disposable test:** Existing Server Management browser preview on port 8898
+pins candidate SHA and restores a fresh current-Production clone, applies
+081 on that clone, runs
+`Setup/Acceptance/setup_122_qc_disposable_acceptance.sql` within
+a transaction rolled back, then permits protected browser review. No
+Production writes. Test with #598 Racing Arches NOT_READY/unscheduled,
+multiple findings and differing reporters; demonstrate the repair queue
+shares identical finding IDs. Do not promote historical Intake for this test.
+
+
+## November 11 — Final #122 QC interpretation and corrective engineering checkpoint (PR485)
+
+**This section supersedes the incorrect "Intake FORM, not Intake workflow" interpretation previously appended to this contract.** The operator had already established the following design in #122 and #205; it must not be reconstructed from chat.
+
+**The same annual QC task is accessible throughout Setup.** QC findings may be reported at initial power-up, during installation or final test, even if the existing annual task is unscheduled or NOT_READY. A report does not require an auditor claim. No new Work Day, assignment, Work Order, or Intake record is created by QC feedback.
+
+**Setup → Perform Work has exactly three modes:** (1) Scheduled Work — preserve current normal installation and work-reporting behavior; (2) QC Check — select Stage/Scene and exact annual QC task, show existing distinct findings first, permit auditor self-assignment, add a new detailed failure or an observation to an existing finding, and later perform functional verification; (3) QC Repairs Needed (formerly Report Fixes) — all outstanding QC findings across the park, grouped by Stage/Scene and exact annual QC task; worker claims a finding, documents the actual repair, marks it repaired, and the same finding awaits retest. Claiming and repairing must not mark the QC task passed.
+
+**Historical reconciliation is required before operational cutover, and separate from new QC reporting.** Preserve original Intake reporters, raw detail, notes, evidence, timestamps and communications. Authorized Manager must review and associate an existing Intake with one or more distinct QC findings through audited, many-to-many links; overlapping reports may link to the same finding. Racing Arches Stage 25 QC #598 includes separate Tom Shircel INTAKE-85 observations on arches 3, 4, 8, 9 and 11, with Paul Neils INTAKE-84 and Rich Neerhof INTAKE-87 corroborating only the actual overlaps after Manager confirmation. INTAKE-86 GFCI stays in its already-promoted independent Work Order, not the QC repair queue. Do not automatically convert Intake, create duplicates or infer a PASS.
+
+**Normal QC is an optional two-person radio process:** command-center operator starts and calls out the actual two-minute LOR sequence, and one or more field auditors watch the indicated Displays/sections and record results. One person may perform both roles. Inspection sequence is controller/channel order and generally left to right where actual approved Wiring/sequence evidence establishes that physical order. Show the expected channel/Display mapping from authoritative Field Wiring, record explicit exceptions and exact sequence/version when known. Do not invent a mapping or assume channel number alone defines physical position. These details are distinct from and must not block early fault reporting.
+
+**Two independent state machines:** a finding moves OPEN → CLAIMED → AWAITING_RETEST → VERIFIED or OPEN (failed retest); the annual test separately moves from ineligible to test-ready/in-progress/final PASS only after verified prerequisites, required actual test evidence and unresolved finding checks. Neither READY nor COMPLETE on the annual task means final QC PASS. Final approval control remains unfinished and must fail closed.
+
+**Current PR485 engineering status:** restored Manager historical Intake review and link controls in QC Check while leaving new direct QC reports independent of any Intake read; preserved 081 governed task/finding/event/intake-link tables. Source must receive exact-SHA CI, current-Production disposable 081 acceptance and Crew/Manager browser PASS in light/dark before merge or Production approval. A read-only historical reconciliation inventory and operator-confirmed classification are mandatory before any data backfill. PR485 is DRAFT/HOLD; no Production mutation.
+
+
+## November 11 — PR485 resumed engineering after d432cdd8
+
+PR485 remains **DRAFT/HOLD**, not browser accepted or released. Current main
+`c91a5b20385cd8ecec83ef14524378fd6b9153e8` adds only PR482/483 closeout
+records relative to the candidate base; those records are reconciled without
+changing the QC design. The last comment's `36071f09` is obsolete: later
+commits added repair ownership, auditor retest gates, restored Manager
+historical links and original evidence, and Stage identity checks.
+
+Confirmed review gaps in d432cdd8: five stale asset-pin regression assertions;
+QC data cached for the season (other workers' new findings were invisible on
+view reentry); SQL required a note for merely claiming a repair while the
+client invented one; unlinked Intake leaked through the Crew snapshot despite
+the Manager-only review contract. The corrected candidate uses one-click
+note-free claim commands with a database-owned claim audit event. Actual
+repair/retest/observation notes remain mandatory. View entry refreshes shared
+findings, and Manager source-link inventory is invalidated after linking.
+Linked original evidence remains readable to repair Crew; unlinked inventory
+and reconciliation stay Manager-only. New QC uses familiar findings and
+optional suggested-correction/evidence fields on the same direct QC command.
+
+The candidate identity is **V0.3.113-qc-review**, migration081 only. All changes
+remain inside PR485. Final annual PASS is still unavailable. No automatic
+historical conversion, Production migration, or release is authorized.
+
+Validation additions reuse the existing Engineering Compliance workflow:
+Python launches Chromium directly against the actual candidate HTML/scripts
+with fixture API responses, exercising both roles, exact #483/#598 form
+rendering, routing, same finding IDs, claim/repair/retest, fresh shared data,
+and theme styles. This has no Node dependency and is a DOM regression only,
+not PostgreSQL or operator acceptance. The existing Server Management reusable
+8898 preview remains the sole operator-review mechanism. Its dedicated
+launcher discovers worktrees and explicitly says **writable disposable
+review**. The workstation needs PowerShell/Git/SSH; no Node installation.
+
+The rollback SQL additionally checks real Crew/Manager boundaries, direct
+reports before auditor claims, note-free claiming, ownership/evidence
+rejections, linked original evidence, promoted Intake rejection, and complete
+protected-row fingerprints for annual tasks, scheduling, ordinary work
+reports, Intake and Work Orders. Fixture links are disposable tests only,
+not Manager confirmation of actual historical defects. Live clone SQL and
+protected browser checks remain required, including both themes and CLEAN
+EXIT. Local sandbox Chromium cannot start (socket permission denied), so no
+local browser PASS is claimed. Hosted DOM regression and current-Production
+clone acceptance must be recorded separately before another review handoff.
+
+
+## November 11 — Missing historical Stage and promoted-repair reconciliation
+
+Operator read-only evidence after failed preview `20261112T010110` proves
+QC598 is season2026, annual_stage_id55 (Stage key25 is not its database ID).
+Intake84/85/86/87 all have NULL stage_id and target_year; their November10
+local timestamps satisfy the current season predicate. Intake86 is promoted;
+84/85/87 are unpromoted. The prior combined Stage/year error incorrectly
+suggested a season mismatch. Null source Stage is missing classification,
+not evidence of a contradictory Stage.
+
+A Manager may deliberately link an unpromoted, same-season historical report
+whose Stage is missing to the exact selected annual QC task, with the existing
+required rationale. Show missing Stage explicitly and require that Manager
+review; never fill in or rewrite the original Intake row. A populated source
+Stage that differs from the task remains rejected. Promoted Intake remains
+blocked from creating a second active QC repair. The source review must show
+unassigned-Stage candidates so those links can actually be made.
+
+The operator reports that other Setup problems have since been promoted into
+Work Orders, leaving repair visibility split. The intended operational owner
+remains Setup QC: report a problem in QC Check, see existing findings before
+reporting again, and claim/repair those identical findings in Report Fixes.
+Historical Intake is source evidence, not a second new-report workflow.
+Before cutover, inventory original Intake plus resulting Work Orders/status
+and work evidence; Manager confirms exact physical defects/overlaps and one
+active repair owner. Do not automatically delete, close, undo promotion,
+backfill duplicate findings, or discard existing repair evidence. The current agreed workflow below retains the explicit INTAKE86 GFCI
+Work Order exception. Multiple reports are not automatically four defects or
+one defect; preserve section-specific observations and link real overlaps.
+
+The failed candidate94f02567 passed1001/15-skipped application and232 additional
+tests, then migration081; clone acceptance failed on the assumed positive
+INTAKE85 link. Browser never started. Production fingerprint and live SHA
+were unchanged, exit3. Report:
+`/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20261112T010110.txt`.
+Retain the failed local review worktree. Corrected source needs new exact-SHA
+checks and disposable review; DRAFT/HOLD remains, final annual PASS closed.
+
+
+## Current agreed QC workflow
+
+**Design authority:** this controlled engineering document. PR485 consumes
+this contract; it does not own the design. This section records the operator's
+restated agreement and replaces the contradictory interpretation that removed
+the existing INTAKE86 GFCI Work Order exception.
+
+### Simplified auditor observation — operator correction, 2026-11-11 local
+
+This correction supersedes the separate finding-verification and extra final-test
+fields described below and in the V0.3.118 implementation history. The auditor
+observes the running test; they do not operate the sequence. After claiming the
+area, the auditor checks “I observed the full two-minute test and confirmed this
+area works” and selects Ready for Production. No sequence/version entry and no
+separate final-result text are required. Save that explicit observation with the
+actual auditor and timestamp; never infer observation from repairs or task status.
+
+There is no individual Verified button. Repairs await this single area observation.
+The finding badge says “Repaired — awaiting area sign-off”; area summaries count
+problems needing repair separately from repaired findings awaiting area sign-off.
+Do not label this state “Verification needed”, which implies a separate action.
+Final signoff atomically verifies all repaired findings on that exact QC task,
+records a RETEST_PASS event for each with the auditor's observation, and completes
+the annual QC task. OPEN or CLAIMED findings, unfinished required work, or failed
+readiness still block signoff. A Still Failing action with an observation reopens
+the same repaired finding. Unclaimed users receive a visible instruction to claim
+the area before recording an auditor test result. Reporting/repair remain open to
+Production Crew without an auditor claim. All existing history is preserved.
+
+QC entry text, labels and buttons must be at least 18 CSS pixels, with readable
+contrast in both themes and controls at least 44 pixels high. Errors appear next
+to the action used, are announced and brought into view, and preserve entered
+text. Success is shown locally too. A page-top-only message is insufficient. Keep optional finding observations and
+Still Failing controls collapsed until requested. Put final signoff and its exact
+blockers immediately below the auditor, above findings. Use a short resizable
+problem-entry box and omit Assign to Me after the current auditor has claimed.
+A recorded repair does not waive unfinished required work; show that distinction
+explicitly beside the disabled signoff.
+
+### Exact Scene completion scope — operator correction, 2026-11-11 local
+
+The Front Entrance Open/Close Sign is unrelated to Entrance Arch QC. Scene QC
+must check the tasks in that exact Scene's annual list and authoritative explicit
+prerequisites. Do not automatically add Stage-level work merely because it shares
+the Scene's parent Stage. This supersedes the shared-Stage inference in the V118
+implementation below. An explicit cross-area dependency is still authoritative;
+missing or unfinished required work still blocks signoff. Regression must prove
+Scene signoff succeeds with unrelated Stage work incomplete while an explicit
+external prerequisite continues to block until complete.
+
+### Identity and three Perform Work modes
+
+The existing annual QC task is the permanent home for functional findings
+throughout Setup. Use its exact annual task ID and authoritative Stage/Scene.
+Do not create another task master or require a calendar assignment.
+
+| Mode | Required behavior |
+| --- | --- |
+| Scheduled Work | Preserve existing installation, wiring, scheduling and work reporting. |
+| QC Check | Find and open the existing annual Stage/Scene QC task. Show its existing problems first; allow a new problem or an observation on an existing finding. Offer optional auditor self-assignment without scheduling. |
+| Report Fixes | Show outstanding findings across the park by Stage/Scene and exact annual QC task. Claim, document actual repair work and return the same finding for auditor verification. |
+
+QC problem reporting is available during Installation, Initial Power-Up,
+Final Test or Other. It does not require an auditor claim, scheduled work day,
+READY state or completed prerequisites. An authorized Setup worker can report
+a failure immediately, including while the annual task is NOT_READY. Every
+authorized Production Crew member can report, add observations, claim a problem
+to fix and record their actual repair without Manager involvement. Auditor
+self-assignment for retest also requires no Manager or calendar assignment.
+
+Reuse the familiar Task Feedback form fields, but save directly to the annual
+task's QC findings. Normal QC reporting creates **no Intake record, Work Order,
+calendar assignment or artificial work report**. Historical reconciliation
+must not become a required step in this normal reporting path.
+
+### Fast Crew reporting — operator correction, 2026-11-11 local
+
+Pick the Stage/Scene area, see findings already attached to that exact annual
+QC task, enter free-form problems in one text box and save. One nonblank line
+is one separately repairable finding. A single save creates all entered lines
+atomically on the selected task, preserving each line's complete text and order.
+No separate title, channel/location, discovery-phase or suggested-correction
+fields are required. Show “One problem per line” before saving; do not infer or
+split physical faults within a line. If any line is invalid, save none and keep
+the entered text for correction. Prevent repeated submission while saving.
+
+Remove unclassified Intake listings and Manager reconciliation controls from
+normal QC Check entirely. NULL Stage is not a match to every area. Existing QC
+findings are selected only by exact annual task identity. Historical cleanup
+remains a separate manual correction, with source data preserved.
+
+Report Fixes uses these same individual findings and their full reported text.
+One click claims a finding; only recording the repair requires repair notes.
+Auditor assignment is optional for reporting and separate from the quick entry
+form. Retest evidence and final-signoff gates remain as specified below.
+
+### Visible QC status and final handoff — 2026-11-11 local
+
+Stage/Scene selectors are white while awaiting QC with no unresolved findings,
+yellow while any finding is unresolved, and green only after final annual QC
+signoff. Always display a text status as well as color. Repaired but unverified
+findings remain unresolved: show “Verification needed” and keep the area yellow.
+Before final signoff, any new finding turns the area yellow again, even when
+all earlier findings were verified. Recompute status after saves and on re-entry.
+All findings verified is only “Findings verified · Final QC pending”; it is not
+a green area and does not close the task.
+
+The auditor who claims that exact annual QC task records the final actual test
+result and signs off the Stage/Scene. Persist the auditor identity, timestamp
+and test evidence. Enforce the final-signoff gates below in the database.
+Neither recording a repair nor verifying an individual finding can substitute
+for that auditor's final annual signoff.
+
+After that final signoff, retain the completed Stage/Scene as green history and
+remove it from the active QC area list. Future problems for that finalized area
+use the Work Order system, not new/reopened Setup QC findings. Enforce that
+boundary in server commands, not only by hiding buttons. Preserve all Setup
+findings, repair/retest history and final evidence. Do not automatically create
+Work Orders or move existing findings as a side effect of final signoff.
+The disposable V0.3.118 candidate implements this final signoff and handoff.
+Production release remains closed until exact-candidate SQL and operator browser
+acceptance, CLEAN EXIT and explicit release approval.
+
+Individually verified findings leave both active QC Check and Report Fixes
+immediately. Retain them in collapsed verified history. Before final annual
+signoff, a recurring failure can reopen the same finding and turn the area
+yellow. Remove the QC task-details block from the reporting screen. Maintain
+readable state labels and controls in both themes.
+
+### One finding through report, repair and verification
+
+One annual QC task can contain multiple distinct findings. Existing problems
+appear before the new-report form to help workers recognize previously
+reported failures and add observations instead of duplicating them.
+
+Each finding retains its identity and complete attributed history:
+
+`OPEN → CLAIMED → AWAITING_RETEST → VERIFIED`
+
+- **I'll Fix This** records a repair claim in one click; no repair note is
+  required merely to claim.
+- **Repair Complete** requires notes describing actual work and leaves the
+  same finding awaiting retest.
+- Retest requires actual observed evidence. A failed retest reopens that
+  finding; it does not create another finding or Work Order.
+- Preserve original reporters, observations, repair workers, testers,
+  timestamps and evidence. Display dates/times in America/Chicago.
+
+Claiming, repair completion, annual READY and annual COMPLETE are not final
+QC PASS. Finding verification and annual QC approval are separate decisions.
+
+### Historical reports and duplicate prevention
+
+Operator scope correction (2026-11-12): finish the ordinary Production Crew
+QC reporting and repair workflow first. Historical Intake reconciliation is a
+separate, one-shot manual correction and is not an implementation or acceptance
+blocker for that workflow. Do not build further reconciliation UI for PR485.
+Original Intake rows must remain intact; any later manual correction must retain
+source links and attribution. Manager review establishes exact physical failure/section overlap; use many-to-many
+links so one report can support several findings and several reports can
+corroborate the same finding. Never collapse records solely because they
+share a Stage or similar wording.
+
+For Racing Arches annual QC598 (Stage key25, database stage_id55), reconcile
+Tom Shircel's INTAKE85 detailed report into separate arch failures. Preserve
+Paul Neils INTAKE84 and Rich Neerhof INTAKE87 as attributed corroborating
+evidence only where their observations overlap. The recovered earlier thread
+provides this review baseline; original source reports remain authoritative:
+
+| Source | Reported observations |
+| --- | --- |
+| INTAKE84 — Paul | Arch3 red; arch8 yellow; arch11 blue. |
+| INTAKE85 — Tom | Arch3 blue at 21–28 and 76–80 inches, plus all red; arch4 red; arch8 yellow 12–20 inches from top; arch9 blue from top to approximately 1 foot; arch11 blue. |
+| INTAKE87 — Rich | Arch3/4 red; arch11 blue. |
+| INTAKE86 — Rich | RA-02 GFCI tripped, affecting the first four arches. This repair stays in its existing Work Order under the explicit agreed exception. |
+
+Do not automatically equate the GFCI interruption with each separately
+reported string/section failure. Preserve the distinction and the original
+evidence rather than manufacturing duplicate repairs.
+
+All four source Intake records have NULL stage_id/target_year; their recorded
+November10 local dates satisfy the 2026 season predicate. Missing Stage is
+unclassified evidence, not a conflicting Stage. Manager review may associate
+an unpromoted same-season report with the exact QC task and record a rationale,
+without rewriting the source. A populated contradictory Stage remains a
+stop condition.
+
+Other already-promoted pre-show reports require an inventory and deliberate
+reconciliation of their original Intake, Work Orders and any repair evidence.
+Establish one active repair owner for each physical finding; do not automatically
+undo promotions, delete history, mark work completed or create duplicate QC
+repairs. This is deferred to the separate one-shot manual correction. The
+INTAKE86 exception does not authorize a general Work-Order-first QC reporting path.
+
+### Final two-minute test and annual approval
+
+**Completion guarantee:** the operator must be able to rely on **Complete QC**
+as evidence that the inspected Stage/Scene is ready for the show. This requires
+the three gates below, not merely a repair note, a claim, a READY flag or an
+ordinary annual-task COMPLETE status. The application must not present those
+intermediate states as accepted final QC. The final signoff control must enforce these gates in the database; candidate
+implementation is subject to SQL and operator acceptance before Production.
+
+Auditors may self-assign without scheduling. Normal test operation can use a
+command-center operator calling the actual two-minute LOR sequence and field
+auditors watching the Displays; one person may perform both roles. Use
+authoritative wiring/sequence evidence for expected channels/Displays and
+record known sequence/version and explicit exceptions. Do not invent physical
+order from channel numbers alone.
+
+Final annual **Complete QC / PASS** requires all of:
+
+1. Authoritative applicable prerequisites satisfied.
+2. Recorded evidence of the actual two-minute test.
+3. All blocking findings resolved and verified.
+
+The claimed auditor sees **Ready for Production — Sign Off**. The control is
+disabled with named blockers until the database reports required work complete,
+annual readiness confirmed and every finding verified. The auditor supplies a
+sequence/version reference, observed result, and explicit confirmation of the
+full two-minute test. The database rejects missing evidence, unclaimed auditors,
+unfinished work and unresolved findings even if a caller bypasses the UI. None of these gates may block early fault reporting.
+
+### Implementation and acceptance boundary
+
+Discovery has passed its earlier browser checkpoint: 38 annual tasks, including
+Racing Arches598 while NOT_READY and never scheduled. That acceptance does not
+prove reporting, repairs, historical reconciliation or final signoff.
+
+PR485 remains DRAFT/HOLD. Implement and validate the controls against this
+contract, including Manager/Crew positive and negative authorization, same-ID
+persistence across views, both themes, Scheduled Work preservation and no new
+Intake/WO/schedule/work-report records from normal QC actions. The separate
+manual historical correction must preserve source evidence and prevent duplicate
+repair ownership; it does not gate the normal Crew workflow. Separate
+source/fixture tests from actual current-Production-clone
+SQL and operator browser acceptance.
+
+Use the existing Server Management reusable disposable preview on8898,
+migration081 and rollback acceptance. No Node dependency on the workstation
+or preview server. No Production migration or deployment without accepted
+browser testing, CLEAN EXIT and explicit operator release approval.
+
+
+### QC module delivery acceptance correction — 2026-11-12
+
+Operator review of candidate `6f933010` failed: discovery rendered, but both QC
+Check and QC Repairs Needed reported that the browser module did not load.
+Operator subsequently reported reusable preview CLEAN EXIT.
+
+Confirmed implementation defect: `setup_qc.js` was referenced by production.html
+but omitted from production_backend.PRODUCTION_ASSETS; the actual Flask route
+returned HTTP404. The fixture browser's generic static file server bypassed
+that boundary, so its earlier PASS did not prove application delivery.
+
+The correction registers only that asset in the existing explicit allowlist.
+Acceptance must request page scripts through the actual Flask asset route,
+check HTTP200 and JavaScript MIME type, and retain denial of non-public source
+files. Browser fixture tests must use that route rather than unrestricted file
+serving. Candidate identity: V0.3.115-qc-module. This changes delivery of the
+existing contract implementation, not the QC design. Disposable operator
+acceptance is still required; Production release remains HOLD.
+
+
+### Final auditor command implementation — V0.3.118 candidate
+
+Final QC is the last task of the annual instance of the reusable task list.
+Required work includes the current reusable dependency graph, explicit annual
+edges, and every included annual task in the applicable Stage/Scene. A scene
+list also includes shared Stage work; it excludes the parent Stage-level QC
+(which must follow its scene checks). Stage-level QC requires its scene QC
+signoffs as well as Stage work. Missing annual prerequisite instances block
+signoff. Current authoritative completed Work Order gates satisfy their linked
+work prerequisite; no new Work Order is created by any QC operation.
+
+The final command serializes with QC writes on the exact annual task and locks
+the relevant work/graph sources while checking them. It saves immutable auditor,
+time, sequence reference, actual test-duration attestation, observed result and
+required-work evidence, then marks only that annual QC task COMPLETE with its
+completion time and auditor. It creates no progress/work report, assignment,
+Intake or Work Order. The Scheduling Board displays that completed QC task at
+100%; ordinary Scheduled Work progress behavior remains unchanged.
+
+A finalized area appears only in collapsed green Ready for Production history.
+All subsequent QC mutation commands are rejected with the Work Order handoff
+message, including new reports, repair changes, and reopening a finding. A second
+signoff cannot overwrite original evidence. Before final signoff, new findings
+and failed retests retain the existing open/yellow lifecycle.
+
+Candidate validation includes claimed Crew and Manager UI paths, unfinished
+work/readiness/finding blockers, missing/short test evidence, exact annual
+completion, immutable history, and rejection of QC writes after handoff. Clone
+fixtures roll back; passing source/fixture tests does not assert actual physical
+show readiness or authorize Production release.
+
+### PR485 release scope and authorization — 2026-11-11 local
+
+Greg accepted the existing QC task coverage: no bulk additions, renaming or
+Stage/Scene reassignment in this release. Catalog coverage and annual assignment
+reconciliation are deferred. Historical Intake/Work Order cleanup is separate.
+Entrance Arch observation, repair claim, cross-view visibility, recorded repair,
+auditor self-assignment, final observation and removal from the active list passed
+on 3f281e49bf44a5d64a3be5e43f71319f59c8c27f, V0.3.121-qc-compact.
+The operator reported CLEAN EXIT, then explicitly authorized Production release
+for the following morning's meeting. This records authorization, not installation.
+
+Release tooling must install exactly that accepted application commit and only
+migration081. Reuse the Server Management controller via setup_maintenance_deploy.py
+and the existing committed-byte Windows transport. Preserve all existing ref/ops/
+stage business rows while frozen; new QC tables must be empty at installation.
+Verify exact command bodies, narrow EXECUTE grants, denied direct table/sequence
+access, source ancestry, snapshot, ONLINE health and live regression. Never run
+disposable acceptance fixture writes on Production. Retain report and rollback
+archive. Final deployment status awaits the server receipt and protected UI check.

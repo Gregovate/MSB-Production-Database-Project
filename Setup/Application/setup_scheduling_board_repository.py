@@ -269,7 +269,9 @@ class SetupSchedulingBoardRepository:
                     latest_report.evidence AS latest_work_report,
                     coalesce(progress.progress_entries, 0) AS progress_entries,
                     coalesce(progress.completed_quantity, 0) AS completed_quantity,
-                    coalesce(progress.percent_complete, 0) AS percent_complete,
+                    CASE WHEN st.execution_status='COMPLETE' AND st.annual_task_name ~*
+                         'plug[[:space:]]+in[[:space:]]+network[[:space:]]+to[[:space:]]+controller.*2[[:space:]]+minute[[:space:]]+test[[:space:]]+show' THEN 100
+                         ELSE coalesce(progress.percent_complete, 0) END AS percent_complete,
                     CASE
                         WHEN st.execution_status = 'COMPLETE'
                              OR (

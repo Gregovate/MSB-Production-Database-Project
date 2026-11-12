@@ -1022,3 +1022,146 @@ body:not(.setup-schedule-view) #next-perform-list {
 @media print {
   .next-perform-day { box-shadow: none; break-inside: auto; }
 }
+
+/* #122 read-only QC discovery on existing Perform Work screen.
+   Theme tokens follow the accepted PR483 light/dark pairing. */
+.next-qc-discovery {
+  margin: 0 0 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.65rem;
+  background: var(--card, var(--panel, #fff));
+  color: var(--text, #172b43);
+}
+.next-qc-tabs { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.6rem; }
+.next-qc-tabs button[aria-pressed="true"] {
+  outline: 2px solid var(--text, #172b43);
+  outline-offset: 2px;
+  font-weight: 700;
+}
+#next-qc-content { margin-top: 0.8rem; }
+#next-qc-search {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  min-height: 2.5rem;
+  padding: 0.6rem;
+  margin: 0.3rem 0 0.7rem;
+  background: var(--card, var(--panel, #fff));
+  color: var(--text, #172b43);
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.4rem;
+}
+.next-qc-row {
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--border, #d9e0e8);
+}
+.next-qc-open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+}
+.next-qc-row [id^="next-qc-task-"] {
+  padding: 0.55rem 0.8rem;
+  color: var(--text, #172b43);
+}
+.next-qc-discovery [hidden] { display: none !important; }
+
+/* #122 QC task reporting, shared repairs: PR483 contrast tokens. */
+.next-qc-record,.next-qc-finding,.next-qc-fix-group {
+  padding: 0.8rem;
+  margin: 0.8rem 0;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.6rem;
+  background: var(--card, var(--panel, #fff));
+  color: var(--text, #172b43);
+}
+.next-qc-record h4 { margin: 0.9rem 0 0.45rem; }
+.next-qc-record label,.next-qc-finding label {
+  display: block;
+  margin: 0.65rem 0;
+  color: var(--text, #172b43);
+}
+.next-qc-record input,.next-qc-record textarea,.next-qc-record select,
+.next-qc-finding textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: 0.3rem 0;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.4rem;
+  padding: 0.6rem;
+  background: var(--card, var(--panel, #fff));
+  color: var(--text, #172b43);
+}
+.next-qc-record textarea,.next-qc-finding textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+.next-qc-record textarea[data-qc-description] { min-height: 12rem; }
+.next-qc-state { font-weight: 600; margin-left: 0.65rem; }
+.next-qc-events { padding-left: 1.3rem; }
+.next-qc-events li { margin: 0.7rem 0; }
+.next-qc-note { white-space: pre-wrap; overflow-wrap: anywhere; }
+.next-qc-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+/* #485 QC status colors use explicit dark text on light state surfaces in
+   both themes. Text labels carry the meaning independently of color. */
+.next-qc-discovery .next-qc-open[data-qc-state="review"],
+.next-qc-discovery .next-qc-open[data-qc-state="open"] { background: #fff; color: #172033; }
+.next-qc-discovery .next-qc-open[data-qc-state="findings"],
+.next-qc-discovery .next-qc-finding[data-qc-state="OPEN"],
+.next-qc-discovery .next-qc-finding[data-qc-state="CLAIMED"],
+.next-qc-discovery .next-qc-finding[data-qc-state="AWAITING_RETEST"] {
+  background: #fef3c7; color: #172033; border-color: #a16207;
+}
+.next-qc-discovery .next-qc-open[data-qc-state="verified"],
+.next-qc-discovery .next-qc-finding[data-qc-state="VERIFIED"] {
+  background: #dcfce7; color: #172033; border-color: #15803d;
+}
+.next-qc-discovery .next-qc-finding[data-qc-state] .muted,
+.next-qc-discovery .next-qc-finding[data-qc-state] label { color: #334155; }
+.next-qc-task-status { font-weight: 700; margin-left: auto; }
+.next-qc-state { display: inline-block; padding: .2rem .45rem; border-radius: .3rem; }
+.next-qc-finding[data-qc-state="AWAITING_RETEST"] .next-qc-state {
+  background: #854d0e; color: #fff;
+}
+.next-qc-discovery button[data-qc-action="RETEST_PASS"] {
+  background: #166534; border-color: #14532d; color: #fff; font-weight: 700;
+}
+.next-qc-discovery button[data-qc-action="RETEST_FAIL"] {
+  background: #854d0e; border-color: #713f12; color: #fff; font-weight: 700;
+}
+
+/* Final signoff follows the actual auditor claim and database readiness gate. */
+.next-qc-discovery .next-qc-confirm { display: flex; align-items: center; gap: .5rem; }
+.next-qc-discovery .next-qc-confirm input { width: auto; margin: 0; }
+.next-qc-signoff { border-top: 2px solid var(--border, #71869a); margin-top: 1rem; padding-top: .5rem; }
+.next-qc-discovery button[data-qc-action="READY_FOR_PRODUCTION"] { background: #166534; color: #fff; }
+.next-qc-discovery button[data-qc-action="READY_FOR_PRODUCTION"]:disabled { opacity: .55; cursor: not-allowed; }
+.next-qc-final-record { background: #dcfce7; color: #172033; padding: .8rem; border-radius: .5rem; }
+/* Completed areas leave the active layout until their history is expanded. */
+[data-qc-completed-areas]:not([open]) > .next-qc-row { display: none; }
+
+/* QC is used in the field: readable text and touch targets, scoped to QC only. */
+#next-qc-content, #next-qc-fixes-list { font-size: 18px; line-height: 1.5; }
+#next-qc-content :is(label,input,textarea,button,.small,.muted),
+#next-qc-fixes-list :is(label,input,textarea,button,.small,.muted) {
+  font-size: 18px; line-height: 1.5;
+}
+#next-qc-content :is(button,input), #next-qc-fixes-list :is(button,input) { min-height: 44px; }
+.next-qc-confirm { display: flex; align-items: center; gap: .6rem; }
+.next-qc-confirm input[type="checkbox"] { width: 24px; height: 24px; min-height: 24px; flex-shrink: 0; }
+[data-qc-message] { padding: .75rem; margin-top: .5rem; border: 2px solid #b45309; background: #fef3c7; color: #172033; font-size: 18px; }
+[data-qc-message][data-kind="ok"] { background: #dcfce7; border-color: #166534; }
+
+/* Keep optional observations closed and the main signoff visible without shrinking text. */
+.next-qc-observation { margin-top: .4rem; }
+.next-qc-record h4 { margin: .65rem 0; }
+.next-qc-signoff { margin-top: .5rem; padding: .5rem 0; }
+.next-qc-signoff p, .next-qc-signoff ul { margin: .4rem 0; }
+.next-qc-new textarea { min-height: 5rem; }
