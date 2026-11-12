@@ -360,8 +360,8 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert 'id="add-task-form" class="add-task-form manager-only" hidden' not in html
     assert "setReusableAddTaskFormOpen(true)" in acceptance
     assert "setReusableAddTaskFormOpen(false)" in acceptance
-    assert "setup_production.js?v=2026-11-11.111" in html
-    assert "setup_next_pass.js?v=2026-11-12.122.2" in html
+    assert "setup_production.js?v=2026-11-12.122.3" in html
+    assert "setup_next_pass.js?v=2026-11-12.122.3" in html
     assert "setup_scheduling_board.js?v=2026-11-11.111" in html
     assert "Updated 2026-11-12" in html
 

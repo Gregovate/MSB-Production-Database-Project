@@ -371,7 +371,7 @@
       <article class="task-card${isMaterialStep ? ' material-task' : ''}">
         <div class="task-header">
           <div class="task-title-wrap">
-            <h3 class="task-title">${escapeHtml(task.task_name)}</h3>
+            <h3 class="task-title">${escapeHtml(setupTaskDisplayName(task.task_name))}</h3>
             ${isMaterialStep ? '<span class="material-badge">MATERIAL STEP</span>' : ''}
           </div>
           <div class="task-order">Step ${escapeHtml(step)}</div>
@@ -380,7 +380,7 @@
         ${schedulerReview.length ? `<div class="scheduler-review"><strong>SCHEDULER / PICK-LIST REVIEW:</strong> ${escapeHtml(schedulerReview.join(' '))}</div>` : '<div class="scheduler-ready">Scheduler basics recorded — review sequence and field practicality.</div>'}
         <div class="compact-line"><strong>Hard predecessor(s) — REQUIRED:</strong> ${predecessorHtml(task)}</div>
         ${task.readiness_note ? optionalLine('Readiness condition / note', task.readiness_note) : '<div class="compact-line"><strong>Readiness condition / note:</strong> <span class="review-value">No readiness note recorded</span></div>'}
-        ${optionalLine('Complete when', task.completion_point)}
+        ${optionalLine('Complete when', setupTaskCompletion(task))}
         ${optionalLine('Weather', task.weather_note)}
         ${optionalLine('Equipment / Resources', resourceText(task.resources))}
         ${isMaterialStep ? optionalLine('Display material / current Containers', displayMaterialText(task.display_material)) : ''}

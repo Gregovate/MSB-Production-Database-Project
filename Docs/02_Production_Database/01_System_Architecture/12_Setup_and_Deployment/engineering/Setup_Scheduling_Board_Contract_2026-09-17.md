@@ -1758,3 +1758,11 @@ QC Repairs Needed defaults to **My Repairs**, with **Unclaimed** and **All Repai
 Both QC searches use case-insensitive, all-word matching across Stage, Scene, annual QC task number, finding number, full problem/observation/repair notes and assigned people. Search applies inside the chosen assignment filter; counts and an explicit no-match message distinguish an empty personal queue from an empty park queue. Preserve filters/search during view changes and saves; filtering itself must not replace typed repair notes or write data. Use large labeled buttons, clear selected styling and keyboard focus in both themes. Full-history report remains independent of screen filters and groups findings under one area header.
 
 Source-only implementation: reuse existing authorized snapshot fields; no schema, migration, task creation, lifecycle or permission changes. Production data corrections are separate from this candidate.
+
+### November 12 QC wording and toolbar correction (#489)
+
+Display the existing final two-minute QC task as **QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence**. This is wording only: preserve task identities, raw catalog values, annual assignments and eligibility. Do not create or replace tasks. Source-only display formatting must not rewrite edit-form values or saved history.
+
+Completion guidance: Controller must register on network. No Conn on display or flashing controller light is a failure and must be reported. Channels fire in order 1-2-3-4..., usually left to right, with either a half-second or one-second delay between channels turning on. Otherwise the channels are not wired to the correct controller ports. All expected lights must work; report failures in QC Check.
+
+Place mode selection and a compact full-history report action in one responsive toolbar. Place assignment filters and search together beneath it. Unselected filters use a neutral background; selected filters use filled blue. Preserve 18px text, 44px targets, keyboard focus, both themes and narrow-screen wrapping.

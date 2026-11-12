@@ -41,3 +41,6 @@ Operator returned CLEAN EXIT for the prior preview; this is cleanup evidence, no
 - Type a repair note, switch filters and search, then return: draft remains. After claim, item leaves Unclaimed and appears in My Repairs. Filters/search persist across mode changes and saves.
 - QC Check defaults All Areas; My QC Areas matches exact auditor identity. Search finds finding/history text even before opening an area. Completed history and full report remain accessible.
 - Confirm large selected/filter buttons and focus in light/dark modes, Scheduled Work unchanged, no writes from search/filter/report. Finish CLEAN EXIT.
+
+
+Wording/layout follow-up: confirm the existing two-minute QC tasks show the approved QC Check name in Catalog, task details and planning; other network tasks keep their names. Confirm completion guidance describes No Conn/flashing controller failure and ordered channels. Stored task identities and edit values are unchanged in this source-only candidate. Confirm report is beside navigation, filters/search align and wrap on narrow screens, unselected filters are neutral, and all controls remain readable in both themes.

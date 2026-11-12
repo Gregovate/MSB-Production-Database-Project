@@ -34,6 +34,7 @@ const ctx={console,Intl,Date,Number,String,Math,Set,Map,
   nextCanRescheduleNoWork:()=>false,
 };
 vm.createContext(ctx);
+load(fs.readFileSync(__dirname+'/setup_production.js','utf8'),'setupTaskDisplayName');
 for(const name of ['nextAssignmentReported','nextAnnualTaskComplete','nextAssignmentInactive','nextAssignmentReviewLabel','nextSetupLocalDate','nextAssignmentLate','nextAssignmentReportedLabel','nextScheduleWarning','nextSetupAssignmentStatus','nextPerformAssignmentStatus','nextPerformTaskNumberLabel','nextPerformTaskScopeLabel','nextPerformAssignmentCard','nextFilterPerformAssignments','nextPerformShiftWorkload','nextLateWorkSummary','setup205DeadlineKpiModel'])load(source,name);
 ctx.nextSetupLocalDate=()=> '2026-11-03';
 for(const name of ['board205DayViewState','board205ShowReportedTaskCards','board205ActiveAssignmentsFor','board205AmCapacity','board205ShiftWorkload'])load(schedule,name);

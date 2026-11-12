@@ -68,6 +68,12 @@ addEventListener('load',()=>setTimeout(async()=>{
    execution_status:'NOT_READY',prerequisite_count:1,prerequisites_complete:false})),assignments:[]};
   renderNextExecution();
   await click('#next-qc-check-tab');
+  assert(setupTaskDisplayName(setupNextState.performBoard.tasks[0].task_name)==='QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence','QC task wording');
+  assert(setupTaskDisplayName('Plug in Network Cables and test')==='Plug in Network Cables and test','Unrelated task renamed');
+  assert(setupTaskCompletion(setupNextState.performBoard.tasks[0]).includes('No Conn'),'QC completion guidance');
+  assert(setupNextState.performBoard.tasks[0].task_name.startsWith('Plug in Network'),'Raw task changed');
+  assert(document.querySelector('.next-qc-toolbar #next-qc-report'),'Report outside toolbar');
+  assert(document.querySelector('.next-qc-filterbar #next-qc-search'),'Search outside filterbar');
   for(const id of [483,598]) {
    await click('[data-qc-task-id="'+id+'"]');
    assert(document.querySelector('[data-qc-action="REPORT_LINES"]').getClientRects().length,'QC form missing '+id);

@@ -329,10 +329,10 @@ function nextTaskRow(task, stageId, sceneId, index, total) {
          data-task-id="${task.setup_task_id}" data-stage-id="${stageId ?? ''}" data-scene-id="${sceneId ?? ''}">
       <div class="library-order">${escapeHtml(task.display_order)}</div>
       <div class="next-task-main">
-        <strong>${escapeHtml(task.task_name)}</strong>
+        <strong>${escapeHtml(setupTaskDisplayName(task.task_name))}</strong>
         <div class="task-meta">Task ${task.setup_task_id} · ${escapeHtml(task.task_action_type)}${task.active_flag ? '' : ' · inactive'}</div>
       </div>
-      <div class="task-meta">${deps.length ? `Requires: ${deps.map((dep) => escapeHtml(dep.task_name)).join('; ')}` : 'No prerequisite'}</div>
+      <div class="task-meta">${deps.length ? `Requires: ${deps.map((dep) => escapeHtml(setupTaskDisplayName(dep.task_name))).join('; ')}` : 'No prerequisite'}</div>
       <div class="library-actions">
         ${canManage ? `<button type="button" class="small secondary next-up" ${index === 0 ? 'disabled' : ''}>↑</button>
         <button type="button" class="small secondary next-down" ${index === total - 1 ? 'disabled' : ''}>↓</button>
@@ -652,7 +652,7 @@ function renderDependencyEditor(task) {
   el('next-dependency-current').innerHTML = (task.dependencies || []).length
     ? (task.dependencies || []).map((dep) => `
       <div class="next-dependency-row">
-        <span>${escapeHtml(dep.task_name)}${dep.dependency_note ? ` — ${escapeHtml(dep.dependency_note)}` : ''}</span>
+        <span>${escapeHtml(setupTaskDisplayName(dep.task_name))}${dep.dependency_note ? ` — ${escapeHtml(dep.dependency_note)}` : ''}</span>
         <button type="button" class="small secondary next-dependency-remove" data-prereq-id="${dep.setup_task_id}">Remove</button>
       </div>`).join('')
     : '<div class="muted">No prerequisite recorded.</div>';
@@ -751,7 +751,7 @@ function renderPlanningBacklog() {
     return `
       <div class="next-plan-row" draggable="${appState.access?.can_manage_setup ? 'true' : 'false'}" data-session-task-id="${task.setup_session_task_id}">
         <div class="next-plan-order">${escapeHtml(task.planned_order ?? '—')}</div>
-        <div class="next-plan-main"><strong>${escapeHtml(task.task_name)}</strong><div class="muted">${escapeHtml(nextTaskScopeLabel(task))}</div></div>
+        <div class="next-plan-main"><strong>${escapeHtml(setupTaskDisplayName(task.task_name))}</strong><div class="muted">${escapeHtml(nextTaskScopeLabel(task))}</div></div>
         <div class="next-plan-state"><span class="pill ${category === 'COMPLETED' ? 'verified' : blocked ? 'correction' : 'unverified'}">${escapeHtml(category.replace('_',' '))}</span>${blocked ? '<span class="next-blocked">Blocked / Not Ready</span>' : ''}</div>
         <div class="next-plan-meta">Baseline ${escapeHtml(task.baseline_plan_order ?? '—')}${task.plan_change_reason ? `<br>${escapeHtml(task.plan_change_reason)}` : ''}</div>
         ${appState.access?.can_manage_setup ? `<div class="next-plan-actions"><button type="button" class="small secondary next-plan-up" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="small secondary next-plan-down" ${index === visible.length - 1 ? 'disabled' : ''}>↓</button></div>` : ''}
@@ -952,7 +952,7 @@ function renderCrewLanes(items) {
   return `<div class="next-crew-grid">${lanes.map((lane) => {
     const laneItems = items.filter((item) => String(item.crew_lane || 'A').toUpperCase() === lane);
     return `<section class="next-crew-lane"><h5>Crew ${escapeHtml(lane)}</h5>${laneItems.map((item) => `
-      <div class="next-schedule-item"><span><strong>${escapeHtml(item.task_name)}</strong><br><span class="muted">${escapeHtml(nextTaskScopeLabel(item))} · Planned crew ${item.planned_crew_count ?? 'TBD'}</span></span>
+      <div class="next-schedule-item"><span><strong>${escapeHtml(setupTaskDisplayName(item.task_name))}</strong><br><span class="muted">${escapeHtml(nextTaskScopeLabel(item))} · Planned crew ${item.planned_crew_count ?? 'TBD'}</span></span>
       ${appState.access?.can_manage_setup ? `<button type="button" class="small secondary next-unschedule" data-day="${item.setup_work_day_id}" data-task="${item.setup_session_task_id}">Remove</button>` : ''}</div>`).join('')}</section>`;
   }).join('')}</div>`;
 }
@@ -1419,7 +1419,7 @@ function nextPerformAssignmentCard(assignment) {
       data-session-task-id="${assignment.setup_session_task_id}"
       data-task-id="${assignment.setup_task_id}">
       <summary>
-        <span><strong>${escapeHtml(nextPerformTaskNumberLabel(task))} · ${escapeHtml(assignment.task_name)}</strong>
+        <span><strong>${escapeHtml(nextPerformTaskNumberLabel(task))} · ${escapeHtml(setupTaskDisplayName(assignment.task_name))}</strong>
           <span class="muted"> · ${escapeHtml(nextPerformTaskScopeLabel({...assignment, ...task}))}</span>
         </span>
         <span class="next-perform-assignment-pills">
@@ -2537,16 +2537,21 @@ function nextQcEnsureDiscovery() {
     section.id = 'next-qc-discovery';
     section.className = 'next-qc-discovery';
     section.innerHTML = `
+      <div class="next-qc-toolbar">
       <div class="next-qc-tabs" role="group" aria-label="Perform Work activity">
         <button type="button" class="small secondary" id="next-qc-work-tab">Scheduled Work</button>
         <button type="button" class="small secondary" id="next-qc-check-tab">QC Check</button>
         <button type="button" class="small secondary" id="next-qc-fixes-tab">QC Repairs Needed</button>
       </div>
-      <a id="next-qc-report" class="next-qc-report" target="_blank" rel="noopener">QC report / PDF — all findings and history</a>
+      <a id="next-qc-report" class="next-qc-report" target="_blank" rel="noopener" title="All findings and history, including completed areas">QC report / PDF</a>
+      </div>
       <div id="next-qc-content" hidden>
+        <div class="next-qc-filterbar" id="next-qc-filterbar">
         <div id="next-qc-area-filters" class="next-qc-tabs" role="group" aria-label="QC auditor assignments"></div>
-        <label for="next-qc-search"><strong>Pick an area</strong></label>
+        <div class="next-qc-search-field"><label for="next-qc-search"><strong>Pick an area</strong></label>
         <input id="next-qc-search" type="search" placeholder="Search Stage, Scene, QC task, finding, person or notes">
+        </div></div>
+        <details id="next-qc-guide" class="next-qc-guide"><summary>QC completion check</summary><p>${escapeHtml(setupQcCompletionGuidance)}</p></details>
         <div id="next-qc-count" class="muted" role="status"></div>
         <div id="next-qc-list"></div>
         <div id="next-qc-fixes-list" hidden></div>
@@ -2588,6 +2593,8 @@ function nextQcEnsureDiscovery() {
   // Report uses the full season snapshot, independent of active-list filters.
   el('next-qc-report').hidden = !qc;
   el('next-qc-report').href = `api/setup/qc/report?season_year=${encodeURIComponent(appState.seasonYear)}`;
+  el('next-qc-filterbar').hidden = fixes;
+  el('next-qc-guide').hidden = fixes;
   el('next-qc-search').hidden = fixes;
   el('next-qc-area-filters').hidden = fixes;
   section.querySelector('label[for="next-qc-search"]').hidden = fixes;
@@ -3168,7 +3175,7 @@ async function loadNextTaskExecution(details, focusReport = false) {
         · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}
       </div>
       <div class="next-perform-grid">
-        <section><h4>Task</h4><p>${escapeHtml(task?.completion_point || 'Completion point not yet documented.')}</p>
+        <section><h4>Task</h4><p>${escapeHtml(setupTaskCompletion(task))}</p>
           ${task?.readiness_note ? `<p><strong>Can start when:</strong> ${escapeHtml(task.readiness_note)}</p>` : ''}
           ${task?.weather_note ? `<p><strong>Weather limits:</strong> ${escapeHtml(task.weather_note)}</p>` : ''}
           <p><strong>Expected crew:</strong> ${escapeHtml(formatCrew(task))} · <strong>Expected time:</strong> ${escapeHtml(formatMinutes(task?.expected_duration_minutes))}</p></section>

@@ -208,7 +208,7 @@ loadNextTaskExecution = async function loadNextTaskExecutionAcceptance(details, 
 
     body.innerHTML = `
       <div class="next-perform-grid">
-        <section><h4>Task</h4><p>${escapeHtml(task.completion_point || 'Completion point not yet documented.')}</p>
+        <section><h4>Task</h4><p>${escapeHtml(setupTaskCompletion(task))}</p>
           ${task.readiness_note ? `<p><strong>Readiness:</strong> ${escapeHtml(task.readiness_note)}</p>` : ''}
           ${task.weather_note ? `<p><strong>Weather:</strong> ${escapeHtml(task.weather_note)}</p>` : ''}
           <p><strong>Expected crew:</strong> ${escapeHtml(formatCrew(task))} · <strong>Expected time:</strong> ${escapeHtml(formatMinutes(task.expected_duration_minutes))}</p>

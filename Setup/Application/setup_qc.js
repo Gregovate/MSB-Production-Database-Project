@@ -349,12 +349,12 @@
     const active=snapshot.findings.filter(f=>f.status!=='VERIFIED' && !signoffFor(f.setup_session_task_id));
     const totals={mine:active.filter(mine).length,unclaimed:active.filter(f=>f.claimed_by_person_id==null).length,all:active.length};
     host.innerHTML=`<h3>QC Repairs Needed · ${active.length} outstanding findings</h3>
-      <div class="next-qc-tabs" role="group" aria-label="Repair assignments">
+      <div class="next-qc-filterbar"><div class="next-qc-tabs" role="group" aria-label="Repair assignments">
         ${[['mine','My Repairs'],['unclaimed','Unclaimed'],['all','All Repairs']].map(([key,label])=>
           `<button type="button" data-qc-repair-scope="${key}" aria-pressed="${repairScope===key}">${label} (${totals[key]})</button>`).join('')}
       </div>
-      <label>Find problem <input type="search" data-qc-fix-search value="${html(repairSearch)}"
-        placeholder="Search Stage, Scene, QC task, finding, person or notes"></label>
+      <label class="next-qc-search-field">Find problem <input type="search" data-qc-fix-search value="${html(repairSearch)}"
+        placeholder="Search Stage, Scene, QC task, finding, person or notes"></label></div>
       <p data-qc-fix-count role="status"></p>
       <p class="muted">Claim a problem here, then return to record the repair. The area auditor signs off in QC Check.</p>
       ${active.map(f=>`<div class="next-qc-fix-group" data-qc-fix-group="${f.qc_finding_id}">
