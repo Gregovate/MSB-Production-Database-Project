@@ -85,7 +85,7 @@ def test_historical_intake_review_is_manager_only(client):
     assert calls == [('intake', 2026)]
 
 
-@pytest.mark.parametrize('action', ['REPORT', 'OBSERVATION', 'CLAIM_REPAIR', 'REPAIRED'])
+@pytest.mark.parametrize('action', ['REPORT', 'REPORT_LINES', 'OBSERVATION', 'CLAIM_REPAIR', 'REPAIRED'])
 def test_crew_operational_workflow_never_calls_manager_guard(client, monkeypatch, action):
     """Ordinary reporting and repairs must stay independent of historical review."""
     http, calls, access = client

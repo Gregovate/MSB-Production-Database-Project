@@ -11,7 +11,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $Ref = 'feature/122-perform-work-qc-finder-post483'
-$ExpectedVersion = 'V0.3.115-qc-module'
+$ExpectedVersion = 'V0.3.116-qc-quick-report'
 if ($CandidateSha -cnotmatch '^[a-f0-9]{40}$') { throw 'HOLD: exact candidate SHA required.' }
 if (-not (Test-Path -LiteralPath $PrimaryRepo -PathType Container)) { throw 'HOLD: MSB main worktree missing.' }
 $Origin = (& git -C $PrimaryRepo remote get-url origin)

@@ -19,18 +19,18 @@ BROWSER = os.environ.get('MSB_QC_BROWSER')
 BOOT = r'''<script>
 window.qcTestErrors=[];
 addEventListener('error',e=>qcTestErrors.push(e.message));
-window.qcFixture={findings:[],auditors:[],unreconciled_intake:[]};
+window.qcFixture={findings:[],auditors:[],unreconciled_intake:[{intake_id:85,stage_id:null,problem:"WRONG AREA LEGACY REPORT"}]};
 window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.115-qc-module'};
- if(path.includes('qc/intake-candidates')) return {ok:false,status:503,json:async()=>({error:'Fixture Intake unavailable'})};
+ if(path.includes('api/health')) body={version:'V0.3.116-qc-quick-report'};
+ if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
-  if(action.action==='REPORT') qcFixture.findings.push({qc_finding_id:71,
-    setup_session_task_id:action.setup_session_task_id,title:action.title,status:'OPEN',
-    stage_key:'25',stage_name:'Racing Arches',scene_name:'Test scene',events:[]});
+  if(action.action==='REPORT_LINES') action.note.split(/\r?\n/).filter(line=>line.trim()).forEach((line,index)=>qcFixture.findings.push({qc_finding_id:71+index,
+    setup_session_task_id:action.setup_session_task_id,title:line,status:'OPEN',
+    stage_key:'25',stage_name:'Racing Arches',scene_name:'Test scene',events:[{type:'REPORTED',note:line}]}));
   else if(action.action==='CLAIM_AUDIT') qcFixture.auditors.push({setup_session_task_id:483,auditor:'Tester'});
   else {
    const f=qcFixture.findings.find(f=>f.qc_finding_id===action.qc_finding_id);
@@ -64,23 +64,28 @@ addEventListener('load',()=>setTimeout(async()=>{
    execution_status:'NOT_READY',prerequisite_count:1,prerequisites_complete:false})),assignments:[]};
   renderNextExecution();
   await click('#next-qc-check-tab');
-  for(const id of [483,598,483]) {
+  for(const id of [483,598]) {
    await click('[data-qc-task-id="'+id+'"]');
-   assert(document.querySelector('[data-qc-action="REPORT"]').getClientRects().length,'QC form missing '+id);
+   assert(document.querySelector('[data-qc-action="REPORT_LINES"]').getClientRects().length,'QC form missing '+id);
   }
-  // Manager source failure must not remove or block the direct report form.
+  // Unclassified historical sources never appear under either selected area.
+  assert(!document.querySelector('[data-qc-link-intake]'),'Legacy reconciliation still visible');
+  assert(!document.body.textContent.includes('WRONG AREA LEGACY REPORT'),'Unclassified source shown as area finding');
   assert(!qcWrites.length,'Rendering wrote data');
-  document.querySelector('[data-qc-title]').value='Arch 3 red string';
-  document.querySelector('[data-qc-description]').value='Red does not illuminate';
-  document.querySelector('[data-qc-evidence]').value='Check connector';
-  await click('[data-qc-action="REPORT"]');
-  assert(qcWrites[0].action==='REPORT' && qcWrites[0].setup_session_task_id===483,'Report required claim or wrong task');
-  assert(qcWrites[0].note.includes('Check connector'),'Evidence lost');
+  const problems='arch 3 - blue lights 21" to 28" and 76" to 80" from bottom\narch 3 - all red lights\narch 4 - all red lights\narch 8 - yellow lights 12" to 20" from top\narch 9 - blue lights from top to @1 foot down\narch 11 - all blue lights';
+  document.querySelector('[data-qc-problems]').value=problems;
+  await click('[data-qc-action="REPORT_LINES"]');
+  assert(qcWrites[0].action==='REPORT_LINES' && qcWrites[0].setup_session_task_id===598,'Report required claim or wrong task');
+  assert(qcWrites[0].note===problems,'Free-form measurements changed');
+  assert(qcFixture.findings.length===6,'Six lines did not become six findings');
+  await click('[data-qc-task-id="483"]');
+  assert(!document.querySelector('[data-qc-detail="483"] [data-qc-finding]'),'Racing Arches findings leaked into Front Entrance');
+  await click('[data-qc-task-id="598"]');
   await click('#next-qc-fixes-tab');
   assert(document.querySelector('#next-perform-list').hidden,'Scheduled panel leaked');
   assert(!document.querySelector('#next-qc-search').getClientRects().length,'QC task search leaked into repairs');
   assert(document.querySelector('#next-qc-fixes-list [data-qc-finding="71"]').getClientRects().length,'Shared finding missing');
-  await click('[data-qc-action="CLAIM_REPAIR"]');
+  await click('#next-qc-fixes-list [data-qc-id="71"][data-qc-action="CLAIM_REPAIR"]');
   assert(!qcWrites.at(-1).note,'Claim incorrectly requires work evidence');
   let count=qcWrites.length;
   await click('[data-qc-action="REPAIRED"]');
@@ -95,7 +100,7 @@ addEventListener('load',()=>setTimeout(async()=>{
   document.querySelector('[data-qc-observation="71"]').value='Still dark in actual test';
   await click('[data-qc-action="RETEST_FAIL"]');
   await click('#next-qc-fixes-tab');
-  await click('[data-qc-action="CLAIM_REPAIR"]');
+  await click('#next-qc-fixes-list [data-qc-id="71"][data-qc-action="CLAIM_REPAIR"]');
   document.querySelector('[data-qc-fix-note="71"]').value='Replaced connector';
   await click('[data-qc-action="REPAIRED"]');
   await click('#next-qc-check-tab');
@@ -104,12 +109,12 @@ addEventListener('load',()=>setTimeout(async()=>{
   await click('#next-qc-fixes-tab');
   assert(!document.querySelector('#next-qc-fixes-list [data-qc-finding="71"]'),'Verified finding remains outstanding');
   // Simulate a second browser's new finding, then revisit the repairs screen.
-  qcFixture.findings.push({qc_finding_id:72,setup_session_task_id:598,title:'Other worker report',status:'OPEN',events:[]});
+  qcFixture.findings.push({qc_finding_id:80,setup_session_task_id:598,title:'Other worker report',status:'OPEN',events:[]});
   await click('#next-qc-check-tab');await click('#next-qc-fixes-tab');
-  assert(document.querySelector('[data-qc-finding="72"]'),'Other worker finding hidden by cached snapshot');
+  assert(document.querySelector('[data-qc-finding="80"]'),'Other worker finding hidden by cached snapshot');
   for(const theme of ['light','dark']) {
    document.documentElement.dataset.theme=theme;
-   const card=document.querySelector('[data-qc-finding="72"]');
+   const card=document.querySelector('[data-qc-finding="80"]');
    const style=getComputedStyle(card);
    assert(style.color!==style.backgroundColor,'Unreadable '+theme+' card');
    const note=card.querySelector('textarea');

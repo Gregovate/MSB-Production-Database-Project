@@ -1433,6 +1433,27 @@ task's QC findings. Normal QC reporting creates **no Intake record, Work Order,
 calendar assignment or artificial work report**. Historical reconciliation
 must not become a required step in this normal reporting path.
 
+### Fast Crew reporting — operator correction, 2026-11-11 local
+
+Pick the Stage/Scene area, see findings already attached to that exact annual
+QC task, enter free-form problems in one text box and save. One nonblank line
+is one separately repairable finding. A single save creates all entered lines
+atomically on the selected task, preserving each line's complete text and order.
+No separate title, channel/location, discovery-phase or suggested-correction
+fields are required. Show “One problem per line” before saving; do not infer or
+split physical faults within a line. If any line is invalid, save none and keep
+the entered text for correction. Prevent repeated submission while saving.
+
+Remove unclassified Intake listings and Manager reconciliation controls from
+normal QC Check entirely. NULL Stage is not a match to every area. Existing QC
+findings are selected only by exact annual task identity. Historical cleanup
+remains a separate manual correction, with source data preserved.
+
+Report Fixes uses these same individual findings and their full reported text.
+One click claims a finding; only recording the repair requires repair notes.
+Auditor assignment is optional for reporting and separate from the quick entry
+form. Retest evidence and final-signoff gates remain as specified below.
+
 ### One finding through report, repair and verification
 
 One annual QC task can contain multiple distinct findings. Existing problems

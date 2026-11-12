@@ -81,6 +81,8 @@ DECLARE
   v_status text;
   v_finding_task bigint;
   v_id bigint;
+  v_line record;
+  v_ids jsonb := '[]'::jsonb;
   v_note text := nullif(btrim(p_note),'');
   v_action text := upper(btrim(p_action));
 BEGIN
@@ -99,6 +101,30 @@ BEGIN
     FROM ref.setup_execution_actor(p_email,v_reusable) a;
   IF v_person IS NULL THEN
     RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Authenticated Production Crew identity required';
+  END IF;
+  IF v_action='REPORT_LINES' THEN
+    -- One transaction saves one finding per nonblank line in input order.
+    -- Reuse REPORT authorization and persistence; never create Intake or work.
+    IF v_note IS NULL OR length(v_note)>6000 THEN
+      RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Enter problems (1-6000 characters), one per line';
+    END IF;
+    FOR v_line IN
+      SELECT btrim(value, E' \t\r') AS problem, ordinal
+      FROM string_to_table(v_note,E'\n') WITH ORDINALITY AS lines(value,ordinal)
+      WHERE btrim(value,E' \t\r')<>'' ORDER BY ordinal
+    LOOP
+      IF length(v_line.problem)<3 THEN
+        RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Each problem must contain at least 3 characters; nothing saved';
+      END IF;
+      SELECT (ops.setup_qc_command(p_email,'REPORT',p_annual_task,NULL,
+        v_line.problem,left(v_line.problem,200),'OTHER',NULL,NULL)->>'finding_id')::bigint
+        INTO v_id;
+      v_ids := v_ids || jsonb_build_array(v_id);
+    END LOOP;
+    IF jsonb_array_length(v_ids)=0 THEN
+      RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Enter at least one problem';
+    END IF;
+    RETURN jsonb_build_object('action',v_action,'finding_ids',v_ids);
   END IF;
   IF v_action='CLAIM_AUDIT' THEN
     INSERT INTO ops.setup_qc_auditor(setup_session_task_id,person_id)
@@ -305,23 +331,8 @@ BEGIN
       JOIN ref.person p ON p.person_id=a.person_id
       WHERE ss.season_year=p_year
     ),'[]'::jsonb),
-    'unreconciled_intake',coalesce((
-      SELECT jsonb_agg(jsonb_build_object(
-        'intake_id',i.intake_id,'stage_id',i.stage_id,
-        'submitter_name',i.submitter_name_raw,
-        'problem',i.problem_raw,'notes',i.notes_raw,
-        'updated_at',i.updated_at) ORDER BY i.intake_id DESC)
-      FROM stage.work_order_intake i
-      WHERE EXISTS (SELECT 1 FROM ref.setup_browser_capabilities(p_email) c
-        WHERE c.can_manage_setup)
-        AND (i.target_year=p_year OR
-        (i.target_year IS NULL AND extract(year FROM i.updated_at AT TIME ZONE
-          'America/Chicago')::integer=p_year))
-        AND NOT EXISTS (SELECT 1 FROM ops.work_order w
-          WHERE w.source_intake_id=i.intake_id)
-        AND NOT EXISTS (SELECT 1 FROM ops.setup_qc_intake_link l
-          WHERE l.intake_id=i.intake_id)
-    ),'[]'::jsonb)
+    -- Unclassified legacy reports are not area findings. Manual cleanup is separate.
+    'unreconciled_intake','[]'::jsonb
   ) INTO v_result;
   RETURN v_result;
 END

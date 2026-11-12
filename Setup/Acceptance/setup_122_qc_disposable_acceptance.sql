@@ -30,6 +30,15 @@ DECLARE
   v_crew text;
   v_other_finding bigint;
   v_snapshot jsonb;
+  v_batch jsonb;
+  v_batch_before bigint;
+  v_problem text;
+  v_index integer;
+  v_problems text[] := ARRAY[
+    'arch 3 - blue lights 21" to 28" and 76" to 80" from bottom',
+    'arch 3 - all red lights', 'arch 4 - all red lights',
+    'arch 8 - yellow lights 12" to 20" from top',
+    'arch 9 - blue lights from top to @1 foot down', 'arch 11 - all blue lights'];
   v_actor text := 'gliebig@sheboyganlights.org';
 BEGIN
   v_preserved := pg_temp.qc_protected_rows();
@@ -183,6 +192,37 @@ BEGIN
     WHERE (f->>'qc_finding_id')::bigint=v_other_finding
       AND (f->>'setup_session_task_id')::bigint=598 AND f->>'status'='VERIFIED') THEN
     RAISE EXCEPTION 'Crew lifecycle lost the original finding or verified state';
+  END IF;
+  -- Free-form batch: same exact area, one line per repair identity, no partial save.
+  SELECT count(*) INTO v_batch_before FROM ops.setup_qc_finding;
+  BEGIN
+    PERFORM ops.setup_qc_command(v_crew,'REPORT_LINES',598,NULL,E'Valid first problem\nx');
+    RAISE EXCEPTION 'Invalid batch was accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+  IF (SELECT count(*) FROM ops.setup_qc_finding)<>v_batch_before THEN
+    RAISE EXCEPTION 'Invalid batch left partially saved findings';
+  END IF;
+  v_batch := ops.setup_qc_command(v_crew,'REPORT_LINES',598,NULL,
+    array_to_string(v_problems,E'\r\n\r\n'));
+  IF jsonb_array_length(v_batch->'finding_ids')<>6 THEN
+    RAISE EXCEPTION 'Six problem lines did not produce six findings';
+  END IF;
+  FOR v_index IN 1..6 LOOP
+    IF NOT EXISTS (SELECT 1 FROM ops.setup_qc_finding f
+      JOIN ops.setup_qc_event e USING(qc_finding_id)
+      WHERE f.qc_finding_id=(v_batch->'finding_ids'->>(v_index-1))::bigint
+        AND f.setup_session_task_id=598 AND e.event_type='REPORTED'
+        AND e.note=v_problems[v_index]) THEN
+      RAISE EXCEPTION 'Batch problem %, exact area, text or order lost',v_index;
+    END IF;
+  END LOOP;
+  -- Long free-form lines retain complete evidence beyond their compact title.
+  v_problem := repeat('Measured string section ',20);
+  v_batch := ops.setup_qc_command(v_crew,'REPORT_LINES',598,NULL,v_problem);
+  IF NOT EXISTS (SELECT 1 FROM ops.setup_qc_event e
+    WHERE e.qc_finding_id=(v_batch->'finding_ids'->>0)::bigint
+      AND e.event_type='REPORTED' AND e.note=btrim(v_problem)) THEN
+    RAISE EXCEPTION 'Long free-form evidence was truncated';
   END IF;
   SELECT count(*) INTO v_after FROM ops.setup_work_day_task;
   IF v_before<>v_after THEN
