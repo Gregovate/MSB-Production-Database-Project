@@ -62,7 +62,7 @@ def test_theme_safe_qc_and_fresh_asset_pins():
     assert ".next-qc-row" in CSS
     assert 'setup_next_pass.js?v=2026-11-11.111.9' in HTML
     assert 'setup_next_pass.css?v=2026-11-11.111.9' in HTML
-    assert "V0.3.111-explicit-no-work" in (APP / "production_backend.py").read_text()
+    assert "V0.3.112-qc-findings" in (APP / "production_backend.py").read_text()
 
 
 def test_final_qc_regex_and_multiword_search_are_executable_javascript_patterns():
