@@ -19,6 +19,8 @@ FIXTURE = """
 CREATE SCHEMA ops; CREATE SCHEMA ref; CREATE SCHEMA stage;
 DO $$ BEGIN IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='fieldwiring_app')
 THEN CREATE ROLE fieldwiring_app; END IF; END $$;
+-- Match the established application schema boundary; table access stays denied.
+GRANT USAGE ON SCHEMA ops,ref TO fieldwiring_app;
 CREATE TABLE public.directus_users(id uuid PRIMARY KEY,email text,status text);
 CREATE TABLE ref.person(person_id integer PRIMARY KEY,first_name text,last_name text,email text,directus_user_id uuid);
 INSERT INTO public.directus_users VALUES('00000000-0000-0000-0000-000000000001','crew@test','active');
