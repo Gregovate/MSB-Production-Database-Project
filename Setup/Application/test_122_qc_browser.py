@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.119-qc-observation'};
+ if(path.includes('api/health')) body={version:'V0.3.120-qc-labels'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -98,7 +98,7 @@ addEventListener('load',()=>setTimeout(async()=>{
   await click('[data-qc-action="REPAIRED"]');
   await click('#next-qc-check-tab');
   assert(document.querySelector('[data-qc-task-id="598"]').dataset.qcState==='findings','Repair prematurely turned area green');
-  assert(document.querySelector('[data-qc-task-id="598"]').textContent.includes('verification needed'),'Verification status missing');
+  assert(document.querySelector('[data-qc-task-id="598"]').textContent.includes('awaiting area sign-off'),'Verification status missing');
   await click('[data-qc-action="CLAIM_AUDIT"]');
   count=qcWrites.length;
   await click('[data-qc-action="RETEST_FAIL"]');
@@ -130,7 +130,7 @@ addEventListener('load',()=>setTimeout(async()=>{
   // A new finding alongside a repaired/unverified finding also stays yellow.
   qcFixture.findings[0].status='AWAITING_RETEST';
   await setupQcRenderCurrent();
-  assert(document.querySelector('[data-qc-task-id="598"]').textContent.includes('verification needed'),'Mixed unverified/new findings lost retest warning');
+  assert(document.querySelector('[data-qc-task-id="598"]').textContent.includes('awaiting area sign-off'),'Mixed unverified/new findings lost retest warning');
   assert(document.querySelector('[data-qc-finding="80"]'),'Other worker finding hidden by cached snapshot');
   for(const theme of ['light','dark']) {
    document.documentElement.dataset.theme=theme;

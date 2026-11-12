@@ -43,7 +43,7 @@
       button.dataset.qcState=signoff ? 'verified' : active.length ? 'findings' : findings.length ? 'review' : 'open';
       const label=button.querySelector('[data-qc-task-status]');
       if (label) label.textContent=signoff ? 'Ready for Production · 100%' : active.length
-        ? `${active.length} open${retest ? ' · '+retest+' verification needed' : ' · Needs repair'}`
+        ? `${active.length-retest} need repair${retest ? ' · '+retest+' repaired — awaiting area sign-off' : ''}`
         : findings.length ? 'Findings verified · Final QC pending' : 'No findings · QC pending';
     });
     // Move finalized areas into collapsed green history; keep the same delegated
@@ -78,7 +78,7 @@
   };
   const statusLabel = status => ({
     OPEN:'Needs repair',CLAIMED:'Repair claimed',
-    AWAITING_RETEST:'Verification needed',VERIFIED:'Verified'
+    AWAITING_RETEST:'Repaired — awaiting area sign-off',VERIFIED:'Verified'
   }[status] || status);
   const eventMarkup = f => (f.events || []).map(e =>
     `<li><strong>${html(e.person || 'Reporter')}</strong>

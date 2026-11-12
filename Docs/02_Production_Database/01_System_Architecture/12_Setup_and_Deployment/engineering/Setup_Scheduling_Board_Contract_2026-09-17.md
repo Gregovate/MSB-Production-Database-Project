@@ -1419,6 +1419,9 @@ separate final-result text are required. Save that explicit observation with the
 actual auditor and timestamp; never infer observation from repairs or task status.
 
 There is no individual Verified button. Repairs await this single area observation.
+The finding badge says “Repaired — awaiting area sign-off”; area summaries count
+problems needing repair separately from repaired findings awaiting area sign-off.
+Do not label this state “Verification needed”, which implies a separate action.
 Final signoff atomically verifies all repaired findings on that exact QC task,
 records a RETEST_PASS event for each with the auditor's observation, and completes
 the annual QC task. OPEN or CLAIMED findings, unfinished required work, or failed
