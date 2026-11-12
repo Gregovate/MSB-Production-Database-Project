@@ -1,0 +1,120 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PreviewClass id="2cd22af7-7841-475e-b100-378426d08df2" BackgroundFile="G:\Shared drives\Display Folders\23-Traditional Christmas\Elf On The Shelf\Elf01_Master.png" Brightness="0" Revision="24" Name="Show Animation EL 90 Elf On Shelf-1">
+  <PropClass id="ca6c500a-856e-4512-9ff5-da9de2381c4f" BulbShape="Square" ChannelGrid="Regular,90,1,1,0,White" Comment="ElfonShelf-01" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Channel_per_color" EffectBulbSize="1" Tag="" Name="Elf-1 On Shelf 90-01" Parm1="58" Parm2="500">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.318985" y="-0.34709412" />
+      <point x="0.26276124" y="-0.27966547" />
+      <point x="0.11853537" y="-0.2817086" />
+      <point x="0.07453409" y="-0.29601166" />
+      <point x="0.06231144" y="-0.5085149" />
+      <point x="-0.018357038" y="-0.5514246" />
+      <point x="-0.36058974" y="-0.5902469" />
+      <point x="-0.6294862" y="-0.6290698" />
+      <point x="-0.74682105" y="-0.6678927" />
+      <point x="-0.84460175" y="-0.72919154" />
+      <point x="-0.81282294" y="-0.76188433" />
+      <point x="-0.73948705" y="-0.7434942" />
+      <point x="0.04031098" y="-0.67606586" />
+      <point x="0.047644824" y="-0.7741442" />
+      <point x="0.081867814" y="-0.8456604" />
+      <point x="0.103868306" y="-0.85791993" />
+      <point x="0.1503143" y="-0.80275" />
+      <point x="0.18698159" y="-0.6740224" />
+      <point x="0.5096571" y="-0.6740224" />
+      <point x="0.5634359" y="-0.63928634" />
+      <point x="0.5634359" y="-0.5861608" />
+      <point x="0.56099135" y="-0.42473996" />
+      <point x="0.5438801" y="-0.30009818" />
+      <point x="0.55610234" y="-0.020165563" />
+      <point x="0.61721545" y="-0.034469485" />
+      <point x="0.46810055" y="0.07995623" />
+      <point x="0.5389908" y="0.1167348" />
+      <point x="0.58299243" y="0.118778706" />
+      <point x="0.5952145" y="0.14942849" />
+      <point x="0.5903256" y="0.1923374" />
+      <point x="0.62454873" y="0.2556795" />
+      <point x="0.61721545" y="0.34149808" />
+      <point x="0.60499287" y="0.8870598" />
+      <point x="0.2603171" y="0.45796686" />
+      <point x="0.18209237" y="0.32310873" />
+      <point x="0.18209237" y="0.26385278" />
+      <point x="0.19675985" y="0.22707331" />
+      <point x="0.17964748" y="0.222987" />
+      <point x="0.16986978" y="0.1862073" />
+      <point x="0.18698159" y="0.14125508" />
+      <point x="0.2603171" y="0.08812922" />
+      <point x="0.081867814" y="0.05543542" />
+      <point x="0.13320181" y="0.03908968" />
+      <point x="0.13809136" y="-0.04672879" />
+      <point x="0.21387053" y="-0.014036238" />
+      <point x="0.26276124" y="-0.08350849" />
+      <point x="0.35565233" y="-0.036512643" />
+      <point x="0.45343304" y="-0.0732919" />
+      <point x="0.41920936" y="-0.08350849" />
+      <point x="0.438766" y="-0.28988212" />
+      <point x="-0.07946992" y="-0.58411694" />
+      <point x="-0.10391539" y="-0.63519984" />
+      <point x="-0.05991441" y="-0.66993606" />
+      <point x="-0.011023611" y="-0.66584945" />
+      <point x="0.050089" y="-0.6311134" />
+      <point x="0.30187345" y="-0.4901253" />
+      <point x="0.4240995" y="-0.42269647" />
+      <point x="0.4803232" y="-0.3716138" />
+      <point x="0.5341025" y="-0.32053146" />
+    </shape>
+  </PropClass>
+  <PropClass id="e81da49f-8b2c-4fb6-8186-a6f5c207dba3" BulbShape="Square" ChannelGrid="Regular,90,2,2,0,Red" Comment="ElfonShelf-01" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="Elf-1 On Shelf 90-02" Parm1="11" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.096533865" y="0.047263086" />
+      <point x="-0.05746895" y="0.06565261" />
+      <point x="-0.18702781" y="0.1739474" />
+      <point x="-0.4217009" y="0.5417403" />
+      <point x="-0.477925" y="0.56830436" />
+      <point x="-0.53170586" y="0.5253953" />
+      <point x="-0.51703835" y="0.47635585" />
+      <point x="-0.43636817" y="0.37827754" />
+      <point x="-0.28236496" y="0.08404195" />
+      <point x="-0.1259163" y="-0.020165563" />
+      <point x="0.01097697" y="-0.04059881" />
+      <point x="0.15520263" y="-0.04468581" />
+    </shape>
+  </PropClass>
+  <PropClass id="d3de1f92-cae7-415f-8ba2-b461dcbfb28c" BulbShape="Square" ChannelGrid="Regular,90,3,3,0,Blue" Comment="ElfonShelf-01" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Blue" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="Elf-1 On Shelf 90-03" Parm1="11" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.09164533" y="0.047263086" />
+      <point x="-0.10391539" y="0.0043531954" />
+      <point x="-0.2774741" y="0.07382566" />
+      <point x="-0.60992706" y="0.33945513" />
+      <point x="-0.6832639" y="0.34762818" />
+      <point x="-0.7223755" y="0.29654515" />
+      <point x="-0.6783763" y="0.25772285" />
+      <point x="-0.3948118" y="0.022743165" />
+      <point x="-0.23836356" y="-0.075335115" />
+      <point x="-0.14547265" y="-0.10394144" />
+      <point x="-0.067248166" y="-0.0916816" />
+      <point x="0.16742495" y="-0.054902673" />
+    </shape>
+  </PropClass>
+  <PropClass id="fd8b2bc7-c75f-428a-89ec-0e9e5204c046" BulbShape="Square" ChannelGrid="Regular,90,4,4,0,White" Comment="ElfonShelf-01" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="Elf-1 On Shelf 90-04" Parm1="11" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.103868306" y="0.04521936" />
+      <point x="-0.10880405" y="-0.0916816" />
+      <point x="-0.27503204" y="-0.10598472" />
+      <point x="-0.7492665" y="0.010483682" />
+      <point x="-0.807933" y="-0.014036238" />
+      <point x="-0.81282294" y="-0.05694583" />
+      <point x="-0.75170934" y="-0.101897955" />
+      <point x="-0.65637696" y="-0.114157856" />
+      <point x="-0.49014747" y="-0.15706727" />
+      <point x="-0.2554744" y="-0.22245273" />
+      <point x="-0.094136596" y="-0.22858295" />
+      <point x="0.16986978" y="-0.061032176" />
+    </shape>
+  </PropClass>
+  <PropGroup id="9a802559-76ff-4726-87d2-3a3716cb567d" Arrangement="None" PreviewResFactor="1" PreviewSinglePointPerProp="False" EffectBulbSize="1" Tag="" Name="Panel Prop Elf-1 90">
+    <member id="ca6c500a-856e-4512-9ff5-da9de2381c4f" orientation="normal" top="0" left="0" />
+    <member id="e81da49f-8b2c-4fb6-8186-a6f5c207dba3" orientation="normal" top="0" left="0" />
+    <member id="d3de1f92-cae7-415f-8ba2-b461dcbfb28c" orientation="normal" top="0" left="0" />
+    <member id="fd8b2bc7-c75f-428a-89ec-0e9e5204c046" orientation="normal" top="0" left="0" />
+  </PropGroup>
+</PreviewClass>

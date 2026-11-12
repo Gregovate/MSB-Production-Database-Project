@@ -1,0 +1,5 @@
+{
+  "subject": "$ticket — Reporter response needs review",
+  "text": "A reporter answered your clarification request for $ticket: $title\n\n$question\n\nReview the same ticket: $ticket_url\nEmail replies are not ingested.",
+  "html": "<p>A reporter answered your clarification request for <strong>$ticket</strong>: $title</p><p>$question</p><p><a href=\"$ticket_url\">Review the same ticket</a></p><p>Email replies are not ingested.</p>"
+}

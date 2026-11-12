@@ -1,0 +1,224 @@
+"""Pinned #88 report-only source installer; follows Server Management's Setup runbook.
+
+No SQL mutations, environment changes, maintenance entry, or shared promotion.
+The previous application SHA is the rollback unit. Reports stay on the server.
+"""
+from datetime import datetime, timezone
+import ast
+import fcntl
+import json
+from pathlib import Path
+import subprocess
+import signal
+import sys
+import time
+
+TARGET = '6c44a082dd520b75881c50ad2ce78feb029ff87d'
+EXPECTED_OLD = 'cb0538022ed066ff90675e832daa1cd95488114a'
+OLD_VERSION = 'V0.3.42-current-location'
+VERSION = 'V0.3.50-container-movement-report'
+SHARED = '6dd05c4aa5ef8f50fe172145c3ae281cc245a101'
+REPO = '/opt/fieldwiring'
+LIVE = '/opt/msb-setup'
+PYTHON = '/opt/fieldwiring/.venv/bin/python'
+HEALTH = 'http://192.168.5.9:8794/api/health'
+FOCUSED = [
+    'Setup/Application/test_setup_production_contract.py',
+    'Setup/Application/test_setup_scheduling_board_contract.py',
+    'Setup/Application/test_setup_material_readiness_contract.py',
+    'Setup/Application/test_setup_88_pick_mode_contract.py',
+    'Setup/Application/test_setup_next_pass_contract.py',
+    'Setup/Application/test_setup_live_pick_demand.py',
+    'Setup/Application/test_setup_175_live_perform_work_contract.py',
+    'Setup/Application/test_setup_production_report.py',
+]
+LOCATION_TEST = 'Setup/Application/test_setup_175_current_location.py'
+
+
+def require(condition, message):
+    if not condition:
+        raise RuntimeError(message)
+
+
+class Installer:
+    def __init__(self):
+        stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+        self.root = Path('/home/msbadmin/setup-deployment-reports') / ('Setup88Report-' + stamp)
+        self.root.mkdir(parents=True)
+        self.log = (self.root / 'report.txt').open('w', buffering=1)
+        self.candidate = '/tmp/' + self.root.name
+        self.advanced = False
+        self.worktree_created = False
+        self.before = None
+
+    def run(self, argv, input=None, timeout=300):
+        self.log.write(repr(argv) + '\n')
+        result = subprocess.run(argv, input=input, text=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, timeout=timeout)
+        self.log.write(result.stdout + '\n')
+        require(result.returncode == 0, 'Command failed; inspect retained report')
+        return result.stdout.strip()
+
+    def git(self, *args, root=REPO):
+        return self.run(['sudo', 'env', 'GIT_TERMINAL_PROMPT=0', 'git', '-C', root, *args])
+
+    def health(self, version):
+        for _ in range(30):
+            try:
+                self.run(['systemctl', 'is-active', 'msb-setup.service'])
+                data = json.loads(self.run(['curl', '-fsS', '--max-time', '3', HEALTH]))
+                require(data.get('status') == 'ok' and data.get('data_mode') == 'postgres'
+                        and data.get('version') == version, 'Unexpected Setup health/version')
+                return
+            except Exception:
+                time.sleep(1)
+        raise RuntimeError('Setup health/version timed out')
+
+    def fingerprint(self):
+        # Read-only query matches the accepted source-only fingerprint boundary.
+        tables = ['ref.setup_task', 'ref.setup_resource', 'ref.setup_task_resource',
+                  'ops.setup_session', 'ops.setup_session_task', 'ops.setup_work_day',
+                  'ref.display', 'ref.container', 'ops.setup_container_state',
+                  'ops.setup_display_state', 'ops.setup_movement_event',
+                  'ops.setup_movement_event_display']
+        queries = [f"SELECT '{table}' name,jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text) v FROM {table} t"
+                   for table in tables]
+        sql = "BEGIN READ ONLY; SELECT md5(string_agg(v::text,'' ORDER BY name)) FROM (" + ' UNION ALL '.join(queries) + ") q; COMMIT;"
+        value = self.run(['sudo', 'docker', 'exec', '-i', 'msb-postgres', 'psql',
+                          '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'msbadmin', '-d', 'msb'], input=sql)
+        require(len(value) == 32 and all(c in '0123456789abcdef' for c in value), 'Invalid fingerprint')
+        return value
+
+    def regression(self, root, tests):
+        # Paths and test names are immutable release constants, never user input.
+        command = 'cd ' + root + ' && ' + PYTHON + ' -m pytest -q -p no:cacheprovider ' + ' '.join(tests)
+        return self.run(['sudo', '-u', 'fieldwiring', '-H', 'env',
+                         'PYTHONDONTWRITEBYTECODE=1', 'bash', '-c', command], timeout=600)
+
+    def focused_regression(self, root):
+        # Production contract tests import the host, whose installers replace
+        # repository methods globally. The base-projection fixture must run in
+        # a fresh process; its installed-host cases already use child processes.
+        # Retain every approved test rather than skipping the location fixture.
+        self.regression(root, FOCUSED)
+        self.regression(root, [LOCATION_TEST])
+
+    def report_read_probe(self):
+        # Execute the exact report SELECTs on Production as the application's
+        # narrow role. Counts verify shape/access without logging field records.
+        source = self.git('show', TARGET + ':Setup/Application/setup_production_report.py')
+        function = next(node for node in ast.parse(source).body
+                        if isinstance(node, ast.FunctionDef) and node.name == 'movement_picture')
+        queries = [node.args[0].value for node in ast.walk(function)
+                   if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                   and node.func.attr == 'execute' and isinstance(node.args[0], ast.Constant)]
+        require(len(queries) == 6, 'Unexpected report read contract: STOP')
+        sql = "BEGIN READ ONLY; SET LOCAL ROLE fieldwiring_app;\n"
+        sql += "SELECT setup_session_id AS report_session_id FROM ops.setup_session WHERE season_year=2026 ORDER BY setup_session_id DESC LIMIT 1;\\gset\n"
+        for query in queries:
+            require(query.lstrip().startswith(('SET LOCAL ', 'SELECT ')), 'Report probe is not read-only')
+            if query.startswith('SET LOCAL '):
+                sql += query + ';\n'
+            else:
+                sql += 'SELECT count(*) FROM (' + query.replace('%s', ':report_session_id') + ') AS report_probe;\n'
+        sql += 'ROLLBACK;\n'
+        self.run(['sudo', 'docker', 'exec', '-i', 'msb-postgres', 'psql',
+                  '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'msbadmin', '-d', 'msb'], input=sql)
+        self.log.write('Exact report SELECTs under fieldwiring_app READ ONLY: PASS\n')
+
+    def rollback(self):
+        if self.advanced:
+            self.git('checkout', '--detach', EXPECTED_OLD, root=LIVE)
+            self.run(['sudo', 'systemctl', 'restart', 'msb-setup.service'])
+            self.health(OLD_VERSION)
+            require(self.git('rev-parse', 'HEAD', root=LIVE) == EXPECTED_OLD, 'Rollback SHA differs')
+            require(self.before is None or self.fingerprint() == self.before, 'Rollback data fingerprint differs; inspect report')
+            self.log.write('SOURCE ROLLBACK PASS; database not mutated\n')
+
+    def cleanup(self):
+        # Remove only this deployment's disposable regression worktree.
+        if self.worktree_created:
+            self.git('worktree', 'remove', '--force', self.candidate)
+            self.worktree_created = False
+
+    def deploy(self):
+        # A merged application target and cleaned preview are required before live mutation.
+        require(not self.run(['ss', '-ltnH', 'sport = :8898']), 'Preview port 8898 still active: finish CLEAN EXIT first')
+        require(self.git('rev-parse', 'HEAD', root=LIVE) == EXPECTED_OLD, 'Live Setup changed: STOP before mutation')
+        require(self.git('rev-parse', 'HEAD') == SHARED, 'Shared checkout changed: STOP')
+        require(not self.git('status', '--porcelain', root=LIVE) and not self.git('status', '--porcelain'), 'Dirty checkout: STOP')
+        require(not self.git('branch', '--show-current', root=LIVE), 'Live Setup is not detached: STOP')
+        self.health(OLD_VERSION)
+        self.before = self.fingerprint()
+        self.git('fetch', 'origin', '+refs/heads/main:refs/remotes/origin/main')
+        self.git('merge-base', '--is-ancestor', TARGET, 'origin/main')
+        self.git('merge-base', '--is-ancestor', EXPECTED_OLD, TARGET)
+        # The exact browser-approved candidate is pinned; no new migration can
+        # enter through a newer branch head or deployment tooling descendant.
+        require(not self.git('diff', '--name-only', EXPECTED_OLD, TARGET, '--', 'Setup/Database'), 'Database source changed: STOP')
+        require(self.git('show', TARGET + ':Setup/Application/production_backend.py').count('PRODUCTION_VERSION = "' + VERSION + '"') == 1, 'Server identity differs')
+        require("CLIENT_BUILD = '" + VERSION + "'" in self.git('show', TARGET + ':Setup/Application/setup_catalog_dirty_guard.js'), 'Client identity differs')
+        self.git('worktree', 'add', '--detach', self.candidate, TARGET)
+        self.worktree_created = True
+        self.run(['sudo', 'python3', self.candidate + '/Setup/Acceptance/check_setup_ui_update_date.py', '--repository', REPO, '--target', TARGET])
+        self.regression(self.candidate, ['Setup/Application'])
+        # Prove the exact post-restart test grouping before any live checkout.
+        self.focused_regression(self.candidate)
+        self.report_read_probe()
+        require(self.fingerprint() == self.before, 'Setup data changed during preflight: STOP')
+        require(self.git('rev-parse', 'HEAD', root=LIVE) == EXPECTED_OLD and not self.git('status', '--porcelain', root=LIVE), 'Live drift during preflight: STOP')
+        self.log.write('Authority: Gregovate/MSB-Server-Management — docs/server/Setup_Source_Only_Application_Deployment_Runbook.md\nProcedure: Controlled Production Mutation\nThis step: advance only /opt/msb-setup to ' + TARGET + '\n')
+        # Set the rollback flag before checkout: a partially failed command must
+        # also return through the documented source-only rollback path.
+        self.advanced = True
+        self.git('checkout', '--detach', TARGET, root=LIVE)
+        require(self.git('rev-parse', 'HEAD', root=LIVE) == TARGET and not self.git('status', '--porcelain', root=LIVE), 'Deployed identity differs')
+        self.run(['sudo', 'systemctl', 'restart', 'msb-setup.service'])
+        self.health(VERSION)
+        self.focused_regression(LIVE)
+        self.report_read_probe()
+        require(self.git('rev-parse', 'HEAD') == SHARED, 'Shared checkout moved')
+        require(self.fingerprint() == self.before, 'Setup data changed during deployment: inspect report')
+        (self.root / 'result.json').write_text(json.dumps({'result': 'PASS', 'old_setup': EXPECTED_OLD,
+            'target': TARGET, 'version': VERSION, 'fingerprint': self.before,
+            'migration': None, 'operator_production_check': 'PENDING'}, indent=2) + '\n')
+
+
+def interrupted(signum, frame):
+    raise RuntimeError('Deployment interrupted by signal ' + str(signum))
+
+
+def main():
+    signal.signal(signal.SIGTERM, interrupted)
+    signal.signal(signal.SIGINT, interrupted)
+    # One directing chat owns this window; the cooperative lock blocks duplicate
+    # instances but does not replace that operational rule.
+    with open('/home/msbadmin/.msb-production-deploy.lock', 'a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        installer = Installer()
+        status = 0
+        try:
+            installer.deploy()
+        except Exception as exc:
+            installer.log.write('STOP ' + repr(exc) + '\n')
+            try:
+                installer.rollback()
+            except Exception as recovery:
+                installer.log.write('ROLLBACK FAILED ' + repr(recovery) + '\n')
+            status = 1
+        finally:
+            try:
+                installer.cleanup()
+            except Exception as cleanup:
+                installer.log.write('CLEANUP FAILED ' + repr(cleanup) + '\n')
+                status = 1
+            installer.log.close()
+        if status:
+            print('STOP: deployment or cleanup failed; do not rerun; report: ' + str(installer.root))
+            return status
+        print('PASS: Setup V0.3.50 Container Movement report installed; protected browser check pending; report: ' + str(installer.root))
+        return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

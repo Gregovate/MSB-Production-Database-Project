@@ -1,0 +1,2328 @@
+/* Setup #205 rolling Scheduling Board.
+   Annual work belongs here; reusable Catalog editing remains separate. */
+
+.setup-board205-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.setup-board205-toolbar,
+.setup-board205-day-form,
+.setup-board205-filters,
+.setup-board205-actions,
+.setup-board205-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.setup-board205-toolbar {
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+
+.setup-board205-day-form {
+  padding: 0.8rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.6rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.setup-board205-day-form:not(.expanded) {
+  padding: 0.45rem 0.6rem;
+}
+
+.setup-board205-work-day-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.setup-board205-work-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.setup-board205-day-form label {
+  min-width: 9rem;
+}
+
+.setup-board205-day-form .setup-board205-volunteer-note {
+  flex: 1 1 18rem;
+}
+
+.setup-board205-work-day-picker {
+  flex: 1 1 28rem;
+  display: grid;
+  gap: 0.45rem;
+  min-width: min(100%, 22rem);
+}
+
+.setup-board205-work-day-picker-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.75rem;
+}
+
+.setup-board205-work-day-picker-copy .setup-board205-auto-day-note {
+  max-width: none;
+}
+
+.setup-board205-work-day-calendar {
+  width: min(100%, 34rem);
+  padding: 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.6rem;
+  background: var(--panel, #fff);
+}
+
+.setup-board205-calendar-head {
+  display: grid;
+  grid-template-columns: 2.75rem 1fr 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+  text-align: center;
+}
+
+.setup-board205-calendar-head button {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.3rem;
+  font-size: 1.25rem;
+}
+
+.setup-board205-calendar-weekdays,
+.setup-board205-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(2.6rem, 1fr));
+  gap: 0.25rem;
+}
+
+.setup-board205-calendar-weekdays {
+  margin-bottom: 0.25rem;
+  color: var(--muted, #64748b);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.setup-board205-calendar-day,
+.setup-board205-calendar-blank {
+  min-height: 3.2rem;
+}
+
+.setup-board205-calendar-day {
+  display: grid;
+  place-content: center;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.3rem 0.15rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.45rem;
+  background: var(--panel, #fff);
+  color: inherit;
+  touch-action: manipulation;
+}
+
+.setup-board205-calendar-day span {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.setup-board205-calendar-day small {
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.setup-board205-calendar-day.selected {
+  border-width: 3px;
+  border-color: var(--accent, #0b6ea8);
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 18%, var(--panel, #fff));
+}
+
+.setup-board205-calendar-day.existing:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+  background: var(--soft, #f5f8fb);
+}
+
+@media (max-width: 720px) {
+  .setup-board205-work-day-calendar {
+    width: 100%;
+  }
+
+  .setup-board205-calendar-weekdays,
+  .setup-board205-calendar-grid {
+    grid-template-columns: repeat(7, minmax(2.35rem, 1fr));
+    gap: 0.18rem;
+  }
+
+  .setup-board205-calendar-day,
+  .setup-board205-calendar-blank {
+    min-height: 3rem;
+  }
+}
+
+.setup-board205-auto-day-note {
+  align-self: center;
+  color: var(--muted, #64748b);
+  font-size: 0.8rem;
+  max-width: 16rem;
+}
+
+.setup-board205-main {
+  display: grid;
+  grid-template-columns: minmax(22rem, 0.95fr) minmax(34rem, 1.55fr);
+  gap: 0.75rem;
+  align-items: stretch;
+  height: calc(100vh - 6.25rem);
+  min-height: 38rem;
+}
+
+@media (min-width: 1600px) {
+  .setup-board205-main {
+    grid-template-columns: minmax(20rem, 0.72fr) minmax(48rem, 2.28fr);
+  }
+
+  .setup-board205-grid {
+    grid-template-columns: minmax(10rem, 0.58fr) repeat(2, minmax(18rem, 1fr));
+  }
+}
+
+#setup-board205-historical-day {
+  border-color: color-mix(in srgb, var(--accent, #0b6ea8) 50%, var(--border, #d9e0e8));
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 12%, var(--panel, #fff));
+  color: var(--text, #172033);
+  font-weight: 800;
+}
+
+html[data-theme="dark"] #setup-board205-historical-day {
+  border-color: #4f8fc3;
+  background: #1c3148;
+  color: #e8f2fb;
+}
+
+.setup-board205-backlog,
+.setup-board205-board {
+  min-width: 0;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.setup-board205-backlog {
+  height: 100%;
+  padding-top: 0.6rem;
+}
+
+.setup-board205-right {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.setup-board205-planning-header {
+  min-width: 0;
+  padding-block: 0.55rem;
+}
+
+.setup-board205-dispatch-controls {
+  display: grid;
+  grid-template-columns: auto auto minmax(16rem, 1fr) auto auto auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.setup-board205-dispatch-controls .setup-board205-day-form {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.setup-board205-dispatch-controls .setup-board205-day-form.expanded {
+  grid-column: 1 / -1;
+  padding: 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.setup-board205-dispatch-controls .setup-board205-scheduled-search {
+  position: relative;
+  min-width: 0;
+  padding: 0.3rem 0.42rem;
+  grid-template-columns: auto minmax(10rem, 1fr);
+}
+
+.setup-board205-dispatch-controls .setup-board205-scheduled-search-results {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  right: 0;
+  max-height: min(22rem, 55vh);
+  overflow-y: auto;
+  padding: 0.3rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.45rem;
+  background: var(--panel, #fff);
+  box-shadow: var(--shadow, 0 2px 8px rgb(0 0 0 / 18%));
+}
+
+.setup-board205-dispatch-controls .setup-board205-scheduled-search-results:empty {
+  display: none;
+}
+
+.setup-board205-dispatch-controls .setup-board205-day-filters {
+  padding: 0.3rem 0.42rem;
+  gap: 0.2rem 0.5rem;
+  white-space: nowrap;
+}
+
+.setup-board205-board {
+  min-height: 0;
+  height: auto;
+}
+
+.setup-board205-filters {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: 0.2rem 0 0.55rem;
+  padding: 0.65rem;
+  border: 2px solid color-mix(in srgb, var(--accent, #0b6ea8) 42%, var(--border, #d9e0e8));
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 7%, var(--panel, #fff));
+  box-shadow: 0 0.25rem 0.8rem color-mix(in srgb, var(--accent, #0b6ea8) 10%, transparent);
+}
+
+.setup-board205-filters label {
+  display: inline-grid;
+  gap: 0.25rem;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.setup-board205-finder {
+  align-items: end;
+}
+
+.setup-board205-finder .setup-board205-search {
+  flex: 1 1 12rem;
+}
+
+.setup-board205-finder .setup-board205-search input {
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--accent, #0b6ea8) 58%, var(--border, #d9e0e8));
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 10%, var(--panel, #fff));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #0b6ea8) 10%, transparent);
+}
+
+.setup-board205-finder .setup-board205-search input:focus {
+  border-color: var(--accent, #0b6ea8);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #0b6ea8) 22%, transparent);
+}
+
+.setup-board205-blocking-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 800;
+}
+
+.setup-board205-blocking-toggle input {
+  min-height: auto;
+}
+
+.setup-board205-blocking-help {
+  flex: 1 1 18rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted, #64748b);
+}
+
+
+.setup-board205-secondary-filters {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.setup-board205-filters.compact {
+  margin-bottom: 0.35rem;
+  padding-block: 0.45rem;
+}
+
+.setup-board205-filters.compact .setup-board205-secondary-filters,
+.setup-board205-filters.compact .setup-board205-blocking-help {
+  display: none;
+}
+
+.setup-board205-filters.compact label {
+  font-size: 0.78rem;
+}
+
+
+.setup-board205-status-filter {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.45rem;
+}
+
+.setup-board205-status-filter legend {
+  padding: 0 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.setup-board205-status-filter label {
+  display: inline-flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+}
+
+.setup-board205-status-filter input {
+  min-height: auto;
+}
+
+.setup-board205-main.finder-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.setup-board205-main.finder-only .setup-board205-backlog {
+  max-width: none;
+}
+
+.setup-board205-blocker-detail {
+  line-height: 1.35;
+}
+
+.setup-board205-numeric-filter > span {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(5.5rem, 1fr);
+  gap: 0.25rem;
+}
+
+.setup-board205-numeric-filter select,
+.setup-board205-numeric-filter input {
+  width: 100%;
+  min-width: 0;
+}
+
+.setup-board205-numeric-filter select {
+  padding-left: 0.5rem;
+  padding-right: 1.5rem;
+  text-align: center;
+}
+
+.setup-board205-finder input,
+.setup-board205-finder select {
+  min-height: 2.1rem;
+}
+
+.setup-board205-queue {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.setup-board205-task-card,
+.setup-board205-assignment {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--panel, #fff);
+  padding: 0.65rem;
+  min-width: 0;
+}
+
+.setup-board205-task-card[draggable="true"],
+.setup-board205-assignment[draggable="true"] {
+  cursor: grab;
+}
+
+.setup-board205-task-card.dragging,
+.setup-board205-assignment.dragging {
+  opacity: 0.45;
+}
+
+.setup-board205-assignment.selected {
+  border-color: var(--setup-material-action-border, #8a73c5);
+  background: var(--setup-material-action-bg, #251f35);
+  box-shadow: 0 0 0 2px var(--setup-material-action-focus, rgba(174, 149, 235, .32));
+}
+
+.setup-board205-selection-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.setup-board205-selection-count[hidden] {
+  display: none;
+}
+
+.setup-board205-task-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  font-weight: 750;
+}
+
+.setup-board205-meta {
+  margin-top: 0.28rem;
+  color: var(--muted, #64748b);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+:root {
+  --setup-board205-badge-info-bg: #dbeafe;
+  --setup-board205-badge-info-border: #2563eb;
+  --setup-board205-badge-info-text: #1e40af;
+  --setup-board205-badge-warn-bg: #fff1c7;
+  --setup-board205-badge-warn-border: #c17b13;
+  --setup-board205-badge-warn-text: #7a4a00;
+  --setup-board205-badge-danger-bg: #fee2e2;
+  --setup-board205-badge-danger-border: #dc2626;
+  --setup-board205-badge-danger-text: #991b1b;
+  --setup-board205-badge-success-bg: #dcfce7;
+  --setup-board205-badge-success-border: #16a34a;
+  --setup-board205-badge-success-text: #166534;
+  --setup-board205-badge-neutral-bg: #eef2f7;
+  --setup-board205-badge-neutral-border: #94a3b8;
+  --setup-board205-badge-neutral-text: #475569;
+  --setup-board205-badge-effort-bg: #f8fafc;
+  --setup-board205-badge-effort-border: #cbd5e1;
+  --setup-board205-badge-effort-text: #475569;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --setup-board205-badge-info-bg: #17365d;
+    --setup-board205-badge-info-border: #60a5fa;
+    --setup-board205-badge-info-text: #dbeafe;
+    --setup-board205-badge-warn-bg: #4a3310;
+    --setup-board205-badge-warn-border: #fbbf24;
+    --setup-board205-badge-warn-text: #fde68a;
+    --setup-board205-badge-danger-bg: #4a1d23;
+    --setup-board205-badge-danger-border: #f87171;
+    --setup-board205-badge-danger-text: #fecaca;
+    --setup-board205-badge-success-bg: #123d2a;
+    --setup-board205-badge-success-border: #4ade80;
+    --setup-board205-badge-success-text: #bbf7d0;
+    --setup-board205-badge-neutral-bg: #1f2937;
+    --setup-board205-badge-neutral-border: #64748b;
+    --setup-board205-badge-neutral-text: #cbd5e1;
+    --setup-board205-badge-effort-bg: #172033;
+    --setup-board205-badge-effort-border: #475569;
+    --setup-board205-badge-effort-text: #cbd5e1;
+  }
+}
+
+html[data-theme="dark"] {
+  --setup-board205-badge-info-bg: #17365d;
+  --setup-board205-badge-info-border: #60a5fa;
+  --setup-board205-badge-info-text: #dbeafe;
+  --setup-board205-badge-warn-bg: #4a3310;
+  --setup-board205-badge-warn-border: #fbbf24;
+  --setup-board205-badge-warn-text: #fde68a;
+  --setup-board205-badge-danger-bg: #4a1d23;
+  --setup-board205-badge-danger-border: #f87171;
+  --setup-board205-badge-danger-text: #fecaca;
+  --setup-board205-badge-success-bg: #123d2a;
+  --setup-board205-badge-success-border: #4ade80;
+  --setup-board205-badge-success-text: #bbf7d0;
+  --setup-board205-badge-neutral-bg: #1f2937;
+  --setup-board205-badge-neutral-border: #64748b;
+  --setup-board205-badge-neutral-text: #cbd5e1;
+  --setup-board205-badge-effort-bg: #172033;
+  --setup-board205-badge-effort-border: #475569;
+  --setup-board205-badge-effort-text: #cbd5e1;
+}
+
+.setup-board205-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 999px;
+  padding: 0.08rem 0.42rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  white-space: nowrap;
+  background: var(--theme-pill, transparent);
+  color: var(--theme-pill-text, var(--text, #172033));
+}
+
+.setup-board205-badge.status-ready {
+  border-color: var(--setup-board205-badge-info-border);
+  background: var(--setup-board205-badge-info-bg);
+  color: var(--setup-board205-badge-info-text);
+  font-weight: 850;
+}
+
+.setup-board205-badge.status-reschedule,
+.setup-board205-badge.status-waiting,
+.setup-board205-badge.wo-open,
+.setup-board205-badge.gate-badge {
+  border-color: var(--setup-board205-badge-warn-border);
+  background: var(--setup-board205-badge-warn-bg);
+  color: var(--setup-board205-badge-warn-text);
+  font-weight: 850;
+}
+
+.setup-board205-badge.status-scheduled {
+  border-color: var(--setup-board205-badge-info-border);
+  background: var(--setup-board205-badge-info-bg);
+  color: var(--setup-board205-badge-info-text);
+  font-weight: 850;
+}
+
+.setup-board205-badge.status-complete,
+.setup-board205-badge.wo-complete {
+  border-color: var(--setup-board205-badge-success-border);
+  background: var(--setup-board205-badge-success-bg);
+  color: var(--setup-board205-badge-success-text);
+  font-weight: 850;
+}
+
+.setup-board205-badge.status-blocked,
+.setup-board205-badge.short-crew-badge {
+  border-color: var(--setup-board205-badge-danger-border);
+  background: var(--setup-board205-badge-danger-bg);
+  color: var(--setup-board205-badge-danger-text);
+  font-weight: 900;
+}
+
+.setup-board205-badge.status-deferred,
+.setup-board205-badge.status-catalog,
+.setup-board205-badge.status-neutral,
+.setup-board205-badge.effort-unknown {
+  border-color: var(--setup-board205-badge-neutral-border);
+  background: var(--setup-board205-badge-neutral-bg);
+  color: var(--setup-board205-badge-neutral-text);
+}
+
+.setup-board205-badge.season-only {
+  border-style: dashed;
+  border-color: var(--setup-board205-badge-info-border);
+  background: var(--setup-board205-badge-info-bg);
+  color: var(--setup-board205-badge-info-text);
+}
+
+.setup-board205-badge.effort-light,
+.setup-board205-badge.effort-moderate,
+.setup-board205-badge.effort-heavy {
+  border-color: var(--setup-board205-badge-effort-border);
+  background: var(--setup-board205-badge-effort-bg);
+  color: var(--setup-board205-badge-effort-text);
+}
+
+.setup-board205-badge.effort-moderate {
+  border-width: 1.5px;
+}
+
+.setup-board205-badge.effort-heavy {
+  border-width: 2px;
+  font-weight: 850;
+}
+
+.setup-board205-board {
+  min-width: 0;
+}
+
+.setup-board205-board-heading {
+  display: grid;
+  gap: 0.2rem;
+  margin-bottom: 0.4rem;
+}
+
+.setup-board205-board-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.setup-board205-board-key {
+  color: var(--muted, #64748b);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.setup-board205-board-title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.setup-board205-board-heading h3 {
+  margin: 0;
+}
+
+.setup-board205-board-heading p {
+  margin: 0;
+}
+
+.setup-board205-scheduled-search {
+  display: grid;
+  grid-template-columns: minmax(9rem, auto) minmax(14rem, 1fr);
+  gap: 0.35rem 0.55rem;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.5rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.setup-board205-scheduled-search label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.setup-board205-scheduled-search input {
+  min-width: 0;
+  width: 100%;
+}
+
+.setup-board205-scheduled-search-results {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.setup-board205-scheduled-search-result {
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  min-height: 2.2rem;
+  padding: 0.42rem 0.55rem;
+}
+
+.setup-board205-scheduled-search-empty {
+  color: var(--muted, #64748b);
+  font-size: 0.8rem;
+}
+
+.setup-board205-assignment.scheduled-search-hit {
+  outline: 3px solid var(--accent, #0b6ea8);
+  outline-offset: 2px;
+}
+
+.setup-board205-day-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.8rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.5rem;
+  background: var(--soft, #f5f8fb);
+  font-size: 0.82rem;
+}
+
+.setup-board205-day-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+.setup-board205-day-filters input {
+  min-height: auto;
+}
+
+.setup-board205-history-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.setup-board205-days {
+  display: grid;
+  gap: 1rem;
+}
+
+.setup-board205-day {
+  overflow: hidden;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.7rem;
+  background: var(--panel, #fff);
+}
+
+.setup-board205-day-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 0.95rem;
+  background: var(--soft, #f5f8fb);
+  border-bottom: 1px solid var(--border, #d9e0e8);
+}
+
+.setup-board205-day.day-band-odd .setup-board205-day-header {
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 7%, var(--panel, #fff));
+}
+
+.setup-board205-day.day-band-even .setup-board205-day-header {
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 14%, var(--panel, #fff));
+}
+
+.setup-board205-day.completed-day .setup-board205-day-header {
+  opacity: 0.82;
+}
+
+.setup-board205-day.cancelled-day .setup-board205-day-header {
+  border-style: dashed;
+}
+
+.setup-board205-day-header strong {
+  font-size: 1.05rem;
+}
+
+.setup-board205-day.saturday .setup-board205-day-header {
+  border-left: 0.35rem solid var(--viz-series-2, currentColor);
+}
+
+.setup-board205-day.sunday .setup-board205-day-header {
+  border-left: 0.35rem solid var(--viz-series-5, currentColor);
+}
+
+.setup-board205-sunday-warning {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.setup-board205-day-note {
+  color: var(--muted, #64748b);
+  font-size: 0.82rem;
+}
+
+.setup-board205-table-wrap {
+  overflow-x: auto;
+}
+
+.setup-board205-grid {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.72fr) repeat(2, minmax(14rem, 1fr));
+  min-width: 44rem;
+}
+
+.setup-board205-crew-row {
+  display: contents;
+}
+
+.setup-board205-grid-head,
+.setup-board205-crew-label,
+.setup-board205-cell {
+  border-right: 1px solid var(--border, #d9e0e8);
+  border-bottom: 1px solid var(--border, #d9e0e8);
+}
+
+.setup-board205-grid-head {
+  padding: 0.5rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: center;
+  background: var(--soft, #f5f8fb);
+}
+
+.setup-board205-shift-hint {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted, #64748b);
+}
+
+.setup-board205-crew-label {
+  padding: 0.7rem 0.55rem;
+  font-weight: 800;
+  background: var(--soft, #f5f8fb);
+}
+
+.setup-board205-crew-captain {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.setup-board205-crew-captain select {
+  min-width: 0;
+  width: 100%;
+}
+
+.setup-board205-crew-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.setup-board205-crew-counts label {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.setup-board205-crew-counts input {
+  min-width: 0;
+  width: 100%;
+  padding: 0.25rem 0.35rem;
+}
+
+.setup-board205-crew-title-row,
+.setup-board205-toolbar-actions,
+.setup-board205-crew-actions,
+.setup-board205-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.setup-board205-crew-title-row {
+  justify-content: space-between;
+}
+
+.setup-board205-crew-title-context {
+  min-width: 0;
+}
+
+.setup-board205-crew-day-context {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  white-space: nowrap;
+}
+
+.setup-board205-toolbar-actions {
+  justify-content: flex-end;
+}
+
+.setup-board205-day-actions {
+  margin-top: 0.4rem;
+}
+
+.setup-board205-crew-actions {
+  margin-top: 0;
+}
+
+.setup-board205-legacy-label {
+  font-size: 0.76rem;
+}
+
+.setup-board205-legacy-all-day {
+  grid-column: span 2;
+  padding: 0.42rem;
+  border-right: 1px solid var(--border, #d9e0e8);
+  border-bottom: 1px solid var(--border, #d9e0e8);
+  background: var(--soft, #f5f8fb);
+}
+
+.setup-board205-cell {
+  min-height: 6.2rem;
+  padding: 0.42rem;
+  transition: background 120ms ease, outline-color 120ms ease;
+}
+
+.setup-board205-cell.drop-target,
+.setup-board205-assignment.drop-target {
+  outline: 2px solid var(--accent, currentColor);
+  outline-offset: -2px;
+  background: var(--accent-soft, #e7f2fb);
+}
+
+.setup-board205-cell-empty {
+  color: var(--muted, #64748b);
+  font-size: 0.78rem;
+  padding: 0.35rem;
+}
+
+.setup-board205-capacity-note,
+.setup-board205-carryover {
+  margin-bottom: 0.42rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px dashed var(--border, #d9e0e8);
+  border-radius: 0.4rem;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.setup-board205-assignment {
+  margin-bottom: 0.42rem;
+  padding: 0.5rem;
+}
+
+.setup-board205-assignment:last-child {
+  margin-bottom: 0;
+}
+
+.setup-board205-progress-gauge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0.38rem;
+  background: color-mix(in srgb, var(--success, #277a43) 18%, transparent);
+  pointer-events: none;
+}
+
+.setup-board205-progress-gauge::after {
+  content: '';
+  display: block;
+  width: var(--setup-board205-progress, 0%);
+  height: 100%;
+  background: var(--success, #277a43);
+}
+
+.setup-board205-assignment.locked {
+  border-style: double;
+}
+
+.setup-board205-assignment.short-crew {
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--danger);
+}
+
+.setup-board205-badge.short-crew-badge {
+  border-width: 2px;
+}
+
+.setup-board205-short-crew-warning {
+  border-width: 2px;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.setup-board205-lock {
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.setup-board205-warning {
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.setup-board205-readiness {
+  margin-top: 0.35rem;
+  padding: 0.38rem 0.48rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.setup-board205-readiness.not-ready {
+  font-weight: 800;
+  border-style: double;
+}
+
+.setup-board205-card-actions {
+  margin-top: 0.45rem;
+  gap: 0.35rem;
+}
+
+.setup-board205-card-actions button {
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.setup-board205-dialog {
+  width: min(42rem, calc(100% - 2rem));
+  max-width: 100%;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.75rem;
+  background: var(--panel, #fff);
+  color: var(--text, #172033);
+  padding: 1rem;
+}
+
+.setup-board205-dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+.setup-board205-dialog form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.setup-board205-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.setup-board205-placement-grid {
+  grid-column: 1 / -1;
+}
+
+.setup-board205-placement-help {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.setup-board205-dialog menu {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.setup-board205-empty {
+  padding: 0.8rem;
+  color: var(--muted, #64748b);
+  border: 1px dashed var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+}
+
+@media (max-width: 1100px) {
+  .setup-board205-dispatch-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-board205-dispatch-controls .setup-board205-day-form.expanded {
+    grid-column: 1;
+  }
+
+  .setup-board205-dispatch-controls .setup-board205-day-filters {
+    white-space: normal;
+  }
+
+  .setup-board205-main {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+
+  .setup-board205-right {
+    height: auto;
+    display: grid;
+    grid-template-rows: auto auto;
+  }
+
+  .setup-board205-backlog,
+  .setup-board205-board {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: visible;
+    scrollbar-gutter: stable;
+  }
+
+  .setup-board205-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* #122 2026 launch review: keep the actual work-day board visible at normal zoom. */
+.setup-board205-shell {
+  gap: 0.65rem;
+}
+
+.setup-board205-toolbar {
+  gap: 0.7rem;
+  margin-bottom: 0.4rem;
+  align-items: center;
+}
+
+.setup-board205-title h2 {
+  margin-block: 0.15rem;
+}
+
+.setup-board205-kpis {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  align-items: baseline;
+  font-size: 0.86rem;
+  color: var(--muted, #64748b);
+}
+
+.setup-board205-kpis strong {
+  color: var(--text, #111827);
+}
+
+.setup-board205-kpi-sep {
+  opacity: 0.65;
+}
+
+.setup-board205-day-form {
+  padding: 0.55rem 0.65rem;
+}
+
+.setup-board205-primary-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(6.5rem, 0.8fr);
+  gap: 0.55rem;
+  flex: 1 0 100%;
+}
+
+.setup-board205-primary-filters label,
+.setup-board205-primary-filters select {
+  min-width: 0;
+  width: 100%;
+}
+
+.setup-board205-work-order-picker {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 1.4fr);
+  gap: 0.6rem;
+}
+
+.setup-board205-work-order-search-block {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.setup-board205-work-order-results {
+  display: grid;
+  gap: 0.3rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.setup-board205-work-order-result {
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  min-height: 2.4rem;
+}
+
+.setup-board205-work-order-help {
+  padding: 0.45rem 0.55rem;
+  border: 1px dashed var(--border, #d9e0e8);
+  border-radius: 0.45rem;
+  color: var(--muted, #64748b);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+#setup-board205-season-work-order-clear {
+  justify-self: start;
+  align-self: end;
+}
+
+@media (max-width: 760px) {
+  .setup-board205-kpis {
+    justify-content: flex-start;
+  }
+
+  .setup-board205-primary-filters,
+  .setup-board205-work-order-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-board205-dispatch-controls .setup-board205-scheduled-search {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Launch dates are passive information, never button-shaped cards. */
+.setup-annual-milestones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.35rem 0 0.5rem;
+  color: var(--muted, #64748b);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.setup-annual-milestone {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: baseline;
+}
+
+.setup-annual-milestone.primary { font-weight: 800; }
+
+.setup-annual-milestone-label {
+  font-weight: 700;
+}
+
+.setup-annual-milestone strong {
+  color: var(--text, #172033);
+  font-size: inherit;
+}
+
+/* Explicit panel selection prevents a long finder from burying the tablet
+   board. Normal page scrolling preserves touch access to every crew/control. */
+.setup-board205-pane-navigation { display: none; }
+
+@media screen and (max-width: 1100px) {
+  body.setup-schedule-view .site-header { position: static; }
+
+  .setup-board205-pane-navigation:not([hidden]) {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    padding-block: 0.4rem;
+    background: var(--card, #fff);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .setup-board205-pane-navigation button { min-height: 2.75rem; }
+  .setup-board205-pane-navigation button[aria-pressed="true"] {
+    outline: 2px solid var(--accent, #0b6ea8);
+    outline-offset: 2px;
+  }
+
+  .setup-board205-main:not(.finder-only)[data-tablet-pane="board"] > .setup-board205-backlog,
+  .setup-board205-main:not(.finder-only)[data-tablet-pane="tasks"] > .setup-board205-right {
+    display: none;
+  }
+
+  .setup-board205-backlog,
+  .setup-board205-board {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .setup-board205-filters { position: static; }
+}
+
+/* Light mode needs stronger structural separation than the dark palette naturally provides. */
+html[data-theme="light"] .setup-board205-day {
+  border-color: #b8c4d0;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 10%);
+}
+
+html[data-theme="light"] .setup-board205-grid-head,
+html[data-theme="light"] .setup-board205-crew-label,
+html[data-theme="light"] .setup-board205-cell {
+  border-color: #c2ccd7;
+}
+
+html[data-theme="light"] .setup-board205-grid-head,
+html[data-theme="light"] .setup-board205-crew-label {
+  background: #eef3f7;
+}
+
+html[data-theme="light"] .setup-board205-cell {
+  background: #fbfcfe;
+}
+
+html[data-theme="light"] .setup-board205-task-card,
+html[data-theme="light"] .setup-board205-assignment {
+  border-color: #bdc9d5;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 8%);
+}
+
+html[data-theme="light"] .setup-board205-capacity-note,
+html[data-theme="light"] .setup-board205-carryover {
+  border-color: #b8c4d0;
+  background: #f7f9fb;
+}
+
+
+.setup-board205-finder-report-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.setup-board205-finder-report-row > .muted {
+  min-width: 0;
+}
+
+.setup-board205-calendar-day.past {
+  opacity: 0.45;
+}
+
+#setup-board205-schedulable-print-sheet {
+  display: none;
+}
+
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 0.3in;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 9pt;
+  }
+
+  header,
+  #app-alert,
+  nav.tabs,
+  #summary-grid,
+  .setup-live-search,
+  .view:not(#schedule-view),
+  #schedule-view dialog,
+  #schedule-view .setup-board205-backlog,
+  #schedule-view .setup-board205-planning-header,
+  #schedule-view .setup-board205-day-form,
+  #schedule-view .setup-board205-day-filters,
+  #schedule-view .setup-board205-scheduled-search,
+  #schedule-view .setup-board205-board-heading p,
+  #schedule-view button,
+  #schedule-view .setup-board205-cell-empty,
+  #schedule-view .setup-board205-selection-count,
+  #schedule-view .print-empty-day,
+  #schedule-view .print-empty-crew,
+  #schedule-view .setup-board205-assignment-captain {
+    display: none !important;
+  }
+
+  #schedule-view,
+  #setup-board205-root,
+  #setup-board205-workspace,
+  #setup-board205-right,
+  #setup-board205-board-pane {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+  }
+
+  #setup-board205-workspace {
+    grid-template-columns: 1fr !important;
+  }
+
+  #setup-board205-board-pane {
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .setup-board205-board-heading {
+    margin: 0 0 0.08in;
+    gap: 0.02in;
+  }
+
+  .setup-board205-board-title-row {
+    min-height: 0;
+  }
+
+  .setup-board205-board-title-row h3 {
+    font-size: 12pt;
+    line-height: 1.1;
+  }
+
+  .setup-board205-days {
+    gap: 0.12in;
+  }
+
+  .setup-board205-day {
+    break-inside: auto;
+    box-shadow: none !important;
+    border-radius: 0.08in;
+  }
+
+  .setup-board205-day-header {
+    padding: 0.06in 0.1in;
+    gap: 0.05in;
+    break-after: avoid;
+  }
+
+  .setup-board205-day-header strong {
+    font-size: 9.5pt;
+  }
+
+  .setup-board205-day-note,
+  .setup-board205-sunday-warning {
+    font-size: 7.5pt;
+    line-height: 1.15;
+  }
+
+  .setup-board205-table-wrap {
+    overflow: visible !important;
+  }
+
+  .setup-board205-grid {
+    min-width: 0 !important;
+    grid-template-columns: minmax(1.45in, 0.72fr) repeat(2, minmax(2.6in, 1fr));
+  }
+
+  .setup-board205-grid-head {
+    padding: 0.04in 0.06in;
+    font-size: 7.5pt;
+    break-after: avoid;
+  }
+
+  .setup-board205-shift-hint {
+    font-size: 6.5pt;
+  }
+
+  .setup-board205-crew-row {
+    display: grid !important;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(1.45in, 0.72fr) repeat(2, minmax(2.6in, 1fr));
+    break-inside: avoid;
+  }
+
+  .setup-board205-crew-label,
+  .setup-board205-cell {
+    min-height: 0 !important;
+    padding: 0.05in 0.06in;
+  }
+
+  .setup-board205-crew-label {
+    font-size: 8pt;
+  }
+
+  .setup-board205-crew-captain {
+    gap: 0;
+    margin-top: 0.03in;
+    font-size: 6.8pt;
+  }
+
+  .setup-board205-crew-counts {
+    gap: 0.04in;
+    margin-top: 0.03in;
+  }
+
+  .setup-board205-crew-counts label {
+    gap: 0;
+    font-size: 6.8pt;
+  }
+
+  .setup-board205-crew-day-context {
+    color: #000 !important;
+    font-size: 6.5pt;
+  }
+
+  .setup-board205-capacity-note,
+  .setup-board205-carryover {
+    margin-bottom: 0.04in;
+    padding: 0.03in 0.04in;
+    border-radius: 0.03in;
+    font-size: 6.8pt;
+    line-height: 1.1;
+  }
+
+  .setup-board205-assignment {
+    margin-bottom: 0.04in;
+    padding: 0.05in;
+    border: 1px solid #777 !important;
+    border-radius: 0.04in;
+    break-inside: avoid;
+  }
+
+  .setup-board205-task-title {
+    gap: 0.03in;
+    font-size: 8pt;
+    line-height: 1.1;
+  }
+
+  .setup-board205-badge {
+    padding: 0.01in 0.04in;
+    font-size: 6.5pt;
+  }
+
+  .setup-board205-meta {
+    margin-top: 0.02in;
+    font-size: 7pt;
+    line-height: 1.15;
+  }
+
+  .setup-board205-warning,
+  .setup-board205-readiness {
+    margin-top: 0.03in;
+    padding: 0.03in 0.04in;
+    font-size: 6.8pt;
+    line-height: 1.15;
+  }
+
+  .setup-board205-kpis {
+    display: none !important;
+  }
+
+  .setup-board205-grid-head,
+  .setup-board205-crew-label,
+  .setup-board205-cell,
+  .setup-board205-assignment,
+  .setup-board205-meta,
+  .setup-board205-day-note,
+  .setup-board205-shift-hint {
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  .setup-board205-badge {
+    color: #000 !important;
+    background: #fff !important;
+    border-color: #777 !important;
+  }
+
+  .setup-board205-crew-captain select,
+  .setup-board205-crew-counts input {
+    border: 0 !important;
+    background: transparent !important;
+    color: #000 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    font-size: 7pt;
+  }
+}
+
+
+@media print {
+  body.setup-print-schedulable-tasks > * {
+    display: none !important;
+  }
+
+  body.setup-print-schedulable-tasks > #setup-board205-schedulable-print-sheet {
+    display: block !important;
+  }
+
+  body.setup-print-schedulable-tasks #schedule-view {
+    display: none !important;
+  }
+
+  body.setup-print-schedulable-tasks #setup-board205-schedulable-print-sheet {
+    page: setup-schedulable-tasks;
+    width: 100% !important;
+    max-width: none !important;
+    color: #000 !important;
+    background: #fff !important;
+    font-size: 9pt;
+  }
+
+  body.setup-print-schedulable-tasks #setup-board205-schedulable-print-sheet * {
+    color: #000 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 0.2in;
+    border-bottom: 2px solid #000;
+    padding-bottom: 0.08in;
+    margin-bottom: 0.08in;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-header h1 {
+    margin: 0.02in 0 0;
+    font-size: 16pt;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-rule {
+    margin: 0 0 0.12in;
+    font-size: 8pt;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-scope {
+    margin: 0.12in 0 0.04in;
+    padding-bottom: 0.02in;
+    border-bottom: 1px solid #888;
+    font-size: 10pt;
+    break-after: avoid;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-task {
+    padding: 0.035in 0.05in;
+    border-bottom: 1px solid #ddd;
+    break-inside: avoid;
+    line-height: 1.18;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-task-title {
+    display: flex !important;
+    justify-content: space-between;
+    gap: 0.08in;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-badge {
+    border: 1px solid #777;
+    border-radius: 999px;
+    padding: 0 0.04in;
+    font-size: 7pt;
+    white-space: nowrap;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-readiness {
+    margin-top: 0.02in;
+    font-size: 7.5pt;
+    font-weight: 600;
+  }
+
+  @page setup-schedulable-tasks {
+    size: portrait;
+    margin: 0.4in;
+  }
+}
+
+
+/* #175 task-cover-sheet print mode.
+   The Scheduling Board owns the normal page-level print stylesheet above.
+   When Perform Work explicitly prints one task, override that global rule and
+   print only the generated task cover sheet. */
+@media print {
+  body.setup-print-perform-task > * {
+    display: none !important;
+  }
+
+  body.setup-print-perform-task > #setup-perform-print-sheet {
+    display: block !important;
+  }
+
+  body.setup-print-perform-task #schedule-view {
+    display: none !important;
+  }
+
+  body.setup-print-perform-task #setup-perform-print-sheet {
+    page: setup-perform-task;
+    width: 100% !important;
+    max-width: none !important;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  body.setup-print-perform-task #setup-perform-print-sheet * {
+    color: #000 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-header {
+    display: flex !important;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    border-bottom: 2px solid #000;
+    padding-bottom: 0.25in;
+    margin-bottom: 0.2in;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-header h1,
+  body.setup-print-perform-task #setup-perform-print-sheet h2,
+  body.setup-print-perform-task #setup-perform-print-sheet h3,
+  body.setup-print-perform-task #setup-perform-print-sheet h4 {
+    margin-top: 0;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-meta {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.08in 0.25in;
+    margin-bottom: 0.18in;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-warning {
+    border: 1px solid #777;
+    padding: 0.08in;
+    margin-bottom: 0.15in;
+  }
+
+  body.setup-print-perform-task .next-perform-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.12in;
+  }
+
+  body.setup-print-perform-task .next-perform-grid section {
+    border: 1px solid #777 !important;
+    padding: 0.1in;
+    break-inside: avoid;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-notes {
+    margin-top: 0.2in;
+    break-inside: avoid;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-lines {
+    min-height: 1.5in;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        #fff 0,
+        #fff 0.28in,
+        #999 0.29in,
+        #fff 0.30in
+      ) !important;
+  }
+
+  @page setup-perform-task {
+    size: portrait;
+    margin: 0.5in;
+  }
+}
+
+/* Shared task-state palette for Schedule and Perform Work. */
+:root {
+  --setup-status-scheduled-bg: #dbeafe;
+  --setup-status-scheduled-text: #1e40af;
+  --setup-status-scheduled-border: #60a5fa;
+  --setup-status-progress-bg: #fef3c7;
+  --setup-status-progress-text: #92400e;
+  --setup-status-progress-border: #d97706;
+  --setup-status-complete-bg: #e2e8f0;
+  --setup-status-complete-text: #334155;
+  --setup-status-complete-border: #94a3b8;
+}
+html[data-theme="dark"] {
+  --setup-status-scheduled-bg: #1e3a5f;
+  --setup-status-scheduled-text: #bfdbfe;
+  --setup-status-scheduled-border: #60a5fa;
+  --setup-status-progress-bg: #493514;
+  --setup-status-progress-text: #fde68a;
+  --setup-status-progress-border: #fbbf24;
+  --setup-status-complete-bg: #334155;
+  --setup-status-complete-text: #e2e8f0;
+  --setup-status-complete-border: #94a3b8;
+}
+.setup-work-status {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.setup-work-status[data-work-status="SCHEDULED"],
+.setup-work-status[data-work-status="PLANNED"],
+.setup-board205-badge.status-scheduled {
+  background: var(--setup-status-scheduled-bg);
+  color: var(--setup-status-scheduled-text);
+  border-color: var(--setup-status-scheduled-border);
+}
+.setup-work-status[data-work-status="IN_PROGRESS"],
+.setup-board205-badge.status-reschedule {
+  background: var(--setup-status-progress-bg);
+  color: var(--setup-status-progress-text);
+  border-color: var(--setup-status-progress-border);
+}
+.setup-work-status[data-work-status="COMPLETE"],
+.setup-board205-badge.status-complete {
+  background: var(--setup-status-complete-bg);
+  color: var(--setup-status-complete-text);
+  border-color: var(--setup-status-complete-border);
+}
+
+/* Launch effort cues: teal intensity, separate from warning and Material colors. */
+.setup-board205-badge.effort-light {
+  background: #f0fdfa;
+  border-color: #99d5cd;
+  color: #285e59;
+}
+.setup-board205-badge.effort-moderate {
+  background: #bce9e1;
+  border-color: #4caaa0;
+  color: #174f4a;
+}
+.setup-board205-badge.effort-heavy {
+  background: #206d66;
+  border-color: #16534e;
+  color: #ffffff;
+}
+html[data-theme="dark"] .setup-board205-badge.effort-light {
+  background: #183c39;
+  border-color: #43736c;
+  color: #c5e7df;
+}
+html[data-theme="dark"] .setup-board205-badge.effort-moderate {
+  background: #28635c;
+  border-color: #68aaa0;
+  color: #e3f5ee;
+}
+html[data-theme="dark"] .setup-board205-badge.effort-heavy {
+  background: #98d4c8;
+  border-color: #b9e6dc;
+  color: #153d38;
+}
+/* Blocked is attention/amber; Short Crew retains the established danger/red cue. */
+.setup-board205-badge.status-blocked {
+  background: var(--setup-board205-badge-warn-bg);
+  border-color: var(--setup-board205-badge-warn-border);
+  color: var(--setup-board205-badge-warn-text);
+}
+
+
+/* #205 launch correction: the Scheduling Board, not the KPI report, is the
+   primary operational surface. Keep this compact in Schedule and Perform.
+   Details remain available in a bounded, independently scrolling disclosure. */
+@media screen {
+  .setup-board205-kpis {
+    display: block;
+    width: 100%;
+    flex: none;
+    font-size: inherit;
+  }
+
+  .setup-205-deadline-kpis {
+    margin: 0 0 0.3rem;
+    padding: 0.42rem 0.65rem;
+    border: 1px solid var(--border, #64748b);
+    border-radius: 0.55rem;
+    background: var(--panel, transparent);
+  }
+
+  .setup205-kpi-glance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.18rem 0.95rem;
+    align-items: center;
+    line-height: 1.45;
+    font-size: 0.85rem;
+    color: var(--text, inherit);
+  }
+
+  .setup205-kpi-glance strong {
+    color: var(--text, inherit);
+    font-size: 1em;
+    white-space: nowrap;
+  }
+
+  .setup205-kpi-expand {
+    margin-top: 0.2rem;
+  }
+
+  .setup205-kpi-expand > summary {
+    display: list-item;
+    width: fit-content;
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--accent, #438ed0);
+  }
+
+  .setup205-kpi-expanded {
+    max-height: 34dvh;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin-top: 0.45rem;
+    padding: 0.45rem;
+    border-top: 1px solid var(--border, #64748b);
+  }
+
+  .setup205-scheduling-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem 1rem;
+    font-size: 0.73rem;
+    line-height: 1.15;
+    color: var(--muted, #64748b);
+    margin-bottom: 0.15rem;
+  }
+
+  .setup-board205-planning-header {
+    padding-block: 0.45rem;
+  }
+}
+
+@media screen and (min-width: 1101px) and (max-width: 1599px) {
+  .setup-board205-main {
+    grid-template-columns: minmax(17rem, 0.72fr) minmax(0, 2.28fr);
+  }
+}
+
+@media screen and (min-width: 1101px) {
+  .setup-board205-main {
+    min-height: 0;
+    height: max(28rem, calc(100dvh - 12rem));
+  }
+}
+
+/* Crew and Captain assignments save automatically; show durable write state
+   beside the crew name without requiring a separate Save button. */
+.setup-board205-crew-save-status {
+  font-size: 0.73rem;
+  font-weight: 650;
+  white-space: normal;
+  color: var(--muted, #64748b);
+}
+.setup-board205-crew-save-status.save-failed {
+  color: var(--danger, #b42318);
+  font-weight: 800;
+}
+
+/* #205 calendar-first crew creation: day-level drop targets use the same
+   AM/PM columns as existing crew rows, rather than requiring a placeholder. */
+.setup-board205-new-crew-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  min-height: 3.5rem;
+  border-top: 2px dashed var(--accent, #0b6ea8);
+}
+.setup-board205-new-crew-label,
+.setup-board205-new-crew-drop {
+  padding: 0.6rem 0.65rem;
+  min-width: 0;
+  border-right: 1px solid var(--border, #d9e0e8);
+}
+.setup-board205-new-crew-label {
+  font-weight: 800;
+  background: var(--soft, #f5f8fb);
+}
+.setup-board205-new-crew-drop {
+  border: 2px dashed var(--border, #9cb2c3);
+  color: var(--muted, #64748b);
+  background: var(--panel, #fff);
+  font-weight: 700;
+  text-align: center;
+  cursor: copy;
+}
+.setup-board205-new-crew-drop.drop-target,
+.setup-board205-new-crew-drop:focus-visible {
+  outline: 3px solid var(--accent, #0b6ea8);
+  outline-offset: -3px;
+  background: var(--accent-soft, #e3f5ff);
+  color: var(--text, #172033);
+}
+
+/* The crew-creation control is interactive, not part of the printed schedule. */
+@media print {
+  .setup-board205-new-crew-row,
+  .setup-board205-crew-save-status { display: none !important; }
+}
+
+/* #205 rejected review: visually bound each day and keep its identity when
+   scrolling through multiple crew shifts. Warnings retain their own colors. */
+.setup-board205-days {
+  gap: 1.35rem;
+}
+.setup-board205-day {
+  overflow: visible;
+  border: 2px solid var(--border, #7d90a5);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 9%);
+  scroll-margin-top: 0.5rem;
+}
+.setup-board205-day.day-band-odd {
+  background: color-mix(in srgb, var(--panel, #fff) 96%, var(--accent, #0b6ea8));
+  border-left: 0.45rem solid var(--accent, #0b6ea8);
+}
+.setup-board205-day.day-band-even {
+  background: color-mix(in srgb, var(--panel, #fff) 94%, var(--text, #263646));
+  border-left: 0.45rem solid var(--muted, #62788d);
+}
+.setup-board205-day-header {
+  position: sticky;
+  top: 0;
+  z-index: 7;
+  border-bottom-width: 3px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 12%);
+}
+.setup-board205-completed-crew-summary {
+  grid-column: 1 / -1;
+  padding: 0.45rem 0.8rem;
+  border-bottom: 1px solid var(--border, #aebbc9);
+  background: var(--soft, #f5f8fb);
+  color: var(--muted, #64748b);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+@media print {
+  .setup-board205-day-header { position: static; box-shadow: none; }
+  .setup-board205-completed-crew-summary { display: none; }
+}
+
+/* #205 operator review: visible workday and crew identity; keep existing task cards readable. */
+.setup-board205-day { border: 3px solid var(--border, #526477); margin-bottom: 1.25rem; box-shadow: 0 0.3rem 0.8rem rgb(0 0 0 / 14%); }
+.setup-board205-day-header { position: sticky; top: 0; z-index: 8; border-bottom: 3px solid var(--accent, #0b6ea8); box-shadow: 0 0.15rem 0.35rem rgb(0 0 0 / 18%); }
+.setup-board205-day.day-band-odd { border-left: 8px solid #356a9a; }
+.setup-board205-day.day-band-even { border-left: 8px solid #a56929; }
+/* The header and controls belong to the top of the right column, not its scroll surface. */
+.setup-board205-filters { position: static; }
+
+/* #205: Stable crew letter identity in both themes. */
+.setup-board205-crew-label[data-crew-letter="A"] { border-left: 0.5rem solid #4478c4; }
+.setup-board205-crew-label[data-crew-letter="B"] { border-left: 0.5rem solid #219475; }
+.setup-board205-crew-label[data-crew-letter="C"] { border-left: 0.5rem solid #b4762c; }
+.setup-board205-crew-label[data-crew-letter="D"] { border-left: 0.5rem solid #9864bd; }
+.setup-board205-crew-label[data-crew-letter="E"] { border-left: 0.5rem solid #b84b6a; }
+.setup-board205-crew-label[data-crew-letter="F"] { border-left: 0.5rem solid #328e9a; }
+
+/* #205 V0.3.71: the right-hand scheduling surface owns its scrolling.
+   The planning controls move off-screen when working down the board; the
+   individual Setup Day headers remain sticky at the top of that same pane. */
+@media screen and (min-width: 1101px) {
+  .setup-board205-right {
+    display: block;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  .setup-board205-right > .setup-board205-planning-header {
+    position: static;
+    margin-bottom: 0.75rem;
+  }
+  .setup-board205-right > .setup-board205-board {
+    overflow-y: visible;
+    height: auto;
+    max-height: none;
+  }
+}
+
+/* #205 second browser review: the day summary/header must never stretch
+   outside the right pane; the crew grid can scroll horizontally inside it. */
+.setup-board205-right,
+.setup-board205-board,
+.setup-board205-day {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+.setup-board205-day {
+  overflow: clip;
+  overflow-clip-margin: 0;
+}
+.setup-board205-day-header {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.setup-board205-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* #205 operator rejection: keep Find scheduled task beside the workday list
+   as the right-hand pane scrolls, without freezing the tall KPI/header area. */
+@media screen and (min-width: 1101px) {
+  .setup-board205-board-heading {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    padding: 0.4rem;
+    border-bottom: 1px solid var(--border, #d9e0e8);
+    background: var(--panel, #fff);
+  }
+}
+.setup-board205-board-title-row {
+  flex-wrap: wrap;
+}
+.setup-board205-board-title-row > .setup-board205-scheduled-search {
+  flex: 1 1 19rem;
+  max-width: 34rem;
+  min-width: min(100%, 17rem);
+  position: relative;
+  grid-template-columns: auto minmax(8rem, 1fr);
+}
+.setup-board205-board-title-row .setup-board205-scheduled-search-results:not(:empty) {
+  position: absolute;
+  z-index: 25;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  right: 0;
+  max-height: min(22rem, 55vh);
+  overflow-y: auto;
+  background: var(--panel, #fff);
+  border: 1px solid var(--border, #d9e0e8);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+}
+@media print {
+  .setup-board205-board-heading { position: static; }
+  .setup-board205-board-title-row > .setup-board205-scheduled-search { display: none; }
+}
+
+/* #205 operator-rejected sticky regression (Oct 16): one coherent sticky
+   workday identity + Find Scheduled Task surface. Neither can scroll away
+   independently, and the per-day header stays below the shared heading. */
+.setup-board205-board-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+}
+.setup-board205-board-title-row > h3 {
+  margin: 0;
+  flex: 0 0 auto;
+}
+.setup-board205-current-day {
+  display: inline-flex;
+  align-items: center;
+  min-width: 12rem;
+  flex: 1 1 13rem;
+  padding: 0.42rem 0.55rem;
+  border-left: 0.3rem solid var(--accent, #0b6ea8);
+  background: var(--soft, #f5f8fb);
+  color: var(--text, #172033);
+  font-size: 0.85rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+.setup-board205-board-title-row > .setup-board205-scheduled-search {
+  flex: 1 1 21rem;
+  max-width: none;
+  min-width: min(100%, 18rem);
+}
+@media screen and (min-width: 1101px) {
+  .setup-board205-board-heading {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--panel, #fff);
+  }
+  .setup-board205-day {
+    /* overflow:clip broke position:sticky on the nested workday header */
+    overflow: visible;
+    scroll-margin-top: var(--setup-board205-sticky-heading-height, 5rem);
+  }
+  .setup-board205-day-header {
+    position: sticky;
+    top: var(--setup-board205-sticky-heading-height, 5rem);
+    z-index: 10;
+  }
+  .setup-board205-right {
+    scroll-padding-top: var(--setup-board205-sticky-heading-height, 5rem);
+  }
+}
+@media print {
+  .setup-board205-current-day { display: none; }
+  .setup-board205-day-header { position: static; }
+}
+
+/* One sticky navigation row only. Full Setup Day header scrolls normally,
+   while its identity appears in the navigation row when out of view. */
+.setup-board205-current-day[hidden] { display: none !important; }
+@media screen and (min-width: 1101px) {
+  .setup-board205-day-header { position: static; top: auto; }
+}
+.setup-board205-board-heading { padding: 0.25rem 0.4rem; }
+.setup-board205-board-title-row > .setup-board205-scheduled-search { padding: 0.2rem 0.35rem; }
+
+
+/* #205: consistent crew color across label and both shift cells. */
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="A"]) { --crew-accent:#4478c4; --crew-tint:color-mix(in srgb,#4478c4 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="B"]) { --crew-accent:#219475; --crew-tint:color-mix(in srgb,#219475 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="C"]) { --crew-accent:#b4762c; --crew-tint:color-mix(in srgb,#b4762c 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="D"]) { --crew-accent:#9864bd; --crew-tint:color-mix(in srgb,#9864bd 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="E"]) { --crew-accent:#b84b6a; --crew-tint:color-mix(in srgb,#b84b6a 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="F"]) { --crew-accent:#328e9a; --crew-tint:color-mix(in srgb,#328e9a 9%,var(--panel,#fff)); }
+.setup-board205-crew-row .setup-board205-crew-label { background:var(--crew-tint,var(--soft,#f5f8fb)); border-left:0.55rem solid var(--crew-accent,var(--border,#d9e0e8)); }
+.setup-board205-crew-row .setup-board205-cell { border-top:3px solid var(--crew-accent,var(--border,#d9e0e8)); }
+
+/* #205 V0.3.83: Crew rows use display:contents, so color the visible cells.
+   Each crew is visually distinct across Captain, AM and PM without changing
+   grid placement, task states, autosave or drag/drop. */
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="A"]) { --crew-accent:#356fb9; --crew-tint:#e0edfc; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="B"]) { --crew-accent:#157f60; --crew-tint:#ddf5e9; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="C"]) { --crew-accent:#aa681d; --crew-tint:#fff0d9; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="D"]) { --crew-accent:#8556b6; --crew-tint:#eee3fc; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="E"]) { --crew-accent:#a83b68; --crew-tint:#fbe1ec; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="F"]) { --crew-accent:#168193; --crew-tint:#dcf3f7; }
+.setup-board205-crew-row > .setup-board205-crew-label {
+  background: var(--crew-tint, var(--soft,#f5f8fb));
+  border-left: 0.7rem solid var(--crew-accent,#71869a);
+  border-top: 3px solid var(--crew-accent,#71869a);
+}
+.setup-board205-crew-row > .setup-board205-cell {
+  background: color-mix(in srgb, var(--crew-tint,#f5f8fb) 55%, var(--panel,#fff));
+  border-top: 3px solid var(--crew-accent,#71869a);
+}
+html[data-theme="dark"] .setup-board205-crew-row > .setup-board205-crew-label,
+html[data-theme="dark"] .setup-board205-crew-row > .setup-board205-cell {
+  background: color-mix(in srgb, var(--crew-accent,#71869a) 24%, var(--panel,#18222c));
+}
+@media print {
+  .setup-board205-crew-row > .setup-board205-cell { background: transparent; }
+}
+
+
+/* #205: explicit visible-cell crew identity; no inherited custom properties
+   through display:contents, which failed in the operator's browser. */
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="A"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="A"] { background-color:#deebfd; border-top:4px solid #316bb4; }
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="B"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="B"] { background-color:#dcf3e8; border-top:4px solid #168361; }
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="C"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="C"] { background-color:#fff0d6; border-top:4px solid #a86a1d; }
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="D"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="D"] { background-color:#eee1fa; border-top:4px solid #8855b5; }
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="E"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="E"] { background-color:#fae0ea; border-top:4px solid #ad436c; }
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="F"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="F"] { background-color:#daf2f5; border-top:4px solid #208598; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="A"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="A"] { background-color:#223b59; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="B"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="B"] { background-color:#1b4638; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="C"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="C"] { background-color:#4b3923; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="D"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="D"] { background-color:#403052; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="E"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="E"] { background-color:#502d3b; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="F"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="F"] { background-color:#23434d; }
+
+/* #205: keep the no-work decision readable and operable beside its checkbox. */
+#setup-board205-schedule-no-work-row > label {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.5rem 0;
+  cursor: pointer;
+}
+
+#setup-board205-schedule-no-work {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  flex: 0 0 24px;
+  margin: 0;
+}

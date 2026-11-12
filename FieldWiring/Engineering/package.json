@@ -1,0 +1,1 @@
+{"private":true,"type":"module","scripts":{"test:power":"node test_power_capture.mjs","test:power-browser":"node test_power_capture_browser.mjs"},"devDependencies":{"@electric-sql/pglite":"0.5.11","playwright":"1.62.1"}}

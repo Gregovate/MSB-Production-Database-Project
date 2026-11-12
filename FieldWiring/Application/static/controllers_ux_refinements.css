@@ -1,0 +1,108 @@
+/* Controller Inventory live-acceptance UX refinements — 2026-09-02. */
+
+.field-label-header {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-height:18px;
+}
+
+.field-help {
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:18px;
+  height:18px;
+  min-width:18px;
+  padding:0;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:var(--soft);
+  color:var(--muted);
+  font-size:11px;
+  font-weight:900;
+  line-height:1;
+  cursor:help;
+  vertical-align:middle;
+}
+
+.field-help:hover,
+.field-help:focus-visible,
+.field-help.help-open {
+  border-color:var(--blue);
+  color:var(--blue);
+  outline:none;
+}
+
+.field-help::after {
+  content:attr(data-help);
+  position:absolute;
+  z-index:12000;
+  left:50%;
+  top:calc(100% + 7px);
+  transform:translateX(-50%);
+  width:max-content;
+  min-width:220px;
+  max-width:320px;
+  padding:8px 10px;
+  border:1px solid var(--border);
+  border-radius:7px;
+  background:var(--panel);
+  color:var(--ink);
+  box-shadow:0 8px 24px var(--shadow);
+  font-size:12px;
+  font-weight:500;
+  line-height:1.35;
+  text-align:left;
+  white-space:normal;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+}
+
+.field-help:hover::after,
+.field-help:focus-visible::after,
+.field-help.help-open::after {
+  opacity:1;
+  visibility:visible;
+}
+
+/* Printing is a physical-output action, not the blue database Save/navigation action. */
+#request-controller-label.print-action-button {
+  border-color:#7c3aed;
+  background:#7c3aed;
+  color:#fff;
+}
+
+#request-controller-label.print-action-button:hover:not(:disabled) {
+  border-color:#6d28d9;
+  background:#6d28d9;
+}
+
+#request-controller-label.print-action-button:disabled {
+  border-color:#8b5cf6;
+  background:#8b5cf6;
+  color:#fff;
+  opacity:.7;
+  cursor:not-allowed;
+}
+
+html[data-theme="dark"] #request-controller-label.print-action-button {
+  border-color:#a78bfa;
+  background:#6d28d9;
+}
+
+html[data-theme="dark"] #request-controller-label.print-action-button:hover:not(:disabled) {
+  border-color:#c4b5fd;
+  background:#7c3aed;
+}
+
+@media (max-width:700px) {
+  .field-help::after {
+    left:0;
+    transform:none;
+    min-width:200px;
+    max-width:min(280px, calc(100vw - 40px));
+  }
+}

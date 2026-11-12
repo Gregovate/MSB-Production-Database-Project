@@ -1,0 +1,103 @@
+/* FieldWiring long-list sticky context and desktop image/hookup split.
+
+   Keep the controller identity and, on desktop, the table column labels visible
+   while scrolling a large controller relationship list. The generic Field
+   Hookup section heading is intentionally not sticky on mobile so it does not
+   consume scarce vertical space.
+
+   When an image is open on desktop, the image pane owns the explicit flex-basis
+   controlled by the existing drag handle and Field Hookup flexes into the
+   remaining workspace. Dragging the divider therefore enlarges either side of
+   the split instead of allowing the image pane to shrink a fixed-height hookup
+   box that cannot reclaim the released space.
+*/
+
+@media screen and (min-width: 801px) {
+  .hookup-pane {
+    --hookup-heading-height: 52px;
+  }
+
+  .image-section.image-open + .hookup-pane {
+    flex: 1 1 0;
+    min-height: 150px;
+    max-height: none;
+  }
+
+  .image-section:not(.image-open) + .hookup-pane {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 58vh;
+  }
+
+  /* Sticky must resolve against the hookup-pane scroll container rather than a
+     clipped controller-card/table wrapper. */
+  .controller-card {
+    overflow: visible;
+  }
+
+  .controller-head {
+    position: sticky;
+    top: var(--hookup-heading-height);
+    z-index: 5;
+    box-shadow: 0 1px 0 var(--border);
+  }
+
+  .controller-card.is-collapsed .controller-head {
+    border-radius: 7px;
+  }
+
+  .hookup-table-wrap {
+    overflow: visible;
+  }
+
+  .hookup-table thead th {
+    top: calc(var(--hookup-heading-height) + var(--controller-head-height, 36px));
+    z-index: 4;
+    box-shadow: 0 1px 0 var(--border);
+  }
+}
+
+@media screen and (max-width: 800px) {
+  /* On phones/tablets the page itself scrolls. The generic section heading is
+     useful at entry but should scroll away; controller identity is the context
+     worth preserving. */
+  .hookup-heading {
+    position: static;
+    padding: 5px 7px;
+  }
+
+  .hookup-heading h2 {
+    font-size: 16px;
+  }
+
+  .hookup-heading .legend {
+    display: none;
+  }
+
+  .controller-card {
+    overflow: visible;
+  }
+
+  .controller-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    box-shadow: 0 1px 0 var(--border);
+  }
+
+  /* Horizontal table scrolling remains available on narrow screens. The
+     controller label stays pinned; column headings remain part of the table so
+     they do not steal another permanent line of phone height. */
+  .hookup-table th {
+    position: static;
+  }
+}
+
+@media print {
+  .controller-head,
+  .hookup-table thead th {
+    position: static !important;
+    top: auto !important;
+    box-shadow: none !important;
+  }
+}

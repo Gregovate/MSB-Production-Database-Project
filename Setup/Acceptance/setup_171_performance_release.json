@@ -1,0 +1,17 @@
+{
+  "profile": "site-171-performance",
+  "release_tag": "PR460-Performance",
+  "candidate": "875003c504e8a60c5851c530ec6496e4430945d9",
+  "target": "875003c504e8a60c5851c530ec6496e4430945d9",
+  "tree": "3276af7c846e164cdea1f74d135feb8527b85f61",
+  "shared": "72a94be772f2e4ae8bfaed74051f667fc87201a6",
+  "old_setup": "72a94be772f2e4ae8bfaed74051f667fc87201a6",
+  "blobs": {
+    "Database/EngineeringTools/sql/171_power_snapshot_performance.sql": "54c6d85369fb2eb4fe0cafb40d62f3fc8139140d",
+    "Database/Acceptance/171_power_snapshot_performance_validation.sql": "1eaf14dd60b4f76457c208809e2a36fa69fd1c8e"
+  },
+  "helpers": {
+    "setup_171_performance_release.py": "fac3de6d6f757fd294680b2ed50be480b92f560edd5e9a48fff0b79db845a823",
+    "setup_maintenance_deploy.py": "4a2e34064ce1eced57e277b368048810fd8c122034749792ac121e1367c970ab"
+  }
+}

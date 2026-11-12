@@ -1,0 +1,250 @@
+# People Manager
+
+This area owns the application/database implementation for the global People and Identity manager tracked by issue #130.
+
+## Current State
+
+People Manager is **live in Production** at:
+
+```text
+https://my.sheboyganlights.org/people/
+```
+
+Current accepted state:
+
+```text
+current-Production disposable acceptance       PASS
+pre-Production browser operator review          ACCEPTED
+Production deployment                           PASS
+Production protected /people/ route             PASS
+Cloudflare-authenticated live browser            PASS
+Production analytics verification               PASS
+Production index / intranet integration          NEXT — BACKBONE #16
+```
+
+Current People/Identity Production release:
+
+```text
+visible version       V0.2.2
+accepted runtime      2c9a2937079f817dafd5119584aaffc77b51357d
+merged/deployed main  bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+migration             People/Database/005_reconcile_directus_person_identity.sql
+```
+
+Current Production acceptance evidence:
+
+```text
+People/Acceptance/People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md
+```
+
+The original People Manager Production acceptance remains:
+
+```text
+People/Acceptance/People_Manager_Production_Acceptance_2026-09-09.md
+```
+
+## Production Runtime
+
+```text
+service             msb-people.service
+version             V0.2.2
+runtime account     fieldwiring
+working directory   /opt/fieldwiring/People/Application
+listener            192.168.5.9:8796
+PostgreSQL role     people_app
+public route        https://my.sheboyganlights.org/people/
+```
+
+The People backend is exposed only to the Synology reverse proxy through the source-limited UFW rule for `192.168.5.4 -> 8796/tcp`.
+
+Server/runtime mechanics remain owned by `Gregovate/MSB-Server-Management`.
+
+## Implemented Scope
+
+### Durable person / contact identity
+
+- Manager/Administrator-authorized person search and detail;
+- create/edit contact information;
+- active/inactive lifecycle with reactivation of the same durable `person_id`;
+- real `@sheboyganlights.org` Workspace identity only when an actual account exists;
+- strong duplicate review before create/identity-changing edits;
+- protected Directus/PostgreSQL identity fields;
+- dynamic visibility of current foreign-key relationships; and
+- no browser hard-delete or merge action.
+
+### Global capability catalog
+
+`ref.person_capability_type` is the controlled capability catalog and `ref.person_capability` relates people to reusable skills, experience, and MSB-specific knowledge.
+
+Current controlled categories are:
+
+```text
+TRADE
+TECHNICAL
+DISPLAY_BUILD_KNOWLEDGE
+EQUIPMENT
+OTHER
+```
+
+No skill level such as beginner/intermediate/expert is invented.
+
+### Formal qualifications
+
+`ref.person_qualification_type` is the controlled qualification catalog and `ref.person_qualification` stores dated person qualification records including:
+
+```text
+completed_on
+valid_from
+expires_on
+qualification_role
+certificate_number
+evidence_reference
+active_flag
+notes
+```
+
+Capabilities and qualifications remain separate. Expiration dates are entered from authoritative evidence rather than inferred from conversational shorthand.
+
+### Setup / Takedown participation and eligibility
+
+`ref.person_setup_role` supports:
+
+```text
+SETUP_VOLUNTEER
+TAKEDOWN_VOLUNTEER
+CAPTAIN_CANDIDATE
+ADVISOR_CANDIDATE
+```
+
+These relationships describe participation/eligibility and do not create Captain assignments.
+
+### Existing Setup leadership visibility
+
+People Manager reads the existing `ref.setup_task_captain` relationship so a person's current reusable-task `CAPTAIN`, `ALTERNATE`, and `ADVISOR` assignments are visible. People Manager does not create or infer those assignments.
+
+## Authentication / Authorization
+
+Cloudflare Access authenticates the browser user. PostgreSQL then resolves the current Directus authorization context.
+
+People Manager maintenance is limited to current **Manager / Administrator** or equivalent accepted `admin_access` authority. Cloudflare authentication alone does not grant People management access.
+
+Human writes require the authenticated Directus user to resolve to a durable `ref.person` actor. Since V0.2.2, a missing UUID link may self-reconcile only when the active Google Directus user, external identifier, and active existing Person all match the same normalized Sheboygan Lights email and no UUID conflict exists. The reconciliation path never changes Directus role/policy authorization and rejects non-human tablet/device/service identities.
+
+## Current Human Onboarding Gap — #395
+
+A human can successfully authenticate to `my.sheboyganlights.org` through Cloudflare Access while still having no Directus identity. In that state, protected applications cannot authorize the user because Directus role/policy state does not yet exist.
+
+Live Production evidence on 2026-10-15 confirmed this with Don Martens:
+
+```text
+Person exists and is active
+real Sheboygan Lights email exists
+Cloudflare authentication succeeds
+directus_user_id = NULL
+matching Directus user = NONE
+Setup capability row = NONE
+```
+
+The current Directus **User Onboarding** Flow fires only on `directus_users.items.create`. Its default role is **MSB Browser** with **Read Only - MSB Core**.
+
+The required #395 direction is therefore an invisible first-login/bootstrap path that creates or initializes the supported Directus Google identity without requiring normal users to visit the Directus admin/login screen.
+
+First initialization must remain least privilege:
+
+```text
+new human Directus identity
+    -> MSB Browser
+```
+
+Role elevation remains an explicit administrator action after the Directus identity exists. Administrators can continue changing an existing user's role in Directus. Legacy Person flags such as `is_manager` and `is_team` are not authorization sources and must not automatically promote a Directus user.
+
+Shared tablet/device/service identities are intentionally non-human. They may have Directus identities while having no Person row, must remain MSB Browser-only where governed, and must not be reconciled into human Person actors.
+
+## Browser / UI Contract
+
+The accepted presentation follows the current MSB application family:
+
+- official Making Spirits Bright blue logo/header;
+- shared `msb-theme` light/dark preference;
+- compact sticky People list at left;
+- separated Contact, Capabilities, Qualifications, Setup/Takedown, and Leadership cards;
+- protected system state and database relationships collapsed as technical details; and
+- blue left-edge panel accents for separation, especially in dark mode.
+
+## Google Analytics Contract
+
+People Manager uses the required MSB internal GA4 integration:
+
+```text
+Measurement ID      G-X08ZTSY0VV
+analytics version   2026-09-09.1
+```
+
+The live Production page view was verified in the MSB Internal Intranet GA4 property on 2026-09-09.
+
+The application must never send person names, email addresses, phone numbers, `person_id`, authenticated identity, search text, Directus/PostgreSQL identity values, or other Production record identifiers to GA4. Google Signals and advertising-personalization features remain disabled.
+
+## Operator Documentation
+
+Plain-English operator procedures are under:
+
+```text
+Docs/02_Production_Database/02_Operational_SOPs/People/
+```
+
+Use those procedures for normal person/contact, capability, qualification, and Setup/Takedown role maintenance. Engineering documentation remains separate.
+
+## Folder Guide
+
+| Folder | Purpose |
+|---|---|
+| `Application/` | Flask browser/API and static People Manager UI |
+| `Database/` | Least-privilege PostgreSQL functions, metadata tables, and grants |
+| `Acceptance/` | Disposable acceptance, browser review, Production deployment, and retained evidence |
+
+## Engineering Authority
+
+Start with:
+
+`Docs/02_Production_Database/01_System_Architecture/03_People_and_Identity/engineering/README.md`
+
+Current implementation detail:
+
+`People_Manager_Metadata_Implementation_2026-09-09.md`
+
+Current Directus onboarding behavior:
+
+`Directus_User_Onboarding_Identity_Contract_2026-09-09.md`
+
+Acceptance evidence:
+
+```text
+People/Acceptance/People_Manager_Metadata_Disposable_Acceptance_Evidence_2026-09-09.md
+People/Acceptance/People_Manager_Browser_Review_Acceptance_2026-09-09.md
+People/Acceptance/People_Manager_Production_Acceptance_2026-09-09.md
+People/Acceptance/People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md
+```
+
+## Separate / Future Work
+
+The accepted current People Manager deliberately leaves these as separate follow-on work:
+
+- Google Workspace account provisioning remains owned by Google Admin / Workspace;
+- Directus role/policy administration remains outside ordinary People editing;
+- authoritative capability/qualification seed evidence must be resolved to canonical `person_id` values before any seed/import;
+- `ref.setup_task_capability` remains a later Setup-consumer relationship; and
+- governed person merge/reconciliation remains future work before relationship-heavy duplicate cleanup.
+
+These follow-ons do not block the current Production People Manager.
+
+## Current Closeout Boundary
+
+The People application itself is accepted and live. The remaining current closeout step is to expose the verified live People route from the Production intranet/index through:
+
+```text
+Gregovate/MSB-Internal-Web-Backbone#16
+```
+
+The source handoff is:
+
+`Docs/02_Production_Database/01_System_Architecture/03_People_and_Identity/engineering/Internal_Web_Backbone_Handoff.md`

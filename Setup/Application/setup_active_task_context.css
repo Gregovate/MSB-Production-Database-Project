@@ -1,0 +1,39 @@
+/* Persistent active Setup task identity for Issue #169. */
+
+.active-task-context {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.active-task-context[hidden] {
+  display: none;
+}
+
+.active-task-context-label {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.active-task-context-identity {
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 650px) {
+  .active-task-context {
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    gap: 0.15rem 0.4rem;
+  }
+}

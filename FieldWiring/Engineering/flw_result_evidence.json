@@ -1,0 +1,39 @@
+{
+  "source_sha256": "de23ad7a096e8118366d82d0524879372a9780834d8c3ce8d5ec91628317403e",
+  "source_records": 725,
+  "unique_tests": 517,
+  "verified_counts": {
+    "PASS": 498,
+    "FAIL": 17,
+    "INFO": 2
+  },
+  "anchors": [
+    {
+      "test_uuid": "68b4579b-2116-4140-8f24-e7a0d170b8be",
+      "cable_name": "LPFC-03 TO FC-00 REG",
+      "status_code": 6,
+      "test_standard": "1000BASE-T",
+      "length_ft": 137.0,
+      "test_time": "2023-11-01T07:03:42",
+      "expected_result": "FAIL"
+    },
+    {
+      "test_uuid": "19ad6347-1366-4ddb-9fef-36141c833731",
+      "cable_name": "PO TO LPFT-PS AUX-I",
+      "status_code": 1,
+      "test_standard": "1000BASE-T",
+      "length_ft": 211.0,
+      "test_time": "2023-11-01T07:34:35",
+      "expected_result": "PASS"
+    },
+    {
+      "test_uuid": "8920f9e3-6633-45b9-9f83-25768a68f454",
+      "cable_name": "Larrys antena",
+      "status_code": 8,
+      "test_standard": "Telco/Passive PoE",
+      "length_ft": null,
+      "test_time": "2026-10-06T14:46:09",
+      "expected_result": "INFO"
+    }
+  ]
+}

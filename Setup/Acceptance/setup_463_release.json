@@ -1,0 +1,30 @@
+{
+  "profile": "site-463-equipment",
+  "release_tag": "PR463-Equipment-Location",
+  "candidate": "820b154cd664f0cac0d1d8dfd38e47b4fe19df9c",
+  "target": "820b154cd664f0cac0d1d8dfd38e47b4fe19df9c",
+  "tree": "673433999addd4be4f3c8e303b97e4422862c5e5",
+  "shared": "2548edd130b5cebad33a44786bc1811c2b089bf8",
+  "old_setup": "72a94be772f2e4ae8bfaed74051f667fc87201a6",
+  "blobs": {
+    "Database/EngineeringTools/sql/171_equipment_lifecycle.sql": "8289a11ce4a1ffe3e194511090de51f46b07662c",
+    "Database/EngineeringTools/sql/171_equipment_catalog.sql": "fc3b273362979b397b54c8e77cb78a2777b730d5",
+    "Setup/Database/077_add_setup_controller_location.sql": "35660d62655fb52fa368b3e06492d4b45078cfd8",
+    "Setup/Database/078_add_setup_container_pickup.sql": "8805ee97d5ec902d7a24c4cb0b5031d2c275a59b",
+    "Database/Acceptance/171_equipment_catalog_validation.sql": "63b41e43e0af713a001dad6c1cf59feeae36e9e2",
+    "Setup/Acceptance/setup_88_controller_location_validation.sql": "0f87e952846695cbc45dbd9bb8348553115616a1",
+    "Setup/Acceptance/setup_88_container_pickup_validation.sql": "cd01ccaf11c582259d0dc71976b5364060b92083"
+  },
+  "scan_sha256": "f9b82250df837abb416359a7d2216b26b81fe13fc5b3be0078dcfee91d550521",
+  "helpers": {
+    "setup_463_release.py": "c436bc78f482ed688ac56ff92da4d00649d0e1170d04b6b02ca0851f474c9787",
+    "setup_maintenance_deploy.py": "4a2e34064ce1eced57e277b368048810fd8c122034749792ac121e1367c970ab",
+    "deploy_scan_extension_issue219.sh": "1784cb0d21e788d3bf8f751bc15d9971e399372c81734c56d483f26d63895845",
+    "validate_scan_extension_isolated.sh": "2d0c21ea9e2bdaee6056365c41c6899b35e1ea7f94c54ece3cd3d1652fad7d52"
+  },
+  "server_management_sha": "063d5fbc53e1ae3549de5e22f8e452e7b734ba3c",
+  "server_helpers": {
+    "deploy_scan_extension_issue219.sh": "1784cb0d21e788d3bf8f751bc15d9971e399372c81734c56d483f26d63895845",
+    "validate_scan_extension_isolated.sh": "2d0c21ea9e2bdaee6056365c41c6899b35e1ea7f94c54ece3cd3d1652fad7d52"
+  }
+}

@@ -1,0 +1,232 @@
+/* Real Production review corrections discovered during 2025 Manager use. */
+
+/* setup_next_pass.css uses --panel/--soft but the shared theme did not define
+   them. Keep those aliases tied to the canonical Setup theme variables so
+   light/dark/system mode all resolve through one palette. */
+:root {
+  --panel: var(--card);
+  --soft: var(--theme-subtle);
+}
+
+/* The signed-in user/access badge previously inherited light text while its
+   fallback background stayed light, making the user name/role disappear in
+   dark mode. Keep both foreground and background on the shared theme palette. */
+.access-badge {
+  background: var(--soft);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* Reusable Task Catalog: every nested surface must follow the shared palette.
+   Earlier CSS fixed the outer Stage shell but left the Stage body / scope body /
+   dropzone / task area able to inherit light fallbacks. */
+.next-stage-group,
+.next-stage-body,
+.next-sitewide-note,
+.next-scope-group,
+.next-scope-group > summary,
+.next-scope-dropzone,
+.next-task-row,
+.acceptance-scope-actions,
+.next-dialog,
+.next-plan-row,
+.next-crew-lane,
+.next-perform-task,
+.next-perform-body {
+  color: var(--text);
+}
+
+.next-stage-group,
+.next-stage-body,
+.next-scope-group,
+.next-scope-dropzone,
+.next-task-row,
+.next-dialog,
+.next-plan-row,
+.next-crew-lane,
+.next-perform-task,
+.next-perform-body {
+  background: var(--panel);
+}
+
+.next-sitewide-note,
+.next-scope-group > summary,
+.acceptance-scope-actions {
+  background: var(--soft);
+}
+
+.next-task-row .task-meta,
+.next-inline-gap,
+.next-stage-empty,
+.next-count {
+  color: var(--muted);
+}
+
+/* Dark-mode warning actions use a light amber fill. Keep the label dark enough
+   to remain readable instead of inheriting the generic white button text. */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) button.warning {
+    color: #18212b;
+  }
+}
+
+html[data-theme="dark"] button.warning {
+  color: #18212b;
+}
+
+.setup-live-search {
+  display: flex;
+  align-items: end;
+  gap: 0.65rem;
+  margin: 0 0 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--card);
+}
+
+.setup-live-search label {
+  flex: 1;
+  margin: 0;
+}
+
+.setup-live-search input {
+  min-width: min(32rem, 100%);
+}
+
+.setup-live-search .search-help {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.setup-live-search-empty {
+  padding: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Task detail visual hierarchy. Production review showed that the functional
+   sections blended into one long form, hiding important controls such as the
+   reusable Resource Catalog creation area. Keep the treatment restrained:
+   one consistent card language, a narrow semantic accent, and short teaching
+   text that explains what belongs in each section. */
+.detail-section.task-detail-panel {
+  --task-section-accent: var(--accent);
+  margin: 1rem 0;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--task-section-accent);
+  border-radius: 0.8rem;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.task-detail-definition {
+  --task-section-accent: var(--accent);
+}
+
+.task-detail-prerequisites {
+  --task-section-accent: var(--warning);
+}
+
+.task-detail-resources {
+  --task-section-accent: var(--success);
+}
+
+.task-detail-procedures {
+  --task-section-accent: var(--accent);
+}
+
+.task-detail-panel > h3,
+.task-detail-panel .resource-section-header h3 {
+  margin-bottom: 0.35rem;
+  color: var(--task-section-accent);
+  font-size: 1.08rem;
+}
+
+.task-detail-definition.split-section {
+  gap: 0.9rem;
+}
+
+.task-detail-subpanel {
+  min-width: 0;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--soft);
+}
+
+.task-detail-subpanel legend {
+  margin-bottom: 0.35rem;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+#reusable-fieldset.task-detail-subpanel legend {
+  color: var(--accent);
+}
+
+.task-section-purpose {
+  margin: 0 0 0.85rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.45rem;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.task-detail-subpanel > .task-section-purpose {
+  background: var(--panel);
+}
+
+.task-detail-prerequisites .eyebrow {
+  color: var(--warning);
+}
+
+.task-detail-resources .eyebrow {
+  color: var(--success);
+}
+
+.task-detail-resources .resource-section-header {
+  margin-bottom: 0.25rem;
+}
+
+.task-detail-resources .resource-manager-heading .eyebrow {
+  margin-bottom: 0.25rem;
+}
+
+.task-detail-resources .resource-existing-block,
+.task-detail-resources .resource-create-block {
+  border-radius: 0.65rem;
+}
+
+.task-detail-resources .task-resource-catalog-block {
+  border-style: solid;
+  border-left: 4px solid var(--success);
+  background: var(--panel);
+}
+
+.task-detail-resources .task-resource-catalog-block h4 {
+  color: var(--success);
+}
+
+.task-detail-procedures .manager-procedure-card {
+  border-radius: 0.65rem;
+}
+
+@media (max-width: 720px) {
+  .setup-live-search {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .setup-live-search .search-help {
+    white-space: normal;
+  }
+
+  .detail-section.task-detail-panel {
+    padding: 0.7rem;
+  }
+}

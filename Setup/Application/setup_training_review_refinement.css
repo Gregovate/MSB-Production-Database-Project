@@ -1,0 +1,181 @@
+/* Browser-review refinements from the 2026-09-08 Setup reconstruction preview. */
+
+#reusable-manager-actions .setup-return-library-wrap {
+  position: static;
+  display: contents;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+#reusable-manager-actions .setup-return-library-wrap[hidden] {
+  display: none;
+}
+
+#reusable-manager-actions .setup-return-library-wrap .muted {
+  display: none;
+}
+
+/* The Catalog return action is navigation, not another primary save action.
+   Give it a distinct theme-aware treatment with enough visual contrast in both
+   light and dark mode while keeping the primary Save action dominant. */
+#reusable-manager-actions #setup-return-library {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+#reusable-manager-actions #setup-return-library:hover,
+#reusable-manager-actions #setup-return-library:focus-visible {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+#setup-effort-editor-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+#setup-effort-editor-row .setup-effort-save-actions {
+  align-items: end;
+  padding-top: 0;
+}
+
+#setup-effort-editor-row #save-task-effort {
+  white-space: nowrap;
+}
+
+.setup-reusable-match-target {
+  margin: 10px 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--theme-subtle);
+  font-size: .9rem;
+}
+
+.setup-reusable-match-target[hidden] {
+  display: none;
+}
+
+.setup-reusable-match-target strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.setup-captain-picker-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The original select remains as the backing value store for the type-ahead.
+   Some global label/select rules override the browser's default [hidden]
+   behavior, so force the backing control completely out of the rendered UI. */
+.setup-captain-picker-grid > label[hidden] {
+  display: none !important;
+}
+
+#setup-captain-person {
+  min-height: 0;
+}
+
+.setup-captain-typeahead-help,
+.setup-captain-typeahead-chosen {
+  margin-top: 5px;
+  font-size: .82rem;
+}
+
+.setup-captain-typeahead-results {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 6px;
+  max-height: 16rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--theme-input);
+}
+
+.setup-captain-typeahead-results[hidden] {
+  display: none;
+}
+
+.setup-captain-typeahead-match {
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+}
+
+.setup-captain-no-match {
+  padding: 8px;
+}
+
+.setup-material-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.setup-controller-context-compact {
+  margin-top: 10px;
+}
+
+.setup-material-details-dialog {
+  width: min(1100px, calc(100vw - 32px));
+  max-height: min(86vh, 900px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--card);
+}
+
+.setup-material-details-dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+.setup-material-dialog-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.setup-material-dialog-heading h3 {
+  margin: 2px 0 0;
+}
+
+.setup-material-dialog-content {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  max-height: calc(86vh - 82px);
+  overflow: auto;
+}
+
+@media (max-width: 900px) {
+  #setup-effort-editor-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  #setup-effort-editor-row .setup-effort-save-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .setup-material-dialog-heading {
+    align-items: flex-start;
+  }
+}

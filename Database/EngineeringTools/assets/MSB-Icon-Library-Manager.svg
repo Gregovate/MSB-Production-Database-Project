@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>MSB Icon Library Manager desktop application</title>
+  <desc>Evergreen application tile with a catalog of symbol samples and a golden editing pencil.</desc>
+  <rect x="11" y="11" width="234" height="234" rx="48" fill="#0d3b36"/>
+  <rect x="16" y="16" width="224" height="224" rx="43" fill="none" stroke="#2b8b76" stroke-width="5"/>
+  <rect x="39" y="32" width="154" height="190" rx="19" fill="#f2f7f0"/>
+  <path d="M63 51 H169" fill="none" stroke="#b1c9c0" stroke-width="7" stroke-linecap="round"/>
+  <rect x="55" y="72" width="56" height="57" rx="11" fill="#d4e9df"/>
+  <rect x="120" y="72" width="56" height="57" rx="11" fill="#d4e9df"/>
+  <rect x="55" y="138" width="56" height="57" rx="11" fill="#d4e9df"/>
+  <rect x="120" y="138" width="56" height="57" rx="11" fill="#d4e9df"/>
+  <path d="M83 79 L90 94 L106 97 L94 109 L97 125 L83 117 L69 125 L72 109 L60 97 L76 94Z" fill="#dca02e"/>
+  <path d="M148 81 C131 81 132 99 148 119 C164 99 165 81 148 81Z" fill="#168b82"/>
+  <circle cx="148" cy="95" r="6" fill="#e5f6f0"/>
+  <path d="M69 166 L80 178 L101 151" fill="none" stroke="#2f7e5c" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M133 154 H163 M133 167 H163 M133 180 H153" fill="none" stroke="#397d71" stroke-width="7" stroke-linecap="round"/>
+  <path d="M161 209 L202 168 L220 187 L179 228 L152 236Z" fill="#e3a638" stroke="#0d3b36" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M202 168 L209 161 C212 158 216 158 220 162 L229 171 C232 175 232 179 228 182 L220 187Z" fill="#f9d36c" stroke="#0d3b36" stroke-width="5"/>
+  <path d="M161 209 L179 228 L152 236Z" fill="#f3e2bc" stroke="#0d3b36" stroke-width="4"/>
+  <path d="M152 236 L159 221 L167 229Z" fill="#163f3a"/>
+</svg>

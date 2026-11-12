@@ -1,0 +1,178 @@
+controller_id,source_row,canonical_model_code,display_name_evidence,network_evidence,uid_or_address_evidence,lor_network,lor_uid_start_hex,lor_uid_count,lor_uid_end_hex,management_ip,for_what_evidence
+1001,154,CTB32,RA-Arch-01Wrap,Aux-E,80,Aux E,80,1,80,,
+1002,155,CTB32,RA-Arch-05Wrap,Aux-E,81,Aux E,81,1,81,,
+1003,156,CTB32,RA-Arch-09Wrap,Aux-E,82,Aux E,82,1,82,,
+1004,157,CTB32,RA-Arch-13Wrap,Aux-E,83,Aux E,83,1,83,,
+1005,54,CTB32,EC-ELF-P1-01,Aux-J,26,Aux J,26,1,26,,Elf Choir Left SIde
+1006,55,CTB32,EC-ELF-P3-01,Aux-J,27,Aux J,27,1,27,,Elf Choir Right Side
+1007,61,CTB32,ST-StarRow-01,Aux-J,30,Aux J,30,1,30,,
+1008,62,CTB32,ST-StarRow-17,Aux-J,31,Aux J,31,1,31,,
+1009,75,CTB32,CH-BridgeBell-01,Aux-N,49,Aux N,49,1,49,,Bridge Bells/Christmas Tree/Star
+1010,4,CTB32,FE-ArchSeg-01-DS,Reg,1,Regular,01,1,01,,On Arch South Side
+1011,5,CTB32,FE-ArchSeg-03-PS,Reg,2,Regular,02,1,02,,On Arch North Side
+1012,152,CTB32,TC-Nutcracker,Reg,7A,Regular,7A,1,7A,,"Nutcracker, Carolers, Stocking"
+1013,11,CTB32,TR-CharlieInTheBox,Reg,0B,Regular,0B,1,0B,,Headlights and rudolf
+1014,105,CTB32,SW-SHRSleigh-01,Reg,67,Regular,67,1,67,,
+1015,103,Pixie2D,SW-PotterPoleBall,Aux-D,01-02,Aux D,01,2,02,,SW PP Ball Top
+1016,104,Pixie2D,SW-PotterPoleBall,Aux-D,03-04,Aux D,03,2,04,,SW PP Ball Bottom
+1017,15,HolidayCoro Flex 48,TR-MegaTreeRGBTree,E1.31,10.10.5.10,,,,,10.10.5.10,10.10.5.10
+1018,71,CTB04Dg3,WW-Fireplace,Reg,3D,Regular,3D,1,3D,,
+1019,84,CTB32,CL-GingerbreadHouse,Reg,64,Regular,64,1,64,,Gigerbread house
+1020,99,CTB04Dg3,SW-Garland-01,Reg,66,Regular,66,1,66,,
+1021,119,CTB32,PB-ThrowingBear-DS,Reg,70,Regular,70,1,70,,Left
+1022,120,CTB32,PB-ThrowingBear-PS,Reg,71,Regular,71,1,71,,Right
+1023,88,CTB32,CL-Pinwheel-DS,Aux-B,61,Aux B,61,1,61,,
+1024,2,CTB32,00-Evergreen Park Sign,Reg,10,Regular,10,1,10,,
+1025,20,CTB32,FC-CarCounter-DS,Reg,1A,Regular,1A,1,1A,,
+1026,21,CTB32,FC-CarCounter-PS,Reg,1B,Regular,1B,1,1B,,
+1027,31,CTB04Dg3,PO-BallAndPost,Reg,24,Regular,24,1,24,,
+1028,64,CTB32,SL-SledPanel-08,Reg,3B,Regular,3B,1,3B,,
+1029,65,CTB32,SL-SledPanel-16,Reg,3C,Regular,3C,1,3C,,
+1030,76,CTB32,CH-NativityFloods-01,Reg,42,Regular,42,1,42,,
+1031,3,CTB04Dg3,HW-EventTrafficRight-01,Reg,9,Regular,09,1,09,,Group 5 09-01 New Controller 2026
+1032,176,CTB04Dg3,HW-EventTrafficRight-02,Reg,9,Regular,09,1,09,,Hwy 42 Signs Group 2 09-01
+1033,86,CTB32,CL-LollipopStick-01,Aux-C,62,Aux C,62,1,62,,
+1034,106,Pixie8D,SW-TreeRGB-LH,Aux-D,10-17,Aux D,10,8,17,,SW-TreeRGB-LH
+1035,107,Pixie8D,SW-TreeRGB-RH,Aux-D,18-1F,Aux D,18,8,1F,,SW-TreeRGB-RH
+1036,56,CTB32,EC-Note-A-01,Aux-J,28,Aux J,28,1,28,,Conductor & Notes
+1037,167,CTB32,QV-Tree,Director,1,Director,01,1,01,,
+1038,146,CTB32,PN-LinusTree,Reg,78,Regular,78,1,78,,"Peanuts, Fireplace"
+1039,178,CTB04Dg3,HW-EventTrafficRight-03,Reg,9,Regular,09,1,09,,Hwy 42 Signs Group 4 09-01
+1040,110,CF50D,PB-Igloo 1 EA,Reg,EA,Regular,EA,1,EA,,Igloo-01
+1041,111,CF50D,PB-Igloo 1 EA,Reg,EA,Regular,EA,1,EA,,Igloo-01
+1042,112,CF50D,PB-Igloo 2 EB,Reg,EB,Regular,EB,1,EB,,Igloo-02
+1043,113,CF50D,PB-Igloo 2 EB,Reg,EB,Regular,EB,1,EB,,Igloo-02
+1044,114,CF50D,PB-Igloo 3 EC,Reg,EC,Regular,EC,1,EC,,Igloo-03
+1045,115,CF50D,PB-Igloo 3 EC,Reg,EC,Regular,EC,1,EC,,Igloo-03
+1046,116,CF50D,PB-Igloo 4 ED,Reg,ED,Regular,ED,1,ED,,Igloo-04
+1047,117,CF50D,PB-Igloo 4 ED,Reg,ED,Regular,ED,1,ED,,Igloo-04
+1048,28,CTB32,FT-Wrap-PS01-Red,Aux-I,20,Aux I,20,1,20,,Center of Trees DS
+1049,27,CTB32,FT-Wrap-DS01-Red,Aux-I,21,Aux I,21,1,21,,Center of Trees PS
+1050,38,CTB32,WV-WhoPanel-01,Aux-I,B1,Aux I,B1,1,B1,,On Panel 1
+1051,39,CTB32,WV-WhoPanel-02,Aux-I,B2,Aux I,B2,1,B2,,On Panel 2
+1052,40,CTB32,WV-WhoPanel-03,Aux-I,B3,Aux I,B3,1,B3,,On Panel 3
+1053,41,CTB32,WV-WhoPanel-04,Aux-I,B4,Aux I,B4,1,B4,,On Panel 4
+1054,42,CTB32,WV-WhoPanel-05,Aux-I,B5,Aux I,B5,1,B5,,On Panel 5
+1055,43,CTB32,WV-WhoPanel-06,Aux-I,B6,Aux I,B6,1,B6,,On Panel 6
+1056,44,CTB32,WV-WhoPanel-07,Aux-I,B7,Aux I,B7,1,B7,,On Panel 7
+1057,45,CTB32,WV-WhoPanel-08,Aux-I,B8,Aux I,B8,1,B8,,On Panel 8
+1058,34,CTB32,WV-SpiralTree,Aux-I,BA,Aux I,BA,1,BA,,Spiral Tree
+1059,35,CTB32,WV-SpiralTree,Aux-I,BB,Aux I,BB,1,BB,,Spiral Tree
+1060,36,CTB32,WV-SpiralTree,Aux-I,BC,Aux I,BC,1,BC,,Spiral Tree
+1061,37,CTB32,WV-SpiralTree,Aux-I,BD,Aux I,BD,1,BD,,Spiral Tree
+1062,7,CTB32,FE-GoalSign,Reg,6,Regular,06,1,06,,Goal Sign
+1063,158,CF50D,MI Igloo LED E1,Reg,E1,Regular,E1,1,E1,,
+1064,159,CF50D,MI Igloo LED E2,Reg,E2,Regular,E2,1,E2,,
+1065,160,CF50D,MI Igloo LED E3,Reg,E3,Regular,E3,1,E3,,
+1066,161,CF50D,MI Igloo LED E4,Reg,E4,Regular,E4,1,E4,,
+1067,162,CF50D,MI Igloo LED E5,Reg,E5,Regular,E5,1,E5,,
+1068,163,CF50D,MI Igloo LED E6,Reg,E6,Regular,E6,1,E6,,
+1069,164,CF50D,MI Igloo LED E7,Reg,E7,Regular,E7,1,E7,,
+1070,165,CF50D,MI Igloo LED E8,Reg,E8,Regular,E8,1,E8,,
+1071,168,Pixie2D,QV-Welcome to-02,Director,1-2,Director,01,2,02,,Group 2 2nd Pixie2 Controller
+1072,10,CTB32,TR-Abominable,Reg,0A,Regular,0A,1,0A,,
+1073,8,CTB32,FE-OpenCloseSign,Reg,3,Regular,03,1,03,,Open/Close Sign
+1074,93,CTB04Dg3,CL-WelcomeTo-CandylandCandyLand,Reg,63,Regular,63,1,63,,Candyland Sign Screwed to L61 Post
+1075,108,CTB32,SS-Row-AB-01,Reg,72,Regular,72,1,72,,
+1076,109,CTB32,SS-Row-HJ-01,Reg,73,Regular,73,1,73,,
+1077,92,CTB32,CL-TreeBenchLow-01,Aux-B,60,Aux B,60,1,60,,Benches
+1078,97,CTB32,DF-Wrap-PS-D-01R,Aux-C,6D,Aux C,6D,1,6D,,
+1079,98,CTB32,DF-Wrap-PS-E-01R,Aux-C,6E,Aux C,6E,1,6E,,
+1080,94,CTB32,DF-Wrap-DS-A-01R,Aux-D,6A,Aux D,6A,1,6A,,
+1081,95,CTB32,DF-Wrap-DS-B-01R,Aux-D,6B,Aux D,6B,1,6B,,
+1082,96,CTB32,DF-Wrap-DS-C-01R,Aux-D,6C,Aux D,6C,1,6C,,
+1083,13,CTB04Dg3,TR-FrostyComeBack,Reg,0C,Regular,0C,1,0C,,"flag, trail volunteer"
+1084,12,CTB32,TR-FredStar-01,Reg,0E,Regular,0E,1,0E,,
+1085,63,CTB32,SL-SledPanel-01,Reg,3A,Regular,3A,1,3A,,
+1086,16,CTB04Dg3,WA-WelcomeTo-01,Reg,7,Regular,07,1,07,,Attched to Welcome To Making Spirits Brght Sign
+1087,118,CTB32,PB-SlidingPenguins-06,Reg,75,Regular,75,1,75,,
+1088,145,CTB32,PN-DancingPeanuts,Reg,79,Regular,79,1,79,,"Peanuts, Dancing Kids"
+1089,175,CTB04Dg3,HW-TuneRadio-1CH-02,Reg,9,Regular,09,1,09,,Hwy 42 Signs Group 1 09-01
+1090,46,Pixie8D,WF-Tree-01,Aux-I,50-57,Aux I,50,8,57,,WF-Tree-01
+1091,48,Pixie8D,WF-Tree-03,Aux-I,60-67,Aux I,60,8,67,,WF-Tree-03
+1092,49,Pixie8D,WF-Tree-04,Aux-I,68-6f,Aux I,68,8,6F,,WF-Tree-04
+1093,52,Pixie8D,WF-Tree-07,Aux-I,80-87,Aux I,80,8,87,,WF-Tree-07
+1094,53,Pixie8D,WF-Tree-08,Aux-I,88-8F,Aux I,88,8,8F,,WF-Tree-08
+1095,81,Pixie16D,CH-RGBTree-16x100-180,Aux-N,30-3F,Aux N,30,16,3F,,Bridge Bells/Christmas Tree/Star
+1096,121,Pixie2D,GG-Elden-20-01,Aux-O,20,Aux O,20,1,20,,
+1097,122,Pixie2D,GG-Elden-20-02,Aux-O,20,Aux O,20,1,20,,
+1098,123,Pixie2D,GG-Elden-20-03,Aux-O,20,Aux O,20,1,20,,
+1099,124,Pixie2D,GG-Elden-20-04,Aux-O,20,Aux O,20,1,20,,
+1100,127,Pixie2D,GG-Felix-22-01,Aux-O,22,Aux O,22,1,22,,
+1101,128,Pixie2D,GG-Felix-22-02,Aux-O,22,Aux O,22,1,22,,
+1102,129,Pixie2D,GG-Felix-22-03,Aux-O,22,Aux O,22,1,22,,
+1103,130,Pixie2D,GG-Felix-22-04,Aux-O,22,Aux O,22,1,22,,
+1104,133,Pixie2D,GG-Ralphie-24-01,Aux-O,24,Aux O,24,1,24,,
+1105,134,Pixie2D,GG-Ralphie-24-02,Aux-O,24,Aux O,24,1,24,,
+1106,135,Pixie2D,GG-Ralphie-24-03,Aux-O,24,Aux O,24,1,24,,
+1107,136,Pixie2D,GG-Ralphie-24-04,Aux-O,24,Aux O,24,1,24,,
+1108,139,Pixie2D,GG-Zuzu-26-01,Aux-O,26,Aux O,26,1,26,,
+1109,140,Pixie2D,GG-Zuzu-26-02,Aux-O,26,Aux O,26,1,26,,
+1110,141,Pixie2D,GG-Zuzu-26-03,Aux-O,26,Aux O,26,1,26,,
+1111,142,Pixie2D,GG-Zuzu-26-04,Aux-O,26,Aux O,26,1,26,,
+1112,18,CTB32,FC-ArrowRight-2CH-02,Reg,22,Regular,22,1,22,,North Side Tree Wraps
+1113,19,CTB32,FC-ArrowRight-2CH-02,Reg,22,Regular,22,1,22,,South Side Tree Wraps
+1114,22,CTB32,FC-FBDonationSign,Reg,23,Regular,23,1,23,,Volunteer tent and lights
+1115,73,CTB32,WW-JackSkellington,Reg,3E,Regular,3E,1,3E,,
+1116,58,CTB32,GW-OMWFace,Reg,C1,Regular,C1,1,C1,,
+1117,85,Pixie16D,CL-Lollipop-Small-01,Aux-C,50-5F,Aux C,50,16,5F,,
+1118,148,Pixie2D,TC-BruceTheSpruce,Aux-E,91-92,Aux E,91,2,92,,Bruce Face
+1119,82,Pixie2D,CH-RGBTree-Star,Aux-N,40,Aux N,40,1,40,,Bridge Bells/Christmas Tree/Star
+1120,79,CCB100,CH-RGBCross-LH,Aux-N,42-43,Aux N,42,2,43,,
+1121,80,CCB100,CH-RGBCross-RH,Aux-N,44-45,Aux N,44,2,45,,
+1122,26,CTB32,FC-SponsorSign-01,Reg,21,Regular,21,1,21,,"Sponsor Signs, Tree Lights, Traffic Arches"
+1123,83,CTB32,CH-Steeple-LH-Base,Reg,41,Regular,41,1,41,,Chuch/Deer/Santa
+1124,149,CTB32,TC-CarolerPanel-01,Reg,7B,Regular,7B,1,7B,,hippo and carolers
+1125,169,CTB04Dg3,ElfOnShelf-01,Reg,90,Regular,90,1,90,,
+1126,170,CTB04Dg3,ElfOnShelf-02,Reg,91,Regular,91,1,91,,
+1127,171,CTB04Dg3,ElfOnShelf-03,Reg,92,Regular,92,1,92,,
+1128,172,CTB04Dg3,ElfOnShelf-04,Reg,93,Regular,93,1,93,,
+1129,87,CTB32,CL-LollipopTrailerNetLights,Aux-C,62,Aux C,62,1,62,,Lolipops
+1130,102,CTB32,SW-PotterPole,Aux-D,65,Aux D,65,1,65,,"Potters Pole/Signs is on Aux-D, UID-65"
+1131,14,PixCon16,TR-MegaTreeRGBBall,E1.31,IP,,,,,10.10.5.11,10.10.5.11
+1132,6,CTB04Dg3,FE-GateWrap-DS,Reg,5,Regular,05,1,05,,Making Spirits Bright
+1133,57,CTB32,GW-HeatMisterPuff,Reg,C4,Regular,C4,1,C4,,
+1134,89,Pixie4D,CL-RGBCandyCane-01,Aux-A,21-24,Aux A,21,4,24,,Candy Canes 1–4
+1135,90,Pixie4D,CL-RGBCandyCane-01,Aux-A,21-24,Aux A,21,4,24,,Candy Canes 5–8
+1136,91,Pixie4D,CL-RGBCandyCane-01,Aux-A,21-24,Aux A,21,4,24,,Candy Canes 9–12
+1137,153,CTB32,TC-PrangeGiftBag,Aux-E,7C,Aux E,7C,1,7C,,prange and kingsbery and Bruce the spruce tree
+1138,47,Pixie8D,WF-Tree-02,Aux-I,58-5f,Aux I,58,8,5F,,WF-Tree-02
+1139,50,Pixie8D,WF-Tree-05,Aux-I,70-77,Aux I,70,8,77,,WF-Tree-05
+1140,51,Pixie8D,WF-Tree-06,Aux-I,78-7F,Aux I,78,8,7F,,WF-Tree-06
+1141,77,Pixie4D,CH-RGBCandyCane-01,Aux-N,21-24,Aux N,21,4,24,,Candy Canes 1–4
+1142,78,Pixie4D,CH-RGBCandyCane-01,Aux-N,21-24,Aux N,21,4,24,,Candy Canes 5–8
+1143,29,PixCon16,FT-MegaStar,E1.31,IP,,,,,10.10.5.15,10.10.5.15
+1144,30,PixCon16,FT-MegaStar,E1.31,IP,,,,,10.10.5.16,10.10.5.16
+1145,174,CTB32,HW-WaitTime15Min,Reg,9,Regular,09,1,09,,Group 5 09-02 New Controller 2026
+1146,177,CTB04Dg3,HW-WaitTime-5Min,Reg,9,Regular,09,1,09,,Hwy 42 Signs Group 3 09-01
+1147,59,CTB32,GW-Tree-02,Reg,C2,Regular,C2,1,C2,,
+1148,60,CTB32,GW-Tree-05,Reg,C3,Regular,C3,1,C3,,
+1149,33,PixCon16,WV-MtCrumpitPanel-01,E1.31,IP,,,,,10.10.5.17,10.10.5.17
+1150,72,CTB04Dg3,WW-FlickPanel,Reg,35,Regular,35,1,35,,
+1151,147,CTB32,PN-Woodstock-SallyCharlie,Reg,77,Regular,77,1,77,,Peanuts
+1152,173,CTB04Dg3,ElfOnShelf-05,Reg,94,Regular,94,1,94,,
+1153,166,Pixie2D,QV-Lollypops,Aux-A,2-3,Aux A,02,2,03,,Group 1 Pixie2 controller
+1154,125,Pixie2D,GG-EldenV2-30-01,Aux-F,30,Aux F,30,1,30,,
+1155,126,Pixie2D,GG-EldenV2-30-02,Aux-F,30,Aux F,30,1,30,,
+1156,131,Pixie2D,GG-FelixV2-32-01,Aux-F,32,Aux F,32,1,32,,
+1157,132,Pixie2D,GG-FelixV2-32-02,Aux-F,32,Aux F,32,1,32,,
+1158,137,Pixie2D,GG-RalphieV2-34-01,Aux-F,34,Aux F,34,1,34,,
+1159,138,Pixie2D,GG-RalphieV2-34-02,Aux-F,34,Aux F,34,1,34,,
+1160,143,Pixie2D,GG-ZuzuV2-36-01,Aux-F,36,Aux F,36,1,36,,
+1161,144,Pixie2D,GG-ZuzuV2-36-02,Aux-F,36,Aux F,36,1,36,,
+1162,150,Pixie2D,TC-FryingSanta,Aux-F,41,Aux F,41,1,41,,Grill Flame on Grillin Santa
+1163,24,Pixie2D,FC-LogoTreeStar,Aux-H,1-2,Aux H,01,2,02,,LogoTree Star front
+1164,25,Pixie2D,FC-LogoTreeStar,Aux-H,3-4,Aux H,03,2,04,,LogoTree Star rear
+1165,23,CTB32,FC-LogoTree,Aux-H,5,Aux H,05,1,05,,LogoTree
+1166,32,Pixie2D,PO-MailBox,Aux-I,25-26,Aux I,25,2,26,,Sides of mailbox
+1167,17,HolidayCoro Flex 48,WA-MegaCube,E1.31,10.10.5.12,,,,,10.10.5.12,10.10.5.12
+1168,100,PixCon16,SW-GiftBag,E1.31,IP,,,,,10.10.5.19,10.10.5.19
+1169,101,PixCon16,SW-GiftConveyor,E1.31,IP,,,,,10.10.5.18,10.10.5.18
+1170,66,CMB24D,FF 10 Head LS,Reg,10,Regular,10,1,10,,Free Frosty Channels 01-24 8 outputs on CMB24D UID10
+1171,67,CF50D,FF 19 CR50 Base LH Spotlight,Reg,18,Regular,18,1,18,,Free Frosty 50 watt Flood up to 5 channels 1-2-3=R-G-B
+1172,68,CF50D,FF 19 CR50 Base RH Spotlight,Reg,19,Regular,19,1,19,,Group 1 50 watt Flood up to 5 channels 1-2-3=R-G-B
+1173,69,CF50D,FF 19 CR50 Front Spotlight,Reg,19,Regular,19,1,19,,Group 2 50 watt Flood up to 5 channels 1-2-3=R-G-B
+1174,74,CTB32,WW-IcicleTunnel,Reg,3F,Regular,3F,1,3F,,
+1175,151,CTB32,TC-FryingSantaGrill,Reg,7D,Regular,7D,1,7D,,deer and Grillin santa
+1176,9,PixCon16,FE-OpenCloseSign-Matrix,E1.31,IP,,,,,10.10.5.20,10.10.5.20
+1177,70,CTB32,WW-ClarkGriswold,Reg,39,Regular,39,1,39,,

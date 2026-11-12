@@ -1,0 +1,17 @@
+{
+  "profile": "site-171-panel",
+  "release_tag": "PR455-Panels",
+  "candidate": "0fd7fabd48dce287722112405bafb8e3aa65f637",
+  "target": "0fd7fabd48dce287722112405bafb8e3aa65f637",
+  "tree": "cc73d755e4c7e489f6d47ed9e309e2b6b0584f92",
+  "shared": "439ab237beaae4ac648e7590f824a774969cd84f",
+  "old_setup": "439ab237beaae4ac648e7590f824a774969cd84f",
+  "blobs": {
+    "Database/EngineeringTools/sql/171_panel_slot_count.sql": "38e4a7a86ad0226f93b6518b10cea407a9df3f30",
+    "Database/Acceptance/171_panel_slot_count_validation.sql": "c5bf36d8146e236f4ccf1cb79b4b264dc3d95f32"
+  },
+  "helpers": {
+    "setup_171_panel_release.py": "384d6b544f55bce241f9ad2e3e9fb0ad7cdb41fb40329f0ad8b46aaf493ab146",
+    "setup_maintenance_deploy.py": "4a2e34064ce1eced57e277b368048810fd8c122034749792ac121e1367c970ab"
+  }
+}

@@ -1,0 +1,900 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PreviewClass id="c1127f2d-0ca7-4611-bb63-82c957b69046" BackgroundFile="C:\LOR\Visualizations\Editor\2022 Candyland Animation.jpg" Brightness="8" Revision="36" Name="Show Background Stage 17 Candyland">
+  <PropClass id="5d4f96cb-a099-4c8e-8158-063edf603782" BulbShape="Square" ChannelGrid="Regular,64,1,1,0,White" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-01 House Ginger Master" Parm1="18" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.5050781" y="-0.6486226" />
+      <point x="0.49278307" y="-0.49152932" />
+      <point x="0.4871945" y="-0.48725384" />
+      <point x="0.48160556" y="-0.4626749" />
+      <point x="0.48216492" y="-0.42954656" />
+      <point x="0.4827236" y="-0.40710464" />
+      <point x="0.5956134" y="-0.14314465" />
+      <point x="0.65541136" y="-0.13993873" />
+      <point x="0.7649485" y="-0.3686327" />
+      <point x="0.77947885" y="-0.37290713" />
+      <point x="0.7934487" y="-0.38680005" />
+      <point x="0.80071473" y="-0.41779113" />
+      <point x="0.8029503" y="-0.43061435" />
+      <point x="0.7923319" y="-0.51076496" />
+      <point x="0.7856259" y="-0.51183385" />
+      <point x="0.77109605" y="-0.59946364" />
+      <point x="0.7588005" y="-0.7073994" />
+      <point x="0.5117845" y="-0.70953643" />
+      <point x="0.50787187" y="-0.66999626" />
+    </shape>
+  </PropClass>
+  <PropClass id="74447ba9-822f-47ef-a567-60d215ef4558" BulbShape="Square" ChannelGrid="Regular,64,1,1,0,White" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5d4f96cb-a099-4c8e-8158-063edf603782" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-01 House Ginger Outline" Parm1="50" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.4916649" y="-0.4861859" />
+      <point x="0.4966957" y="-0.47229278" />
+      <point x="0.49390152" y="-0.43916476" />
+      <point x="0.4972544" y="-0.4231349" />
+      <point x="0.50731343" y="-0.42527133" />
+      <point x="0.5140195" y="-0.4402327" />
+      <point x="0.5246384" y="-0.43168277" />
+      <point x="0.52687323" y="-0.41885996" />
+      <point x="0.52687323" y="-0.383594" />
+      <point x="0.52854985" y="-0.3686327" />
+      <point x="0.5358153" y="-0.3846626" />
+      <point x="0.5391681" y="-0.39534917" />
+      <point x="0.54699236" y="-0.3846626" />
+      <point x="0.5486693" y="-0.35901484" />
+      <point x="0.5447579" y="-0.3248171" />
+      <point x="0.54922813" y="-0.30985627" />
+      <point x="0.5598463" y="-0.3226803" />
+      <point x="0.56822854" y="-0.3312287" />
+      <point x="0.57214093" y="-0.31092456" />
+      <point x="0.56822854" y="-0.2884824" />
+      <point x="0.5631994" y="-0.26069707" />
+      <point x="0.5687885" y="-0.25214824" />
+      <point x="0.5771706" y="-0.2628352" />
+      <point x="0.5877878" y="-0.2628352" />
+      <point x="0.58331895" y="-0.22649994" />
+      <point x="0.58667153" y="-0.20512696" />
+      <point x="0.5950552" y="-0.23611838" />
+      <point x="0.5995255" y="-0.24359868" />
+      <point x="0.60231966" y="-0.2243626" />
+      <point x="0.5995255" y="-0.188028" />
+      <point x="0.6039955" y="-0.16772364" />
+      <point x="0.6146147" y="-0.2019209" />
+      <point x="0.62243855" y="-0.20085242" />
+      <point x="0.6235564" y="-0.22222555" />
+      <point x="0.62299764" y="-0.24039295" />
+      <point x="0.6313804" y="-0.23718657" />
+      <point x="0.640881" y="-0.23077475" />
+      <point x="0.65149915" y="-0.24573635" />
+      <point x="0.6503813" y="-0.27245188" />
+      <point x="0.661559" y="-0.29275706" />
+      <point x="0.67161864" y="-0.2884824" />
+      <point x="0.6794428" y="-0.30451274" />
+      <point x="0.6844719" y="-0.32695478" />
+      <point x="0.6900604" y="-0.345123" />
+      <point x="0.69900304" y="-0.35367092" />
+      <point x="0.71688604" y="-0.36115223" />
+      <point x="0.7207983" y="-0.37718126" />
+      <point x="0.7252692" y="-0.383594" />
+      <point x="0.72471064" y="-0.39962345" />
+      <point x="0.72918105" y="-0.41779113" />
+      <point x="0.7397994" y="-0.41885996" />
+    </shape>
+  </PropClass>
+  <PropClass id="cb52d8f4-5202-438d-99d8-979bdf3dfd2e" BulbShape="Square" ChannelGrid="Regular,64,1,1,0,Yellow" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5d4f96cb-a099-4c8e-8158-063edf603782" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Yellow" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-01 House Ginger Door" Parm1="13" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.58052486" y="-0.69778025" />
+      <point x="0.5788476" y="-0.54816884" />
+      <point x="0.58331895" y="-0.51610833" />
+      <point x="0.5928195" y="-0.5000781" />
+      <point x="0.60511434" y="-0.4904598" />
+      <point x="0.6174088" y="-0.48832306" />
+      <point x="0.6313804" y="-0.49580342" />
+      <point x="0.640881" y="-0.51076496" />
+      <point x="0.6492635" y="-0.53" />
+      <point x="0.65149915" y="-0.54603064" />
+      <point x="0.65317684" y="-0.5695412" />
+      <point x="0.6520591" y="-0.59625787" />
+      <point x="0.65149915" y="-0.6956428" />
+      <point x="0.58387715" y="-0.69778025" />
+    </shape>
+  </PropClass>
+  <PropClass id="fc2d836e-3c3e-4855-b5ef-31758be4f0a9" BulbShape="Square" ChannelGrid="Regular,64,1,1,0,Yellow" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5d4f96cb-a099-4c8e-8158-063edf603782" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Yellow" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-01 House Ginger Window" Parm1="12" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.5849946" y="-0.42206624" />
+      <point x="0.58387715" y="-0.3782502" />
+      <point x="0.58667153" y="-0.345123" />
+      <point x="0.5917013" y="-0.3151996" />
+      <point x="0.60511434" y="-0.30023804" />
+      <point x="0.61070234" y="-0.29489505" />
+      <point x="0.62299764" y="-0.3023751" />
+      <point x="0.6341752" y="-0.3290925" />
+      <point x="0.63808674" y="-0.35046616" />
+      <point x="0.640881" y="-0.383594" />
+      <point x="0.6403226" y="-0.4103101" />
+      <point x="0.63976276" y="-0.42099634" />
+      <point x="0.58722943" y="-0.42099634" />
+    </shape>
+  </PropClass>
+  <PropClass id="0b39c62c-d3b3-48e3-8000-188421ab97db" BulbShape="Square" ChannelGrid="Regular,64,1,1,0,Red" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5d4f96cb-a099-4c8e-8158-063edf603782" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-01 House Ginger Chimney" Parm1="9" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.7364463" y="-0.29810083" />
+      <point x="0.7437117" y="-0.21688233" />
+      <point x="0.7425932" y="-0.16238025" />
+      <point x="0.753771" y="-0.15169398" />
+      <point x="0.7543299" y="-0.17306703" />
+      <point x="0.7632713" y="-0.18375348" />
+      <point x="0.77444845" y="-0.17947909" />
+      <point x="0.7805959" y="-0.16665494" />
+      <point x="0.78450876" y="-0.18909664" />
+      <point x="0.7750077" y="-0.35687736" />
+    </shape>
+  </PropClass>
+  <PropClass id="e7372290-b028-48b7-aaa1-1a7d362e3d9c" BulbShape="Square" ChannelGrid="Regular,64,1,1,0,White" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5d4f96cb-a099-4c8e-8158-063edf603782" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-01 House Ginger Cap" Parm1="14" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.7370047" y="-0.14720547" />
+      <point x="0.73756444" y="-0.09163436" />
+      <point x="0.7984801" y="-0.089497626" />
+      <point x="0.8029503" y="-0.17392176" />
+      <point x="0.79400927" y="-0.1856775" />
+      <point x="0.7906548" y="-0.16964743" />
+      <point x="0.785067" y="-0.15041149" />
+      <point x="0.7772427" y="-0.14720547" />
+      <point x="0.7716542" y="-0.15682359" />
+      <point x="0.7677427" y="-0.16750988" />
+      <point x="0.76159424" y="-0.16750988" />
+      <point x="0.7588005" y="-0.14720547" />
+      <point x="0.7565646" y="-0.13438173" />
+      <point x="0.74818265" y="-0.13651897" />
+      <point x="0.74315184" y="-0.14720547" />
+    </shape>
+  </PropClass>
+  <PropClass id="234fe0a5-3dd1-4dc4-8622-16c1315bc624" BulbShape="Square" ChannelGrid="Regular,63,1,1,0,Red" Comment="WelcomeToCandyLand" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 63-01 Sign Border" Parm1="4" Parm2="500">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.4664114" y="0.43073738" />
+      <point x="-0.4546107" y="0.07294017" />
+      <point x="-0.08142704" y="0.09862134" />
+      <point x="-0.11018437" y="0.46566734" />
+      <point x="-0.46613973" y="0.43867272" />
+    </shape>
+  </PropClass>
+  <PropClass id="cad4c773-b924-486a-9bd2-28c31694dd26" BulbShape="Square" ChannelGrid="Regular,64,7,7,0,Red" Comment="CandyCaneRow-01-LH" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-07 Candycane Row 1 Red" Parm1="12" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.50283194" y="-0.50120413" />
+      <point x="0.50912523" y="-0.46256244" />
+      <point x="0.5204531" y="-0.44210517" />
+      <point x="0.5431088" y="-0.44665134" />
+      <point x="0.556954" y="-0.47392762" />
+      <point x="0.5745752" y="-0.6694087" />
+      <point x="0.65512896" y="-0.6785008" />
+      <point x="0.6639396" y="-0.57394123" />
+      <point x="0.6727501" y="-0.4489243" />
+      <point x="0.6928886" y="-0.423921" />
+      <point x="0.70925105" y="-0.4398322" />
+      <point x="0.72183764" y="-0.4693817" />
+      <point x="0.71428573" y="-0.50802326" />
+    </shape>
+  </PropClass>
+  <PropClass id="157fd1ac-d2a0-45dd-ac5c-caf58dc8ff4b" BulbShape="Square" ChannelGrid="Regular,64,7,7,0,White" Comment="CandyCaneRow-01-RH" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="cad4c773-b924-486a-9bd2-28c31694dd26" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-07 Candycane Row1 White" Parm1="13" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.50418985" y="-0.50862336" />
+      <point x="0.52198756" y="-0.50996256" />
+      <point x="0.5230999" y="-0.47782135" />
+      <point x="0.5360774" y="-0.4831782" />
+      <point x="0.5546166" y="-0.67736495" />
+      <point x="0.67512155" y="-0.67535615" />
+      <point x="0.68513274" y="-0.5581745" />
+      <point x="0.68884057" y="-0.49188316" />
+      <point x="0.6906945" y="-0.47246444" />
+      <point x="0.69922256" y="-0.46442914" />
+      <point x="0.7047843" y="-0.46978605" />
+      <point x="0.7055259" y="-0.48719588" />
+      <point x="0.7029304" y="-0.5052753" />
+      <point x="0.7129416" y="-0.50862336" />
+    </shape>
+  </PropClass>
+  <PropClass id="62bf1397-94c5-426f-9bfa-f6d58d2f1339" BulbShape="Square" ChannelGrid="Regular,64,8,8,0,Red" Comment="CandyCaneRow-02-LH" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-08 Candycane Row 2 Red" Parm1="16" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.4177971" y="-0.4751429" />
+      <point x="0.42039257" y="-0.43764478" />
+      <point x="0.43003297" y="-0.41219962" />
+      <point x="0.44560593" y="-0.40081626" />
+      <point x="0.46154964" y="-0.41219962" />
+      <point x="0.4700777" y="-0.44233203" />
+      <point x="0.5134595" y="-0.7242377" />
+      <point x="0.69848096" y="-0.72155917" />
+      <point x="0.7159079" y="-0.5956726" />
+      <point x="0.73852575" y="-0.45036733" />
+      <point x="0.74779534" y="-0.43161827" />
+      <point x="0.7607728" y="-0.42090452" />
+      <point x="0.7730087" y="-0.42693102" />
+      <point x="0.7781997" y="-0.44233203" />
+      <point x="0.7822783" y="-0.46308994" />
+      <point x="0.7785705" y="-0.4898743" />
+      <point x="0.77375025" y="-0.50259686" />
+    </shape>
+  </PropClass>
+  <PropClass id="9cb322f3-470f-43ce-a011-8644daba7aa0" BulbShape="Square" ChannelGrid="Regular,64,8,8,0,White" Comment="CandyCaneRow-01-RH" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="62bf1397-94c5-426f-9bfa-f6d58d2f1339" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-08 Candycane Row 2 White" Parm1="13" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.4211341" y="-0.47782135" />
+      <point x="0.44041494" y="-0.48585665" />
+      <point x="0.43967336" y="-0.45706344" />
+      <point x="0.44560593" y="-0.44099283" />
+      <point x="0.45228004" y="-0.44969773" />
+      <point x="0.4915832" y="-0.7222288" />
+      <point x="0.72072804" y="-0.72021997" />
+      <point x="0.7507616" y="-0.47916055" />
+      <point x="0.7563234" y="-0.46375954" />
+      <point x="0.76114357" y="-0.4590723" />
+      <point x="0.7685592" y="-0.46442914" />
+      <point x="0.7652222" y="-0.49389195" />
+      <point x="0.7622559" y="-0.49924883" />
+      <point x="0.7715255" y="-0.5032665" />
+    </shape>
+  </PropClass>
+  <PropClass id="86bc3a2e-b67b-418e-98b7-5be3a6fb62b0" BulbShape="Square" ChannelGrid="Regular,64,9,9,0,Red" Comment="CandyCaneRow-03-LH" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-09 Candycane Row 3 Red" Parm1="15" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.34865743" y="-0.49255276" />
+      <point x="0.3497698" y="-0.4517066" />
+      <point x="0.35607314" y="-0.43094867" />
+      <point x="0.3709045" y="-0.41688687" />
+      <point x="0.3879606" y="-0.41286922" />
+      <point x="0.397601" y="-0.42291337" />
+      <point x="0.40649983" y="-0.4436713" />
+      <point x="0.4461738" y="-0.73026407" />
+      <point x="0.7542957" y="-0.7242377" />
+      <point x="0.78989106" y="-0.47983015" />
+      <point x="0.80138534" y="-0.45036733" />
+      <point x="0.8151044" y="-0.44233203" />
+      <point x="0.8247448" y="-0.44434085" />
+      <point x="0.8331837" y="-0.4590723" />
+      <point x="0.83726233" y="-0.49188316" />
+      <point x="0.83392525" y="-0.51665866" />
+    </shape>
+  </PropClass>
+  <PropClass id="54d1bd55-82c2-49fd-bb00-ddb5b3c1a1b3" BulbShape="Square" ChannelGrid="Regular,64,9,9,0,White" Comment="CandyCaneRow-03-RH" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="86bc3a2e-b67b-418e-98b7-5be3a6fb62b0" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-09 Candycane Row 3 White" Parm1="12" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.3511638" y="-0.4965704" />
+      <point x="0.37118617" y="-0.49857926" />
+      <point x="0.37378165" y="-0.4517066" />
+      <point x="0.3819389" y="-0.45706344" />
+      <point x="0.38564676" y="-0.4758125" />
+      <point x="0.42012972" y="-0.7322729" />
+      <point x="0.78238624" y="-0.7262465" />
+      <point x="0.80759954" y="-0.49456158" />
+      <point x="0.81204903" y="-0.47715172" />
+      <point x="0.8190939" y="-0.47045565" />
+      <point x="0.82243097" y="-0.47916055" />
+      <point x="0.8187231" y="-0.51398027" />
+      <point x="0.830959" y="-0.5173283" />
+    </shape>
+  </PropClass>
+  <PropClass id="d3ce5da5-f735-458a-9aae-ebbfc2939179" BulbShape="Square" ChannelGrid="Regular,64,10,10,0,Red" Comment="CandyCaneRow-04-LH" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-10 Candycane Row 4 Red" Parm1="14" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.28194267" y="-0.49915087" />
+      <point x="0.28057635" y="-0.4670744" />
+      <point x="0.28535837" y="-0.44116646" />
+      <point x="0.29492244" y="-0.42759562" />
+      <point x="0.30995166" y="-0.41402477" />
+      <point x="0.32498085" y="-0.42759562" />
+      <point x="0.33454493" y="-0.45350355" />
+      <point x="0.3762169" y="-0.75576305" />
+      <point x="0.80864865" y="-0.7520619" />
+      <point x="0.84963745" y="-0.4572047" />
+      <point x="0.8592015" y="-0.43376416" />
+      <point x="0.8926757" y="-0.438699" />
+      <point x="0.8967746" y="-0.4757104" />
+      <point x="0.89472514" y="-0.5102543" />
+      <point x="0.88925993" y="-0.52505887" />
+    </shape>
+  </PropClass>
+  <PropClass id="adbe2853-1969-4cf2-8b47-39da0f39a08a" BulbShape="Square" ChannelGrid="Regular,64,10,10,0,White" Comment="CandyCaneRow-03-RH" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="d3ce5da5-f735-458a-9aae-ebbfc2939179" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-10 Candycane Row 4 White" Parm1="13" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.28604153" y="-0.49915087" />
+      <point x="0.3031202" y="-0.5016183" />
+      <point x="0.3017539" y="-0.47200924" />
+      <point x="0.3051696" y="-0.455971" />
+      <point x="0.31200108" y="-0.46213955" />
+      <point x="0.3427427" y="-0.7631653" />
+      <point x="0.83392507" y="-0.75946414" />
+      <point x="0.8598846" y="-0.5102543" />
+      <point x="0.86125094" y="-0.48681378" />
+      <point x="0.87081504" y="-0.4683081" />
+      <point x="0.8769633" y="-0.47077549" />
+      <point x="0.8796959" y="-0.49791718" />
+      <point x="0.87423074" y="-0.520124" />
+      <point x="0.88652736" y="-0.52875996" />
+    </shape>
+  </PropClass>
+  <PropClass id="c252e9db-751b-4624-880d-b64be80cb572" BulbShape="Square" ChannelGrid="Regular,63,2,2,0,White" Comment="WelcomeToCandyLand" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 63-02 Sign Welcome" Parm1="58" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.40195644" y="0.42511407" />
+      <point x="-0.4190191" y="0.30541396" />
+      <point x="-0.39637828" y="0.37296748" />
+      <point x="-0.39703453" y="0.3119323" />
+      <point x="-0.364878" y="0.42333633" />
+      <point x="-0.38456565" y="0.3534125" />
+      <point x="-0.3694718" y="0.34156102" />
+      <point x="-0.3602842" y="0.35756055" />
+      <point x="-0.36586237" y="0.36941203" />
+      <point x="-0.37504995" y="0.356968" />
+      <point x="-0.3697999" y="0.32496893" />
+      <point x="-0.36061233" y="0.32970953" />
+      <point x="-0.3543779" y="0.34274617" />
+      <point x="-0.31894007" y="0.40615168" />
+      <point x="-0.32287762" y="0.41859573" />
+      <point x="-0.33272147" y="0.40437394" />
+      <point x="-0.35175288" y="0.32970953" />
+      <point x="-0.34158093" y="0.33267242" />
+      <point x="-0.33239332" y="0.35281995" />
+      <point x="-0.3225495" y="0.37237492" />
+      <point x="-0.31434628" y="0.37652293" />
+      <point x="-0.31204942" y="0.3628937" />
+      <point x="-0.31729943" y="0.37593037" />
+      <point x="-0.33009645" y="0.36170858" />
+      <point x="-0.32812768" y="0.33859816" />
+      <point x="-0.31861198" y="0.33030212" />
+      <point x="-0.30745563" y="0.3486719" />
+      <point x="-0.30056491" y="0.3700046" />
+      <point x="-0.29268986" y="0.37711552" />
+      <point x="-0.28711167" y="0.36170858" />
+      <point x="-0.29236174" y="0.34096846" />
+      <point x="-0.29925242" y="0.33148724" />
+      <point x="-0.30548686" y="0.3421536" />
+      <point x="-0.2933461" y="0.33800557" />
+      <point x="-0.28153348" y="0.33385754" />
+      <point x="-0.2687365" y="0.37652293" />
+      <point x="-0.2697209" y="0.33682042" />
+      <point x="-0.25856456" y="0.37652293" />
+      <point x="-0.2569239" y="0.33622783" />
+      <point x="-0.24806446" y="0.3545977" />
+      <point x="-0.2395331" y="0.3634863" />
+      <point x="-0.23428306" y="0.38007838" />
+      <point x="-0.24215814" y="0.38481897" />
+      <point x="-0.24904883" y="0.37178233" />
+      <point x="-0.2523301" y="0.3563754" />
+      <point x="-0.24576753" y="0.3397833" />
+      <point x="-0.23625183" y="0.34333876" />
+      <point x="-0.23034555" y="0.3557828" />
+      <point x="-0.18670452" y="0.41207743" />
+      <point x="-0.2063922" y="0.34570906" />
+      <point x="-0.19162646" y="0.34333876" />
+      <point x="-0.1850639" y="0.3587457" />
+      <point x="-0.17850134" y="0.37533778" />
+      <point x="-0.17423564" y="0.388967" />
+      <point x="-0.17062622" y="0.39311504" />
+      <point x="-0.16373557" y="0.3818561" />
+      <point x="-0.16767308" y="0.361116" />
+      <point x="-0.17489192" y="0.34630162" />
+      <point x="-0.18047008" y="0.3605234" />
+    </shape>
+  </PropClass>
+  <PropClass id="904a24f1-f2f0-47a4-9942-81204911be4c" BulbShape="Square" ChannelGrid="Regular,63,3,3,0,White" Comment="WelcomeToCandyLand" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 63-03 Sign Candyland" Parm1="85" Parm2="500">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.40628707" y="0.21060047" />
+      <point x="-0.3970995" y="0.2283777" />
+      <point x="-0.3908651" y="0.24556237" />
+      <point x="-0.39316195" y="0.26215446" />
+      <point x="-0.4030058" y="0.26748765" />
+      <point x="-0.41875595" y="0.25030297" />
+      <point x="-0.43844363" y="0.20348957" />
+      <point x="-0.44697496" y="0.14482465" />
+      <point x="-0.43877175" y="0.119343966" />
+      <point x="-0.42138097" y="0.12467712" />
+      <point x="-0.41055274" y="0.14956528" />
+      <point x="-0.40103704" y="0.17326826" />
+      <point x="-0.36953676" y="0.19282323" />
+      <point x="-0.3780681" y="0.20704502" />
+      <point x="-0.38791192" y="0.19045293" />
+      <point x="-0.39414635" y="0.16437966" />
+      <point x="-0.39217758" y="0.14304695" />
+      <point x="-0.38134935" y="0.14897269" />
+      <point x="-0.37544307" y="0.16852766" />
+      <point x="-0.36986488" y="0.1839346" />
+      <point x="-0.37052113" y="0.19460097" />
+      <point x="-0.37675557" y="0.15371329" />
+      <point x="-0.36953676" y="0.13593605" />
+      <point x="-0.35805228" y="0.15371329" />
+      <point x="-0.3534585" y="0.20171183" />
+      <point x="-0.34394276" y="0.13830635" />
+      <point x="-0.33311456" y="0.20052671" />
+      <point x="-0.32917702" y="0.17504597" />
+      <point x="-0.32458323" y="0.1886752" />
+      <point x="-0.31802067" y="0.20289698" />
+      <point x="-0.30981746" y="0.20704502" />
+      <point x="-0.30489555" y="0.19697124" />
+      <point x="-0.2888173" y="0.2597842" />
+      <point x="-0.31309873" y="0.15963903" />
+      <point x="-0.32163006" y="0.15015784" />
+      <point x="-0.32852077" y="0.15252814" />
+      <point x="-0.3301614" y="0.1631945" />
+      <point x="-0.32917702" y="0.1726757" />
+      <point x="-0.31014562" y="0.16200933" />
+      <point x="-0.27930155" y="0.20467472" />
+      <point x="-0.29406732" y="0.17208311" />
+      <point x="-0.29472357" y="0.1531207" />
+      <point x="-0.28455162" y="0.15726873" />
+      <point x="-0.27536404" y="0.17623112" />
+      <point x="-0.26748896" y="0.19163808" />
+      <point x="-0.26027015" y="0.2123782" />
+      <point x="-0.27437964" y="0.16260189" />
+      <point x="-0.27831718" y="0.1300103" />
+      <point x="-0.28487974" y="0.1063073" />
+      <point x="-0.2970205" y="0.09149295" />
+      <point x="-0.30522367" y="0.10452959" />
+      <point x="-0.29898924" y="0.12526971" />
+      <point x="-0.28192657" y="0.1442321" />
+      <point x="-0.26387954" y="0.16378707" />
+      <point x="-0.22876987" y="0.21297076" />
+      <point x="-0.21695724" y="0.24378464" />
+      <point x="-0.20809782" y="0.26926535" />
+      <point x="-0.21564475" y="0.28882033" />
+      <point x="-0.23336366" y="0.25385842" />
+      <point x="-0.24091059" y="0.21415591" />
+      <point x="-0.24780127" y="0.16734248" />
+      <point x="-0.2386137" y="0.15845391" />
+      <point x="-0.21925417" y="0.1815643" />
+      <point x="-0.21006656" y="0.21534106" />
+      <point x="-0.19694144" y="0.21060047" />
+      <point x="-0.20251963" y="0.2171188" />
+      <point x="-0.21859789" y="0.17504597" />
+      <point x="-0.21498847" y="0.15963903" />
+      <point x="-0.20284775" y="0.1679351" />
+      <point x="-0.19726956" y="0.19104552" />
+      <point x="-0.19595706" y="0.20704502" />
+      <point x="-0.20186335" y="0.15963903" />
+      <point x="-0.19136328" y="0.15193558" />
+      <point x="-0.1756131" y="0.21593362" />
+      <point x="-0.19005078" y="0.15193558" />
+      <point x="-0.16150361" y="0.21356335" />
+      <point x="-0.1716756" y="0.15134299" />
+      <point x="-0.1575661" y="0.1679351" />
+      <point x="-0.1552692" y="0.19519353" />
+      <point x="-0.15034729" y="0.20763758" />
+      <point x="-0.1414878" y="0.21652621" />
+      <point x="-0.15822235" y="0.17504597" />
+      <point x="-0.15067542" y="0.15786129" />
+      <point x="-0.14181596" y="0.16971281" />
+      <point x="-0.11589384" y="0.278154" />
+      <point x="-0.1375503" y="0.18097174" />
+    </shape>
+  </PropClass>
+  <PropClass id="b680292a-f300-4441-9e31-40bdeacf2f32" BulbShape="Square" ChannelGrid="Regular,64,5,5,0,White" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-05 Gumdrop Left Rear" Parm1="9" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.49144176" y="-0.67519397" />
+      <point x="0.49092782" y="-0.6608077" />
+      <point x="0.49246964" y="-0.63667595" />
+      <point x="0.49606726" y="-0.6278585" />
+      <point x="0.50377643" y="-0.62693036" />
+      <point x="0.5096868" y="-0.6348196" />
+      <point x="0.5132844" y="-0.6492059" />
+      <point x="0.5150832" y="-0.66359216" />
+      <point x="0.51379836" y="-0.67472994" />
+      <point x="0.49324054" y="-0.67658615" />
+    </shape>
+  </PropClass>
+  <PropClass id="7917e519-6b2b-4ce2-aad0-a1a40784edb0" BulbShape="Square" ChannelGrid="Regular,64,6,6,0,Blue" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Blue" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-06 Gumdrop Roof Front" Parm1="12" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.5932028" y="-0.16318774" />
+      <point x="0.59191793" y="-0.14972962" />
+      <point x="0.59063303" y="-0.13209485" />
+      <point x="0.591147" y="-0.12049304" />
+      <point x="0.59448767" y="-0.11028343" />
+      <point x="0.60296774" y="-0.10517863" />
+      <point x="0.6104199" y="-0.106106766" />
+      <point x="0.6145315" y="-0.11446009" />
+      <point x="0.61761516" y="-0.12745413" />
+      <point x="0.61915696" y="-0.14276853" />
+      <point x="0.61864305" y="-0.15761887" />
+      <point x="0.61761516" y="-0.16597219" />
+      <point x="0.5934597" y="-0.16782849" />
+    </shape>
+  </PropClass>
+  <PropClass id="1237aa68-4829-4f5e-881c-680b2c379783" BulbShape="Square" ChannelGrid="Regular,64,3,3,0,Yellow" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Yellow" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-03 Gumdrop Mid" Parm1="11" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.6971426" y="-0.6778129" />
+      <point x="0.67838365" y="-0.67595655" />
+      <point x="0.6799255" y="-0.6546092" />
+      <point x="0.6817243" y="-0.6327978" />
+      <point x="0.684551" y="-0.6198037" />
+      <point x="0.6884056" y="-0.6128427" />
+      <point x="0.6943159" y="-0.6137708" />
+      <point x="0.69817054" y="-0.62305224" />
+      <point x="0.70176816" y="-0.63743854" />
+      <point x="0.70099723" y="-0.6504326" />
+      <point x="0.7002263" y="-0.6652829" />
+      <point x="0.6991984" y="-0.6778129" />
+    </shape>
+  </PropClass>
+  <PropClass id="da3274ee-bb13-4bda-86ea-08e9a619549c" BulbShape="Square" ChannelGrid="Regular,64,2,2,0,White" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-02 Gumdrop Right Rear" Parm1="10" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.7454534" y="-0.64672" />
+      <point x="0.7616427" y="-0.6443996" />
+      <point x="0.76472634" y="-0.6309415" />
+      <point x="0.76652515" y="-0.6100582" />
+      <point x="0.7613857" y="-0.5856275" />
+      <point x="0.7552184" y="-0.58330715" />
+      <point x="0.74853706" y="-0.5865556" />
+      <point x="0.7449395" y="-0.59490895" />
+      <point x="0.7426267" y="-0.60326225" />
+      <point x="0.7413419" y="-0.6125437" />
+      <point x="0.7431407" y="-0.6473492" />
+    </shape>
+  </PropClass>
+  <PropClass id="197f89a0-3339-42c0-b65a-bbb898e29279" BulbShape="Square" ChannelGrid="Regular,64,2,2,0,White" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="da3274ee-bb13-4bda-86ea-08e9a619549c" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-02 Gumdrop Roof Rear" Parm1="7" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.64541984" y="-0.16167468" />
+      <point x="0.62294966" y="-0.16360703" />
+      <point x="0.62455463" y="-0.10563639" />
+      <point x="0.63846475" y="-0.10177168" />
+      <point x="0.64702487" y="-0.11433199" />
+      <point x="0.65130484" y="-0.1268923" />
+      <point x="0.6475598" y="-0.15104672" />
+      <point x="0.6464898" y="-0.16070852" />
+    </shape>
+  </PropClass>
+  <PropClass id="71c1e959-0c51-4b9f-9287-338dd6e5af7f" BulbShape="Square" ChannelGrid="Regular,64,4,4,0,Green" Comment="GingerbreadHouse" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-04 Gumdrop 4 Front" Parm1="6" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.5485841" y="-0.67729896" />
+      <point x="0.5186239" y="-0.6734342" />
+      <point x="0.5207639" y="-0.62609154" />
+      <point x="0.53092897" y="-0.61449736" />
+      <point x="0.5421641" y="-0.6222268" />
+      <point x="0.54590905" y="-0.6347871" />
+      <point x="0.5491191" y="-0.6753666" />
+    </shape>
+  </PropClass>
+  <PropClass id="0f406b42-45eb-4342-ac50-720816b43fcc" BulbShape="Square" ChannelGrid="Regular,64,16,16,0,Orange" Comment="TumbleGinger-03" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Orange" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-16 GinCL Ger 6" Parm1="50" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.11079654" y="-0.3638305" />
+      <point x="0.09742147" y="-0.34837165" />
+      <point x="0.0738813" y="-0.39184964" />
+      <point x="0.080301315" y="-0.41407174" />
+      <point x="0.096351445" y="-0.42469966" />
+      <point x="0.104911506" y="-0.43436146" />
+      <point x="0.10919154" y="-0.45175266" />
+      <point x="0.10758653" y="-0.46527913" />
+      <point x="0.100631475" y="-0.47880566" />
+      <point x="0.08672139" y="-0.48750123" />
+      <point x="0.07976633" y="-0.49233213" />
+      <point x="0.07441631" y="-0.5126218" />
+      <point x="0.08297634" y="-0.530013" />
+      <point x="0.09474644" y="-0.5483704" />
+      <point x="0.10758653" y="-0.56382924" />
+      <point x="0.11721659" y="-0.5657616" />
+      <point x="0.124171644" y="-0.55416745" />
+      <point x="0.13219672" y="-0.5358101" />
+      <point x="0.13808176" y="-0.5184189" />
+      <point x="0.14396682" y="-0.5029601" />
+      <point x="0.14931685" y="-0.5048924" />
+      <point x="0.16483194" y="-0.54450566" />
+      <point x="0.17606705" y="-0.55513364" />
+      <point x="0.18944213" y="-0.54933655" />
+      <point x="0.19800222" y="-0.5358101" />
+      <point x="0.20709726" y="-0.5145542" />
+      <point x="0.2119123" y="-0.49523064" />
+      <point x="0.20923728" y="-0.48073795" />
+      <point x="0.19960722" y="-0.46914387" />
+      <point x="0.18730211" y="-0.4585159" />
+      <point x="0.17820704" y="-0.44982028" />
+      <point x="0.1808821" y="-0.4256659" />
+      <point x="0.19158217" y="-0.420835" />
+      <point x="0.20281723" y="-0.41793644" />
+      <point x="0.21244729" y="-0.40440997" />
+      <point x="0.21672732" y="-0.3821879" />
+      <point x="0.20709726" y="-0.3647967" />
+      <point x="0.19800222" y="-0.35706726" />
+      <point x="0.17392701" y="-0.3676952" />
+      <point x="0.17018202" y="-0.36286435" />
+      <point x="0.17446199" y="-0.34450695" />
+      <point x="0.17660204" y="-0.3300143" />
+      <point x="0.17285699" y="-0.31455547" />
+      <point x="0.16483194" y="-0.2952319" />
+      <point x="0.15359688" y="-0.2836378" />
+      <point x="0.14343178" y="-0.2788069" />
+      <point x="0.13754675" y="-0.28460395" />
+      <point x="0.124171644" y="-0.29329956" />
+      <point x="0.1193566" y="-0.30585986" />
+      <point x="0.109994054" y="-0.32904813" />
+      <point x="0.112401575" y="-0.3599658" />
+    </shape>
+  </PropClass>
+  <PropClass id="66cb7488-30c7-402e-92a5-15a076a041da" BulbShape="Square" ChannelGrid="Regular,64,15,15,0,Orange" Comment="TumbleGinger-03" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Orange" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-15 GinCL Ger 5" Parm1="43" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.052379653" y="-0.36672905" />
+      <point x="-0.063614726" y="-0.34160843" />
+      <point x="-0.074849814" y="-0.33098048" />
+      <point x="-0.098924994" y="-0.34643933" />
+      <point x="-0.10641505" y="-0.3638305" />
+      <point x="-0.11337009" y="-0.38025552" />
+      <point x="-0.1123001" y="-0.40247762" />
+      <point x="-0.10374002" y="-0.41793644" />
+      <point x="-0.09089993" y="-0.4237335" />
+      <point x="-0.08447988" y="-0.43436146" />
+      <point x="-0.08715491" y="-0.44498938" />
+      <point x="-0.094644964" y="-0.44885412" />
+      <point x="-0.10053" y="-0.45271882" />
+      <point x="-0.093574956" y="-0.513588" />
+      <point x="-0.08073485" y="-0.5097233" />
+      <point x="-0.07324481" y="-0.4981292" />
+      <point x="-0.060404703" y="-0.48653507" />
+      <point x="-0.05398467" y="-0.4846027" />
+      <point x="-0.04542461" y="-0.49039975" />
+      <point x="-0.041679576" y="-0.5058586" />
+      <point x="-0.045959592" y="-0.5251822" />
+      <point x="-0.05077465" y="-0.5396748" />
+      <point x="-0.030444473" y="-0.55899835" />
+      <point x="-0.013859361" y="-0.5522351" />
+      <point x="-0.0026242733" y="-0.5435395" />
+      <point x="0.0043307543" y="-0.52904683" />
+      <point x="0.0070058107" y="-0.51938504" />
+      <point x="-0.008509308" y="-0.46914387" />
+      <point x="-0.0063693225" y="-0.46141446" />
+      <point x="0.028405964" y="-0.45465118" />
+      <point x="0.03482598" y="-0.4382262" />
+      <point x="0.031615973" y="-0.40924084" />
+      <point x="0.030010968" y="-0.3812217" />
+      <point x="0.019845873" y="-0.37059376" />
+      <point x="0.0048657656" y="-0.38025552" />
+      <point x="-0.008509308" y="-0.3986129" />
+      <point x="-0.020279408" y="-0.3812217" />
+      <point x="-0.014929384" y="-0.36576286" />
+      <point x="-0.011719346" y="-0.34064224" />
+      <point x="-0.014394373" y="-0.32421723" />
+      <point x="-0.024559438" y="-0.31262308" />
+      <point x="-0.04274957" y="-0.32518342" />
+      <point x="-0.0448896" y="-0.33581135" />
+      <point x="-0.05130963" y="-0.3734923" />
+    </shape>
+  </PropClass>
+  <PropClass id="adabb954-ad2d-4f0f-81d6-83d565a8fcc0" BulbShape="Square" ChannelGrid="Regular,64,14,14,0,Orange" Comment="TumbleGinger-02" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Orange" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-14 GinCL Ger 4" Parm1="46" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.26269168" y="-0.48355782" />
+      <point x="-0.27071676" y="-0.49225345" />
+      <point x="-0.27767178" y="-0.49998286" />
+      <point x="-0.2803468" y="-0.52606964" />
+      <point x="-0.27232176" y="-0.54732555" />
+      <point x="-0.26108664" y="-0.5676153" />
+      <point x="-0.23487145" y="-0.57148004" />
+      <point x="-0.22631145" y="-0.55795354" />
+      <point x="-0.22203141" y="-0.54732555" />
+      <point x="-0.22096139" y="-0.528002" />
+      <point x="-0.2182864" y="-0.5212388" />
+      <point x="-0.20919132" y="-0.5289682" />
+      <point x="-0.20170122" y="-0.5424947" />
+      <point x="-0.18993115" y="-0.55215645" />
+      <point x="-0.1786961" y="-0.5366976" />
+      <point x="-0.16960102" y="-0.5212388" />
+      <point x="-0.17388105" y="-0.500949" />
+      <point x="-0.17976606" y="-0.4854902" />
+      <point x="-0.18832612" y="-0.4738961" />
+      <point x="-0.1904661" y="-0.46326813" />
+      <point x="-0.18886113" y="-0.44877547" />
+      <point x="-0.18351114" y="-0.43814752" />
+      <point x="-0.17388105" y="-0.43428278" />
+      <point x="-0.15943593" y="-0.44007987" />
+      <point x="-0.15194583" y="-0.43621516" />
+      <point x="-0.14552581" y="-0.4120607" />
+      <point x="-0.15087587" y="-0.3966019" />
+      <point x="-0.17067099" y="-0.3531239" />
+      <point x="-0.17976606" y="-0.35892096" />
+      <point x="-0.19314116" y="-0.36954892" />
+      <point x="-0.20170122" y="-0.3830754" />
+      <point x="-0.20865625" y="-0.3869401" />
+      <point x="-0.21400636" y="-0.3743798" />
+      <point x="-0.21561134" y="-0.331868" />
+      <point x="-0.2214964" y="-0.31254444" />
+      <point x="-0.27071676" y="-0.34249595" />
+      <point x="-0.25627163" y="-0.38500777" />
+      <point x="-0.24824658" y="-0.39370337" />
+      <point x="-0.25627163" y="-0.42365485" />
+      <point x="-0.2632267" y="-0.4178578" />
+      <point x="-0.2819518" y="-0.4130269" />
+      <point x="-0.2905119" y="-0.41979015" />
+      <point x="-0.2947919" y="-0.43428278" />
+      <point x="-0.2931869" y="-0.45553872" />
+      <point x="-0.28141683" y="-0.47486225" />
+      <point x="-0.26804173" y="-0.47679463" />
+      <point x="-0.26055166" y="-0.47292992" />
+    </shape>
+  </PropClass>
+  <PropClass id="06273a1d-dec4-4013-9d47-8480f8051521" BulbShape="Square" ChannelGrid="Regular,64,13,13,0,Orange" Comment="TumbleGinger-02" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Orange" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-13 GinCL Ger 3" Parm1="40" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.40394145" y="-0.55092067" />
+      <point x="-0.40233645" y="-0.5808722" />
+      <point x="-0.38842633" y="-0.5943987" />
+      <point x="-0.37291124" y="-0.5972972" />
+      <point x="-0.3573961" y="-0.579906" />
+      <point x="-0.34990606" y="-0.55768394" />
+      <point x="-0.34455603" y="-0.53449565" />
+      <point x="-0.34883603" y="-0.51710445" />
+      <point x="-0.36007112" y="-0.50454414" />
+      <point x="-0.36809617" y="-0.4977809" />
+      <point x="-0.36435115" y="-0.48425442" />
+      <point x="-0.3552561" y="-0.4813559" />
+      <point x="-0.34455603" y="-0.48328826" />
+      <point x="-0.33760098" y="-0.46976176" />
+      <point x="-0.34723103" y="-0.41855437" />
+      <point x="-0.37612125" y="-0.42821613" />
+      <point x="-0.3857513" y="-0.4301485" />
+      <point x="-0.39110136" y="-0.41372347" />
+      <point x="-0.39270636" y="-0.3915014" />
+      <point x="-0.38361132" y="-0.3741102" />
+      <point x="-0.37612125" y="-0.3605837" />
+      <point x="-0.3713062" y="-0.35092196" />
+      <point x="-0.41731656" y="-0.323869" />
+      <point x="-0.43069166" y="-0.35478666" />
+      <point x="-0.43176168" y="-0.41372347" />
+      <point x="-0.4649319" y="-0.39729846" />
+      <point x="-0.480982" y="-0.40019697" />
+      <point x="-0.48633206" y="-0.41179112" />
+      <point x="-0.49007708" y="-0.48522058" />
+      <point x="-0.47402698" y="-0.4939162" />
+      <point x="-0.46065187" y="-0.48425442" />
+      <point x="-0.44353175" y="-0.49005148" />
+      <point x="-0.4376467" y="-0.4977809" />
+      <point x="-0.44246173" y="-0.5093751" />
+      <point x="-0.45530182" y="-0.52966475" />
+      <point x="-0.4611869" y="-0.5489883" />
+      <point x="-0.4515568" y="-0.58280456" />
+      <point x="-0.4253416" y="-0.57314277" />
+      <point x="-0.42052656" y="-0.54802215" />
+      <point x="-0.41303653" y="-0.53546184" />
+      <point x="-0.40768647" y="-0.5373942" />
+    </shape>
+  </PropClass>
+  <PropClass id="b32b5260-6724-4aca-8bcc-1d5624e6f4e5" BulbShape="Square" ChannelGrid="Regular,64,12,12,0,Multi" Comment="TumbleGinger-01" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White,Orange" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-12 GinCL Ger 2" Parm1="40" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.5591568" y="-0.50761175" />
+      <point x="-0.5436417" y="-0.50954413" />
+      <point x="-0.5334766" y="-0.4960177" />
+      <point x="-0.5291965" y="-0.47959265" />
+      <point x="-0.5259865" y="-0.4564044" />
+      <point x="-0.53080153" y="-0.43418232" />
+      <point x="-0.54257166" y="-0.41196024" />
+      <point x="-0.55380666" y="-0.40326464" />
+      <point x="-0.57360184" y="-0.4177573" />
+      <point x="-0.5800219" y="-0.43128377" />
+      <point x="-0.5821619" y="-0.40423083" />
+      <point x="-0.588582" y="-0.38587344" />
+      <point x="-0.598212" y="-0.37041458" />
+      <point x="-0.6073071" y="-0.36654988" />
+      <point x="-0.6147972" y="-0.37041458" />
+      <point x="-0.6217522" y="-0.38973814" />
+      <point x="-0.62656724" y="-0.4129264" />
+      <point x="-0.6292423" y="-0.44770882" />
+      <point x="-0.63940734" y="-0.45350584" />
+      <point x="-0.6485024" y="-0.44964117" />
+      <point x="-0.6575975" y="-0.43418232" />
+      <point x="-0.66294754" y="-0.40423083" />
+      <point x="-0.66990256" y="-0.39843374" />
+      <point x="-0.69611776" y="-0.47572795" />
+      <point x="-0.68541765" y="-0.5047133" />
+      <point x="-0.6442224" y="-0.5163074" />
+      <point x="-0.6682975" y="-0.57910895" />
+      <point x="-0.65652746" y="-0.6129251" />
+      <point x="-0.62763727" y="-0.6370796" />
+      <point x="-0.61319214" y="-0.6245193" />
+      <point x="-0.6094471" y="-0.6022972" />
+      <point x="-0.6147972" y="-0.5810413" />
+      <point x="-0.61693716" y="-0.54432654" />
+      <point x="-0.59981704" y="-0.53563094" />
+      <point x="-0.59018695" y="-0.55012363" />
+      <point x="-0.5826969" y="-0.5762104" />
+      <point x="-0.57360184" y="-0.5897369" />
+      <point x="-0.5495267" y="-0.5762104" />
+      <point x="-0.54738665" y="-0.54336035" />
+      <point x="-0.56129676" y="-0.52307063" />
+      <point x="-0.5655768" y="-0.5114765" />
+    </shape>
+  </PropClass>
+  <PropClass id="562a3210-83bb-4ca5-a3d1-bf7fb783f77f" BulbShape="Square" ChannelGrid="Regular,64,11,11,0,Multi" Comment="TumbleGinger-01" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White,Orange" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 64-11 GinCL Ger 1" Parm1="41" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.7910983" y="-0.42724997" />
+      <point x="-0.7820032" y="-0.40696025" />
+      <point x="-0.78307325" y="-0.38183963" />
+      <point x="-0.79323834" y="-0.36348227" />
+      <point x="-0.8050084" y="-0.34609106" />
+      <point x="-0.83336365" y="-0.34319252" />
+      <point x="-0.84994876" y="-0.36444843" />
+      <point x="-0.85262376" y="-0.39729846" />
+      <point x="-0.85904384" y="-0.416622" />
+      <point x="-0.8681389" y="-0.41855437" />
+      <point x="-0.87776893" y="-0.4079264" />
+      <point x="-0.8932841" y="-0.40019697" />
+      <point x="-0.9071942" y="-0.416622" />
+      <point x="-0.91575426" y="-0.4388441" />
+      <point x="-0.9136142" y="-0.46203232" />
+      <point x="-0.8991691" y="-0.47942352" />
+      <point x="-0.886864" y="-0.50261176" />
+      <point x="-0.876699" y="-0.5248339" />
+      <point x="-0.88579404" y="-0.55092067" />
+      <point x="-0.9227093" y="-0.55285305" />
+      <point x="-0.9243143" y="-0.57314277" />
+      <point x="-0.88953906" y="-0.6417414" />
+      <point x="-0.8681389" y="-0.6359443" />
+      <point x="-0.83817863" y="-0.58280456" />
+      <point x="-0.80607843" y="-0.6369105" />
+      <point x="-0.79270333" y="-0.6446399" />
+      <point x="-0.7552531" y="-0.6040605" />
+      <point x="-0.749368" y="-0.57314277" />
+      <point x="-0.75953305" y="-0.56251484" />
+      <point x="-0.7729082" y="-0.5538192" />
+      <point x="-0.78628325" y="-0.54029274" />
+      <point x="-0.79270333" y="-0.52096915" />
+      <point x="-0.7894933" y="-0.50261176" />
+      <point x="-0.7755832" y="-0.49681473" />
+      <point x="-0.75953305" y="-0.5016456" />
+      <point x="-0.748833" y="-0.4939162" />
+      <point x="-0.74027294" y="-0.4784574" />
+      <point x="-0.73813295" y="-0.4543029" />
+      <point x="-0.746693" y="-0.4417426" />
+      <point x="-0.7627431" y="-0.42821613" />
+      <point x="-0.7873533" y="-0.43787792" />
+      <point x="-0.7921683" y="-0.44270882" />
+    </shape>
+  </PropClass>
+  <PropClass id="26347ec6-d266-4e8b-8605-d4372dee23bb" BulbShape="Star_5" ChannelGrid="Regular,63,4,4,0,White" Comment="SPARE" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="38" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 63-04 Spare" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.044978738" y="0.3653863" />
+    </shape>
+  </PropClass>
+  <PropClass id="bd9c7c7c-1a62-4a85-a0fb-6937fc769d39" BulbShape="Star_5" ChannelGrid="Aux C,62,9,9,0,White" Comment="SPARE" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 62-09 Spare" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.53" y="0.86999995" />
+    </shape>
+  </PropClass>
+  <PropClass id="7b4d21fb-825b-4ac8-bfdc-73f959c597b4" BulbShape="Star_5" ChannelGrid="Aux C,62,10,10,0,White" Comment="SPARE" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 62-10 Spare" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.59" y="0.86999995" />
+    </shape>
+  </PropClass>
+  <PropClass id="e8e00937-ca4a-4f81-a9cd-11165d00a697" BulbShape="Star_5" ChannelGrid="Aux C,62,11,11,0,White" Comment="SPARE" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 62-11 Spare" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.65" y="0.86999995" />
+    </shape>
+  </PropClass>
+  <PropClass id="38014531-b8c3-4246-950c-9c6b26e0e16c" BulbShape="Star_5" ChannelGrid="Aux C,62,12,12,0,White" Comment="SPARE" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 62-12 Spare" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.71" y="0.86999995" />
+    </shape>
+  </PropClass>
+  <PropClass id="6af7bbcb-b182-455d-979b-ffe62a8d4bf7" BulbShape="Star_5" ChannelGrid="Aux C,62,13,13,0,White" Comment="SPARE" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 62-13 Spare" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.77" y="0.86999995" />
+    </shape>
+  </PropClass>
+  <PropClass id="8b2e0f55-f6e5-4e90-b4e8-b38ace05e7fa" BulbShape="Star_5" ChannelGrid="Aux C,62,14,14,0,White" Comment="SPARE" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 62-14 Spare" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.83" y="0.86999995" />
+    </shape>
+  </PropClass>
+  <PropClass id="b7b28334-bc60-4abb-8429-8c60c6122dde" BulbShape="Star_5" ChannelGrid="Aux C,62,15,15,0,White" Comment="SPARE" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 62-15 Spare" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.89" y="0.86999995" />
+    </shape>
+  </PropClass>
+  <PropClass id="78e45022-4ca3-4120-8e66-df5d25ec8d57" BulbShape="Star_5" ChannelGrid="Aux C,62,16,16,0,White" Comment="LollipopTrailerNetLights" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="CL 62-16 Trailer Net Lights" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.95" y="0.86999995" />
+    </shape>
+  </PropClass>
+  <PropGroup id="627707fd-8068-4e5e-85bb-d5738c652621" Arrangement="None" PreviewResFactor="1" PreviewSinglePointPerProp="False" EffectBulbSize="1" Tag="" Name="Stage 17 Candyland Animation">
+    <member id="5d4f96cb-a099-4c8e-8158-063edf603782" orientation="normal" top="0" left="0" />
+    <member id="234fe0a5-3dd1-4dc4-8622-16c1315bc624" orientation="normal" top="0" left="0" />
+    <member id="c252e9db-751b-4624-880d-b64be80cb572" orientation="normal" top="0" left="0" />
+    <member id="904a24f1-f2f0-47a4-9942-81204911be4c" orientation="normal" top="0" left="0" />
+    <member id="da3274ee-bb13-4bda-86ea-08e9a619549c" orientation="normal" top="0" left="0" />
+    <member id="1237aa68-4829-4f5e-881c-680b2c379783" orientation="normal" top="0" left="0" />
+    <member id="71c1e959-0c51-4b9f-9287-338dd6e5af7f" orientation="normal" top="0" left="0" />
+    <member id="b680292a-f300-4441-9e31-40bdeacf2f32" orientation="normal" top="0" left="0" />
+    <member id="7917e519-6b2b-4ce2-aad0-a1a40784edb0" orientation="normal" top="0" left="0" />
+    <member id="cad4c773-b924-486a-9bd2-28c31694dd26" orientation="normal" top="0" left="0" />
+    <member id="62bf1397-94c5-426f-9bfa-f6d58d2f1339" orientation="normal" top="0" left="0" />
+    <member id="86bc3a2e-b67b-418e-98b7-5be3a6fb62b0" orientation="normal" top="0" left="0" />
+    <member id="d3ce5da5-f735-458a-9aae-ebbfc2939179" orientation="normal" top="0" left="0" />
+    <member id="562a3210-83bb-4ca5-a3d1-bf7fb783f77f" orientation="normal" top="0" left="0" />
+    <member id="b32b5260-6724-4aca-8bcc-1d5624e6f4e5" orientation="normal" top="0" left="0" />
+    <member id="06273a1d-dec4-4013-9d47-8480f8051521" orientation="normal" top="0" left="0" />
+    <member id="adabb954-ad2d-4f0f-81d6-83d565a8fcc0" orientation="normal" top="0" left="0" />
+    <member id="66cb7488-30c7-402e-92a5-15a076a041da" orientation="normal" top="0" left="0" />
+    <member id="0f406b42-45eb-4342-ac50-720816b43fcc" orientation="normal" top="0" left="0" />
+  </PropGroup>
+</PreviewClass>

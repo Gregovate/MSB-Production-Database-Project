@@ -1,0 +1,793 @@
+// =====================================================
+// Written by Greg Liebig
+// Release Date 11/14/25
+// MSB Build To-Do Automation (simple version)
+// - Sheet: "To do"
+// - Data starts at row 5
+// - Columns:
+// A = Done
+// B = Priority
+// C = Task Type
+// D = Stage
+// E = Task
+// F = Notes
+// G = Assigned To
+// H = Date Added
+// I = Added By
+// J = Date Complete
+// K = Completed By
+
+// =====================================================
+
+// =====================================================
+// Global config
+// =====================================================
+const TODO_SHEET_NAME      = "To do";
+const COMPLETED_SHEET_NAME = "Completed";
+
+// Column indexes (1-based)
+const COL_DONE         = 1;  // A - Done
+const COL_DATE_DONE    = 10; // J - Date Complete
+const COL_DATE_ADDED   = 8;  // H - Date Added
+const COL_ADDED_BY     = 9;  // I - Added By
+const COL_COMPLETED_BY = 11; // K - Completed By
+const COL_EMAIL_SENT   = 12;  // L - Email Sent
+
+const HEADER_ROW = 4;         // headers in row 4, data starts at row 5
+const ORG_DOMAIN = "sheboyganlights.org";
+
+// ---------------------------
+// Add menu on open
+// ---------------------------
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("Tasks")
+    .addItem("Add New Task", "addTaskRow")
+    .addItem("Sort by Priority + Stage", "sortTasks")
+    .addSeparator()
+    .addItem("Dry Run – P1 Tasks", "dryRunSendTasks_P1")
+    .addItem("Dry Run – All Tasks", "dryRunSendTasks_All")
+    .addSeparator()
+    .addItem("Send P1 Task Emails", "sendNewTaskEmails_P1")
+    .addItem("Send All Task Emails", "sendNewTaskEmails_All")
+    .addToUi();
+}
+
+
+// ---------------------------
+// Simple onEdit trigger
+// ---------------------------
+function onEdit(e) {
+  const sheet = e.range.getSheet();
+  if (sheet.getName() !== TASK_SHEET_NAME) return;
+
+  const col = e.range.getColumn();
+
+  if (col === COL_PRIORITY) {
+    // Keep whatever logic you already had for priority,
+    // but DO NOT sort here.
+    handlePriorityEdit_(e);
+    return;
+  }
+
+  // other handlers stay as-is...
+}
+
+
+
+// ---------------------------
+// Build a lookup: { "Adam" : "abiebel@sheboyganlights.org", ... }
+// ---------------------------
+function getNicknameEmailMap_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("user master");
+  if (!sheet) return {};
+
+  // Nickname = col B, Email = col E, starting at row 2
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return {};
+
+  const values = sheet.getRange(2, 2, lastRow - 1, 4).getValues();
+  // values[i] = [B, C, D, E] => [Nickname, LastName, Username, Email]
+
+  const map = {};
+
+  values.forEach(row => {
+    const nickname = row[0];        // column B
+    const email    = row[3];        // column E
+    if (nickname && email) {
+      map[nickname.toString().trim()] = email.toString().trim();
+    }
+  });
+
+  return map;
+}
+
+// ---------------------------
+// Handle Done checkbox logic
+// ---------------------------
+function handleDoneEdit_(sheet, row) {
+  const doneVal = sheet.getRange(row, COL_DONE).getValue();          // A - Done
+  const dateCell = sheet.getRange(row, COL_DATE_DONE);               // J - Date Complete
+  const completedByCell = sheet.getRange(row, COL_COMPLETED_BY);     // K - Completed By
+
+  const wasDateSet = !!dateCell.getValue();
+
+  if (doneVal) {
+    // Mark completion date if not already set
+    if (!wasDateSet) {
+      dateCell.setValue(new Date());
+    }
+
+    // Set Completed By to nickname (from user master)
+    const email = Session.getActiveUser().getEmail();
+    if (email) {
+      const nickname = getUsernameFromEmail_(email);  // returns Nickname from column B
+      completedByCell.setValue(nickname);
+    }
+
+    // Only notify managers the FIRST time this gets completed
+    if (!wasDateSet) {
+      sendManagerTaskCompletedNotification_(sheet, row);
+    }
+
+    // Move row to Completed sheet
+    moveRowToCompleted_(sheet, row);
+
+  } else {
+    // If they uncheck it, clear completion info on the To do sheet row
+    dateCell.clearContent();
+    completedByCell.clearContent();
+  }
+}
+
+
+// ---------------------------
+// Move row from To do → Completed
+// ---------------------------
+function moveRowToCompleted_(sourceSheet, rowIndex) {
+  const ss = sourceSheet.getParent();
+  let targetSheet = ss.getSheetByName(COMPLETED_SHEET_NAME);
+
+  // Create Completed sheet if it doesn't exist, copy headers
+  if (!targetSheet) {
+    targetSheet = ss.insertSheet(COMPLETED_SHEET_NAME);
+    const headerRange = sourceSheet.getRange(HEADER_ROW, 1, 1, sourceSheet.getLastColumn());
+    headerRange.copyTo(targetSheet.getRange(1, 1), { contentsOnly: false });
+  }
+
+  const lastCol   = sourceSheet.getLastColumn();
+  const rowValues = sourceSheet.getRange(rowIndex, 1, 1, lastCol).getValues();
+
+  const targetLastRow = targetSheet.getLastRow();
+  const destRow = targetLastRow >= 1 ? targetLastRow + 1 : 1;
+  targetSheet.getRange(destRow, 1, 1, lastCol).setValues(rowValues);
+
+  // Delete the original row
+  sourceSheet.deleteRow(rowIndex);
+}
+
+// ---------------------------
+// Add new task row at bottom
+// ---------------------------
+function addTaskRow() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(TODO_SHEET_NAME);
+  if (!sheet) return;
+
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+
+  // Find last non-empty data row (bottom-up, rows 5..lastRow)
+  let dataLastRow = HEADER_ROW; // 4
+  if (lastRow > HEADER_ROW) {
+    const dataRange = sheet.getRange(HEADER_ROW + 1, 1, lastRow - HEADER_ROW, lastCol);
+    const values = dataRange.getValues();
+
+    for (let i = values.length - 1; i >= 0; i--) {
+      const rowVals = values[i];
+      if (rowVals.join("") !== "") {
+        dataLastRow = HEADER_ROW + 1 + i;
+        break;
+      }
+    }
+  }
+
+  // If no data yet, use row 5 as base
+  if (dataLastRow < HEADER_ROW + 1) {
+    dataLastRow = HEADER_ROW + 1;
+  }
+
+  // Insert a new row after the last data row
+  const newRowIndex = dataLastRow + 1;
+  sheet.insertRowAfter(dataLastRow);
+
+  // Use first data row (row 5) as the template for formatting & validation
+  const templateRow = HEADER_ROW + 1; // row 5
+  const src = sheet.getRange(templateRow, 1, 1, lastCol);
+  const dst = sheet.getRange(newRowIndex, 1, 1, lastCol);
+
+  // Copy formatting & data validation only
+  src.copyTo(dst, { formatOnly: true });
+
+  // Clear any copied values but keep formatting/validation
+  dst.clearContent();
+
+  // ---- Explicitly create the Done checkbox in column A ----
+  const doneCell = sheet.getRange(newRowIndex, COL_DONE);
+  doneCell.clearDataValidations();
+  doneCell.insertCheckboxes();   // makes it a proper checkbox
+  doneCell.setValue(false);      // start unchecked
+
+  // Set Date Added (H)
+  sheet.getRange(newRowIndex, COL_DATE_ADDED).setValue(new Date());
+
+  // Set Added By to username (not full email) (I)
+  const email = Session.getActiveUser().getEmail();
+  if (email) {
+    const username = getUsernameFromEmail_(email);
+    sheet.getRange(newRowIndex, COL_ADDED_BY).setValue(username);
+  }
+
+
+  // Focus on the new row, Priority column (B = 2, but we use 3 because you wanted Priority? NO – Priority is B)
+  sheet.setActiveRange(sheet.getRange(newRowIndex, 2));
+}
+
+// ---------------------------
+// Sort Tasks by priority then Area
+// ---------------------------
+function sortTasks() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(TODO_SHEET_NAME);
+  if (!sheet) return;
+
+  const lastCol = sheet.getLastColumn();
+
+  // Find last real data row (not just formatting)
+  let lastDataRow = sheet.getLastRow();
+  if (lastDataRow <= HEADER_ROW) return;
+
+  const allData = sheet.getRange(5, 1, lastDataRow - 4, lastCol).getValues();
+
+  // Walk bottom-up to find the last non-empty row
+  for (let i = allData.length - 1; i >= 0; i--) {
+    const row = allData[i];
+    if (row.join("") !== "") {
+      lastDataRow = 5 + i;
+      break;
+    }
+  }
+
+  if (lastDataRow < 5) return;
+
+  const range = sheet.getRange(5, 1, lastDataRow - 4, lastCol);
+
+  range.sort([
+    { column: 2, ascending: true },  // Priority (B)
+    { column: 4, ascending: true }   // Stage (D)
+  ]);
+}
+
+// ---------------------------
+// Convert Assigned To (e.g. "Adam, Greg") into email list via nickname → email mapping
+// ---------------------------
+
+function getEmailsFromAssigned_(raw) {
+  if (!raw) return [];
+
+  const nicknameMap = getNicknameEmailMap_();
+  const parts = raw.toString().split(",");
+  const emails = [];
+
+  parts.forEach(p => {
+    let token = p.trim();
+    if (!token) return;
+
+    // If it already looks like an email, use as-is
+    if (token.indexOf("@") !== -1) {
+      emails.push(token);
+      return;
+    }
+
+    // Otherwise treat as nickname and look up in user master
+    const email = nicknameMap[token];
+    if (email) {
+      emails.push(email);
+    } else {
+      // Unknown nickname: skip or log — do NOT guess
+      Logger.log(`No email found for nickname: ${token}`);
+    }
+  });
+
+  return emails;
+}
+
+// ---------------------------
+// Send Emails for new tasks
+// ---------------------------
+
+// Wrapper: send ONLY Priority 1 tasks
+function sendNewTaskEmails_P1() {
+  sendNewTaskEmailsCore_(true);
+}
+
+// Wrapper: send ALL priorities
+function sendNewTaskEmails_All() {
+  sendNewTaskEmailsCore_(false);
+}
+
+// Core grouped sender: one email per person, with optional P1-only filter
+function sendNewTaskEmailsCore_(onlyP1) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(TODO_SHEET_NAME);
+  if (!sheet) return;
+
+  const lastCol = sheet.getLastColumn();
+  let lastRow   = sheet.getLastRow();
+  if (lastRow <= HEADER_ROW) return;
+
+  // Find last real data row
+  const allData = sheet.getRange(5, 1, lastRow - 4, lastCol).getValues();
+  let lastDataRow = HEADER_ROW;
+
+  for (let i = allData.length - 1; i >= 0; i--) {
+    const rowVals = allData[i];
+    if (rowVals.join("") !== "") {
+      lastDataRow = 5 + i;
+      break;
+    }
+  }
+  if (lastDataRow < 5) return;
+
+  const sheetUrl     = ss.getUrl();
+  const nicknameMap  = getNicknameEmailMap_(); // Nickname -> Email
+  const emailTasks   = {};                     // email -> array of task objects
+  const rowsWithMail = new Set();
+
+  for (let row = 5; row <= lastDataRow; row++) {
+    const assignedRaw = sheet.getRange(row, 7).getValue();              // G - Assigned To (nicknames)
+    const emailSent   = sheet.getRange(row, COL_EMAIL_SENT).getValue(); // L - Email Sent
+    const priority    = sheet.getRange(row, 2).getValue();              // B - Priority
+
+    // Only new, unsent tasks with an assignee
+    if (!assignedRaw || emailSent) continue;
+
+    // If we're in P1-only mode, skip anything that isn't priority 1
+    if (onlyP1) {
+      const p = (priority !== null && priority !== undefined) ? priority.toString().trim() : "";
+      if (p !== "1") continue;
+    }
+
+    // Parse nicknames and map to unique emails
+    const nicknames = assignedRaw.toString().split(",");
+    const rowEmails = new Set();
+
+    nicknames.forEach(p => {
+      const nick = p.trim();
+      if (!nick) return;
+
+      // Allow direct emails as well
+      if (nick.indexOf("@") !== -1) {
+        rowEmails.add(nick);
+        return;
+      }
+
+      const email = nicknameMap[nick];
+      if (email) {
+        rowEmails.add(email);
+      } else {
+        Logger.log(`No email found for nickname: ${nick} (row ${row})`);
+      }
+    });
+
+    if (rowEmails.size === 0) {
+      // No valid addresses → don't mark as sent
+      continue;
+    }
+
+    // Collect task details once
+    const taskType   = sheet.getRange(row, 3).getValue();  // C
+    const stage      = sheet.getRange(row, 4).getValue();  // D
+    const task       = sheet.getRange(row, 5).getValue();  // E
+    const notes      = sheet.getRange(row, 6).getValue();  // F
+    const addedBy    = sheet.getRange(row, COL_ADDED_BY).getValue();
+    const dateAdded  = sheet.getRange(row, COL_DATE_ADDED).getValue();
+
+    const taskInfo = {
+      row,
+      assignedRaw,
+      priority,
+      taskType,
+      stage,
+      task,
+      notes,
+      addedBy,
+      dateAdded
+    };
+
+    rowsWithMail.add(row);
+
+    // Attach this task to every email on the row
+    rowEmails.forEach(email => {
+      if (!emailTasks[email]) emailTasks[email] = [];
+      emailTasks[email].push(taskInfo);
+    });
+  }
+
+  // Send one email per person
+  let sentEmails = 0;
+  for (const email in emailTasks) {
+    const tasks = emailTasks[email];
+    if (!tasks || !tasks.length) continue;
+
+    const subject = `MSB Tasks: ${tasks.length} new task(s) assigned${onlyP1 ? " [Priority 1]" : ""}`;
+
+    let body = `Hello,\n\n`;
+    body += `You have been assigned the following new task(s) in the MSB build list`;
+    if (onlyP1) body += ` (Priority 1 only)`;
+    body += `:\n\n`;
+
+    tasks.forEach((t, idx) => {
+      body += `${idx + 1}. Row ${t.row} | Stage: ${t.stage || ""} | Priority: ${t.priority || ""}\n`;
+      body += `   Type: ${t.taskType || ""}\n`;
+      body += `   Task: ${t.task || ""}\n`;
+      body += `   Notes:\n      ${t.notes || "(none)"}\n\n`;
+    });
+
+    body += `IMPORTANT:\n`;
+    body += `When you complete a task, please remember to check the "Done" box in the task list.\n`;
+    body += `This automatically records the completion date and moves the item to the Completed list.\n\n`;
+    body += `You can view the task list here:\n${sheetUrl}\n\n`;
+    body += `-- MSB Task Tracker\n`;
+
+    MailApp.sendEmail({
+      to: email,
+      subject,
+      body
+    });
+
+    sentEmails++;
+  }
+
+  // Mark all rows that were included in at least one email as "sent"
+  const timestamp = new Date();
+  rowsWithMail.forEach(row => {
+    sheet.getRange(row, COL_EMAIL_SENT).setValue(timestamp);
+  });
+
+  Logger.log(`Sent ${sentEmails} grouped email(s), mode = ${onlyP1 ? "P1 only" : "ALL"}.`);
+}
+
+// ---------------------------
+// Dry-Run Test for new tasks
+// ---------------------------
+
+// Wrapper: dry run for P1-only
+function dryRunSendTasks_P1() {
+  dryRunSendTasksCore_(true);
+}
+
+// Wrapper: dry run for all priorities
+function dryRunSendTasks_All() {
+  dryRunSendTasksCore_(false);
+}
+
+function dryRunSendTasksCore_(onlyP1) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(TODO_SHEET_NAME);
+  if (!sheet) return;
+
+  const lastCol = sheet.getLastColumn();
+  let lastRow   = sheet.getLastRow();
+  if (lastRow <= HEADER_ROW) {
+    SpreadsheetApp.getUi().alert("No data rows found.");
+    return;
+  }
+
+  const allData = sheet.getRange(5, 1, lastRow - 4, lastCol).getValues();
+  let lastDataRow = HEADER_ROW;
+
+  for (let i = allData.length - 1; i >= 0; i--) {
+    const rowVals = allData[i];
+    if (rowVals.join("") !== "") {
+      lastDataRow = 5 + i;
+      break;
+    }
+  }
+  if (lastDataRow < 5) {
+    SpreadsheetApp.getUi().alert("No data rows found.");
+    return;
+  }
+
+  const sheetUrl    = ss.getUrl();
+  const nicknameMap = getNicknameEmailMap_();
+  const emailTasks  = {};
+
+  for (let row = 5; row <= lastDataRow; row++) {
+    const assignedRaw = sheet.getRange(row, 7).getValue();              // G
+    const emailSent   = sheet.getRange(row, COL_EMAIL_SENT).getValue(); // L
+    const priority    = sheet.getRange(row, 2).getValue();              // B
+
+    // Only NEW unsent tasks
+    if (!assignedRaw || emailSent) continue;
+
+    if (onlyP1) {
+      const p = (priority !== null && priority !== undefined) ? priority.toString().trim() : "";
+      if (p !== "1") continue;
+    }
+
+    const nicknames = assignedRaw.toString().split(",");
+    const rowEmails = new Set();
+
+    nicknames.forEach(p => {
+      const nick = p.trim();
+      if (!nick) return;
+
+      if (nick.indexOf("@") !== -1) {
+        rowEmails.add(nick);
+        return;
+      }
+
+      const email = nicknameMap[nick];
+      if (email) {
+        rowEmails.add(email);
+      } else {
+        Logger.log(`No email found for nickname: ${nick} (row ${row})`);
+      }
+    });
+
+    if (rowEmails.size === 0) continue;
+
+    const taskType   = sheet.getRange(row, 3).getValue();
+    const stage      = sheet.getRange(row, 4).getValue();
+    const task       = sheet.getRange(row, 5).getValue();
+    const notes      = sheet.getRange(row, 6).getValue();
+    const addedBy    = sheet.getRange(row, COL_ADDED_BY).getValue();
+    const dateAdded  = sheet.getRange(row, COL_DATE_ADDED).getValue();
+
+    const taskInfo = {
+      row,
+      assignedRaw,
+      priority,
+      taskType,
+      stage,
+      task,
+      notes,
+      addedBy,
+      dateAdded
+    };
+
+    rowEmails.forEach(email => {
+      if (!emailTasks[email]) emailTasks[email] = [];
+      emailTasks[email].push(taskInfo);
+    });
+  }
+
+  const emails = Object.keys(emailTasks);
+  let preview = "";
+
+  if (!emails.length) {
+    preview = "No new unsent tasks would generate emails in this mode.";
+  } else {
+    emails.forEach(email => {
+      const tasks = emailTasks[email];
+      preview += "========================================\n";
+      preview += `TO: ${email}\n`;
+      preview += `Subject: MSB Tasks: ${tasks.length} new task(s) assigned`;
+      if (onlyP1) preview += " [Priority 1]";
+      preview += `\n\n`;
+
+      tasks.forEach((t, idx) => {
+        preview += `${idx + 1}. Row ${t.row} | Stage: ${t.stage || ""} | Priority: ${t.priority || ""}\n`;
+        preview += `   Type: ${t.taskType || ""}\n`;
+        preview += `   Task: ${t.task || ""}\n`;
+        preview += `   Notes:\n      ${t.notes || "(none)"}\n\n`;
+      });
+
+      preview += `IMPORTANT:\n`;
+      preview += `When you complete a task, please remember to check the "Done" box in the task list.\n`;
+      preview += `This automatically records the completion date and moves the item to the Completed list.\n\n`;
+      preview += `Sheet Link: ${sheetUrl}\n\n`;
+    });
+  }
+
+  SpreadsheetApp.getUi().alert(preview);
+}
+
+// ---------------------------
+// Return array of manager emails from `user master` (Manager column F = TRUE)
+// ---------------------------
+function getManagerEmails_() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("user master");
+  if (!sheet) return [];
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  // Columns: A..F, Manager flag is F (6), Email is E (5)
+  const values = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
+  const emails = [];
+
+  values.forEach(row => {
+    const email   = row[4]; // E
+    const manager = row[5]; // F
+    if (email && manager === true) {
+      emails.push(email.toString().trim());
+    }
+  });
+
+  return emails;
+}
+
+// ---------------------------
+// Map an email to a Nickname from `user master`, or fall back to local-part
+// ---------------------------
+function getUsernameFromEmail_(email) {
+  if (!email) return "";
+
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("user master");
+  if (!sheet) {
+    // Fallback: local-part only
+    return email.split("@")[0];
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return email.split("@")[0];
+  }
+
+  // user master row layout:
+  // A First Name
+  // B Nickname
+  // C Last Name
+  // D Username
+  // E Email
+  // (row array = [A,B,C,D,E])
+  const values = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+
+    const nickname  = row[1];  // Column B
+    const rowEmail  = row[4];  // Column E
+
+    if (
+      rowEmail &&
+      rowEmail.toString().trim().toLowerCase() ===
+      email.toString().trim().toLowerCase()
+    ) {
+      if (nickname) return nickname.toString().trim();
+      break;
+    }
+  }
+
+  // If not found, fallback to local-part
+  return email.split("@")[0];
+}
+
+
+
+// ---------------------------
+// Send Managers Emails when a task is added
+// ---------------------------
+function sendManagerNewTaskNotification_(sheet, row) {
+  const currentUser = Session.getActiveUser().getEmail();
+  // Only allow mail from Greg's account; everyone else skips email
+  if (!currentUser || currentUser.toLowerCase() !== "gliebig@sheboyganlights.org") {
+    Logger.log("Skipping manager new-task email; running as " + currentUser);
+    return;
+  }
+
+  const managers = getManagerEmails_();
+  if (!managers.length) return;
+
+  const priority   = sheet.getRange(row, 2).getValue();              // B
+  const taskType   = sheet.getRange(row, 3).getValue();              // C
+  const stage      = sheet.getRange(row, 4).getValue();              // D
+  const task       = sheet.getRange(row, 5).getValue();              // E
+  const notes      = sheet.getRange(row, 6).getValue();              // F
+  const assignedTo = sheet.getRange(row, 7).getValue();              // G
+  const addedBy    = sheet.getRange(row, COL_ADDED_BY).getValue();   // nickname
+  const dateAdded  = sheet.getRange(row, COL_DATE_ADDED).getValue(); // H
+
+  const ss       = sheet.getParent();
+  const sheetUrl = ss.getUrl();
+
+  const unassignedFlag = assignedTo ? "" : " [UNASSIGNED]";
+  const subject = `MSB – New Task Added${unassignedFlag} (Row ${row}, Stage: ${stage || ""})`;
+
+  const body =
+`A new task has been added to the MSB task list.
+
+Row: ${row}
+Priority: ${priority || ""}
+Type: ${taskType || ""}
+Stage: ${stage || ""}
+Task: ${task || ""}
+
+Notes:
+${notes || "(none)"}
+
+Assigned To: ${assignedTo || "(unassigned)"}
+Added By: ${addedBy || "(unknown)"}
+Date Added: ${dateAdded || ""}
+
+You can view the task list here:
+${sheetUrl}
+
+-- MSB Task Tracker (task addition alert)
+`;
+
+  try {
+    MailApp.sendEmail({
+      to: managers.join(","),
+      subject,
+      body
+    });
+  } catch (err) {
+    Logger.log("Manager new-task email suppressed: " + err);
+  }
+}
+
+// force a permissions refresh
+// ---------------------------
+// Send Managers Emails when a task is completed
+// ---------------------------
+
+function sendManagerTaskCompletedNotification_(sheet, row) {
+  const managerEmails = getManagerEmails_();
+  if (!managerEmails.length) return;
+  if (row <= HEADER_ROW) return;
+
+  const priority     = sheet.getRange(row, 2).getValue();              // B - Priority
+  const taskType     = sheet.getRange(row, 3).getValue();              // C - Task Type
+  const stage        = sheet.getRange(row, 4).getValue();              // D - Stage
+  const task         = sheet.getRange(row, 5).getValue();              // E - Task
+  const notes        = sheet.getRange(row, 6).getValue();              // F - Notes
+  const assignedTo   = sheet.getRange(row, 7).getValue();              // G - Assigned To (nicknames)
+  const addedBy      = sheet.getRange(row, COL_ADDED_BY).getValue();   // I - Added By (nickname)
+  const dateAdded    = sheet.getRange(row, COL_DATE_ADDED).getValue(); // H - Date Added
+  const completedBy  = sheet.getRange(row, COL_COMPLETED_BY).getValue(); // K - Completed By (nickname)
+  const dateComplete = sheet.getRange(row, COL_DATE_DONE).getValue();    // J - Date Complete
+
+  const ss       = sheet.getParent();
+  const sheetUrl = ss.getUrl();
+
+  const subject = `MSB – Task Completed (Row ${row}, Stage: ${stage || ""})`;
+
+  const body =
+`A task has been marked COMPLETE in the MSB task list.
+
+Row: ${row}
+Priority: ${priority || ""}
+Type: ${taskType || ""}
+Stage: ${stage || ""}
+Task: ${task || ""}
+
+Notes:
+${notes || "(none)"}
+
+Assigned To: ${assignedTo || "(unassigned)"}
+Added By: ${addedBy || "(unknown)"}
+Date Added: ${dateAdded || ""}
+
+Completed By: ${completedBy || "(unknown)"}
+Date Completed: ${dateComplete || ""}
+
+You can view the task list here:
+${sheetUrl}
+
+-- MSB Task Tracker (completion notification)
+`;
+
+  MailApp.sendEmail({
+    to: managerEmails.join(","),
+    subject,
+    body
+  });
+}
+
+

@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "status": "DESIGN_ONLY_NOT_ENFORCED",
+  "owner_issue": 230,
+  "principle": "Default deny. This is the planned collection/action scope; it does not grant DB privileges or authorize unreviewed Production editing.",
+  "collections": [
+    {
+      "table": "ref.display",
+      "owner": "#230",
+      "stage": "EXISTING",
+      "planned_actions": [
+        "browse",
+        "maintain_production_lifecycle",
+        "assign_container",
+        "request_label"
+      ],
+      "protected_columns": [
+        "display_id",
+        "lor_prop_id",
+        "display_name",
+        "stage_id",
+        "string_type"
+      ],
+      "notes": "LOR-owned columns may not be edited; assignment is ref.display.container_id."
+    },
+    {
+      "table": "ref.container",
+      "owner": "#230",
+      "stage": "EXISTING",
+      "planned_actions": [
+        "browse",
+        "maintain_descriptive_metadata",
+        "assign_home_location",
+        "maintain_approved_drop_location",
+        "request_label"
+      ],
+      "protected_columns": [
+        "container_id"
+      ],
+      "notes": "No competing display-relationship table. Validate stackable/shared rack assignments through governed rules."
+    },
+    {
+      "table": "ref.storage_location",
+      "owner": "#230",
+      "stage": "EXISTING",
+      "planned_actions": [
+        "browse",
+        "create_from_components",
+        "maintain_descriptive_metadata"
+      ],
+      "protected_columns": [
+        "location_code",
+        "rack_row_code",
+        "column_num",
+        "shelf_level_code",
+        "slot_bin_num"
+      ],
+      "notes": "Components establish generated permanent identity; final editable field policy requires current live schema inspection."
+    },
+    {
+      "table": "ref.site_waypoint",
+      "owner": "#230 / #171",
+      "stage": "PROPOSED_NOT_MIGRATED",
+      "planned_actions": [
+        "browse",
+        "manager_create",
+        "manager_edit_label_coordinates",
+        "manager_set_type_icon"
+      ],
+      "protected_columns": [
+        "site_waypoint_id"
+      ],
+      "notes": "ExpertGPS Label on Map is current display identity; bidirectional sync requires approved conflict handling."
+    },
+    {
+      "table": "ref.site_waypoint_alias",
+      "owner": "#230 / #171",
+      "stage": "PROPOSED_NOT_MIGRATED",
+      "planned_actions": [
+        "browse",
+        "manager_review_alias"
+      ],
+      "protected_columns": [
+        "alias_id",
+        "site_waypoint_id"
+      ],
+      "notes": "Aliases cannot silently combine distinct physical points."
+    },
+    {
+      "table": "ref.site_track",
+      "owner": "#230 / #171",
+      "stage": "PROPOSED_NOT_MIGRATED",
+      "planned_actions": [
+        "browse",
+        "manager_review_route_and_lifecycle",
+        "manager_update_track_label"
+      ],
+      "protected_columns": [
+        "site_track_id"
+      ],
+      "notes": "Manager may correct reviewed track names against stable accepted GPX track-source binding with expected original name and audit. Surveyed geometry/type and original source observation remain unchanged; map labels are not cable counts."
+    },
+    {
+      "table": "ref.site_network",
+      "owner": "#230 / #171",
+      "stage": "PROPOSED_NOT_MIGRATED",
+      "planned_actions": [
+        "browse",
+        "manager_maintain_network_designation"
+      ],
+      "protected_columns": [
+        "site_network_id"
+      ],
+      "notes": "Do not infer LOR network membership from SPARE-1 or SPARE-2."
+    },
+    {
+      "table": "ref.site_cable",
+      "owner": "#230 / #171",
+      "stage": "PROPOSED_NOT_MIGRATED",
+      "planned_actions": [
+        "browse",
+        "manager_review_physical_cable",
+        "manager_maintain_endpoint_and_network_assignment",
+        "manager_record_lifecycle"
+      ],
+      "protected_columns": [
+        "site_cable_id"
+      ],
+      "notes": "Stable cable identity independent of LinkIQ test UUID. Parallel cables permitted."
+    },
+    {
+      "table": "ref.site_schematic_binding",
+      "owner": "#171 / #230",
+      "stage": "PROPOSED_NOT_MIGRATED",
+      "planned_actions": [
+        "browse",
+        "manager_review_drawio_binding"
+      ],
+      "protected_columns": [
+        "binding_id"
+      ],
+      "notes": "Bind database cable identities to existing draw.io object IDs; never edit geographic location by moving a drawing symbol."
+    },
+    {
+      "table": "ref.site_panel",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_panel_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_breaker",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_breaker_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_circuit",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_circuit_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_device",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_device_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_feed",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_feed_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_waypoint_network",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_waypoint_network_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_action",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_action_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_cable_spec",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_cable_spec_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_conductor",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_conductor_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_conductor_circuit",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_conductor_circuit_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    }
+  ],
+  "internal_only": [
+    "ref.site_waypoint_source_binding",
+    "ops.site_source_batch",
+    "ops.site_source_observation",
+    "ops.linkiq_test",
+    "ops.linkiq_test_appearance",
+    "ref.site_reference_revision",
+    "ops.site_reference_edit_log",
+    "ref.site_power_revision",
+    "ops.site_power_edit_log",
+    "ops.setup_power_activity_event"
+  ],
+  "excluded_owners": [
+    {
+      "pattern": "ref.person*",
+      "owner": "People"
+    },
+    {
+      "pattern": "ref.controller*",
+      "owner": "Controller Inventory"
+    },
+    {
+      "pattern": "ref.setup_*",
+      "owner": "Setup"
+    },
+    {
+      "pattern": "ref.label_template",
+      "owner": "LabelPrintService"
+    },
+    {
+      "pattern": "ref.container_endpoint",
+      "owner": "Legacy, review only"
+    },
+    {
+      "pattern": "ref.stage/ref.scene/LOR binding records",
+      "owner": "LOR2DB"
+    },
+    {
+      "pattern": "ref.audit_collection_policy and system audit tables",
+      "owner": "Database system administration"
+    }
+  ],
+  "implementation_rules": [
+    "Review current schema, permissions and relevant owning issues before promoting any proposed table into a deployed editor scope.",
+    "Generate only named, authorized actions through governed server commands; no generic ref.* CRUD or broad table INSERT/UPDATE/DELETE grants.",
+    "Validate each field, action and operator role server-side; protected keys and LOR-owned columns remain immutable.",
+    "Authorized Production crew may manage circuit-to-existing-waypoint relationships when those are separately implemented; waypoint identity and coordinates remain Manager-maintained.",
+    "Preserve attributed audit and prior values; no approved source facts overwritten by an unreviewed import."
+  ],
+  "gis_candidate_editor": {
+    "status": "CANDIDATE_ONLY_NOT_DEPLOYED_NOT_ROLE_GRANTED",
+    "migration": "Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql",
+    "read": "ref.site_reference_snapshot()",
+    "permissions": "ref.site_reference_permissions(email)",
+    "commands": "ref.site_reference_command(email, command, expected_revision, jsonb)",
+    "scope": "Installed Directus Manager capability and actor resolver; no independent GIS grant store. Power writes use FieldWiring commands.",
+    "track_name_edit": "manager_update_track_label verifies stable ref.site_track ID, accepted source binding, expected prior label, attribution and revision; exports to ExpertGPS by original GPX source ordinal, no FLW writeback."
+  }
+}

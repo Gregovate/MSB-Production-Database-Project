@@ -1,0 +1,250 @@
+* { box-sizing: border-box; }
+:root {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #111;
+  background: #f3f5f7;
+  line-height: 1.25;
+}
+body { margin: 0; }
+button, select { font: inherit; }
+.page-header,
+.controls,
+.status,
+.summary-root {
+  max-width: 1500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  padding: 20px 22px 10px;
+}
+.page-header h1 { margin: 2px 0 4px; font-size: 1.55rem; }
+.page-header p { margin: 0; color: #56606a; }
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: .72rem;
+  font-weight: 700;
+  color: #555;
+}
+.header-actions { display: flex; gap: 10px; align-items: center; }
+.header-actions a,
+.header-actions button,
+.controls button {
+  border: 1px solid #8b949e;
+  border-radius: 6px;
+  background: white;
+  color: #111;
+  padding: 8px 12px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.header-actions button:not(:disabled),
+.controls button { font-weight: 700; }
+.header-actions button:disabled { opacity: .5; cursor: default; }
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding: 14px 22px;
+  background: white;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+}
+.controls label { display: grid; gap: 4px; font-size: .82rem; font-weight: 700; }
+.controls select { min-width: 190px; padding: 7px; }
+.muted { color: #66707a; font-size: .82rem; }
+.status { padding: 10px 24px; color: #49515a; }
+.status.error { color: #8a1c1c; font-weight: 700; }
+.summary-root {
+  margin-top: 12px;
+  margin-bottom: 36px;
+  padding: 24px;
+  background: white;
+  box-shadow: 0 1px 5px rgba(0,0,0,.1);
+}
+.print-title { border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 14px; }
+.print-title h1 { margin: 2px 0 7px; font-size: 1.45rem; }
+.print-meta { display: flex; gap: 24px; flex-wrap: wrap; font-size: .88rem; }
+.purpose { margin: 8px 0 0; font-size: .86rem; }
+.disposable-warning {
+  margin: 10px 0 0;
+  border: 2px solid #111;
+  padding: 7px 10px;
+  text-align: center;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-size: .9rem;
+}
+.verification-boundary { margin: 7px 0 0; font-size: .78rem; color: #444; }
+.scope-group { margin-top: 16px; }
+.scope-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 2px solid #111;
+  padding: 5px 2px;
+  margin-bottom: 8px;
+}
+.scope-heading h2 { margin: 0; font-size: 1rem; }
+.scope-heading span { font-size: .74rem; color: #555; }
+.task-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.task-card {
+  border: 1px solid #777;
+  padding: 7px 8px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  min-width: 0;
+}
+.material-task { border-width: 2px; }
+.task-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid #bbb;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+.task-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.task-title { margin: 0; font-size: .91rem; line-height: 1.15; }
+.task-order { white-space: nowrap; font-size: .78rem; font-weight: 800; }
+.material-badge {
+  border: 1px solid #111;
+  padding: 1px 4px;
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.scheduler-strip {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 2px 0 4px;
+  padding: 3px 5px;
+  border: 1px solid #aaa;
+  background: #f6f6f6;
+  font-size: .7rem;
+}
+.scheduler-strip strong { font-weight: 800; }
+.missing-value,
+.review-value {
+  font-weight: 800;
+  text-decoration: underline;
+}
+.scheduler-review {
+  margin: 4px 0;
+  padding: 4px 5px;
+  border: 2px solid #111;
+  font-size: .69rem;
+  line-height: 1.2;
+}
+.scheduler-ready {
+  margin: 3px 0;
+  font-size: .66rem;
+  color: #555;
+  font-style: italic;
+}
+.compact-line {
+  margin: 2px 0;
+  font-size: .72rem;
+  overflow-wrap: anywhere;
+}
+.compact-line strong { font-weight: 700; }
+.review-box {
+  margin: 4px 0;
+  padding: 3px 5px;
+  border: 1px solid #555;
+  font-size: .69rem;
+  font-weight: 700;
+}
+.correction-space {
+  margin-top: 6px;
+  min-height: 34px;
+  border-top: 1px dashed #666;
+  position: relative;
+  padding-top: 13px;
+}
+.correction-space::before {
+  content: "HAND CORRECTIONS / NOTES";
+  position: absolute;
+  top: 2px;
+  left: 0;
+  font-size: .57rem;
+  letter-spacing: .04em;
+  font-weight: 700;
+}
+.correction-space::after {
+  content: "";
+  display: block;
+  border-bottom: 1px dotted #aaa;
+  height: 14px;
+}
+.empty { color: #666; font-style: italic; }
+@media (max-width: 900px) {
+  .task-grid { grid-template-columns: 1fr; }
+  .page-header { align-items: flex-start; }
+}
+@page {
+  size: landscape;
+  margin: .35in;
+}
+@media print {
+  :root { background: white; }
+  body { background: white; }
+  .no-print { display: none !important; }
+  .summary-root {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  .print-title { margin-bottom: 7px; padding-bottom: 6px; }
+  .print-title h1 { font-size: 14pt; }
+  .print-meta { font-size: 8pt; gap: 14px; }
+  .purpose { font-size: 7.3pt; margin-top: 5px; }
+  .disposable-warning { margin-top: 5px; padding: 4px 6px; font-size: 8pt; }
+  .verification-boundary { font-size: 6.7pt; margin-top: 4px; }
+  .scope-group { margin-top: 8px; }
+  .scope-heading {
+    padding: 2px 0;
+    margin-bottom: 4px;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .scope-heading h2 { font-size: 9pt; }
+  .scope-heading span { font-size: 6.5pt; }
+  .task-grid { gap: 4px; }
+  .task-card { padding: 4px 5px; }
+  .task-header { padding-bottom: 2px; margin-bottom: 2px; }
+  .task-title { font-size: 8.2pt; }
+  .task-order { font-size: 7pt; }
+  .material-badge { font-size: 5.1pt; padding: 1px 3px; }
+  .scheduler-strip { font-size: 6.2pt; gap: 6px; margin: 1px 0 2px; padding: 2px 3px; }
+  .scheduler-review { font-size: 5.9pt; margin: 2px 0; padding: 2px 3px; border-width: 1.5px; }
+  .scheduler-ready { font-size: 5.7pt; margin: 1px 0; }
+  .compact-line { font-size: 6.35pt; margin: 1px 0; line-height: 1.18; }
+  .review-box { font-size: 6.1pt; margin: 2px 0; padding: 2px 3px; }
+  .correction-space { min-height: 25px; margin-top: 3px; padding-top: 10px; }
+  .correction-space::before { font-size: 5pt; }
+  .correction-space::after { height: 10px; }
+}

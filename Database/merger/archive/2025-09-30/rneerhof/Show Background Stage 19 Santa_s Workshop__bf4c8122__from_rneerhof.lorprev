@@ -1,0 +1,384 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PreviewClass id="bf4c8122-409a-462a-8fd1-97ff8425d76d" BackgroundFile="C:\LOR\Visualizations\Editor\Animation Stage 19.jpg" Brightness="0" Revision="79" Name="Show Background Stage 19 Santa's Workshop">
+  <PropClass id="de0db043-17bf-4bad-a0eb-d92cec6abd67" BulbShape="Square" ChannelGrid="Regular,66,1,1,0,WarmWhite" Comment="SWSantaDoor" CustomBulbColor="FFFFFF00" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="87" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="Left" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-01 Santa Door" Parm1="2">
+    <shape ShapeName="Bulbs">
+      <point x="-0.42294326" y="-0.21981257" />
+      <point x="-0.42420298" y="-0.42425653" />
+    </shape>
+  </PropClass>
+  <PropClass id="3b8b2100-6235-4513-86dc-639e8f36bd75" BulbShape="Square" ChannelGrid="Regular,66,2,2,0,WarmWhite" Comment="SWSewingDoorLeft" CustomBulbColor="FFFFFF00" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="96" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-02 Left Sewing Door" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.68834937" y="-0.27649772" />
+    </shape>
+  </PropClass>
+  <PropClass id="e73525d8-d6f2-46cd-8eb8-d6b18c7fbca6" BulbShape="Square" ChannelGrid="Regular,66,3,3,0,WarmWhite" Comment="SWHammeringDoorRight" CustomBulbColor="FFFFFF00" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="91" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-03 Right Hammering Door" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.15701266" y="-0.2714535" />
+    </shape>
+  </PropClass>
+  <PropClass id="abd9d900-7a0d-49f6-b16a-cbc7ad59b712" BulbShape="Square" ChannelGrid="Regular,66,4,4,0,WarmWhite" Comment="SWUpperWindowLH" CustomBulbColor="FFFFFF00" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="40" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="Left" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-04 Upper Window LH" Parm1="2">
+    <shape ShapeName="Bulbs">
+      <point x="-0.67650914" y="0.43131924" />
+      <point x="-0.6389677" y="0.4313636" />
+    </shape>
+  </PropClass>
+  <PropClass id="143ae1fc-3184-49f6-b6e4-aa0de7c5eb5c" BulbShape="Square" ChannelGrid="Regular,66,1,1,0,WarmWhite" Comment="SWRopeCol-01" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="de0db043-17bf-4bad-a0eb-d92cec6abd67" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-01 Column 1" Parm1="11" Parm2="200">
+    <shape ShapeName="Lines-Unconnected">
+      <point x="-0.8574689" y="-0.31047186" />
+      <point x="-0.8083911" y="-0.25967798" />
+      <point x="-0.85656047" y="-0.10988969" />
+      <point x="-0.8069225" y="-0.06729898" />
+      <point x="-0.80686134" y="-0.047932062" />
+      <point x="-0.85557646" y="-0.049333643" />
+      <point x="-0.8084964" y="-0.114528455" />
+      <point x="-0.8577884" y="-0.16017593" />
+      <point x="-0.8088559" y="-0.16069043" />
+      <point x="-0.8578711" y="-0.20814568" />
+      <point x="-0.8088642" y="-0.21116374" />
+      <point x="-0.8573367" y="-0.25419694" />
+      <point x="-0.8126039" y="-0.4720078" />
+      <point x="-0.8630326" y="-0.5141328" />
+      <point x="-0.86085206" y="-0.6390822" />
+      <point x="-0.8086906" y="-0.6049694" />
+      <point x="-0.8614244" y="-0.576248" />
+      <point x="-0.8077744" y="-0.5337656" />
+      <point x="-0.8618361" y="-0.44610307" />
+      <point x="-0.8098393" y="-0.38997355" />
+      <point x="-0.8599929" y="-0.37172058" />
+      <point x="-0.8096803" y="-0.3157096" />
+    </shape>
+  </PropClass>
+  <PropClass id="f6122e7a-b28e-47ac-8cfc-94d6b85d797c" BulbShape="Square" ChannelGrid="Regular,66,1,1,0,WarmWhite" Comment="SWRopeCol-02" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="de0db043-17bf-4bad-a0eb-d92cec6abd67" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-01 Column 2" Parm1="11" Parm2="200">
+    <shape ShapeName="Lines-Unconnected">
+      <point x="-0.576543" y="-0.3106661" />
+      <point x="-0.52746516" y="-0.25987136" />
+      <point x="-0.5756299" y="-0.1100832" />
+      <point x="-0.5259938" y="-0.06749298" />
+      <point x="-0.52593213" y="-0.048126016" />
+      <point x="-0.57465047" y="-0.049527336" />
+      <point x="-0.5275705" y="-0.11472202" />
+      <point x="-0.5768622" y="-0.1603695" />
+      <point x="-0.527928" y="-0.16088435" />
+      <point x="-0.5769413" y="-0.20834014" />
+      <point x="-0.5279351" y="-0.21135715" />
+      <point x="-0.5764066" y="-0.25439072" />
+      <point x="-0.5316755" y="-0.47220233" />
+      <point x="-0.58210677" y="-0.5143276" />
+      <point x="-0.57992214" y="-0.6392744" />
+      <point x="-0.527762" y="-0.6051631" />
+      <point x="-0.58049875" y="-0.5764424" />
+      <point x="-0.52684855" y="-0.5339605" />
+      <point x="-0.5809092" y="-0.44629765" />
+      <point x="-0.5289108" y="-0.3901675" />
+      <point x="-0.5790671" y="-0.3719144" />
+      <point x="-0.52875304" y="-0.315903" />
+    </shape>
+  </PropClass>
+  <PropClass id="5824738c-05f6-42cd-a052-04685c5d4cea" BulbShape="Square" ChannelGrid="Regular,66,1,1,0,WarmWhite" Comment="SWRopeCol-03" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="de0db043-17bf-4bad-a0eb-d92cec6abd67" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-01 Column 3" Parm1="11" Parm2="200">
+    <shape ShapeName="Lines-Unconnected">
+      <point x="-0.31789422" y="-0.32133523" />
+      <point x="-0.26881656" y="-0.27054012" />
+      <point x="-0.3169825" y="-0.120752096" />
+      <point x="-0.2673444" y="-0.0781618" />
+      <point x="-0.2672844" y="-0.05879482" />
+      <point x="-0.31600225" y="-0.060196243" />
+      <point x="-0.2689219" y="-0.12539095" />
+      <point x="-0.31821245" y="-0.17103826" />
+      <point x="-0.26927936" y="-0.17155327" />
+      <point x="-0.31829184" y="-0.21900871" />
+      <point x="-0.2692861" y="-0.22202617" />
+      <point x="-0.31775883" y="-0.26505932" />
+      <point x="-0.2730272" y="-0.48287064" />
+      <point x="-0.32345808" y="-0.52499557" />
+      <point x="-0.3212745" y="-0.64994454" />
+      <point x="-0.26911363" y="-0.61583155" />
+      <point x="-0.32185006" y="-0.5871125" />
+      <point x="-0.26819924" y="-0.54462975" />
+      <point x="-0.32226" y="-0.45696604" />
+      <point x="-0.27026305" y="-0.4008354" />
+      <point x="-0.32041845" y="-0.3825831" />
+      <point x="-0.2701051" y="-0.32657194" />
+    </shape>
+  </PropClass>
+  <PropClass id="d4770825-ed1a-4dd2-8f5a-2a4419a7bdb0" BulbShape="Square" ChannelGrid="Regular,66,1,1,0,WarmWhite" Comment="SWRopeCol-04" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="de0db043-17bf-4bad-a0eb-d92cec6abd67" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-01 Column 4" Parm1="11" Parm2="200">
+    <shape ShapeName="Lines-Unconnected">
+      <point x="-0.039535727" y="-0.29638928" />
+      <point x="0.009541827" y="-0.24559459" />
+      <point x="-0.03862435" y="-0.095806256" />
+      <point x="0.011013042" y="-0.053216174" />
+      <point x="0.011073012" y="-0.03384918" />
+      <point x="-0.037644006" y="-0.035250824" />
+      <point x="0.009435935" y="-0.10044534" />
+      <point x="-0.039855137" y="-0.1460924" />
+      <point x="0.009078098" y="-0.14660773" />
+      <point x="-0.039934583" y="-0.19406244" />
+      <point x="0.009071497" y="-0.1970807" />
+      <point x="-0.03940091" y="-0.24011391" />
+      <point x="0.0053303363" y="-0.4579243" />
+      <point x="-0.04510031" y="-0.500051" />
+      <point x="-0.042917028" y="-0.6249991" />
+      <point x="0.00924371" y="-0.59088564" />
+      <point x="-0.04349214" y="-0.5621661" />
+      <point x="0.010158729" y="-0.5196835" />
+      <point x="-0.043902818" y="-0.43202132" />
+      <point x="0.008094372" y="-0.37588993" />
+      <point x="-0.04206061" y="-0.35763776" />
+      <point x="0.008252332" y="-0.30162653" />
+    </shape>
+  </PropClass>
+  <PropClass id="9b7fa38d-9f9c-43ce-9c43-0fb39ba84146" BulbShape="Square" ChannelGrid="Regular,66,1,1,0,WarmWhite" Comment="SWRoofLights" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="de0db043-17bf-4bad-a0eb-d92cec6abd67" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-01 Roof" Parm1="5" Parm2="400">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.8880274" y="0.0068674744" />
+      <point x="-0.8286677" y="0.16031545" />
+      <point x="-0.7825713" y="0.59920937" />
+      <point x="-0.025976427" y="0.58314073" />
+      <point x="0.0085165175" y="0.17273904" />
+      <point x="0.041935116" y="0.018204603" />
+    </shape>
+  </PropClass>
+  <PropClass id="006f951f-605f-46d6-883c-819056f1e205" BulbShape="Square" ChannelGrid="Regular,66,1,1,0,WarmWhite" Comment="SWGarland-01" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="de0db043-17bf-4bad-a0eb-d92cec6abd67" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-01 Garland 1" Parm1="1" Parm2="25" Parm3="180">
+    <shape ShapeName="Arch" OffsetX="-0.68954515" OffsetY="-0.07610517" ScaleX="0.19961262" ScaleY="0.077288896" Radians="-3.1413369898269727" />
+  </PropClass>
+  <PropClass id="0610e162-34c3-4195-a90b-5167c8532201" BulbShape="Square" ChannelGrid="Regular,66,1,1,0,WarmWhite" Comment="SWGarland-02" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="de0db043-17bf-4bad-a0eb-d92cec6abd67" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-01 Garland 2" Parm1="1" Parm2="25" Parm3="180">
+    <shape ShapeName="Arch" OffsetX="-0.42404154" OffsetY="-0.06373237" ScaleX="0.19961262" ScaleY="0.077288896" Radians="-3.1413369898269727" />
+  </PropClass>
+  <PropClass id="13e6b76f-485b-492f-913f-fedb1b978f62" BulbShape="Square" ChannelGrid="Regular,66,1,1,0,WarmWhite" Comment="SWGarland-03" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="de0db043-17bf-4bad-a0eb-d92cec6abd67" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-01 Garland 3" Parm1="1" Parm2="25" Parm3="180">
+    <shape ShapeName="Arch" OffsetX="-0.15939383" OffsetY="-0.0764994" ScaleX="0.19961262" ScaleY="0.077288896" Radians="-3.1413369898269727" />
+  </PropClass>
+  <PropClass id="9b31053b-1503-490a-a4ea-10db9b90c01a" BulbShape="Square" ChannelGrid="Regular,66,1,1,0,Multi" Comment="WorkshopSign" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="de0db043-17bf-4bad-a0eb-d92cec6abd67" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red,White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-01 Santa's Workshop Roof Sign" Parm1="52" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.5072203" y="0.27998033" />
+      <point x="-0.4973748" y="0.28306568" />
+      <point x="-0.49182227" y="0.26825377" />
+      <point x="-0.4976284" y="0.24850477" />
+      <point x="-0.5062101" y="0.24541926" />
+      <point x="-0.509241" y="0.26887122" />
+      <point x="-0.49813294" y="0.30960336" />
+      <point x="-0.49156964" y="0.3342902" />
+      <point x="-0.48450106" y="0.35650682" />
+      <point x="-0.4701126" y="0.3583586" />
+      <point x="-0.4547145" y="0.34971815" />
+      <point x="-0.44865426" y="0.32379827" />
+      <point x="-0.44486922" y="0.30343175" />
+      <point x="-0.44814938" y="0.29355726" />
+      <point x="-0.4569854" y="0.29602566" />
+      <point x="-0.46051982" y="0.2793633" />
+      <point x="-0.4539558" y="0.26763675" />
+      <point x="-0.44966486" y="0.28800318" />
+      <point x="-0.43855748" y="0.2861512" />
+      <point x="-0.43477112" y="0.27010584" />
+      <point x="-0.42770213" y="0.28306568" />
+      <point x="-0.42012948" y="0.29108834" />
+      <point x="-0.41230333" y="0.27998033" />
+      <point x="-0.40271187" y="0.29972914" />
+      <point x="-0.39917734" y="0.28183132" />
+      <point x="-0.38529295" y="0.27998033" />
+      <point x="-0.3779718" y="0.29417482" />
+      <point x="-0.37039915" y="0.31022018" />
+      <point x="-0.36434087" y="0.28553462" />
+      <point x="-0.3494471" y="0.2744258" />
+      <point x="-0.35070893" y="0.25529382" />
+      <point x="-0.3494471" y="0.23245943" />
+      <point x="-0.35651535" y="0.20468736" />
+      <point x="-0.33985388" y="0.20715599" />
+      <point x="-0.3335432" y="0.1812357" />
+      <point x="-0.33985388" y="0.1602521" />
+      <point x="-0.345408" y="0.17629836" />
+      <point x="-0.34919423" y="0.15222917" />
+      <point x="-0.35903925" y="0.14914334" />
+      <point x="-0.35651535" y="0.1812357" />
+      <point x="-0.36812752" y="0.15840049" />
+      <point x="-0.37973905" y="0.15654938" />
+      <point x="-0.4158373" y="0.16333781" />
+      <point x="-0.43628505" y="0.16518936" />
+      <point x="-0.4569854" y="0.1602521" />
+      <point x="-0.47238493" y="0.16333781" />
+      <point x="-0.49056023" y="0.16210361" />
+      <point x="-0.48248172" y="0.19110967" />
+      <point x="-0.49459925" y="0.2306078" />
+      <point x="-0.47339392" y="0.23431091" />
+      <point x="-0.48399714" y="0.25467682" />
+      <point x="-0.47667572" y="0.29726028" />
+      <point x="-0.49687123" y="0.2805974" />
+    </shape>
+  </PropClass>
+  <PropClass id="24ebb394-ff06-44c6-9365-dd913e63cabd" BulbShape="Square" ChannelGrid="Regular,66,4,4,0,WarmWhite" Comment="SWUpperWindowRH" CustomBulbColor="FFFFFF00" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="4" Opacity="255" MasterDimmable="True" PreviewBulbSize="40" RgbOrder="RGB order" MasterPropId="abd9d900-7a0d-49f6-b16a-cbc7ad59b712" SeparateIds="False" StartLocation="Left" StringType="Traditional" TraditionalColors="WarmWhite" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="SW 66-04 Upper Windows RH" Parm1="2">
+    <shape ShapeName="Bulbs">
+      <point x="-0.14383432" y="0.43131924" />
+      <point x="-0.18440759" y="0.43189362" />
+    </shape>
+  </PropClass>
+  <PropClass id="437f7f45-a349-4e90-8480-f45b7819dd8f" BulbShape="Square" ChannelGrid="Aux D,42,1,300,0,White" Comment="GiftBag" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="510" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="Left" StringType="RGB" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="Bag Inner" Parm1="47" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.71560943" y="-0.356758" />
+      <point x="0.7331117" y="-0.33186918" />
+      <point x="0.7490231" y="-0.31942463" />
+      <point x="0.76493603" y="-0.31942463" />
+      <point x="0.7784603" y="-0.32831353" />
+      <point x="0.7872121" y="-0.356758" />
+      <point x="0.79437226" y="-0.3940918" />
+      <point x="0.7919858" y="-0.4527588" />
+      <point x="0.78323376" y="-0.48831415" />
+      <point x="0.7665267" y="-0.5292031" />
+      <point x="0.7506156" y="-0.5629817" />
+      <point x="0.7410686" y="-0.59142613" />
+      <point x="0.7370902" y="-0.6216486" />
+      <point x="0.74425113" y="-0.6412047" />
+      <point x="0.7641392" y="-0.6518709" />
+      <point x="0.78562105" y="-0.6518709" />
+      <point x="0.81744456" y="-0.6465374" />
+      <point x="0.8556319" y="-0.63942635" />
+      <point x="0.88666105" y="-0.6412047" />
+      <point x="0.9208718" y="-0.6447604" />
+      <point x="0.93916875" y="-0.6447604" />
+      <point x="0.9503075" y="-0.62698233" />
+      <point x="0.9518991" y="-0.60387063" />
+      <point x="0.9407612" y="-0.5789814" />
+      <point x="0.935988" y="-0.55231476" />
+      <point x="0.9320088" y="-0.52387" />
+      <point x="0.9367835" y="-0.49720353" />
+      <point x="0.9439427" y="-0.46164784" />
+      <point x="0.94553405" y="-0.43675858" />
+      <point x="0.9288254" y="-0.4065362" />
+      <point x="0.9009805" y="-0.38520268" />
+      <point x="0.8675667" y="-0.36209148" />
+      <point x="0.856428" y="-0.3460914" />
+      <point x="0.8476762" y="-0.31586912" />
+      <point x="0.850859" y="-0.27497995" />
+      <point x="0.8516545" y="-0.23764637" />
+      <point x="0.8484725" y="-0.21453512" />
+      <point x="0.83892536" y="-0.19142397" />
+      <point x="0.81823957" y="-0.17364606" />
+      <point x="0.78243876" y="-0.17186835" />
+      <point x="0.7633445" y="-0.16653492" />
+      <point x="0.7490231" y="-0.15764576" />
+      <point x="0.74345505" y="-0.1345345" />
+      <point x="0.7410686" y="-0.095423356" />
+      <point x="0.73549795" y="-0.070534244" />
+      <point x="0.72913384" y="-0.06875614" />
+      <point x="0.72197443" y="-0.08120082" />
+      <point x="0.72197443" y="-0.10253451" />
+    </shape>
+    <MotionRowDefaults>
+      <MotionRowDefault id="e3691109-e5d0-4eb2-a854-657717c2a29f" name="Inner Line" />
+    </MotionRowDefaults>
+  </PropClass>
+  <PropClass id="93f10b7c-8f4a-4921-a16f-15fb5f4128d0" BulbShape="Square" ChannelGrid="Aux D,43,1,300,0,White" Comment="GiftBag" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="510" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="Left" StringType="RGB" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="Bag Outer" Parm1="39" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.7179951" y="-0.3806251" />
+      <point x="0.7506156" y="-0.34506926" />
+      <point x="0.7681182" y="-0.34684706" />
+      <point x="0.7768686" y="-0.37884733" />
+      <point x="0.7768686" y="-0.4197365" />
+      <point x="0.76254886" y="-0.46773657" />
+      <point x="0.74425113" y="-0.51395905" />
+      <point x="0.7275426" y="-0.56907046" />
+      <point x="0.7195871" y="-0.6152931" />
+      <point x="0.7195871" y="-0.6472939" />
+      <point x="0.72913384" y="-0.6757383" />
+      <point x="0.76493603" y="-0.6775161" />
+      <point x="0.93519056" y="-0.67040485" />
+      <point x="0.9574686" y="-0.6668495" />
+      <point x="0.9725852" y="-0.6472939" />
+      <point x="0.96542335" y="-0.6135156" />
+      <point x="0.95587826" y="-0.5655151" />
+      <point x="0.96383303" y="-0.51573694" />
+      <point x="0.9678094" y="-0.4748478" />
+      <point x="0.95826405" y="-0.41618076" />
+      <point x="0.93519056" y="-0.36640286" />
+      <point x="0.89779913" y="-0.3415137" />
+      <point x="0.87313575" y="-0.3166247" />
+      <point x="0.8675667" y="-0.2899579" />
+      <point x="0.8691567" y="-0.21351303" />
+      <point x="0.8643841" y="-0.16906837" />
+      <point x="0.8532456" y="-0.12462348" />
+      <point x="0.83892536" y="-0.09973457" />
+      <point x="0.81744456" y="-0.096178934" />
+      <point x="0.78562105" y="-0.09795688" />
+      <point x="0.76493603" y="-0.10151245" />
+      <point x="0.75777483" y="-0.08551212" />
+      <point x="0.74822736" y="-0.042845614" />
+      <point x="0.7458406" y="-0.01617843" />
+      <point x="0.7426583" y="-0.00017882884" />
+      <point x="0.7347038" y="0.010488078" />
+      <point x="0.72276926" y="-0.009067386" />
+      <point x="0.7179951" y="-0.035734206" />
+      <point x="0.7179951" y="-0.06417887" />
+      <point x="0.7187918" y="-0.081956506" />
+    </shape>
+    <MotionRowDefaults>
+      <MotionRowDefault id="8a3c7f2b-93da-4e47-a206-bc344a41de5c" name="Outer Line" />
+    </MotionRowDefaults>
+  </PropClass>
+  <PropClass id="a97b4609-1a26-4d56-8781-dbd059f8c580" BulbShape="Square" ChannelGrid="Aux D,30,1,150,0," Comment="GiftConveyor" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="LinearCurve 50%" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="510" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="BRG order" MasterPropId="" SeparateIds="False" StartLocation="Right" StringType="RGB" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="5.7" Tag="" Name="Belt Bot" Parm1="1" Parm2="50">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.040387377" y="-0.48127395" />
+      <point x="0.7372923" y="-0.3299219" />
+    </shape>
+    <MotionRowDefaults>
+      <MotionRowDefault id="0ea2b494-460f-4db0-9d6d-062cf50ec4ad" name="Belt Bot" />
+    </MotionRowDefaults>
+  </PropClass>
+  <PropClass id="191a6a96-678f-4b99-9d1a-056468efadb0" BulbShape="Square" ChannelGrid="Aux D,31,1,150,0," Comment="GiftConveyor" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="LinearCurve 50%" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="510" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="BRG order" MasterPropId="" SeparateIds="False" StartLocation="Right" StringType="RGB" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="5.6" Tag="" Name="Belt Top" Parm1="1" Parm2="50">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.038572814" y="-0.42735296" />
+      <point x="0.71957356" y="-0.28026175" />
+    </shape>
+    <MotionRowDefaults>
+      <MotionRowDefault id="685c3b81-c7cf-4f62-aefd-ee880cba57ad" name="Belt Top" />
+    </MotionRowDefaults>
+  </PropClass>
+  <PropClass id="35caca41-289a-46f2-aa3d-17ebe849c6a4" BulbShape="Square" ChannelGrid="Aux D,32,1,150,0,;Aux D,33,1,150,0,;Aux D,34,1,150,0,;Aux D,35,1,150,0,;Aux D,36,1,150,0,;Aux D,37,1,150,0,;Aux D,38,1,150,0,;Aux D,39,1,150,0,;Aux D,3A,1,150,0,;Aux D,3B,1,150,0,;Aux D,3C,1,150,0,;Aux D,3D,1,150,0,;Aux D,3E,1,150,0,;Aux D,3F,1,150,0," Comment="GiftConveyor" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="LinearCurve 30%" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="150" Opacity="255" MasterDimmable="True" PreviewBulbSize="4" RgbOrder="BGR order" MasterPropId="" SeparateIds="True" StartLocation="Bottom Right" StringType="RGB" TraditionalColors="" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1.6" Tag="" Name="Conveyor" Parm1="14" Parm2="50" Parm3="0" Parm4="0">
+    <shape ShapeName="Matrix-Horizontal-Quad">
+      <point x="0.7367159" y="-0.25506824" />
+      <point x="0.036318302" y="-0.4121865" />
+      <point x="0.021247625" y="-0.25502983" />
+      <point x="0.72994506" y="-0.11055273" />
+    </shape>
+    <MotionRowDefaults>
+      <MotionRowDefault id="aa09ab01-b494-457f-a474-8a52ece44dfd" name="Whole Matrix 01" />
+      <MotionRowDefault id="73b404fb-bf0e-44f7-b745-4c4b40423f49" name="Whole Matrix 02" />
+      <MotionRowDefault id="40d83070-bbf6-4106-9520-148a2ed9be77" name="Tier 1" subx="0" suby="0" subw="1" subh="0.2857143" />
+      <MotionRowDefault id="c5d68666-cddd-48f8-9e53-e57707865af1" name="Tier 1" subx="0" suby="0.2857143" subw="1" subh="0.2142857" />
+      <MotionRowDefault id="891faa7f-1c37-4817-9071-304a87e7f649" name="Tier 3" subx="0" suby="0.5" subw="1" subh="0.21428573" />
+      <MotionRowDefault id="f2e8d634-4831-4bd8-9a1d-1c01c47454d9" name="Tier 4" subx="0" suby="0.71428573" subw="1" subh="0.28571427" />
+      <MotionRowDefault id="51543e84-e576-4bce-9777-5ad724675574" name="Column 1" subx="0" suby="0" subw="0.24" subh="1" />
+      <MotionRowDefault id="0bad9a29-ddcb-45da-9886-d1e5d0c95eb7" name="Column 2" subx="0.24" suby="0" subw="0.24" subh="1" />
+      <MotionRowDefault id="efd4453e-09e7-4993-804f-4426be7e883d" name="Column 3" subx="0.48" suby="0" subw="0.26000002" subh="1" />
+      <MotionRowDefault id="03ec561d-edb6-40f9-a8dd-4de6c5027339" name="Column 4" subx="0.74" suby="0" subw="0.26" subh="1" />
+      <MotionRowDefault id="818cca48-de42-49c1-a6e3-ec235b9bb537" name="Left Half" subx="0" suby="0" subw="0.5" subh="1" />
+      <MotionRowDefault id="22d748b2-a5a3-4176-aa15-23065ee74a36" name="Right Half" subx="0.5" suby="0" subw="0.5" subh="1" />
+      <MotionRowDefault id="c95213f9-0be1-42cd-abe2-55826c43dfb7" name="Whole Matrix 03" />
+    </MotionRowDefaults>
+  </PropClass>
+  <PropClass id="a31f7c3b-6690-449d-b004-64b2935dd543" BulbShape="Square" ChannelGrid="Aux D,40,1,24,0,Red" Comment="GiftConveyor" CustomBulbColor="FF0000FF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="510" Opacity="255" MasterDimmable="True" PreviewBulbSize="4" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="Top-Outside-CW" StringType="RGB" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="4.6" Tag="" Name="Roller LH" Parm1="1" Parm2="8" Parm3="1" Parm4="1">
+    <shape ShapeName="Wreath" OffsetX="0.03966887" OffsetY="-0.45253882" ScaleX="0.016707744" ScaleY="0.036592998" Radians="0.03956666998005748" />
+    <MotionRowDefaults>
+      <MotionRowDefault id="2c5313da-19e5-4559-b829-b577934162f2" name="Circle" />
+    </MotionRowDefaults>
+  </PropClass>
+  <PropClass id="84d7a7ac-c1ae-433f-8778-68f0c3bbf092" BulbShape="Square" ChannelGrid="Aux D,41,1,24,0,Red" Comment="GiftConveyor" CustomBulbColor="FF0000FF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="510" Opacity="255" MasterDimmable="True" PreviewBulbSize="4" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="Top-Inside-CW" StringType="RGB" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="7.6" Tag="" Name="Roller RH" Parm1="1" Parm2="8" Parm3="1" Parm4="1">
+    <shape ShapeName="Wreath" OffsetX="0.72204775" OffsetY="-0.30502617" ScaleX="0.016696138" ScaleY="0.036567718" Radians="-0.013631929203737903" />
+    <MotionRowDefaults>
+      <MotionRowDefault id="c6835202-403d-45d6-aa15-5be1e5a0aa8e" name="Circle" />
+    </MotionRowDefaults>
+  </PropClass>
+  <PropGroup id="73b60083-a418-4635-8516-5cb9e8d0ba09" Arrangement="None" PreviewResFactor="1" PreviewSinglePointPerProp="False" EffectBulbSize="1" Tag="" Name="SW Building">
+    <member id="de0db043-17bf-4bad-a0eb-d92cec6abd67" orientation="normal" top="0" left="0" />
+    <member id="3b8b2100-6235-4513-86dc-639e8f36bd75" orientation="normal" top="0" left="0" />
+    <member id="e73525d8-d6f2-46cd-8eb8-d6b18c7fbca6" orientation="normal" top="0" left="0" />
+    <member id="abd9d900-7a0d-49f6-b16a-cbc7ad59b712" orientation="normal" top="0" left="0" />
+  </PropGroup>
+  <PropGroup id="3f065c88-ad33-465b-9648-a7821b132dee" Arrangement="None" PreviewResFactor="1" PreviewSinglePointPerProp="False" EffectBulbSize="1" Tag="" Name="Animation Stage 19 Santa's Workshop">
+    <member id="73b60083-a418-4635-8516-5cb9e8d0ba09" orientation="normal" top="0" left="0" />
+  </PropGroup>
+  <PropGroup id="db19ba42-fb08-47ae-933b-f1f753c14654" Arrangement="None" PreviewResFactor="1" PreviewSinglePointPerProp="False" EffectBulbSize="1" Tag="" Name="GiftConveyor Prop">
+    <member id="437f7f45-a349-4e90-8480-f45b7819dd8f" orientation="normal" top="0" left="0" />
+    <member id="93f10b7c-8f4a-4921-a16f-15fb5f4128d0" orientation="normal" top="0" left="0" />
+    <member id="a97b4609-1a26-4d56-8781-dbd059f8c580" orientation="normal" top="0" left="0" />
+    <member id="191a6a96-678f-4b99-9d1a-056468efadb0" orientation="normal" top="0" left="0" />
+    <member id="35caca41-289a-46f2-aa3d-17ebe849c6a4" orientation="normal" top="0" left="0" />
+    <member id="a31f7c3b-6690-449d-b004-64b2935dd543" orientation="normal" top="0" left="0" />
+    <member id="84d7a7ac-c1ae-433f-8778-68f0c3bbf092" orientation="normal" top="0" left="0" />
+  </PropGroup>
+</PreviewClass>

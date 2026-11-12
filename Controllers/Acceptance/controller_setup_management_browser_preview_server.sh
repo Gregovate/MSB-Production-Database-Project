@@ -1,0 +1,414 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROD_CONTAINER="msb-postgres"
+PROD_DB="msb"
+DB_ACTOR="msbadmin"
+IMAGE="postgis/postgis:16-3.5"
+NETWORK="msb-stack_default"
+FIELDWIRING_ROOT="/opt/fieldwiring"
+TARGET_REF="${3:?TargetRef required}"
+TARGET_SHA="${4:?CandidateSha required}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PREVIEW_ENTRY="$SCRIPT_DIR/controller_setup_management_browser_preview_entry.py"
+PREVIEW_PORT="${1:?PreviewPort required}"
+PREVIEW_EMAIL="${2:-gliebig@sheboyganlights.org}"
+STAMP="$(date +%Y%m%dT%H%M%S)"
+TEST_CONTAINER="msb-controller-browser-preview-${$}"
+TEST_DB="msb_controller_browser_preview"
+TEST_PASSWORD="controller-preview-${$}-$(date +%s)"
+APP_PASSWORD="previewapp$(date +%s)${$}"
+DUMP_FILE="$SCRIPT_DIR/production.dump"
+CANDIDATE_WORKTREE="/tmp/msb-controller-browser-preview-candidate-$STAMP"
+REPORT="/tmp/MSB_Controller_Browser_Preview_$STAMP.txt"
+PREVIEW_LOG="/tmp/MSB_Controller_Browser_Preview_Flask_$STAMP.log"
+PREVIEW_PGID=""
+PROD_BEFORE=""
+
+exec > >(tee "$REPORT") 2>&1
+
+echo "========== CONTROLLER SETUP + MANAGEMENT BROWSER PREVIEW =========="
+echo "Report:         $REPORT"
+echo "Candidate SHA:  $TARGET_SHA"
+echo "Preview port:   $PREVIEW_PORT"
+echo "Candidate ref:  $TARGET_REF"
+echo "Preview user:   $PREVIEW_EMAIL"
+echo "Production DB:  pg_dump + SELECT only"
+echo "Preview writes: disposable PostgreSQL clone only"
+echo
+
+prod_fingerprint() {
+    sudo docker exec "$PROD_CONTAINER" \
+        psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "
+            SELECT md5(
+                coalesce((
+                    SELECT string_agg(row_to_json(c)::text, '' ORDER BY c.controller_id)
+                    FROM ref.controller c
+                ), '') || '|' ||
+                coalesce((
+                    SELECT string_agg(row_to_json(cd)::text, '' ORDER BY cd.controller_id, cd.display_id)
+                    FROM ref.controller_display cd
+                ), '') || '|' ||
+                coalesce((
+                    SELECT string_agg(row_to_json(h)::text, '' ORDER BY h.controller_firmware_history_id)
+                    FROM ref.controller_firmware_history h
+                ), '')
+            );
+        "
+}
+
+# Flask runs as fieldwiring and is launched in its own setsid process group.
+# Never trust a successful kill invocation alone: verify process identity and
+# listener teardown before announcing a clean exit.
+preview_pid_matches() {
+    [[ "$PREVIEW_PGID" =~ ^[0-9]+$ ]] || return 1
+    local command
+    command="$(sudo ps -p "$PREVIEW_PGID" -o args= 2>/dev/null || true)"
+    [[ "$command" == *"$PREVIEW_ENTRY"* ]] &&
+        [[ "$(sudo ps -p "$PREVIEW_PGID" -o user= 2>/dev/null | xargs)" == "fieldwiring" ]]
+}
+preview_port_owned_by_pid() {
+    local listeners
+    listeners="$(sudo ss -ltnp "sport = :$PREVIEW_PORT" 2>/dev/null || true)"
+    [[ "$listeners" == *"pid=$PREVIEW_PGID,"* ]]
+}
+preview_port_listening() {
+    sudo ss -ltnH "sport = :$PREVIEW_PORT" 2>/dev/null | grep -q .
+}
+cleanup() {
+    local status=$? cleanup_failed=0 pid_owner=""
+    trap - EXIT INT TERM HUP
+    set +e
+
+    echo
+    echo "--- Browser preview cleanup ---"
+    if [[ -n "$PREVIEW_PGID" ]]; then
+        if preview_pid_matches; then
+            echo "Stopping verified Controller preview PID $PREVIEW_PGID"
+            sudo kill -TERM "$PREVIEW_PGID" || cleanup_failed=1
+            for _ in $(seq 1 20); do
+                if ! preview_pid_matches && ! preview_port_owned_by_pid; then break; fi
+                sleep 1
+            done
+            if preview_pid_matches || preview_port_owned_by_pid; then
+                if preview_pid_matches; then
+                    echo "Controller preview still active; sending KILL to exact verified PID $PREVIEW_PGID"
+                    sudo kill -KILL "$PREVIEW_PGID" || cleanup_failed=1
+                else
+                    echo "FAIL: listening PID identity drift; refusing unsafe kill"
+                    cleanup_failed=1
+                fi
+            fi
+        elif preview_port_owned_by_pid; then
+            echo "FAIL: port belongs to saved PID but executable identity is unverified"
+            cleanup_failed=1
+        fi
+    fi
+    if preview_port_listening; then
+        echo "FAIL: preview port $PREVIEW_PORT remains occupied"
+        sudo ss -ltnp "sport = :$PREVIEW_PORT" || true
+        cleanup_failed=1
+    else
+        echo "PASS: preview port $PREVIEW_PORT has no listener"
+    fi
+
+    if sudo docker inspect "$TEST_CONTAINER" >/dev/null 2>&1; then
+        sudo docker rm -f "$TEST_CONTAINER" >/dev/null || cleanup_failed=1
+    fi
+    if sudo docker inspect "$TEST_CONTAINER" >/dev/null 2>&1; then
+        echo "FAIL: preview database container still exists: $TEST_CONTAINER"
+        cleanup_failed=1
+    else
+        echo "PASS: preview database container absent"
+    fi
+
+    if sudo git -C "$FIELDWIRING_ROOT" worktree list --porcelain 2>/dev/null |
+       grep -Fxq "worktree $CANDIDATE_WORKTREE"; then
+        sudo git -C "$FIELDWIRING_ROOT" worktree remove "$CANDIDATE_WORKTREE" ||
+            cleanup_failed=1
+    fi
+    if sudo git -C "$FIELDWIRING_ROOT" worktree list --porcelain 2>/dev/null |
+       grep -Fxq "worktree $CANDIDATE_WORKTREE"; then
+        echo "FAIL: preview detached worktree remains: $CANDIDATE_WORKTREE"
+        cleanup_failed=1
+    else
+        echo "PASS: preview detached worktree absent"
+    fi
+
+    rm -f -- "$DUMP_FILE" || cleanup_failed=1
+    if [[ -e "$DUMP_FILE" ]]; then cleanup_failed=1; fi
+    if [[ -d "$SCRIPT_DIR" ]]; then
+        rm -rf -- "$SCRIPT_DIR" || cleanup_failed=1
+    fi
+    if [[ -e "$SCRIPT_DIR" ]]; then cleanup_failed=1; fi
+
+    echo
+    echo "--- Production Controller fingerprint after-check ---"
+    if [[ -n "$PROD_BEFORE" ]]; then
+        local PROD_AFTER
+        PROD_AFTER="$(prod_fingerprint 2>/dev/null)" || cleanup_failed=1
+        echo "Before: $PROD_BEFORE"
+        echo "After:  $PROD_AFTER"
+        if [[ "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
+            echo "FAIL: production Controller fingerprint mismatch"
+            cleanup_failed=1
+        else
+            echo "PASS: production Controller fingerprint unchanged"
+        fi
+    else
+        echo "SKIP: no preflight fingerprint captured"
+    fi
+
+    if (( cleanup_failed )); then
+        echo "CLEANUP FAILED: do not declare CLEAN EXIT"
+        [[ "$status" -ne 0 ]] || status=98
+    elif [[ "$status" -eq 0 ]]; then
+        echo "CLEAN EXIT: Controller preview owned resources verified absent"
+    fi
+    echo "Preview Flask log retained at: $PREVIEW_LOG"
+    echo "Preview report retained at:    $REPORT"
+    echo "Exit status: $status"
+    exit "$status"
+}
+
+trap cleanup EXIT INT TERM HUP
+
+sudo -v
+
+if [[ ! "$PREVIEW_PORT" =~ ^[0-9]+$ ]] || (( PREVIEW_PORT < 1024 || PREVIEW_PORT > 65535 )); then
+    echo "FAIL: preview port must be an integer from 1024 through 65535"
+    exit 2
+fi
+if [[ "$PREVIEW_PORT" != "8898" ]]; then
+    echo "FAIL: registered shared Controller preview port is 8898"
+    exit 3
+fi
+if [[ "$PREVIEW_PORT" == "8790" || "$PREVIEW_PORT" == "8792" || "$PREVIEW_PORT" == "8055" ]]; then
+    echo "FAIL: preview port conflicts with a governed production listener"
+    exit 3
+fi
+if [[ ! "$PREVIEW_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
+    echo "FAIL: preview operator email is not valid"
+    exit 4
+fi
+if [[ ! -s "$PREVIEW_ENTRY" ]]; then
+    echo "FAIL: preview entry file is missing: $PREVIEW_ENTRY"
+    exit 5
+fi
+if ss -ltnH "sport = :$PREVIEW_PORT" | grep -q .; then
+    echo "FAIL: preview port $PREVIEW_PORT is already listening on msb-prod-db"
+    exit 6
+fi
+if ! sudo docker inspect "$PROD_CONTAINER" >/dev/null 2>&1; then
+    echo "FAIL: production PostgreSQL container was not found"
+    exit 7
+fi
+if [[ "$(sudo docker inspect "$PROD_CONTAINER" --format '{{.Config.Image}}')" != "$IMAGE" ]]; then
+    echo "FAIL: production PostgreSQL image does not match $IMAGE"
+    exit 8
+fi
+if ! sudo docker network inspect "$NETWORK" >/dev/null 2>&1; then
+    echo "FAIL: Docker network $NETWORK was not found"
+    exit 9
+fi
+
+LIVE_HEAD="$(sudo git -C "$FIELDWIRING_ROOT" rev-parse HEAD)"
+if [[ -n "$(sudo git -C "$FIELDWIRING_ROOT" status --porcelain)" ]]; then
+    echo "FAIL: live shared checkout has uncommitted changes"
+    sudo git -C "$FIELDWIRING_ROOT" status -sb
+    exit 10
+fi
+
+echo "Production checkout remains: $LIVE_HEAD"
+PROD_BEFORE="$(prod_fingerprint)"
+echo "Production Controller fingerprint: $PROD_BEFORE"
+
+echo
+echo "--- Fetch exact accepted candidate ---"
+sudo git -C "$FIELDWIRING_ROOT" fetch origin "$TARGET_REF"
+sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$TARGET_SHA^{commit}"
+if ! sudo git -C "$FIELDWIRING_ROOT" merge-base --is-ancestor "$LIVE_HEAD" "$TARGET_SHA"; then
+    echo "INFO: exact detached preview candidate need not descend from live checkout"
+fi
+sudo git -C "$FIELDWIRING_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
+
+# Fail before pg_dump or disposable restore on malformed candidate Python.
+# Run under the documented FieldWiring service runtime and candidate worktree.
+sudo -u fieldwiring -H bash -c 'cd "$1" && /opt/fieldwiring/.venv/bin/python -B -c "import ast,pathlib; ast.parse(pathlib.Path(\"FieldWiring/Application/controller_management.py\").read_text(encoding=\"utf-8\"))" && PYTHONDONTWRITEBYTECODE=1 /opt/fieldwiring/.venv/bin/python -B -m pytest -q -p no:cacheprovider FieldWiring/Application/test_controller_capacity_planner_contract.py' -- "$CANDIDATE_WORKTREE"
+echo "PASS: Controller planner Python compile and focused contract before clone"
+
+
+echo
+echo "--- Capture current production into disposable clone ---"
+sudo docker exec "$PROD_CONTAINER" \
+    pg_dump -U "$DB_ACTOR" -d "$PROD_DB" -Fc > "$DUMP_FILE"
+test -s "$DUMP_FILE"
+sudo docker exec -i "$PROD_CONTAINER" pg_restore --list < "$DUMP_FILE" >/dev/null
+echo "Production dump captured and validated: $(du -h "$DUMP_FILE" | awk '{print $1}')"
+
+sudo docker run -d \
+    --name "$TEST_CONTAINER" \
+    --network "$NETWORK" \
+    -e POSTGRES_USER="$DB_ACTOR" \
+    -e POSTGRES_PASSWORD="$TEST_PASSWORD" \
+    -e POSTGRES_DB=postgres \
+    "$IMAGE" >/dev/null
+
+# The PostGIS entrypoint starts and stops a temporary PostgreSQL server.
+# Require final postgres PID 1 plus pg_isready before restore.
+ready=0
+for _ in $(seq 1 120); do
+    pid1="$(sudo docker exec "$TEST_CONTAINER" cat /proc/1/comm 2>/dev/null | tr -d '\r\n' || true)"
+    if [[ "$pid1" == "postgres" ]] && sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+        ready=1
+        break
+    fi
+    sleep 1
+done
+if [[ "$ready" -ne 1 ]]; then
+    echo "FAIL: final disposable PostgreSQL startup not ready"
+    exit 14
+fi
+
+sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+    createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"
+sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+    pg_restore -U "$DB_ACTOR" -d "$TEST_DB" --no-owner --no-acl --exit-on-error \
+    < "$DUMP_FILE"
+echo "Disposable production clone restored"
+
+psql_test() {
+    sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+        psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" "$@"
+}
+
+psql_test <<SQL
+CREATE ROLE fieldwiring_app LOGIN PASSWORD '$APP_PASSWORD';
+GRANT USAGE ON SCHEMA ref, lor_snap, ops TO fieldwiring_app;
+GRANT SELECT ON ALL TABLES IN SCHEMA ref, lor_snap, ops TO fieldwiring_app;
+REVOKE ALL ON FUNCTION ref.controller_browser_capabilities(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ref.request_controller_label(text,bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ref.controller_browser_capabilities(text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.request_controller_label(text,bigint) TO fieldwiring_app;
+-- Preserve the currently deployed narrow Controller management capabilities
+-- after a no-ACL restore; no broad Controller DML.
+GRANT EXECUTE ON FUNCTION ref.controller_management_options(text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.create_controller(text,integer,integer,text,integer,text,text,text,integer,text,boolean,text,text,boolean,text,integer,integer,text,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.update_controller(text,bigint,integer,integer,text,integer,text,text,text,integer,text,boolean,text,text,boolean,text,integer,integer,text,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.assign_controller_display(text,bigint,bigint,bigint,text,text,boolean) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.update_controller_display_assignment(text,bigint,bigint,bigint,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.reassign_controller_display(text,bigint,bigint,bigint,bigint,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.unassign_controller_display(text,bigint,bigint,boolean) TO fieldwiring_app;
+SQL
+
+echo "No migrations: source-only #406 candidate against current Production clone"
+
+echo
+echo "--- Validate disposable browser authorization/write boundary ---"
+MANAGE_OK="$(psql_test -qAt -c "SELECT can_manage_controllers FROM ref.controller_browser_capabilities('$PREVIEW_EMAIL');")"
+if [[ "$MANAGE_OK" != "t" ]]; then
+    echo "FAIL: preview operator $PREVIEW_EMAIL does not have Controller management capability"
+    exit 15
+fi
+
+psql_test <<'SQL'
+DO $block$
+BEGIN
+    IF has_table_privilege('fieldwiring_app', 'ref.controller', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ref.controller', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ref.controller', 'DELETE')
+       OR has_table_privilege('fieldwiring_app', 'ref.controller_display', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ref.controller_display', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ref.controller_display', 'DELETE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app unexpectedly has broad Controller DML';
+    END IF;
+END
+$block$;
+SQL
+
+echo "Disposable authorization boundary: PASS"
+
+TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
+if [[ -z "$TEST_IP" ]]; then
+    echo "FAIL: could not resolve disposable PostgreSQL container IP"
+    exit 16
+fi
+
+APP_DIR="$CANDIDATE_WORKTREE/FieldWiring/Application"
+DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=fieldwiring_app password=$APP_PASSWORD"
+
+echo
+echo "--- Exact candidate focused Controller regression ---"
+sudo -u fieldwiring -H bash -c 'cd "$1" && /opt/fieldwiring/.venv/bin/python -m pytest -q -p no:cacheprovider FieldWiring/Application/test_controller_capacity_planner_contract.py FieldWiring/Application/test_controller_programmed_configuration_contract.py' -- "$CANDIDATE_WORKTREE"
+echo "Targeted Controller regression: PASS"
+echo
+echo "--- Start exact accepted Flask candidate ---"
+# Keep sudo in the foreground so it retains the interactive SSH TTY. Once sudo
+# has switched to the fieldwiring runtime account, that child shell starts the
+# Flask process in its own session and returns the new session/process-group ID.
+PREVIEW_PGID="$(
+    sudo -u fieldwiring -H env \
+        FIELDWIRING_DATABASE_DSN="$DSN" \
+        MSB_PREVIEW_APP_DIR="$APP_DIR" \
+        MSB_PREVIEW_OPERATOR_EMAIL="$PREVIEW_EMAIL" \
+        MSB_PREVIEW_HOST="127.0.0.1" \
+        MSB_PREVIEW_PORT="$PREVIEW_PORT" \
+        MSB_PREVIEW_ENTRY="$PREVIEW_ENTRY" \
+        MSB_PREVIEW_LOG="$PREVIEW_LOG" \
+        bash -c '
+            setsid /opt/fieldwiring/.venv/bin/python "$MSB_PREVIEW_ENTRY" \
+                > "$MSB_PREVIEW_LOG" 2>&1 &
+            echo $!
+        '
+)"
+
+if [[ ! "$PREVIEW_PGID" =~ ^[0-9]+$ ]]; then
+    echo "FAIL: preview Flask process did not return a valid process-group ID: $PREVIEW_PGID"
+    exit 17
+fi
+
+preview_ready=0
+for _ in $(seq 1 30); do
+    if curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health" >/dev/null 2>&1; then
+        preview_ready=1
+        break
+    fi
+    sleep 1
+done
+if [[ "$preview_ready" -ne 1 ]]; then
+    echo "FAIL: preview Flask application did not become healthy"
+    tail -n 100 "$PREVIEW_LOG" || true
+    exit 18
+fi
+
+HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
+ACCESS="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/controller-access")"
+OPTIONS_CODE="$(curl -sS -o /tmp/controller-preview-options-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/controller-management/options")"
+if [[ "$OPTIONS_CODE" != "200" ]]; then
+    echo "FAIL: preview management options returned HTTP $OPTIONS_CODE"
+    cat /tmp/controller-preview-options-$STAMP.json || true
+    rm -f /tmp/controller-preview-options-$STAMP.json
+    exit 19
+fi
+rm -f /tmp/controller-preview-options-$STAMP.json
+
+echo "Preview health: $HEALTH"
+echo "Preview access: $ACCESS"
+echo
+echo "============================================================"
+echo "BROWSER REVIEW READY"
+echo "Open on the Windows workstation:"
+echo "  http://127.0.0.1:$PREVIEW_PORT/controllers"
+echo
+echo "This is candidate $TARGET_SHA against a DISPOSABLE production clone."
+echo "Preview identity: $PREVIEW_EMAIL"
+echo "Production checkout and Controller data remain unchanged."
+echo
+echo "Use the browser normally, including clone-only Add/Edit/Assignment tests."
+echo "When review is finished, return to this PowerShell window and press ENTER."
+echo "============================================================"
+echo
+
+read -r -p "Press ENTER to stop and clean up the browser preview... " _unused
+
+echo "Browser review session ended by operator. Cleaning up."

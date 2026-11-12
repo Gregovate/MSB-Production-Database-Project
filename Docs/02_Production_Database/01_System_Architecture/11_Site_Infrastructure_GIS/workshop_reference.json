@@ -1,0 +1,25 @@
+{
+  "reference_id": "storage-workshop",
+  "name": "MSB Storage Workshop",
+  "source_coordinates": {
+    "x": 213609.429,
+    "y": 186587.658,
+    "units": "US survey feet",
+    "crs": "EPSG:8158",
+    "crs_basis": "Established project coordinate contract; CRS not shown in screenshot"
+  },
+  "source": {
+    "provided_by": "Greg",
+    "provided_at": "2026-10-10T10:28:50-05:00",
+    "filename": "image(20261010-152837).png",
+    "method": "Transcribed from supplied coordinate measurement screenshot"
+  },
+  "purpose": "Map anchor for Containers at Home; retain canonical rack location separately",
+  "observation_policy": "Derived reference location; not a new device GPS observation",
+  "map_coordinates": {
+    "latitude": 43.778402029,
+    "longitude": -87.73321549,
+    "crs": "EPSG:4326",
+    "method": "pyproj Transformer EPSG:8158 to EPSG:4326, always_xy=True"
+  }
+}

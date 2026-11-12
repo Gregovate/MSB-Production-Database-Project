@@ -1,0 +1,115 @@
+/* Acceptance fixes from 2026-09-07 Manager browser review. */
+
+.acceptance-scope-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.45rem 0.65rem;
+  border-bottom: 1px dashed var(--border, #d9e0e8);
+  background: var(--soft, #f5f8fb);
+}
+
+.acceptance-material-group + .acceptance-material-group {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border, #d9e0e8);
+}
+
+.acceptance-material-group ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.next-completion-form.acceptance-completion-form {
+  grid-template-columns: 10rem minmax(18rem, 1fr);
+  align-items: start;
+}
+
+.acceptance-completion-form .acceptance-crew-label {
+  grid-column: 1;
+}
+
+.acceptance-completion-form .acceptance-note-label {
+  grid-column: 2;
+}
+
+.acceptance-completion-form .acceptance-partial-progress,
+.acceptance-completion-form .acceptance-completion-actions {
+  grid-column: 1 / -1;
+}
+
+.acceptance-partial-progress {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.5rem;
+  background: var(--panel, #fff);
+}
+
+.acceptance-partial-progress > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.acceptance-partial-grid {
+  display: grid;
+  grid-template-columns: 10rem minmax(18rem, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+}
+
+.acceptance-completion-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.acceptance-completion-form .acceptance-complete-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 3rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.5rem;
+  background: var(--panel, #fff);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.acceptance-completion-form .acceptance-complete-check input[type="checkbox"] {
+  width: 1.55rem;
+  height: 1.55rem;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.acceptance-completion-form .acceptance-completion-actions button {
+  grid-column: auto;
+  width: auto;
+  min-width: 14rem;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .next-completion-form.acceptance-completion-form,
+  .acceptance-partial-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .acceptance-completion-form .acceptance-crew-label,
+  .acceptance-completion-form .acceptance-note-label,
+  .acceptance-completion-form .acceptance-partial-progress,
+  .acceptance-completion-form .acceptance-completion-actions {
+    grid-column: 1;
+  }
+
+  .acceptance-completion-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .acceptance-completion-form .acceptance-completion-actions button {
+    width: 100%;
+  }
+}

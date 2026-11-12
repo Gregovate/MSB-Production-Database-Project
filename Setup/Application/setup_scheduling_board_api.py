@@ -1,0 +1,589 @@
+"""Protected API for Setup #205 rolling Scheduling Board."""
+from __future__ import annotations
+
+from typing import Any
+
+import psycopg2
+from flask import Blueprint, Response, jsonify, request
+
+from setup_api import (
+    SetupAuthenticationError,
+    SetupCommandError,
+    json_body,
+    require_manager,
+    require_reader,
+    require_setup_command,
+    setup_database_dsn,
+)
+from setup_scheduling_board_repository import (
+    SetupSchedulingBoardRepository,
+    SetupSchedulingBoardRepositoryError,
+)
+
+setup_scheduling_board_api = Blueprint("setup_scheduling_board_api", __name__)
+
+
+def repo() -> SetupSchedulingBoardRepository:
+    return SetupSchedulingBoardRepository(setup_database_dsn())
+
+
+def required_year() -> int:
+    raw = request.args.get("season_year", "").strip()
+    if not raw.isdigit():
+        raise SetupCommandError("season_year is required")
+    return int(raw)
+
+
+def nullable_int(value: Any, name: str) -> int | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        raise SetupCommandError(f"{name} must be an integer")
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise SetupCommandError(f"{name} must be an integer") from exc
+
+
+def required_int(value: Any, name: str) -> int:
+    parsed = nullable_int(value, name)
+    if parsed is None:
+        raise SetupCommandError(f"{name} is required")
+    return parsed
+
+
+def optional_text(value: Any) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
+@setup_scheduling_board_api.get("/api/setup/scheduling-board")
+def api_setup_scheduling_board() -> Response:
+    require_reader()
+    return jsonify(board=repo().board(required_year()))
+
+
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days")
+def api_setup_scheduling_board_work_day() -> tuple[Response, int]:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    season_year = required_int(payload.get("season_year"), "season_year")
+    work_date = str(payload.get("work_date") or "").strip()
+    if not work_date:
+        raise SetupCommandError("work_date is required")
+
+    result = repo().upsert_work_day(
+        email=email,
+        season_year=season_year,
+        work_date=work_date,
+        setup_day_number=nullable_int(payload.get("setup_day_number"), "setup_day_number"),
+        status=str(payload.get("day_status") or "PLANNED"),
+        weather_note=optional_text(payload.get("weather_note")),
+        volunteer_note=optional_text(payload.get("volunteer_note")),
+        notes=optional_text(payload.get("notes")),
+    )
+    return jsonify(work_day=result), 201
+
+
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days/historical")
+def api_setup_scheduling_board_historical_work_day() -> tuple[Response, int]:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    season_year = required_int(payload.get("season_year"), "season_year")
+    work_date = str(payload.get("work_date") or "").strip()
+    if not work_date:
+        raise SetupCommandError("work_date is required")
+
+    result = repo().add_historical_work_day(
+        email=email,
+        season_year=season_year,
+        work_date=work_date,
+        note=optional_text(payload.get("note")),
+    )
+    return jsonify(work_day=result), 201
+
+
+@setup_scheduling_board_api.delete("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>")
+def api_setup_scheduling_board_work_day_remove(
+    setup_work_day_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = request.get_json(silent=True) or {}
+    result = repo().remove_work_day(
+        email=email,
+        work_day_id=setup_work_day_id,
+        note=optional_text(payload.get("note")),
+    )
+    return jsonify(work_day=result)
+
+
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>/crews")
+def api_setup_scheduling_board_crew_add(
+    setup_work_day_id: int,
+) -> tuple[Response, int]:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().add_crew(email=email, work_day_id=setup_work_day_id)
+    return jsonify(crew=result), 201
+
+
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>/crews/with-tasks")
+def api_setup_scheduling_board_crew_with_tasks(
+    setup_work_day_id: int,
+) -> tuple[Response, int]:
+    """Atomic day-level task drop: make one crew and place one selected group."""
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    items = payload.get("items")
+    if not isinstance(items, list) or not (1 <= len(items) <= 25):
+        raise SetupCommandError("Choose one to 25 tasks to place in the new crew")
+    normalized = []
+    used_ids = set()
+    for item in items:
+        if not isinstance(item, dict) or item.get("kind") not in ("task", "assignment"):
+            raise SetupCommandError("Each dropped item must be a task or an existing assignment")
+        number = required_int(item.get("id"), "id")
+        if number <= 0 or (item["kind"], number) in used_ids:
+            raise SetupCommandError("Dropped task IDs must be positive and distinct")
+        used_ids.add((item["kind"], number))
+        shift = item.get("shift")
+        if item["kind"] == "task" and shift not in ("MORNING", "AFTERNOON"):
+            raise SetupCommandError("Choose AM or PM for a new task")
+        normalized.append({
+            "kind": item["kind"], "id": number,
+            "sort_order": required_int(item.get("sort_order", 10), "sort_order"),
+            # Existing assignment shifts are read authoritatively by the server.
+            "shift": shift if item["kind"] == "task" else None,
+        })
+    assignment_shift = payload.get("assignment_shift")
+    if assignment_shift is not None and (
+        assignment_shift not in ("MORNING", "AFTERNOON")
+        or len(normalized) != 1 or normalized[0]["kind"] != "assignment"
+    ):
+        raise SetupCommandError("Choose AM or PM for one existing assignment")
+    result = repo().add_crew_with_tasks(
+        email=email, work_day_id=setup_work_day_id, items=normalized,
+        assignment_shift=assignment_shift,
+        existing_crew_id=nullable_int(payload.get("existing_crew_id"), "existing_crew_id"),
+        staffing_shift=payload.get("staffing_shift"),
+        am_planned_crew_count=nullable_int(payload.get("am_planned_crew_count"), "am_planned_crew_count"),
+        pm_planned_crew_count=nullable_int(payload.get("pm_planned_crew_count"), "pm_planned_crew_count"),
+        captain_person_id=nullable_int(payload.get("captain_person_id"), "captain_person_id"),
+    )
+    return jsonify(result), 201
+
+
+@setup_scheduling_board_api.patch("/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>")
+def api_setup_scheduling_board_crew_update(
+    setup_work_day_crew_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    result = repo().update_crew(
+        email=email,
+        crew_id=setup_work_day_crew_id,
+        am_planned_crew_count=nullable_int(
+            payload.get("am_planned_crew_count"),
+            "am_planned_crew_count",
+        ),
+        pm_planned_crew_count=nullable_int(
+            payload.get("pm_planned_crew_count"),
+            "pm_planned_crew_count",
+        ),
+        captain_person_id=nullable_int(
+            payload.get("captain_person_id"),
+            "captain_person_id",
+        ),
+    )
+    return jsonify(crew=result)
+
+
+@setup_scheduling_board_api.delete("/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>")
+def api_setup_scheduling_board_crew_remove(
+    setup_work_day_crew_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().remove_crew(email=email, crew_id=setup_work_day_crew_id)
+    return jsonify(crew=result)
+
+
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/assignments")
+def api_setup_scheduling_board_assignment_create() -> tuple[Response, int]:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    result = repo().create_assignment(
+        email=email,
+        work_day_id=required_int(payload.get("setup_work_day_id"), "setup_work_day_id"),
+        session_task_id=required_int(payload.get("setup_session_task_id"), "setup_session_task_id"),
+        shift=str(payload.get("shift_code") or "MORNING"),
+        crew_id=required_int(
+            payload.get("setup_work_day_crew_id"),
+            "setup_work_day_crew_id",
+        ),
+        sort_order=nullable_int(payload.get("sort_order"), "sort_order") or 100,
+    )
+    return jsonify(assignment=result), 201
+
+
+@setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/assignments/<int:setup_work_day_task_id>"
+)
+def api_setup_scheduling_board_assignment_update(
+    setup_work_day_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    result = repo().update_assignment(
+        email=email,
+        assignment_id=setup_work_day_task_id,
+        work_day_id=required_int(payload.get("setup_work_day_id"), "setup_work_day_id"),
+        shift=str(payload.get("shift_code") or "MORNING"),
+        crew_id=required_int(
+            payload.get("setup_work_day_crew_id"),
+            "setup_work_day_crew_id",
+        ),
+        sort_order=nullable_int(payload.get("sort_order"), "sort_order") or 100,
+    )
+    return jsonify(assignment=result)
+
+
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/assignments/bulk-reschedule")
+def api_setup_scheduling_board_bulk_reschedule() -> Response:
+    """Manager confirms no work for each selected occurrence; move atomically."""
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    body = json_body()
+    assignment_ids = body.get("assignment_ids")
+    if not isinstance(assignment_ids, list) or not (1 <= len(assignment_ids) <= 25):
+        raise SetupCommandError("Select one to 25 original assignments")
+    ids = [required_int(value, "assignment_id") for value in assignment_ids]
+    if any(value <= 0 for value in ids) or len(ids) != len(set(ids)):
+        raise SetupCommandError("Assignment IDs must be positive and distinct")
+    work_day_id = required_int(body.get("setup_work_day_id"), "setup_work_day_id")
+    crew_id = required_int(body.get("setup_work_day_crew_id"), "setup_work_day_crew_id")
+    result = repo().bulk_reschedule_unworked(
+        email=email,work_day_id=work_day_id,crew_id=crew_id,
+        assignment_ids=ids,
+    )
+    return jsonify(assignments=result)
+
+
+@setup_scheduling_board_api.delete(
+    "/api/setup/scheduling-board/assignments/<int:setup_work_day_task_id>"
+)
+def api_setup_scheduling_board_assignment_remove(
+    setup_work_day_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().remove_assignment(
+        email=email,
+        assignment_id=setup_work_day_task_id,
+    )
+    return jsonify(assignment=result)
+
+
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/season-tasks")
+def api_setup_scheduling_board_season_task_create() -> tuple[Response, int]:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    result = repo().create_season_task(
+        email=email,
+        season_year=required_int(payload.get("season_year"), "season_year"),
+        task_name=str(payload.get("task_name") or "").strip(),
+        stage_id=nullable_int(payload.get("stage_id"), "stage_id"),
+        scene_id=nullable_int(payload.get("lor_scene_id"), "lor_scene_id"),
+        action_type=str(payload.get("task_action_type") or "WORK"),
+        planned_order=nullable_int(payload.get("planned_order"), "planned_order"),
+        crew_min=nullable_int(payload.get("normal_crew_min"), "normal_crew_min"),
+        crew_max=nullable_int(payload.get("normal_crew_max"), "normal_crew_max"),
+        expected_duration_minutes=nullable_int(
+            payload.get("expected_duration_minutes"),
+            "expected_duration_minutes",
+        ),
+        effort_level=optional_text(payload.get("effort_level")),
+        completion_point=optional_text(payload.get("completion_point")),
+        readiness_note=optional_text(payload.get("readiness_note")),
+        weather_note=optional_text(payload.get("weather_note")),
+        linked_work_order_id=nullable_int(payload.get("linked_work_order_id"), "linked_work_order_id"),
+        linked_work_order_gate=bool(payload.get("linked_work_order_gate", False)),
+        annual_notes=optional_text(payload.get("annual_notes")),
+        prerequisite_session_task_id=nullable_int(
+            payload.get("prerequisite_setup_session_task_id"),
+            "prerequisite_setup_session_task_id",
+        ),
+        downstream_session_task_id=nullable_int(
+            payload.get("downstream_setup_session_task_id"),
+            "downstream_setup_session_task_id",
+        ),
+    )
+    return jsonify(season_task=result), 201
+
+
+@setup_scheduling_board_api.delete(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>"
+)
+def api_setup_scheduling_board_season_task_delete(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().delete_season_task(
+        email=email,
+        session_task_id=setup_session_task_id,
+    )
+    return jsonify(season_task=result)
+
+
+@setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>"
+)
+def api_setup_scheduling_board_season_task_update(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    result = repo().update_annual_task(
+        email=email,
+        session_task_id=setup_session_task_id,
+        task_name=str(payload.get("task_name") or "").strip(),
+        stage_id=nullable_int(payload.get("stage_id"), "stage_id"),
+        scene_id=nullable_int(payload.get("lor_scene_id"), "lor_scene_id"),
+        action_type=str(payload.get("task_action_type") or "WORK"),
+        crew_min=nullable_int(payload.get("normal_crew_min"), "normal_crew_min"),
+        crew_max=nullable_int(payload.get("normal_crew_max"), "normal_crew_max"),
+        expected_duration_minutes=nullable_int(
+            payload.get("expected_duration_minutes"),
+            "expected_duration_minutes",
+        ),
+        effort_level=optional_text(payload.get("effort_level")),
+        completion_point=optional_text(payload.get("completion_point")),
+        readiness_note=optional_text(payload.get("readiness_note")),
+        weather_note=optional_text(payload.get("weather_note")),
+        linked_work_order_id=nullable_int(payload.get("linked_work_order_id"), "linked_work_order_id"),
+        linked_work_order_gate=bool(payload.get("linked_work_order_gate", False)),
+        annual_notes=optional_text(payload.get("annual_notes")),
+        previous_prerequisite_session_task_id=nullable_int(
+            payload.get("previous_prerequisite_setup_session_task_id"),
+            "previous_prerequisite_setup_session_task_id",
+        ),
+        prerequisite_session_task_id=nullable_int(
+            payload.get("prerequisite_setup_session_task_id"),
+            "prerequisite_setup_session_task_id",
+        ),
+        previous_downstream_session_task_id=nullable_int(
+            payload.get("previous_downstream_setup_session_task_id"),
+            "previous_downstream_setup_session_task_id",
+        ),
+        downstream_session_task_id=nullable_int(
+            payload.get("downstream_setup_session_task_id"),
+            "downstream_setup_session_task_id",
+        ),
+        planned_order=nullable_int(payload.get("planned_order"), "planned_order"),
+    )
+    return jsonify(season_task=result)
+
+
+@setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/placement"
+)
+def api_setup_scheduling_board_season_task_placement(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    result = repo().reconcile_season_task_placement(
+        email=email,
+        session_task_id=setup_session_task_id,
+        previous_prerequisite_session_task_id=nullable_int(
+            payload.get("previous_prerequisite_setup_session_task_id"),
+            "previous_prerequisite_setup_session_task_id",
+        ),
+        prerequisite_session_task_id=nullable_int(
+            payload.get("prerequisite_setup_session_task_id"),
+            "prerequisite_setup_session_task_id",
+        ),
+        previous_downstream_session_task_id=nullable_int(
+            payload.get("previous_downstream_setup_session_task_id"),
+            "previous_downstream_setup_session_task_id",
+        ),
+        downstream_session_task_id=nullable_int(
+            payload.get("downstream_setup_session_task_id"),
+            "downstream_setup_session_task_id",
+        ),
+        planned_order=nullable_int(payload.get("planned_order"), "planned_order"),
+    )
+    return jsonify(placement=result)
+
+
+@setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/planning-info"
+)
+def api_setup_scheduling_board_planning_info(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    result = repo().update_planning_info(
+        email=email,
+        session_task_id=setup_session_task_id,
+        crew_min=nullable_int(payload.get("normal_crew_min"), "normal_crew_min"),
+        crew_max=nullable_int(payload.get("normal_crew_max"), "normal_crew_max"),
+        expected_duration_minutes=nullable_int(
+            payload.get("expected_duration_minutes"),
+            "expected_duration_minutes",
+        ),
+        effort_level=optional_text(payload.get("effort_level")),
+        readiness_note=optional_text(payload.get("readiness_note")),
+        weather_note=optional_text(payload.get("weather_note")),
+        completion_point=optional_text(payload.get("completion_point")),
+        reusable_notes=optional_text(payload.get("reusable_notes")),
+    )
+    return jsonify(planning_info=result)
+
+
+@setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/annual-hold"
+)
+def api_setup_scheduling_board_annual_hold(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    if "ready" not in payload:
+        raise SetupCommandError("ready is required")
+
+    result = repo().set_annual_hold(
+        email=email,
+        session_task_id=setup_session_task_id,
+        ready=bool(payload.get("ready")),
+        readiness_note=optional_text(payload.get("readiness_note")),
+    )
+    return jsonify(annual_hold=result)
+
+
+@setup_scheduling_board_api.post(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/crew-captain/"
+    "<int:setup_work_day_crew_id>/promote"
+)
+def api_setup_scheduling_board_promote_crew_captain(
+    setup_session_task_id: int,
+    setup_work_day_crew_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().promote_crew_captain_to_task(
+        email=email,
+        session_task_id=setup_session_task_id,
+        crew_id=setup_work_day_crew_id,
+    )
+    return jsonify(captain_knowledge=result)
+
+
+@setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/readiness"
+)
+def api_setup_scheduling_board_readiness(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    if "ready" not in payload:
+        raise SetupCommandError("ready is required")
+    result = repo().set_readiness(
+        email=email,
+        session_task_id=setup_session_task_id,
+        ready=bool(payload.get("ready")),
+    )
+    return jsonify(readiness=result)
+
+
+@setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/dependencies/"
+    "<int:prerequisite_setup_session_task_id>"
+)
+def api_setup_scheduling_board_dependency(
+    setup_session_task_id: int,
+    prerequisite_setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    result = repo().set_dependency(
+        email=email,
+        session_task_id=setup_session_task_id,
+        prerequisite_session_task_id=prerequisite_setup_session_task_id,
+        note=optional_text(payload.get("dependency_note")),
+        active=bool(payload.get("active", True)),
+    )
+    return jsonify(dependency=result)
+
+
+@setup_scheduling_board_api.errorhandler(SetupAuthenticationError)
+def scheduling_board_authentication_error(
+    exc: SetupAuthenticationError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="Setup Session sign-in identity is unavailable",
+        engineering_error=str(exc),
+    ), 401
+
+
+@setup_scheduling_board_api.errorhandler(SetupCommandError)
+def scheduling_board_command_error(
+    exc: SetupCommandError,
+) -> tuple[Response, int]:
+    return jsonify(error=str(exc), engineering_error=str(exc)), 403
+
+
+@setup_scheduling_board_api.errorhandler(SetupSchedulingBoardRepositoryError)
+def scheduling_board_repository_error(
+    exc: SetupSchedulingBoardRepositoryError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="Setup Scheduling Board is temporarily unavailable.",
+        engineering_error=str(exc),
+    ), 503
+
+
+@setup_scheduling_board_api.errorhandler(psycopg2.Error)
+def scheduling_board_database_error(exc: psycopg2.Error) -> tuple[Response, int]:
+    sqlstate = exc.pgcode or ""
+    if sqlstate == "42501":
+        status = 403
+    elif sqlstate == "23505":
+        status = 409
+    elif sqlstate in {"22023", "23503", "23514"}:
+        status = 400
+    elif sqlstate == "P0002":
+        status = 404
+    else:
+        status = 500
+    message = (
+        exc.diag.message_primary
+        or "Setup Scheduling Board database command failed"
+    ).strip()
+    return jsonify(error=message, engineering_error=str(exc)), status

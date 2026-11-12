@@ -1,0 +1,34 @@
+.permanent-controller-context {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+  margin-top:5px;
+  font-size:12px;
+}
+.permanent-controller-label,
+.permanent-controller-note {
+  color:var(--muted);
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.permanent-controller-links {
+  font-weight:800;
+}
+.permanent-controller-link {
+  color:var(--blue);
+  text-decoration:none;
+  border-bottom:1px dotted currentColor;
+}
+.permanent-controller-link:hover {
+  text-decoration:none;
+  border-bottom-style:solid;
+}
+@media print {
+  .permanent-controller-link {
+    color:inherit;
+    border-bottom:0;
+  }
+}

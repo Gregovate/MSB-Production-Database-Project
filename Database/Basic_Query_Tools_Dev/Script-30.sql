@@ -1,0 +1,4 @@
+ALTER TABLE ops.work_order_outbound_message
+ADD CONSTRAINT fk_work_order_outbound_message_updated_by_person
+FOREIGN KEY (updated_by_person_id)
+REFERENCES ref.person(person_id);

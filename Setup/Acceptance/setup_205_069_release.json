@@ -1,0 +1,11 @@
+{
+  "candidate": "3063a92877d89e5ec00b3b8187da20d208498254",
+  "target": "e2f58d016f015f1ac695940e9ab67c61c04a8a8a",
+  "tree": "1ed39fd16c97da09fb28d500af1b186d5a10ce0d",
+  "old_setup": "f01444e4131083615e2b13f144b75022860fdff6",
+  "shared": "6dd05c4aa5ef8f50fe172145c3ae281cc245a101",
+  "old_version": "V0.3.37-record-location-scanner",
+  "version": "V0.3.38-setup-day-milestones",
+  "migration": "Setup/Database/069_fix_setup_day_sequence_and_audit.sql",
+  "migration_blob": "a49b25cf7325da86fc9810e8a75465de07f8cadf"
+}

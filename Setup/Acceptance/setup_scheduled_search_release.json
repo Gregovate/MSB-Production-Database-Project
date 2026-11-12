@@ -1,0 +1,14 @@
+{
+  "profile": "scheduled-search-source",
+  "release_tag": "PR391-Source",
+  "target": "86341d49dc8ccf290575f9d2b418c235094a1377",
+  "candidate": "86341d49dc8ccf290575f9d2b418c235094a1377",
+  "tree": "eaa98f99ebf10a348530a5406e93da82dbbae284",
+  "old_setup": "efb7f26fd0d4e1275daa509e2ade62bc291b1d8f",
+  "old_version": "V0.3.64-required-containers",
+  "version": "V0.3.65-scheduled-search-focus",
+  "migration": null,
+  "migration_blob": "9685321bc4ac5f7b00bd4e9c23ab3641ac79306f",
+  "validation_blob": "d6a0294fad16015ba1749e5d51acadeeb64923d9",
+  "helper_sha256": "3dcc687bb18b0d050b49dd24a697eaf0f8958832e4e6dcec0f1b685812aa5545"
+}

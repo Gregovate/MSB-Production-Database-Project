@@ -1,0 +1,123 @@
+/* Issue #167/#191/#198 — route Kit Inventory and load durable Extra Material support. */
+(() => {
+  function inventoryUrl(containerId = null) {
+    return containerId ? `kit-inventory/${Number(containerId)}` : 'kit-inventory/';
+  }
+
+  function openInventory(containerId = null) {
+    window.location.assign(inventoryUrl(containerId));
+  }
+
+  function configureSetupEntryPoint() {
+    const tab = document.querySelector('[data-view="extra-materials"]');
+    if (tab) {
+      tab.textContent = 'Kit Inventory';
+      tab.title = 'Open durable Kit Box inventory';
+    }
+    document.getElementById('extra-materials-view')?.remove();
+  }
+
+  function makeInventoryLink(containerId, label = 'Inventory') {
+    const link = document.createElement('a');
+    link.className = 'small secondary setup-kit-inventory-link';
+    link.href = inventoryUrl(containerId);
+    link.textContent = label;
+    link.title = `Open Kit Inventory for Container ${containerId}`;
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openInventory(containerId);
+    });
+    return link;
+  }
+
+  function decorateAssignedKitChips() {
+    document.querySelectorAll('.setup-kit-box-chip[data-container-id]').forEach((chip) => {
+      if (chip.querySelector('.setup-kit-inventory-link')) return;
+      const containerId = Number(chip.dataset.containerId || 0);
+      if (!containerId) return;
+      const removeButton = chip.querySelector('.setup-kit-box-chip-remove');
+      const link = makeInventoryLink(containerId);
+      if (removeButton) chip.insertBefore(link, removeButton);
+      else chip.appendChild(link);
+    });
+  }
+
+  function decorateKitDialogRows() {
+    document.querySelectorAll('.setup-kit-box-row[data-container-id]').forEach((row) => {
+      if (row.querySelector('.setup-kit-inventory-link')) return;
+      const containerId = Number(row.dataset.containerId || 0);
+      if (!containerId) return;
+      const copy = row.querySelector('.setup-kit-box-copy') || row;
+      copy.appendChild(makeInventoryLink(containerId, 'View Inventory'));
+    });
+  }
+
+  function decorateKitAssignments() {
+    decorateAssignedKitChips();
+    decorateKitDialogRows();
+  }
+
+  function loadSourceUsabilityRefinement() {
+    if (document.querySelector('script[data-setup-extra-material-source-usability]')) return;
+    const script = document.createElement('script');
+    script.src = 'setup_extra_material_source_usability.js?v=2026-09-16.2';
+    script.dataset.setupExtraMaterialSourceUsability = '1';
+    document.body.appendChild(script);
+  }
+
+  function loadTaskExtraMaterialSourceUi() {
+    const existing = document.querySelector('script[data-setup-task-extra-material-sources]');
+    if (existing) {
+      loadSourceUsabilityRefinement();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'setup_task_extra_material_sources.js?v=2026-09-29.1';
+    script.dataset.setupTaskExtraMaterialSources = '1';
+    script.addEventListener('load', loadSourceUsabilityRefinement, { once: true });
+    document.body.appendChild(script);
+  }
+
+  function loadTaskExtraMaterialUi() {
+    const existing = document.querySelector('script[data-setup-task-extra-materials]');
+    if (existing) {
+      loadTaskExtraMaterialSourceUi();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'setup_task_extra_materials.js?v=2026-09-28.2';
+    script.dataset.setupTaskExtraMaterials = '1';
+    script.addEventListener('load', loadTaskExtraMaterialSourceUi, { once: true });
+    document.body.appendChild(script);
+  }
+
+  function loadUomCatalogUi() {
+    if (document.querySelector('script[data-setup-uom-catalog]')) return;
+    const script = document.createElement('script');
+    script.src = 'setup_uom_catalog.js?v=2026-09-15.1';
+    script.dataset.setupUomCatalog = '1';
+    document.body.appendChild(script);
+  }
+
+  document.addEventListener('click', (event) => {
+    const tab = event.target.closest?.('[data-view="extra-materials"]');
+    if (!tab) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    openInventory();
+  }, true);
+
+  function bind() {
+    configureSetupEntryPoint();
+    decorateKitAssignments();
+    loadTaskExtraMaterialUi();
+    loadUomCatalogUi();
+    const observer = new MutationObserver(decorateKitAssignments);
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
