@@ -2539,7 +2539,7 @@ function nextQcEnsureDiscovery() {
       <div class="next-qc-tabs" role="group" aria-label="Perform Work activity">
         <button type="button" class="small secondary" id="next-qc-work-tab">Scheduled Work</button>
         <button type="button" class="small secondary" id="next-qc-check-tab">QC Check</button>
-        <button type="button" class="small secondary" id="next-qc-fixes-tab">Report Fixes</button>
+        <button type="button" class="small secondary" id="next-qc-fixes-tab">QC Repairs Needed</button>
       </div>
       <div id="next-qc-content" hidden>
         <label for="next-qc-search"><strong>Find final QC task</strong></label>
@@ -2587,7 +2587,7 @@ function nextQcEnsureDiscovery() {
   el('next-qc-fixes-tab').setAttribute('aria-pressed', String(fixes));
   // Never label QC Check / Report Fixes as scheduled field execution.
   const heading=el('next-perform-heading');
-  if (heading) heading.textContent=fixes ? 'Report Fixes' : qc ? 'QC Check' : 'Perform Setup Work';
+  if (heading) heading.textContent=fixes ? 'QC Repairs Needed' : qc ? 'QC Check' : 'Perform Setup Work';
   const eyebrow=el('next-perform-eyebrow');
   if (eyebrow) eyebrow.textContent=qc ? 'Quality control / field verification' : 'Captain / field execution';
   const description=el('next-perform-description');
