@@ -133,3 +133,14 @@ def test_qc_reports_on_existing_task_without_creating_intake_or_work_orders():
     assert 'LINK_INTAKE' in JS  # Manager links historical evidence, not new intake
     assert 'Original Intake remains unchanged' in JS
     assert 'No schedule is required' not in JS or 'Never scheduled' in (ROOT/'setup_next_pass.js').read_text()
+
+
+def test_missing_historical_stage_requires_manager_review_not_source_mutation():
+    assert "i.stage_id IS NULL OR i.stage_id=t.annual_stage_id" in SQL
+    assert "IF NOT v_manager" in SQL
+    assert "v_note IS NULL" in SQL
+    assert "no conflicting assigned Stage" in SQL
+    assert "i.stage_id == null || Number(i.stage_id)" in JS
+    assert "Stage unassigned — confirm scope" in JS
+    assert "UPDATE stage.work_order_intake" not in SQL
+    assert "Promoted Work Order Intake cannot become a QC repair duplicate" in SQL

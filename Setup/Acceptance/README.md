@@ -1,10 +1,12 @@
 ## November 11 PR485 QC candidate — DRAFT/HOLD
 
 Continue the existing [controlled QC contract](../../Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Scheduling_Board_Contract_2026-09-17.md#november-11--pr485-resumed-engineering-after-d432cdd8).
-V0.3.113-qc-review, migration081: exact-SHA source and hosted DOM checks precede
+V0.3.114-qc-history, migration081: exact-SHA source and hosted DOM checks precede
 `run_485_qc_disposable_browser_review.ps1`, which reuses the established 8898
 clone preview and rollback SQL. No Node is needed on the workstation or
-preview server. Browser acceptance, historical reconciliation and final
+preview server. Pre-show repairs belong to Setup QC; Work Orders begin repair tracking when
+the show starts. Already-promoted reports require controlled reconciliation.
+Browser acceptance, historical reconciliation and final
 annual signoff remain open; no Production release is authorized.
 
 ## November 11 Perform Work theme correction

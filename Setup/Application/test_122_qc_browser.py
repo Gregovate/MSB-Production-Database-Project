@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.113-qc-review'};
+ if(path.includes('api/health')) body={version:'V0.3.114-qc-history'};
  if(path.includes('qc/intake-candidates')) return {ok:false,status:503,json:async()=>({error:'Fixture Intake unavailable'})};
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);

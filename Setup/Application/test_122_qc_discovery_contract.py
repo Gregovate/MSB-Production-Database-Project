@@ -60,9 +60,9 @@ def test_theme_safe_qc_and_fresh_asset_pins():
     assert "background: var(--card" in CSS
     assert "color: var(--text" in CSS
     assert ".next-qc-row" in CSS
-    assert 'setup_next_pass.js?v=2026-11-11.113.1' in HTML
-    assert 'setup_next_pass.css?v=2026-11-11.113.1' in HTML
-    assert "V0.3.113-qc-review" in (APP / "production_backend.py").read_text()
+    assert 'setup_next_pass.js?v=2026-11-11.114.1' in HTML
+    assert 'setup_next_pass.css?v=2026-11-11.114.1' in HTML
+    assert "V0.3.114-qc-history" in (APP / "production_backend.py").read_text()
 
 
 def test_final_qc_regex_and_multiword_search_are_executable_javascript_patterns():
@@ -85,7 +85,7 @@ def test_qc_report_and_fixes_share_the_exact_same_finding_identity():
     assert 'data-qc-title' in client
     assert 'data-qc-description' in client
     assert 'data-qc-link-intake' in client
-    assert 'setup_qc.js?v=2026-11-11.113.1' in HTML
+    assert 'setup_qc.js?v=2026-11-11.114.1' in HTML
     assert 'Setup/Application' not in client  # no raw file-loading or synthetic work items
 
 

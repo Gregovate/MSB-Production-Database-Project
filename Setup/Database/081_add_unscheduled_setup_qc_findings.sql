@@ -139,14 +139,15 @@ BEGIN
       JOIN ops.setup_session_task t ON t.setup_session_task_id=p_annual_task
       JOIN ops.setup_session ss ON ss.setup_session_id=t.setup_session_id
       WHERE i.intake_id=p_intake_id
-        -- Matching the year alone can attach the wrong park Stage.
-        -- Exact annual QC task is chosen by the Manager, and Stage must match.
-        AND i.stage_id IS NOT DISTINCT FROM t.annual_stage_id
+        -- Missing historical classification is not a contradictory Stage.
+        -- Manager chooses the exact task and records the required rationale;
+        -- populated conflicting Stages still fail, and source stays untouched.
+        AND (i.stage_id IS NULL OR i.stage_id=t.annual_stage_id)
         AND (i.target_year=ss.season_year OR
           (i.target_year IS NULL AND extract(year FROM i.updated_at
             AT TIME ZONE 'America/Chicago')::integer=ss.season_year))
     ) THEN
-      RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Intake must belong to the same Setup season';
+      RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Intake must match the Setup season and have no conflicting assigned Stage';
     END IF;
     IF EXISTS (SELECT 1 FROM ops.work_order w WHERE w.source_intake_id=p_intake_id) THEN
       RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Promoted Work Order Intake cannot become a QC repair duplicate';

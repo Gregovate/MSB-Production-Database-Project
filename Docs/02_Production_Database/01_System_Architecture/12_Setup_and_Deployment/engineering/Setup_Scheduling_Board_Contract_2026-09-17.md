@@ -1351,3 +1351,65 @@ protected browser checks remain required, including both themes and CLEAN
 EXIT. Local sandbox Chromium cannot start (socket permission denied), so no
 local browser PASS is claimed. Hosted DOM regression and current-Production
 clone acceptance must be recorded separately before another review handoff.
+
+
+## November 11 — Missing historical Stage and promoted-repair reconciliation
+
+Operator read-only evidence after failed preview `20261112T010110` proves
+QC598 is season2026, annual_stage_id55 (Stage key25 is not its database ID).
+Intake84/85/86/87 all have NULL stage_id and target_year; their November10
+local timestamps satisfy the current season predicate. Intake86 is promoted;
+84/85/87 are unpromoted. The prior combined Stage/year error incorrectly
+suggested a season mismatch. Null source Stage is missing classification,
+not evidence of a contradictory Stage.
+
+A Manager may deliberately link an unpromoted, same-season historical report
+whose Stage is missing to the exact selected annual QC task, with the existing
+required rationale. Show missing Stage explicitly and require that Manager
+review; never fill in or rewrite the original Intake row. A populated source
+Stage that differs from the task remains rejected. Promoted Intake remains
+blocked from creating a second active QC repair. The source review must show
+unassigned-Stage candidates so those links can actually be made.
+
+The operator reports that other Setup problems have since been promoted into
+Work Orders, leaving repair visibility split. The intended operational owner
+remains Setup QC: report a problem in QC Check, see existing findings before
+reporting again, and claim/repair those identical findings in Report Fixes.
+Historical Intake is source evidence, not a second new-report workflow.
+Before cutover, inventory original Intake plus resulting Work Orders/status
+and work evidence; Manager confirms exact physical defects/overlaps and one
+active repair owner. Do not automatically delete, close, undo promotion,
+backfill duplicate findings, or discard existing repair evidence. The operator subsequently clarified the phase boundary below; the earlier
+INTAKE86 independent-Work-Order exception is superseded for pre-show repairs. Multiple reports are not automatically four defects
+or one defect; preserve section-specific observations and link real overlaps.
+
+The failed candidate94f02567 passed1001/15-skipped application and232 additional
+tests, then migration081; clone acceptance failed on the assumed positive
+INTAKE85 link. Browser never started. Production fingerprint and live SHA
+were unchanged, exit3. Report:
+`/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20261112T010110.txt`.
+Retain the failed local review worktree. Corrected source needs new exact-SHA
+checks and disposable review; DRAFT/HOLD remains, final annual PASS closed.
+
+
+### Explicit operator phase boundary — supersedes earlier Work Order exception
+
+The visible annual QC task list is the required entry point, not a replacement
+list to build. Open the exact Stage/Scene annual QC task to report a problem
+or add evidence to an existing finding. Display those findings under that
+same task and in the shared Report Fixes queue. Production Crew claims and
+records repairs against the same finding IDs.
+
+**Before the show starts, Setup QC owns QC problems and repairs. Work Orders
+do not become the repair workflow until the show starts.** This supersedes
+prior wording retaining a promoted pre-show repair as an independent active
+Work Order, including the earlier INTAKE86 exception. Promotion is historical
+evidence, not authorization to split pre-show repair ownership. Preserve all
+original Intake, reporter, timestamps, Work Order history and repair evidence.
+Inventory and explicitly reconcile already-promoted pre-show reports into
+the QC workflow with one active repair owner. No automatic deletion, reversal,
+or duplicate live repair is authorized. The current duplicate-prevention
+block on linking promoted Intake must remain closed until that controlled
+reconciliation is implemented and accepted; it is an unfinished cutover gate,
+not the final intended business rule. No date-based or automatic show-start
+handoff has been designed or authorized here.

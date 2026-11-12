@@ -190,7 +190,7 @@
     const selectedQcTask=nextQcAnnualTasks().find(
       t=>Number(t.setup_session_task_id)===Number(id));
     const unlinkedIntake=(snapshot.unreconciled_intake || []).filter(
-      i=>i.stage_id != null && Number(i.stage_id)===Number(selectedQcTask?.stage_id));
+      i=>i.stage_id == null || Number(i.stage_id)===Number(selectedQcTask?.stage_id));
     // Manager Intake reconciliation must not hold up the QC problem entry form.
     // Historical Intake remains read-only source evidence until a Manager links it.
     let relevantIntake=[];
@@ -222,17 +222,18 @@
           <p class="muted">Original Intake remains unchanged. Confirm the exact defect and link
             it to one or more QC findings; do not link the separate promoted GFCI Work Order.
             Create distinct QC findings first for separate physical defects.</p>
-          <label>Unpromoted Intake from this Stage
+          <label>Unpromoted Intake — this Stage or unassigned
             <select data-qc-link-intake>
               <option value="">Choose original Intake</option>
               ${relevantIntake.map(i=>`<option value="${Number(i.intake_id)}">
-                INTAKE-${Number(i.intake_id)} · ${html((i.problem_raw||'').slice(0,150))}
+                INTAKE-${Number(i.intake_id)}${i.stage_id == null ? ' · Stage unassigned — confirm scope' : ''} · ${html((i.problem_raw||'').slice(0,150))}
               </option>`).join('')}
             </select>
           </label>
           <details data-qc-intake-review><summary>Review original Intake descriptions (loading…)</summary><div data-qc-intake-rows>
             ${relevantIntake.map(i=>`<div class="next-qc-finding">
                <strong>INTAKE-${Number(i.intake_id)}</strong> · ${html(i.submitter_name_raw)}
+            ${i.stage_id == null ? '<div>Stage unassigned — confirm this report belongs to the selected QC task before linking.</div>' : ''}
                <div class="muted">${html(localTime(i.updated_at))} ·
                  linked findings ${html((i.linked_findings||[]).join(', ')||'none')}</div>
                <div class="next-qc-note">${html(i.problem_raw)}</div>
@@ -281,13 +282,14 @@
       void reviewIntake().then(all => {
         if (!host.isConnected || id!==nextQcDiscovery.selectedTaskId ||
             nextQcDiscovery.mode!=='qc') return;
-        relevantIntake=all.filter(i=>Number(i.stage_id)===Number(selected?.stage_id));
+        // NULL Stage requires deliberate Manager classification, not exclusion.
+        relevantIntake=all.filter(i=>i.stage_id == null || Number(i.stage_id)===Number(selected?.stage_id));
         const selector=host.querySelector('[data-qc-link-intake]');
         if (selector) {
           const previous=selector.value;
           selector.innerHTML='<option value="">Choose original Intake</option>'+
             relevantIntake.map(i=>`<option value="${Number(i.intake_id)}">
-              INTAKE-${Number(i.intake_id)} · ${html((i.problem_raw||'').slice(0,150))}
+              INTAKE-${Number(i.intake_id)}${i.stage_id == null ? ' · Stage unassigned — confirm scope' : ''} · ${html((i.problem_raw||'').slice(0,150))}
             </option>`).join('');
           if (Array.from(selector.options).some(opt=>opt.value===previous)) selector.value=previous;
         }
@@ -298,6 +300,7 @@
           const rows=panel.querySelector('[data-qc-intake-rows]');
           if (rows) rows.innerHTML=relevantIntake.map(i=>`<div class="next-qc-finding">
             <strong>INTAKE-${Number(i.intake_id)}</strong> · ${html(i.submitter_name_raw)}
+            ${i.stage_id == null ? '<div>Stage unassigned — confirm this report belongs to the selected QC task before linking.</div>' : ''}
             <div class="muted">${html(localTime(i.updated_at))} ·
               linked findings ${html((i.linked_findings||[]).join(', ')||'none')}</div>
             <div class="next-qc-note">${html(i.problem_raw)}</div>
