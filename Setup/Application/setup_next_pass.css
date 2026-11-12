@@ -1146,3 +1146,15 @@ body:not(.setup-schedule-view) #next-perform-list {
 .next-qc-final-record { background: #dcfce7; color: #172033; padding: .8rem; border-radius: .5rem; }
 /* Completed areas leave the active layout until their history is expanded. */
 [data-qc-completed-areas]:not([open]) > .next-qc-row { display: none; }
+
+/* QC is used in the field: readable text and touch targets, scoped to QC only. */
+#next-qc-content, #next-qc-fixes-list { font-size: 18px; line-height: 1.5; }
+#next-qc-content :is(label,input,textarea,button,.small,.muted),
+#next-qc-fixes-list :is(label,input,textarea,button,.small,.muted) {
+  font-size: 18px; line-height: 1.5;
+}
+#next-qc-content :is(button,input), #next-qc-fixes-list :is(button,input) { min-height: 44px; }
+.next-qc-confirm { display: flex; align-items: center; gap: .6rem; }
+.next-qc-confirm input[type="checkbox"] { width: 24px; height: 24px; min-height: 24px; flex-shrink: 0; }
+[data-qc-message] { padding: .75rem; margin-top: .5rem; border: 2px solid #b45309; background: #fef3c7; color: #172033; font-size: 18px; }
+[data-qc-message][data-kind="ok"] { background: #dcfce7; border-color: #166534; }

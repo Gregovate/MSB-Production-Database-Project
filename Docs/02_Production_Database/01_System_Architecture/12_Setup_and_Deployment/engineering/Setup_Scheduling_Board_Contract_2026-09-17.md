@@ -1408,6 +1408,30 @@ this contract; it does not own the design. This section records the operator's
 restated agreement and replaces the contradictory interpretation that removed
 the existing INTAKE86 GFCI Work Order exception.
 
+### Simplified auditor observation — operator correction, 2026-11-11 local
+
+This correction supersedes the separate finding-verification and extra final-test
+fields described below and in the V0.3.118 implementation history. The auditor
+observes the running test; they do not operate the sequence. After claiming the
+area, the auditor checks “I observed the full two-minute test and confirmed this
+area works” and selects Ready for Production. No sequence/version entry and no
+separate final-result text are required. Save that explicit observation with the
+actual auditor and timestamp; never infer observation from repairs or task status.
+
+There is no individual Verified button. Repairs await this single area observation.
+Final signoff atomically verifies all repaired findings on that exact QC task,
+records a RETEST_PASS event for each with the auditor's observation, and completes
+the annual QC task. OPEN or CLAIMED findings, unfinished required work, or failed
+readiness still block signoff. A Still Failing action with an observation reopens
+the same repaired finding. Unclaimed users receive a visible instruction to claim
+the area before recording an auditor test result. Reporting/repair remain open to
+Production Crew without an auditor claim. All existing history is preserved.
+
+QC entry text, labels and buttons must be at least 18 CSS pixels, with readable
+contrast in both themes and controls at least 44 pixels high. Errors appear next
+to the action used, are announced and brought into view, and preserve entered
+text. Success is shown locally too. A page-top-only message is insufficient.
+
 ### Identity and three Perform Work modes
 
 The existing annual QC task is the permanent home for functional findings

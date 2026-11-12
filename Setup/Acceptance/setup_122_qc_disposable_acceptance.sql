@@ -307,7 +307,7 @@ BEGIN
     UPDATE ops.setup_session_task SET execution_status='COMPLETE' WHERE setup_session_task_id=v_required;
     v_finding := (ops.setup_qc_command(v_crew,'REPORT',v_task,NULL,'Fixture failure',
       'Fixture failure','OTHER')->>'finding_id')::bigint;
-    FOREACH v_status IN ARRAY ARRAY['OPEN','CLAIMED','AWAITING_RETEST'] LOOP
+    FOREACH v_status IN ARRAY ARRAY['OPEN','CLAIMED'] LOOP
       IF v_status='CLAIMED' THEN PERFORM ops.setup_qc_command(v_crew,'CLAIM_REPAIR',v_task,v_finding); END IF;
       IF v_status='AWAITING_RETEST' THEN PERFORM ops.setup_qc_command(v_crew,'REPAIRED',v_task,v_finding,'Fixture repair'); END IF;
       BEGIN
@@ -315,10 +315,14 @@ BEGIN
         RAISE EXCEPTION 'Unresolved % finding allowed final signoff',v_status;
       EXCEPTION WHEN check_violation THEN NULL; END;
     END LOOP;
-    PERFORM ops.setup_qc_command(v_crew,'RETEST_PASS',v_task,v_finding,'Fixture retest');
+    PERFORM ops.setup_qc_command(v_crew,'REPAIRED',v_task,v_finding,'Fixture repair');
     v_after_fixture := pg_temp.qc_protected_rows();
     SELECT to_jsonb(t) INTO v_annual_before FROM ops.setup_session_task t WHERE setup_session_task_id=v_task;
     v_result := ops.setup_qc_ready_for_production(v_crew,v_task,'Disposable fixture only; not real show approval',120,'Acceptance fixture sequence');
+    IF NOT EXISTS (SELECT 1 FROM ops.setup_qc_finding WHERE qc_finding_id=v_finding AND status='VERIFIED')
+      OR NOT EXISTS (SELECT 1 FROM ops.setup_qc_event WHERE qc_finding_id=v_finding AND event_type='RETEST_PASS' AND person_id=v_person) THEN
+      RAISE EXCEPTION 'Area signoff did not verify repaired finding with auditor evidence';
+    END IF;
     IF v_result->>'status'<>'READY_FOR_PRODUCTION' OR NOT EXISTS (
       SELECT 1 FROM ops.setup_qc_signoff q JOIN ops.setup_session_task t USING(setup_session_task_id)
       WHERE q.setup_session_task_id=v_task AND q.auditor_person_id=v_person

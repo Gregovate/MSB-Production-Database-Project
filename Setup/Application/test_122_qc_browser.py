@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.118-qc-signoff'};
+ if(path.includes('api/health')) body={version:'V0.3.119-qc-observation'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -92,6 +92,8 @@ addEventListener('load',()=>setTimeout(async()=>{
   let count=qcWrites.length;
   await click('[data-qc-action="REPAIRED"]');
   assert(qcWrites.length===count,'Repair allowed without notes');
+  assert(document.querySelector('#next-qc-fixes-list [data-qc-message]').textContent.includes('note'),'Repair error is not local');
+  assert(parseFloat(getComputedStyle(document.querySelector('[data-qc-fix-note="71"]')).fontSize)>=18,'Repair text too small');
   document.querySelector('[data-qc-fix-note="71"]').value='Reconnected wire';
   await click('[data-qc-action="REPAIRED"]');
   await click('#next-qc-check-tab');
@@ -108,14 +110,8 @@ addEventListener('load',()=>setTimeout(async()=>{
   document.querySelector('[data-qc-fix-note="71"]').value='Replaced connector';
   await click('[data-qc-action="REPAIRED"]');
   await click('#next-qc-check-tab');
-  document.querySelector('[data-qc-observation="71"]').value='Channel illuminated during test';
-  await click('[data-qc-action="RETEST_PASS"]');
-  await click('#next-qc-fixes-tab');
-  assert(!document.querySelector('#next-qc-fixes-list [data-qc-finding="71"]'),'Verified finding remains outstanding');
-  await click('#next-qc-check-tab');
-  assert(!document.querySelector('.next-qc-active [data-qc-finding="71"]'),'Verified finding remains in active QC list');
-  assert(!document.querySelector('.next-qc-verified-history').open,'Verified history did not collapse');
-  assert(document.querySelector('[data-qc-task-id="598"]').dataset.qcState==='findings','One verified finding hid the remaining failures');
+  assert(!document.querySelector('[data-qc-action="RETEST_PASS"]'),'Redundant per-finding Verified button remains');
+  assert(document.querySelector('.next-qc-active [data-qc-finding="71"]'),'Repaired finding vanished before area observation');
   // Model all remaining findings verified, then a new failure in the same area.
   qcFixture.findings.forEach(f=>f.status='VERIFIED');
   await setupQcRenderCurrent();
@@ -147,7 +143,7 @@ addEventListener('load',()=>setTimeout(async()=>{
    assert(getComputedStyle(note).color!==getComputedStyle(note).backgroundColor,'Unreadable '+theme+' notes');
   }
   // Claimed auditor signs off only after work gates and every finding pass.
-  qcFixture.findings.forEach(f=>f.status='VERIFIED');
+  qcFixture.findings.forEach(f=>f.status='AWAITING_RETEST');
   qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[{id:77,name:'Install wiring'}];
   await setupQcRenderCurrent();
   assert(document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]').disabled,'Unfinished task did not block signoff');
@@ -157,8 +153,9 @@ addEventListener('load',()=>setTimeout(async()=>{
   const beforeFinal=qcWrites.length;
   await click('[data-qc-action="READY_FOR_PRODUCTION"]');
   assert(qcWrites.length===beforeFinal,'Missing test evidence allowed signoff');
-  document.querySelector('[data-qc-final-sequence]').value='Two minute show v1';
-  document.querySelector('[data-qc-final-evidence]').value='Full test observed; all sections working';
+  assert(!document.querySelector('[data-qc-final-sequence]'),'Unapproved sequence field remains');
+  assert(!document.querySelector('[data-qc-final-evidence]'),'Redundant final-result field remains');
+  assert(document.querySelector('.next-qc-signoff [data-qc-message]').textContent.includes('observed'),'Signoff validation is not local');
   document.querySelector('[data-qc-final-tested]').checked=true;
   await click('[data-qc-action="READY_FOR_PRODUCTION"]');
   const complete=document.querySelector('[data-qc-task-id="598"]');

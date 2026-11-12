@@ -323,6 +323,7 @@ SELECT jsonb_build_object(
   'readiness_met',coalesce((SELECT annual_readiness_state='READY' FROM target),false),
   'required_work',coalesce((SELECT jsonb_agg(to_jsonb(w) ORDER BY w.id NULLS FIRST) FROM work w),'[]'::jsonb),
   'unfinished_work',coalesce((SELECT jsonb_agg(to_jsonb(w) ORDER BY w.id NULLS FIRST) FROM work w WHERE NOT complete),'[]'::jsonb),
+  'unrepaired_findings',(SELECT count(*) FROM ops.setup_qc_finding f WHERE f.setup_session_task_id=p_task AND f.status IN ('OPEN','CLAIMED')),
   'unresolved_findings',(SELECT count(*) FROM ops.setup_qc_finding f WHERE f.setup_session_task_id=p_task AND f.status<>'VERIFIED')
 );
 $gate$;
@@ -361,10 +362,18 @@ BEGIN
   END IF;
   v_gate := ops.setup_qc_final_gate(p_task);
   IF NOT (v_gate->>'readiness_met')::boolean OR jsonb_array_length(v_gate->'unfinished_work')>0
-    OR (v_gate->>'unresolved_findings')::integer>0 THEN
-    RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Signoff blocked: required work, readiness and every QC finding must be complete and verified';
+    OR (v_gate->>'unrepaired_findings')::integer>0 THEN
+    RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Signoff blocked: required work and readiness must be complete; every problem must be repaired';
   END IF;
   v_at := clock_timestamp();
+  -- One area observation verifies repaired findings atomically with final signoff.
+  -- Never close an OPEN/CLAIMED defect; the locked gate above rejects those.
+  INSERT INTO ops.setup_qc_event(qc_finding_id,event_type,person_id,note,created_at)
+    SELECT qc_finding_id,'RETEST_PASS',v_person,btrim(p_evidence),v_at
+    FROM ops.setup_qc_finding WHERE setup_session_task_id=p_task AND status='AWAITING_RETEST'
+    ORDER BY qc_finding_id;
+  UPDATE ops.setup_qc_finding SET status='VERIFIED',updated_at=v_at
+    WHERE setup_session_task_id=p_task AND status='AWAITING_RETEST';
   INSERT INTO ops.setup_qc_signoff(setup_session_task_id,auditor_person_id,signed_at,
     test_seconds,sequence_reference,test_evidence,required_work_evidence)
   VALUES(p_task,v_person,v_at,p_test_seconds,btrim(p_sequence),btrim(p_evidence),v_gate);

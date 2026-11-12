@@ -8,6 +8,19 @@
   let loadedYear = null;
   let pending = null;
   let saving = false;
+  let actionButton = null;
+  let actionHost = null;
+  // Keep validation beside the operator's action, including errors from SQL.
+  function qcMessage(message, kind='error') {
+    const anchor=actionButton?.isConnected ? actionButton : null;
+    const host=anchor?.parentElement || (actionHost?.isConnected ? actionHost : null);
+    if (!host) { setAlert(message,kind); return; }
+    let box=host.querySelector(':scope > [data-qc-message]');
+    if (!box) { box=document.createElement('div');box.dataset.qcMessage='1';host.append(box); }
+    box.setAttribute('role',kind==='error' ? 'alert' : 'status');
+    box.tabIndex=-1;box.dataset.kind=kind;box.textContent=message;
+    box.scrollIntoView({block:'nearest'});box.focus({preventScroll:true});
+  }
   const html = value => escapeHtml(String(value ?? ''));
   const localTime = value => value
     ? new Date(value).toLocaleString('en-US', {
@@ -98,10 +111,10 @@
       const payload=await api('api/setup/qc/action', commandOptions('POST',data));
       await window.setupQcRenderCurrent();
       await window.setupQcRenderFixes();
-      setAlert('QC record saved.','ok');
+      qcMessage('QC record saved.','ok');
       return payload;
     } catch (error) {
-      setAlert(error.message || String(error),'error');
+      qcMessage(error.message || String(error),'error');
       return null;
     } finally {
       saving = false;
@@ -119,12 +132,11 @@
           ${status==='CLAIMED'
             ? `<button type="button" class="small secondary" data-qc-action="REPAIRED" data-qc-id="${f.qc_finding_id}">Mark Repaired</button>`
             : ''}
-          ${status==='AWAITING_RETEST' ? '<span>Awaiting auditor retest in QC Check</span>' : ''}
+          ${status==='AWAITING_RETEST' ? '<span>Repaired — awaiting area sign-off</span>' : ''}
         </div>`
       : `<div class="next-qc-actions">
           ${status==='AWAITING_RETEST'
-            ? `<button type="button" class="small secondary" data-qc-action="RETEST_PASS" data-qc-id="${f.qc_finding_id}">Verified</button>
-               <button type="button" class="small secondary" data-qc-action="RETEST_FAIL" data-qc-id="${f.qc_finding_id}">Still Failing</button>`
+            ? `<button type="button" class="small secondary" data-qc-action="RETEST_FAIL" data-qc-id="${f.qc_finding_id}">Still Failing</button>`
             : ''}
         </div>`;
     return `<section class="next-qc-finding" data-qc-state="${status}" data-qc-finding="${f.qc_finding_id}">
@@ -147,7 +159,7 @@
       ${withFixes ? `${status==='CLAIMED' ? `<label>Repair notes
          <textarea rows="3" maxlength="6000" data-qc-fix-note="${f.qc_finding_id}"
           placeholder="Describe the work actually performed"></textarea></label>` : ''}${controls}`
-      : `${status==='AWAITING_RETEST' ? '' : '<details><summary>Add an observation</summary>'}<label>${status==='AWAITING_RETEST' ? 'Retest evidence / observation' : 'Add to this existing issue'}
+      : `${status==='AWAITING_RETEST' ? '' : '<details><summary>Add an observation</summary>'}<label>${status==='AWAITING_RETEST' ? 'Observation (required only if still failing)' : 'Add to this existing issue'}
          <textarea rows="3" maxlength="6000" data-qc-observation="${f.qc_finding_id}"
           placeholder="Additional details or corroborating observation"></textarea></label>
          <button type="button" class="small secondary" data-qc-action="OBSERVATION"
@@ -166,6 +178,7 @@
     host.addEventListener('click', async event => {
       const btn=event.target.closest('[data-qc-action]');
       if (!btn || !host.contains(btn)) return;
+      actionButton=btn;actionHost=host;
       const action=btn.dataset.qcAction;
       const finding=Number(btn.dataset.qcId||0);
       const noteField=['OBSERVATION','REOPEN','RETEST_PASS','RETEST_FAIL'].includes(action)
@@ -175,13 +188,10 @@
       const targetId=Number(btn.dataset.qcTask || id ||
         snapshot.findings.find(x=>Number(x.qc_finding_id)===finding)?.setup_session_task_id);
       if (action==='READY_FOR_PRODUCTION') {
-        const evidence=host.querySelector('[data-qc-final-evidence]')?.value?.trim();
-        const sequence=host.querySelector('[data-qc-final-sequence]')?.value?.trim();
-        if (!host.querySelector('[data-qc-final-tested]')?.checked || !evidence || !sequence) {
-          setAlert('Record the sequence and result, and confirm the full two-minute test passed.','error');return;
+        if (!host.querySelector('[data-qc-final-tested]')?.checked) {
+          qcMessage('Confirm that you observed the full two-minute test and this area works.');return;
         }
-        await command({action,setup_session_task_id:targetId,note:evidence,
-          test_seconds:120,sequence_reference:sequence});
+        await command({action,setup_session_task_id:targetId,observed_test:true});
         return;
       }
       if (action==='CLAIM_AUDIT') {
@@ -192,7 +202,7 @@
         const problems=host.querySelector('[data-qc-problems]')?.value?.trim() || '';
         const lines=problems.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
         if (!lines.length || lines.some(line=>line.length<3) || problems.length>6000) {
-          setAlert('Enter one problem per line (at least 3 characters each, 6000 characters total).','error');
+          qcMessage('Enter one problem per line (at least 3 characters each, 6000 characters total).','error');
           return;
         }
         await command({action,setup_session_task_id:targetId,note:problems});
@@ -204,7 +214,11 @@
         await command({action,setup_session_task_id:targetId,qc_finding_id:finding});
         return;
       }
-      if (!note) { setAlert('Enter a repair, retest or observation note.','error'); return; }
+      if (action==='RETEST_FAIL' && !snapshot.auditors.some(a=>
+          Number(a.setup_session_task_id)===targetId && Number(a.person_id)===Number(snapshot.viewer_person_id))) {
+        qcMessage('Select Assign to Me for this area before recording the auditor test result.');return;
+      }
+      if (!note) { qcMessage('Enter a repair, retest or observation note.','error'); return; }
       await command({action,setup_session_task_id:targetId,qc_finding_id:finding,note});
     });
   }
@@ -232,7 +246,8 @@
     const ownsAudit=auditors.some(a=>Number(a.person_id)===Number(snapshot.viewer_person_id));
     const gate=(snapshot.final_gates || []).find(g=>Number(g.task_id)===Number(id));
     const unfinished=gate?.unfinished_work || [];
-    const canSign=ownsAudit && gate?.readiness_met && !unfinished.length && !findings.length;
+    const unrepaired=findings.filter(f=>f.status==='OPEN' || f.status==='CLAIMED');
+    const canSign=ownsAudit && gate?.readiness_met && !unfinished.length && !unrepaired.length;
     host.innerHTML=`
       <div class="next-qc-record">
         <div><strong>QC auditors:</strong>
@@ -251,13 +266,9 @@
           ${!gate ? '<p>Readiness checks unavailable.</p>' : ''}
           ${gate && !gate.readiness_met ? '<p>Blocked: annual readiness has not been confirmed.</p>' : ''}
           ${unfinished.length ? `<p>Required work still incomplete:</p><ul>${unfinished.map(w=>`<li>#${html(w.id)} ${html(w.name)}</li>`).join('')}</ul>` : ''}
-          ${findings.length ? `<p>${findings.length} finding(s) still need repair or verification.</p>` : ''}
-          <label>Sequence / version tested
-            <input data-qc-final-sequence maxlength="500" placeholder="Sequence name and version, or explain if version is unknown"></label>
-          <label>Final test result
-            <textarea data-qc-final-evidence maxlength="6000" rows="3" placeholder="What you observed during the full test"></textarea></label>
+          ${unrepaired.length ? `<p>${unrepaired.length} problem(s) still need repair.</p>` : ''}
           <label class="next-qc-confirm"><input type="checkbox" data-qc-final-tested>
-            I ran the full two-minute test and confirmed the area works.</label>
+            I observed the full two-minute test and confirmed this area works.</label>
           <button type="button" data-qc-action="READY_FOR_PRODUCTION" data-qc-task="${id}" ${canSign ? '' : 'disabled'}>Ready for Production — Sign Off</button>
         </section>` : ''}
         <form class="next-qc-new" onsubmit="return false">

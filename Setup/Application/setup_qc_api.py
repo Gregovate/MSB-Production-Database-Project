@@ -68,12 +68,13 @@ def api_setup_qc_action() -> Response:
             raise SetupCommandError(f"{key} is too long")
         cmd[key]=text or None
     if action == "READY_FOR_PRODUCTION":
-        # Identity/claim, required work and all findings are checked again by SQL.
-        cmd['test_seconds'] = qc_integer(data.get('test_seconds'), 'test_seconds')
-        sequence = str(data.get('sequence_reference') or '').strip()
-        if not 3 <= len(sequence) <= 500:
-            raise SetupCommandError('Record the tested sequence / version')
-        cmd['sequence_reference'] = sequence
+        # One explicit observation supplies the evidence; no sequence-entry burden.
+        # SQL independently enforces auditor claim, unfinished work and repair gates.
+        if data.get('observed_test') is not True:
+            raise SetupCommandError('Confirm that you observed the full two-minute test and this area works')
+        cmd['test_seconds'] = 120
+        cmd['sequence_reference'] = 'Standard two-minute test'
+        cmd['note'] = 'I observed the full two-minute test and confirmed this area works.'
         return jsonify(result=qc_repo().signoff(email,cmd))
     return jsonify(result=qc_repo().command(email,cmd))
 

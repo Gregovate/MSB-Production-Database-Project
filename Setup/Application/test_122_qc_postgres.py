@@ -110,12 +110,12 @@ def test_actual_final_gate_and_post_signoff_boundary(db):
         final()
     query("UPDATE ops.setup_session_task SET annual_readiness_state='READY' WHERE setup_session_task_id=20")
     for finding in ids:
-        for action in [None, 'CLAIM_REPAIR', 'REPAIRED']:
+        for action in [None, 'CLAIM_REPAIR']:
             if action:
                 command(action, finding, 'Actual fixture repair' if action=='REPAIRED' else None)
             with pytest.raises(psycopg2.errors.CheckViolation):
                 final()
-        command('RETEST_PASS', finding, 'Observed working in retest')
+        command('REPAIRED', finding, 'Actual fixture repair')
     # Actual application role executes the final gate without direct QC-table access.
     query('SET ROLE fieldwiring_app')
     with pytest.raises(psycopg2.errors.InsufficientPrivilege):
@@ -124,6 +124,8 @@ def test_actual_final_gate_and_post_signoff_boundary(db):
     assert result['status']=='READY_FOR_PRODUCTION'
     snap=query("SELECT ops.setup_qc_snapshot('crew@test',2026)")
     assert snap['viewer_person_id']==1 and len(snap['signoffs'])==1
+    assert all(f['status']=='VERIFIED' for f in snap['findings'])
+    assert all(sum(e['type']=='RETEST_PASS' for e in f['events'])==1 for f in snap['findings'])
     for action in ['REPORT_LINES','REOPEN','CLAIM_AUDIT']:
         with pytest.raises(psycopg2.errors.CheckViolation):
             command(action, ids[0], 'New failure after signoff')

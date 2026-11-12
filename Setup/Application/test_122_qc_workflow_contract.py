@@ -109,7 +109,7 @@ def test_qc_entry_not_blocked_by_manager_intake_retrieval():
 def test_qc_writes_share_exact_finding_and_annual_task():
     assert 'data-qc-action="CLAIM_REPAIR"' in JS
     assert 'data-qc-action="REPAIRED"' in JS
-    assert 'data-qc-action="RETEST_PASS"' in JS
+    assert 'data-qc-action="RETEST_PASS"' not in JS
     assert 'data-qc-action="RETEST_FAIL"' in JS
     assert "setup_session_task_id:targetId" in JS
     assert 'linked_intake_records' in JS
@@ -120,9 +120,9 @@ def test_qc_writes_share_exact_finding_and_annual_task():
     assert "QC Repairs Needed" in (ROOT/'setup_next_pass.js').read_text()
     # Worker repairs and auditor verification are separate UI surfaces.
     repair_js=JS.split('const controls=withFixes',1)[1].split('return `<section',1)[0]
-    assert "Awaiting auditor retest in QC Check" in repair_js
+    assert "Repaired — awaiting area sign-off" in repair_js
     assert 'Mark Repaired' in repair_js
-    assert 'Verified' in repair_js
+    assert 'Verified' not in repair_js
 
 
 def test_qc_reports_on_existing_task_without_creating_intake_or_work_orders():
