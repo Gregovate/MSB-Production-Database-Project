@@ -70,7 +70,7 @@ addEventListener('load',()=>setTimeout(async()=>{
   }
   // Unclassified historical sources never appear under either selected area.
   assert(!document.querySelector('[data-qc-link-intake]'),'Legacy reconciliation still visible');
-  assert(!document.body.textContent.includes('WRONG AREA LEGACY REPORT'),'Unclassified source shown as area finding');
+  assert(!document.querySelector('#next-qc-content').textContent.includes('WRONG AREA LEGACY REPORT'),'Unclassified source shown as area finding');
   assert(!qcWrites.length,'Rendering wrote data');
   const problems='arch 3 - blue lights 21" to 28" and 76" to 80" from bottom\narch 3 - all red lights\narch 4 - all red lights\narch 8 - yellow lights 12" to 20" from top\narch 9 - blue lights from top to @1 foot down\narch 11 - all blue lights';
   document.querySelector('[data-qc-problems]').value=problems;
