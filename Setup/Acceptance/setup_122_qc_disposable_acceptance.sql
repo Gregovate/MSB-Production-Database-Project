@@ -48,6 +48,14 @@ BEGIN
   IF v_finding IS NULL THEN RAISE EXCEPTION 'Report did not persist finding'; END IF;
   PERFORM ops.setup_qc_command(v_actor,'OBSERVATION',v_task,v_finding,
     'Second auditor confirms same missing channel');
+  -- A finding may not be repaired until its technician claims it.
+  BEGIN
+    PERFORM ops.setup_qc_command(v_actor,'REPAIRED',v_task,v_finding,
+      'Improper repair without claim');
+    RAISE EXCEPTION 'Unclaimed repair incorrectly accepted';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
   PERFORM ops.setup_qc_command(v_actor,'CLAIM_REPAIR',v_task,v_finding,
     'Claimed on unscheduled QC');
   PERFORM ops.setup_qc_command(v_actor,'REPAIRED',v_task,v_finding,
@@ -62,6 +70,8 @@ BEGIN
      <> 'OPEN' THEN
     RAISE EXCEPTION 'Failed retest did not reopen finding';
   END IF;
+  PERFORM ops.setup_qc_command(v_actor,'CLAIM_REPAIR',v_task,v_finding,
+    'Claimed reopened channel failure');
   PERFORM ops.setup_qc_command(v_actor,'REPAIRED',v_task,v_finding,
     'Second repair completed');
   PERFORM ops.setup_qc_command(v_actor,'RETEST_PASS',v_task,v_finding,
