@@ -5,6 +5,8 @@ not PostgreSQL authorization or protected operator acceptance on the clone.
 The entire candidate production.html and its actual scripts/styles are served.
 """
 import os
+import re
+import html
 from pathlib import Path
 import subprocess
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -77,7 +79,7 @@ addEventListener('load',()=>setTimeout(async()=>{
   await click('#next-qc-fixes-tab');
   assert(document.querySelector('#next-perform-list').hidden,'Scheduled panel leaked');
   assert(!document.querySelector('#next-qc-search').getClientRects().length,'QC task search leaked into repairs');
-  assert(document.querySelector('[data-qc-finding="71"]').getClientRects().length,'Shared finding missing');
+  assert(document.querySelector('#next-qc-fixes-list [data-qc-finding="71"]').getClientRects().length,'Shared finding missing');
   await click('[data-qc-action="CLAIM_REPAIR"]');
   assert(!qcWrites.at(-1).note,'Claim incorrectly requires work evidence');
   let count=qcWrites.length;
@@ -160,7 +162,9 @@ def test_qc_real_page_controls_and_shared_finding_lifecycle(tmp_path, manager):
             f'http://127.0.0.1:{server.server_port}/production.html'],
             capture_output=True, text=True, timeout=40)
         assert run.returncode == 0, run.stderr[-3000:]
-        assert '<pre id="qc-browser-result">PASS</pre>' in run.stdout, run.stdout[-6000:]
+        result = re.search(r'<pre id="qc-browser-result">(.*?)</pre>', run.stdout, re.S)
+        assert result, 'Browser regression did not finish: '+run.stderr[-1500:]
+        assert html.unescape(result.group(1)) == 'PASS', html.unescape(result.group(1))
     finally:
         server.shutdown()
         server.server_close()
