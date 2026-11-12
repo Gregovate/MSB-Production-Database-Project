@@ -13,19 +13,15 @@ const appState = {
 
 const el = (id) => document.getElementById(id);
 
-// Presentation only: retain stored names and IDs used by QC eligibility and edits.
+// Show saved wording without masking differences between lists and the editor.
 function setupTaskDisplayName(value) {
-  const name = String(value ?? '');
-  return /^plug\s+in\s+network\s+to\s+controller.*2\s+minute\s+test\s+show\s*$/i.test(name.trim())
-    ? 'QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence'
-    : name;
+  return String(value ?? '');
 }
 
 const setupQcCompletionGuidance = 'Controller must register on network. No Conn on display or flashing controller light is a failure and must be reported. Channels fire in order 1-2-3-4..., usually left to right, with a half-second or one-second delay between channels turning on. If not, the channels are not wired to the correct controller ports. All expected lights must work. Report failures in QC Check.';
 
 function setupTaskCompletion(task) {
-  return setupTaskDisplayName(task?.task_name) !== String(task?.task_name ?? '')
-    ? setupQcCompletionGuidance : (task?.completion_point || 'Completion point not yet documented.');
+  return task?.completion_point || 'Completion point not yet documented.';
 }
 
 function escapeHtml(value) {

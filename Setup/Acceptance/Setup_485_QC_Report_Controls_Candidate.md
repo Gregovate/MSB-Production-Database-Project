@@ -44,3 +44,6 @@ Operator returned CLEAN EXIT for the prior preview; this is cleanup evidence, no
 
 
 Wording/layout follow-up: confirm the existing two-minute QC tasks show the approved QC Check name in Catalog, task details and planning; other network tasks keep their names. Confirm completion guidance describes No Conn/flashing controller failure and ordered channels. Stored task identities and edit values are unchanged in this source-only candidate. Confirm report is beside navigation, filters/search align and wrap on narrow screens, unselected filters are neutral, and all controls remain readable in both themes.
+
+
+Correction082 supersedes the source-only/presentation-only approach above. The launcher applies only082 to the current-Production disposable clone. Verify saved Catalog task name and completion point, reload the editor, and confirm the same wording remains. Under All Repairs, record a repair claimed by another worker; confirm it awaits area sign-off, the original claim remains, and the REPAIRED history names the completing operator. Keep final sign-off gates and signed-area boundary. No Production application before explicit release approval.

@@ -63,7 +63,7 @@ addEventListener('load',()=>setTimeout(async()=>{
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active-view'));
   document.querySelector('#perform-view').classList.add('active-view');
   setupNextState.performBoard={tasks:[483,598].map(id=>({setup_session_task_id:id,
-   task_name:'Plug in Network to controller and watch display against 2 minute Test show',
+   task_name:'QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence', completion_point:'No Conn must be reported',
    stage_id:25,stage_key:'25',stage_name:'Racing Arches',scene_name:'Test scene',
    execution_status:'NOT_READY',prerequisite_count:1,prerequisites_complete:false})),assignments:[]};
   renderNextExecution();
@@ -71,7 +71,7 @@ addEventListener('load',()=>setTimeout(async()=>{
   assert(setupTaskDisplayName(setupNextState.performBoard.tasks[0].task_name)==='QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence','QC task wording');
   assert(setupTaskDisplayName('Plug in Network Cables and test')==='Plug in Network Cables and test','Unrelated task renamed');
   assert(setupTaskCompletion(setupNextState.performBoard.tasks[0]).includes('No Conn'),'QC completion guidance');
-  assert(setupNextState.performBoard.tasks[0].task_name.startsWith('Plug in Network'),'Raw task changed');
+  assert(setupNextState.performBoard.tasks[0].task_name.startsWith('QC Check'),'Saved task wording not rendered');
   assert(document.querySelector('.next-qc-toolbar #next-qc-report'),'Report outside toolbar');
   assert(document.querySelector('.next-qc-filterbar #next-qc-search'),'Search outside filterbar');
   for(const id of [483,598]) {

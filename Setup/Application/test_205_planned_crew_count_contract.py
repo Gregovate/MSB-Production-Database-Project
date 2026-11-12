@@ -71,7 +71,7 @@ def test_release_version_and_assets_are_exact():
     assert "CLIENT_BUILD = 'V0.3.122-qc-report'" in client
     for filename in ("setup_scheduling_board.js","setup_scheduling_board.css",
                      "setup_next_pass.js","setup_next_pass.css"):
-        pin = ("2026-11-12.122.3" if filename=="setup_next_pass.js" else
+        pin = ("2026-11-12.122.4" if filename=="setup_next_pass.js" else
                "2026-11-12.122.3" if filename=="setup_next_pass.css" else "2026-11-11.111")
         assert filename + "?v=" + pin in html
     assert "Updated 2026-11-12" in html

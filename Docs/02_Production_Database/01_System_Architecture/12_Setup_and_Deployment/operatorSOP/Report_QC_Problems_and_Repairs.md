@@ -86,3 +86,6 @@ This source-only follow-up is not released until its new candidate passes dispos
 The final test task is displayed as **QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence**. Open **QC completion check** for the network and channel-order checks: a controller must register, No Conn or a flashing controller light is a failure, and channels must fire 1-2-3-4 (usually left to right) at half-second or one-second intervals. Report incorrect order and any lights that do not work.
 
 The report action is beside the activity tabs. Assignment filters and search are together below; the filled blue filter is selected. **QC report / PDF** retains all findings and history regardless of your current filter.
+
+
+If someone else claimed a repair and you completed it, open **All Repairs**, find the issue, enter what you repaired and select **Mark Repaired**. You do not have to unassign the original worker. History keeps the original claim and records you as the person completing the repair. The area auditor still performs final sign-off.

@@ -1,5 +1,5 @@
 <#
-PR #485 source-only report/control follow-up, current-Production disposable QC Check browser review.
+PR #485 report/control and correction082 follow-up, current-Production disposable QC Check browser review.
 - Exact commit; one temporary detached-source review branch; no Production writes.
 - Uses EXISTING Setup acceptance runner, port 8898 and Server Management profile.
 - Preserves any failed/dirty review worktree for diagnosis.
@@ -42,10 +42,11 @@ try {
     Set-Location -LiteralPath $Review
     Write-Host "PR485 TEST CANDIDATE: $CandidateSha"
     Write-Host 'WRITABLE DISPOSABLE REVIEW: Scheduled Work / QC Check / QC Repairs Needed. All test writes go to the clone.'
-    Write-Host 'No migration081 replay; the current Production clone already includes QC.'
+    Write-Host 'Correction082 applies only to the disposable clone; no migration081 replay.'
     Write-Host 'Production unchanged; ordinary Production activity can continue.'
     Write-Host 'Review normal Crew reporting and repairs without Manager approval or scheduling. Historical Intake cleanup is separate.'
     & (Join-Path $Review 'Setup\Acceptance\run_setup_disposable_browser_preview.ps1') `
+       -MigrationPaths @('Setup/Database/082_correct_qc_wording_and_shared_repairs.sql') `
        -PreviewPort 8898 `
        -CandidateSha $CandidateSha `
        -TargetRef $Ref `

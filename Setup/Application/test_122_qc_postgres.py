@@ -39,6 +39,11 @@ CREATE TABLE ops.setup_session_task(setup_session_task_id bigint PRIMARY KEY,set
  annual_lor_scene_id integer,task_origin text DEFAULT 'REUSABLE',execution_status text DEFAULT 'NOT_READY',
  annual_readiness_state text DEFAULT 'READY',linked_work_order_gate boolean DEFAULT false,
  linked_work_order_id integer,actual_completed_at timestamptz,completed_by_person_id integer,completion_note text);
+CREATE TABLE ref.setup_task(setup_task_id bigint PRIMARY KEY,task_name text,completion_point text,
+ updated_at timestamptz,updated_by text,updated_by_person_id integer);
+INSERT INTO ref.setup_task VALUES(120,'Plug in Network to controller and watch display against 2 minute Test show','Old completion',NULL,NULL,NULL);
+ALTER TABLE ops.setup_session_task ADD COLUMN annual_completion_point text,
+ ADD COLUMN updated_at timestamptz,ADD COLUMN updated_by text,ADD COLUMN updated_by_person_id integer;
 CREATE TABLE ref.setup_task_dependency(setup_task_id bigint,prerequisite_setup_task_id bigint);
 CREATE TABLE ops.setup_session_task_dependency(setup_session_task_id bigint,prerequisite_setup_session_task_id bigint,dependency_origin text);
 CREATE TABLE ops.work_order(work_order_id integer PRIMARY KEY,source_intake_id integer,date_completed date);
@@ -67,6 +72,7 @@ def db():
         with conn.cursor() as cur:
             cur.execute(FIXTURE)
             cur.execute((Path(__file__).parents[1]/'Database/081_add_unscheduled_setup_qc_findings.sql').read_text())
+            cur.execute((Path(__file__).parents[1]/'Database/082_correct_qc_wording_and_shared_repairs.sql').read_text())
         yield conn
     finally:
         conn.close()
@@ -138,3 +144,24 @@ def test_actual_final_gate_and_post_signoff_boundary(db):
     assert query("SELECT execution_status FROM ops.setup_session_task WHERE setup_session_task_id=11")=='NOT_READY'
     assert query('SELECT count(*) FROM ops.work_order')==0
     assert query('SELECT count(*) FROM stage.work_order_intake')==0
+
+
+def test_saved_wording_and_another_workers_repair(db):
+    with db.cursor() as cur:
+        cur.execute("SELECT task_name,completion_point FROM ref.setup_task WHERE setup_task_id=120")
+        name, completion = cur.fetchone()
+        assert name == 'QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence'
+        assert 'controller ports' in completion
+        cur.execute("SELECT annual_task_name,annual_completion_point FROM ops.setup_session_task WHERE setup_session_task_id=20")
+        assert cur.fetchone() == (name, completion)
+        cur.execute("INSERT INTO ref.person(person_id,first_name,last_name) VALUES(2,'Original','Claimant')")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',20,NULL,'A failed light')")
+        finding = cur.fetchone()[0]['finding_ids'][0]
+        cur.execute("UPDATE ops.setup_qc_finding SET status='CLAIMED',claimed_by_person_id=2 WHERE qc_finding_id=%s",(finding,))
+        cur.execute("SET ROLE fieldwiring_app")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPAIRED',20,%s,'Replaced fixture')",(finding,))
+        cur.execute("RESET ROLE")
+        cur.execute("SELECT status,claimed_by_person_id FROM ops.setup_qc_finding WHERE qc_finding_id=%s",(finding,))
+        assert cur.fetchone() == ('AWAITING_RETEST',2)
+        cur.execute("SELECT person_id,note FROM ops.setup_qc_event WHERE qc_finding_id=%s AND event_type='REPAIRED'",(finding,))
+        assert cur.fetchone() == (1,'Replaced fixture')

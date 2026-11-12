@@ -1766,3 +1766,11 @@ Display the existing final two-minute QC task as **QC Check - Verify Stage/Scene
 Completion guidance: Controller must register on network. No Conn on display or flashing controller light is a failure and must be reported. Channels fire in order 1-2-3-4..., usually left to right, with either a half-second or one-second delay between channels turning on. Otherwise the channels are not wired to the correct controller ports. All expected lights must work; report failures in QC Check.
 
 Place mode selection and a compact full-history report action in one responsive toolbar. Place assignment filters and search together beneath it. Unselected filters use a neutral background; selected filters use filled blue. Preserve 18px text, 44px targets, keyboard focus, both themes and narrow-screen wrapping.
+
+### November 12 saved wording and shared completion correction (#489)
+
+Supersedes the presentation-only wording approach above: list and editor must show the same saved name and completion point. Correction082 updates existing final-test catalog tasks and their 2026 annual snapshots, preserving identities, scopes, assignments, prerequisites and historical events. Existing SQL QC gates and browser discovery accept both old and approved names during transition. No tables are added. The earlier source-only classification no longer applies: deploy correction082 with the candidate; never replay081.
+
+Any authenticated Production Crew member may record a completed repair on an OPEN or CLAIMED finding, including one claimed by another person. No unassignment/reclaim ceremony is required. Preserve the original claimed_by_person_id and claim events; record the actual completing actor and evidence in the REPAIRED event. Still require nonblank repair evidence, exact task scope, unsigned area and subsequent auditor sign-off. Reject duplicate repaired/verified transitions.
+
+Operator accepted the improved layout and returned CLEAN EXIT for a2cf7ca5. Recheck only saved wording and cross-worker completion on the new disposable candidate; previous layout acceptance stands.
