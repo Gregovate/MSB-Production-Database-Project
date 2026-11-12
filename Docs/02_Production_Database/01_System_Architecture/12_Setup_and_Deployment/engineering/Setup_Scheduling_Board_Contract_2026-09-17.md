@@ -1401,6 +1401,31 @@ Retain the failed local review worktree. Corrected source needs new exact-SHA
 checks and disposable review; DRAFT/HOLD remains, final annual PASS closed.
 
 
+## November 12 QC follow-up — controls and durable reporting
+
+Operator confirmed Production problem entry PASS. The deployed controls lack clear
+selected-mode/action distinction, and final-area rendering hides finding history.
+Implement a source-only follow-up; do not alter lifecycle, permissions or data.
+
+- Selected Perform Work/navigation and QC mode have a filled blue treatment and
+  explicit selected state. Repair claim is amber, auditor claim purple, final
+  sign-off green. Use readable text, focus rings, hover feedback and 44px targets
+  in both themes; colors never replace labels or imply completion.
+- QC Check and QC Repairs Needed expose **QC report / PDF**. Reuse the existing
+  printable HTML / browser Save as PDF mechanism, not a new rendering service.
+  Default report includes all findings, including VERIFIED/completed areas;
+  an explicit outstanding-only link is available. Screen filters never silently
+  suppress report history. Require existing authenticated Setup read access.
+- Report season, generation time in America/Chicago, exact Stage/Scene/task and
+  finding IDs, full original description, reporter/time, current repair claimant,
+  all repair/observation/retest events with actor/time/notes, assigned auditors
+  and the actual final signer/time/evidence. Sort Stage, Scene, task, finding,
+  then event timestamp/ID deterministically. Escape all user content.
+- Completed area detail retains read-only findings and attributed event history,
+  with final auditor identity. Never reintroduce mutation buttons after signoff.
+- No new Intake, Work Order, scheduling, database writes or schema changes in the
+  report. Existing source-only preview/release gates apply; not yet deployed.
+
 ## Current agreed QC workflow
 
 **Production status, November 11 local:** PR485 merged; migration081 and
@@ -1723,3 +1748,31 @@ Verify exact command bodies, narrow EXECUTE grants, denied direct table/sequence
 access, source ancestry, snapshot, ONLINE health and live regression. Never run
 disposable acceptance fixture writes on Production. Retain report and rollback
 archive. Final deployment status awaits the server receipt and protected UI check.
+
+QC report grouping clarification (2026-11-12): print one Stage/Scene header per exact annual QC task, with its auditors and final area sign-off once. List every finding and its reporter, repair claimant and complete chronological event history beneath that header. Preserve verified findings and sign-off evidence in the all-history report; never combine different task identities merely because names match.
+
+### November 12 assignment discovery follow-up (#489)
+
+QC Repairs Needed defaults to **My Repairs**, with **Unclaimed** and **All Repairs** alternatives and outstanding counts. Match the authenticated snapshot viewer to claimed_by_person_id; never infer ownership from names. Repaired findings remain assigned and visible until final area sign-off. QC Check offers **All Areas** (default for immediate problem reporting) and **My QC Areas**, matched through exact annual-task auditor membership. Completed history remains available and is never deleted.
+
+Both QC searches use case-insensitive, all-word matching across Stage, Scene, annual QC task number, finding number, full problem/observation/repair notes and assigned people. Search applies inside the chosen assignment filter; counts and an explicit no-match message distinguish an empty personal queue from an empty park queue. Preserve filters/search during view changes and saves; filtering itself must not replace typed repair notes or write data. Use large labeled buttons, clear selected styling and keyboard focus in both themes. Full-history report remains independent of screen filters and groups findings under one area header.
+
+Source-only implementation: reuse existing authorized snapshot fields; no schema, migration, task creation, lifecycle or permission changes. Production data corrections are separate from this candidate.
+
+### November 12 QC wording and toolbar correction (#489)
+
+Display the existing final two-minute QC task as **QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence**. This is wording only: preserve task identities, raw catalog values, annual assignments and eligibility. Do not create or replace tasks. Source-only display formatting must not rewrite edit-form values or saved history.
+
+Completion guidance: Controller must register on network. No Conn on display or flashing controller light is a failure and must be reported. Channels fire in order 1-2-3-4..., usually left to right, with either a half-second or one-second delay between channels turning on. Otherwise the channels are not wired to the correct controller ports. All expected lights must work; report failures in QC Check.
+
+Place mode selection and a compact full-history report action in one responsive toolbar. Place assignment filters and search together beneath it. Unselected filters use a neutral background; selected filters use filled blue. Preserve 18px text, 44px targets, keyboard focus, both themes and narrow-screen wrapping.
+
+### November 12 saved wording and shared completion correction (#489)
+
+Supersedes the presentation-only wording approach above: list and editor must show the same saved name and completion point. Correction082 updates existing final-test catalog tasks and their 2026 annual snapshots, preserving identities, scopes, assignments, prerequisites and historical events. Existing SQL QC gates and browser discovery accept both old and approved names during transition. No tables are added. The earlier source-only classification no longer applies: deploy correction082 with the candidate; never replay081.
+
+Any authenticated Production Crew member may record a completed repair on an OPEN or CLAIMED finding, including one claimed by another person. No unassignment/reclaim ceremony is required. Preserve the original claimed_by_person_id and claim events; record the actual completing actor and evidence in the REPAIRED event. Still require nonblank repair evidence, exact task scope, unsigned area and subsequent auditor sign-off. Reject duplicate repaired/verified transitions.
+
+Operator accepted the improved layout and returned CLEAN EXIT for a2cf7ca5. Recheck only saved wording and cross-worker completion on the new disposable candidate; previous layout acceptance stands.
+
+Release authorization (2026-11-12): operator PASS/CLEAN EXIT and explicit Production deployment authorization for57a8c2049cbb1e78fba48beb2f66a359703d5e16. Release profile489 reuses the established maintenance controller and committed-byte transport, installs exactly the accepted application and correction082, fingerprints all business/QC history while excluding only authorized wording/audit columns on exact matching tasks, and validates function bodies/grants and saved wording before ONLINE. Authorization is not evidence of installation; retain server receipt/snapshot and complete protected live check.

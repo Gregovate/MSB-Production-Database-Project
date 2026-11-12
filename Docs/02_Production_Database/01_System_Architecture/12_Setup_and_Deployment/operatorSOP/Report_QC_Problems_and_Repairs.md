@@ -69,3 +69,23 @@ A new problem before final sign-off keeps or turns the area yellow. After final 
 - [Perform and Report Setup Work](Perform_and_Report_Setup_Work.md)
 - [Setup Operator Procedures](README.md)
 - [Setup and Deployment](../README.md)
+
+## Follow-up candidate: print findings and retained history
+
+The report/control follow-up is in browser review, not yet deployed. Its **QC report / PDF — all findings and history** link opens a report from either QC screen. Choose **Print / Save PDF**, then **Save as PDF** in the browser print dialog. The default includes completed findings, reporters, repair claimants, repair notes, auditors and final sign-off evidence. **Outstanding only** produces a current repair list. The report is read-only; printing does not complete work. Completed area details also retain the finding history.
+
+## Finding your assignments (candidate #489)
+
+In **QC Repairs Needed**, **My Repairs** shows your assigned problems, including repairs awaiting area sign-off. Choose **Unclaimed** to pick up a repair, or **All Repairs** to see the park. Counts show the outstanding work in each category. Search within the chosen category by area, QC task number, finding number, person or words in the report/history. Your typed repair notes remain when switching filters.
+
+In **QC Check**, **All Areas** lets anyone find an area to report a problem. Choose **My QC Areas** to see areas you claimed as auditor. Search also finds existing problem and repair notes. Completed areas remain in collapsed history; the full QC report includes completed findings regardless of your current filters.
+
+This source-only follow-up is not released until its new candidate passes disposable browser review and receives release approval.
+
+
+The final test task is displayed as **QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence**. Open **QC completion check** for the network and channel-order checks: a controller must register, No Conn or a flashing controller light is a failure, and channels must fire 1-2-3-4 (usually left to right) at half-second or one-second intervals. Report incorrect order and any lights that do not work.
+
+The report action is beside the activity tabs. Assignment filters and search are together below; the filled blue filter is selected. **QC report / PDF** retains all findings and history regardless of your current filter.
+
+
+If someone else claimed a repair and you completed it, open **All Repairs**, find the issue, enter what you repaired and select **Mark Repaired**. You do not have to unassign the original worker. History keeps the original claim and records you as the person completing the repair. The area auditor still performs final sign-off.

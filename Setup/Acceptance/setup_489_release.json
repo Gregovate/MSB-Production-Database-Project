@@ -1,0 +1,8 @@
+{
+  "profile": "489-qc",
+  "release_tag": "PR489-082",
+  "candidate": "57a8c2049cbb1e78fba48beb2f66a359703d5e16",
+  "target": "57a8c2049cbb1e78fba48beb2f66a359703d5e16",
+  "version": "V0.3.122-qc-report",
+  "migration": "Setup/Database/082_correct_qc_wording_and_shared_repairs.sql"
+}

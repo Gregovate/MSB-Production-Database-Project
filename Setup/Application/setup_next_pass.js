@@ -179,10 +179,10 @@ function nextTasksForScope(stageId, sceneId) {
 }
 
 function nextTaskLabel(task) {
-  if (nextIsSitewide(task)) return `Site-wide / Infrastructure — ${task.task_name}`;
+  if (nextIsSitewide(task)) return `Site-wide / Infrastructure — ${setupTaskDisplayName(task.task_name)}`;
   const stage = `Stage ${task.stage_key || '—'}`;
   const scope = task.scene_name ? ` / ${task.scene_name}` : ' / Stage-level';
-  return `${stage}${scope} — ${task.task_name}`;
+  return `${stage}${scope} — ${setupTaskDisplayName(task.task_name)}`;
 }
 
 function setupAnnualMilestoneDates(seasonYear) {
@@ -329,10 +329,10 @@ function nextTaskRow(task, stageId, sceneId, index, total) {
          data-task-id="${task.setup_task_id}" data-stage-id="${stageId ?? ''}" data-scene-id="${sceneId ?? ''}">
       <div class="library-order">${escapeHtml(task.display_order)}</div>
       <div class="next-task-main">
-        <strong>${escapeHtml(task.task_name)}</strong>
+        <strong>${escapeHtml(setupTaskDisplayName(task.task_name))}</strong>
         <div class="task-meta">Task ${task.setup_task_id} · ${escapeHtml(task.task_action_type)}${task.active_flag ? '' : ' · inactive'}</div>
       </div>
-      <div class="task-meta">${deps.length ? `Requires: ${deps.map((dep) => escapeHtml(dep.task_name)).join('; ')}` : 'No prerequisite'}</div>
+      <div class="task-meta">${deps.length ? `Requires: ${deps.map((dep) => escapeHtml(setupTaskDisplayName(dep.task_name))).join('; ')}` : 'No prerequisite'}</div>
       <div class="library-actions">
         ${canManage ? `<button type="button" class="small secondary next-up" ${index === 0 ? 'disabled' : ''}>↑</button>
         <button type="button" class="small secondary next-down" ${index === total - 1 ? 'disabled' : ''}>↓</button>
@@ -652,7 +652,7 @@ function renderDependencyEditor(task) {
   el('next-dependency-current').innerHTML = (task.dependencies || []).length
     ? (task.dependencies || []).map((dep) => `
       <div class="next-dependency-row">
-        <span>${escapeHtml(dep.task_name)}${dep.dependency_note ? ` — ${escapeHtml(dep.dependency_note)}` : ''}</span>
+        <span>${escapeHtml(setupTaskDisplayName(dep.task_name))}${dep.dependency_note ? ` — ${escapeHtml(dep.dependency_note)}` : ''}</span>
         <button type="button" class="small secondary next-dependency-remove" data-prereq-id="${dep.setup_task_id}">Remove</button>
       </div>`).join('')
     : '<div class="muted">No prerequisite recorded.</div>';
@@ -751,7 +751,7 @@ function renderPlanningBacklog() {
     return `
       <div class="next-plan-row" draggable="${appState.access?.can_manage_setup ? 'true' : 'false'}" data-session-task-id="${task.setup_session_task_id}">
         <div class="next-plan-order">${escapeHtml(task.planned_order ?? '—')}</div>
-        <div class="next-plan-main"><strong>${escapeHtml(task.task_name)}</strong><div class="muted">${escapeHtml(nextTaskScopeLabel(task))}</div></div>
+        <div class="next-plan-main"><strong>${escapeHtml(setupTaskDisplayName(task.task_name))}</strong><div class="muted">${escapeHtml(nextTaskScopeLabel(task))}</div></div>
         <div class="next-plan-state"><span class="pill ${category === 'COMPLETED' ? 'verified' : blocked ? 'correction' : 'unverified'}">${escapeHtml(category.replace('_',' '))}</span>${blocked ? '<span class="next-blocked">Blocked / Not Ready</span>' : ''}</div>
         <div class="next-plan-meta">Baseline ${escapeHtml(task.baseline_plan_order ?? '—')}${task.plan_change_reason ? `<br>${escapeHtml(task.plan_change_reason)}` : ''}</div>
         ${appState.access?.can_manage_setup ? `<div class="next-plan-actions"><button type="button" class="small secondary next-plan-up" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="small secondary next-plan-down" ${index === visible.length - 1 ? 'disabled' : ''}>↓</button></div>` : ''}
@@ -952,7 +952,7 @@ function renderCrewLanes(items) {
   return `<div class="next-crew-grid">${lanes.map((lane) => {
     const laneItems = items.filter((item) => String(item.crew_lane || 'A').toUpperCase() === lane);
     return `<section class="next-crew-lane"><h5>Crew ${escapeHtml(lane)}</h5>${laneItems.map((item) => `
-      <div class="next-schedule-item"><span><strong>${escapeHtml(item.task_name)}</strong><br><span class="muted">${escapeHtml(nextTaskScopeLabel(item))} · Planned crew ${item.planned_crew_count ?? 'TBD'}</span></span>
+      <div class="next-schedule-item"><span><strong>${escapeHtml(setupTaskDisplayName(item.task_name))}</strong><br><span class="muted">${escapeHtml(nextTaskScopeLabel(item))} · Planned crew ${item.planned_crew_count ?? 'TBD'}</span></span>
       ${appState.access?.can_manage_setup ? `<button type="button" class="small secondary next-unschedule" data-day="${item.setup_work_day_id}" data-task="${item.setup_session_task_id}">Remove</button>` : ''}</div>`).join('')}</section>`;
   }).join('')}</div>`;
 }
@@ -1419,7 +1419,7 @@ function nextPerformAssignmentCard(assignment) {
       data-session-task-id="${assignment.setup_session_task_id}"
       data-task-id="${assignment.setup_task_id}">
       <summary>
-        <span><strong>${escapeHtml(nextPerformTaskNumberLabel(task))} · ${escapeHtml(assignment.task_name)}</strong>
+        <span><strong>${escapeHtml(nextPerformTaskNumberLabel(task))} · ${escapeHtml(setupTaskDisplayName(assignment.task_name))}</strong>
           <span class="muted"> · ${escapeHtml(nextPerformTaskScopeLabel({...assignment, ...task}))}</span>
         </span>
         <span class="next-perform-assignment-pills">
@@ -1956,7 +1956,7 @@ function nextLateWorkSummary(assignments, board) {
     const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
     const captain = crew?.captain_display_name || 'CAPTAIN TBD';
     const task = (board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item;
-    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(nextPerformTaskNumberLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item))} · ${escapeHtml(item.task_name || 'Task')}</strong><div class="muted">${escapeHtml(nextPerformTaskScopeLabel({...item, ...task}))}</div> · ${escapeHtml(day?.work_date || item.work_date || '')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
+    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(nextPerformTaskNumberLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item))} · ${escapeHtml(setupTaskDisplayName(item.task_name || 'Task'))}</strong><div class="muted">${escapeHtml(nextPerformTaskScopeLabel({...item, ...task}))}</div> · ${escapeHtml(day?.work_date || item.work_date || '')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
   }).join('')}</section>`;
 }
 
@@ -2505,7 +2505,7 @@ function setup205WireActionCenter(root) {
 // Final QC is NOT a scheduled work assignment and NEVER creates work reports.
 const nextQcDiscovery = {mode: 'work', search: '', selectedTaskId: null};
 function nextIsFinalShowQc(task) {
-  return /plug\s+in\s+network\s+to\s+controller.*2\s+minute\s+test\s+show/i.test(
+  return /(?:plug\s+in\s+network\s+to\s+controller.*2\s+minute\s+test\s+show|^QC Check - Verify Stage\/Scene sequence lights during the 2 minute test sequence$)/i.test(
     String(task?.task_name || task?.annual_task_name || '')
   );
 }
@@ -2521,6 +2521,7 @@ function nextQcFilteredTasks() {
   const query = nextQcDiscovery.search.trim().toLowerCase();
   const words = query.split(/\s+/).filter(Boolean);
   return nextQcAnnualTasks().filter(task => {
+    if (window.setupQcMatchesTaskSearch) return window.setupQcMatchesTaskSearch(task,query);
     const searchable = [task.setup_session_task_id, task.setup_task_id,
       task.stage_key, task.stage_name, task.scene_name, task.task_name,
       task.execution_status, task.readiness_state, task.annual_readiness_state].join(' ').toLowerCase();
@@ -2536,14 +2537,21 @@ function nextQcEnsureDiscovery() {
     section.id = 'next-qc-discovery';
     section.className = 'next-qc-discovery';
     section.innerHTML = `
+      <div class="next-qc-toolbar">
       <div class="next-qc-tabs" role="group" aria-label="Perform Work activity">
         <button type="button" class="small secondary" id="next-qc-work-tab">Scheduled Work</button>
         <button type="button" class="small secondary" id="next-qc-check-tab">QC Check</button>
         <button type="button" class="small secondary" id="next-qc-fixes-tab">QC Repairs Needed</button>
       </div>
+      <a id="next-qc-report" class="next-qc-report" target="_blank" rel="noopener" title="All findings and history, including completed areas">QC report / PDF</a>
+      </div>
       <div id="next-qc-content" hidden>
-        <label for="next-qc-search"><strong>Pick an area</strong></label>
-        <input id="next-qc-search" type="search" placeholder="Search Stage, Scene or task number">
+        <div class="next-qc-filterbar" id="next-qc-filterbar">
+        <div id="next-qc-area-filters" class="next-qc-tabs" role="group" aria-label="QC auditor assignments"></div>
+        <div class="next-qc-search-field"><label for="next-qc-search"><strong>Pick an area</strong></label>
+        <input id="next-qc-search" type="search" placeholder="Search Stage, Scene, QC task, finding, person or notes">
+        </div></div>
+        <details id="next-qc-guide" class="next-qc-guide"><summary>QC completion check</summary><p>${escapeHtml(setupQcCompletionGuidance)}</p></details>
         <div id="next-qc-count" class="muted" role="status"></div>
         <div id="next-qc-list"></div>
         <div id="next-qc-fixes-list" hidden></div>
@@ -2564,7 +2572,8 @@ function nextQcEnsureDiscovery() {
     });
     el('next-qc-search').addEventListener('input', event => {
       nextQcDiscovery.search = event.target.value;
-      nextQcRenderResults();
+      if(window.setupQcApplyFilters) window.setupQcApplyFilters();
+      else nextQcRenderResults();
     });
     el('next-qc-list').addEventListener('click', event => {
       const button = event.target.closest('button[data-qc-task-id]');
@@ -2578,7 +2587,16 @@ function nextQcEnsureDiscovery() {
   const qc = nextQcDiscovery.mode !== 'work';
   const fixes = nextQcDiscovery.mode === 'fixes';
   el('next-qc-content').hidden = !qc;
+  // QC owns its search; do not show the unrelated Scheduled Work search above it.
+  const sharedSearch=document.querySelector('.setup-live-search');
+  if(sharedSearch) sharedSearch.hidden=qc;
+  // Report uses the full season snapshot, independent of active-list filters.
+  el('next-qc-report').hidden = !qc;
+  el('next-qc-report').href = `api/setup/qc/report?season_year=${encodeURIComponent(appState.seasonYear)}`;
+  el('next-qc-filterbar').hidden = fixes;
+  el('next-qc-guide').hidden = fixes;
   el('next-qc-search').hidden = fixes;
+  el('next-qc-area-filters').hidden = fixes;
   section.querySelector('label[for="next-qc-search"]').hidden = fixes;
   el('next-qc-count').hidden = fixes;
   el('next-qc-list').hidden = fixes;
@@ -2620,7 +2638,7 @@ function nextQcEnsureDiscovery() {
 function nextQcRenderResults() {
   const target = el('next-qc-list');
   if (!target) return;
-  const rows = nextQcFilteredTasks();
+  const rows = nextQcAnnualTasks();
   el('next-qc-count').textContent = rows.length + ' of ' + nextQcAnnualTasks().length
     + ' final QC annual tasks shown — includes never-scheduled tasks';
   target.innerHTML = rows.map(task => {
@@ -2898,7 +2916,7 @@ async function printNextPerformTask(details) {
       </div>
       <div class="setup-perform-print-generated"><strong>Generated:</strong> ${escapeHtml(new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'}))}</div>
     </header>
-    <h2>${escapeHtml(assignment?.task_name || task?.task_name || 'Setup task')}</h2>
+    <h2>${escapeHtml(setupTaskDisplayName(assignment?.task_name || task?.task_name || 'Setup task'))}</h2>
     <div class="setup-perform-print-meta">
       <div><strong>Scope:</strong> ${escapeHtml(nextTaskScopeLabel(assignment || task || {}))}</div>
       <div><strong>Scheduled:</strong> Setup Day ${escapeHtml(day?.setup_day_number ?? '—')} · ${escapeHtml(day?.work_date || assignment?.work_date || '')} · ${escapeHtml(assignment?.shift_code === 'MORNING' ? 'AM' : assignment?.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}</div>
@@ -3157,7 +3175,7 @@ async function loadNextTaskExecution(details, focusReport = false) {
         · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}
       </div>
       <div class="next-perform-grid">
-        <section><h4>Task</h4><p>${escapeHtml(task?.completion_point || 'Completion point not yet documented.')}</p>
+        <section><h4>Task</h4><p>${escapeHtml(setupTaskCompletion(task))}</p>
           ${task?.readiness_note ? `<p><strong>Can start when:</strong> ${escapeHtml(task.readiness_note)}</p>` : ''}
           ${task?.weather_note ? `<p><strong>Weather limits:</strong> ${escapeHtml(task.weather_note)}</p>` : ''}
           <p><strong>Expected crew:</strong> ${escapeHtml(formatCrew(task))} · <strong>Expected time:</strong> ${escapeHtml(formatMinutes(task?.expected_duration_minutes))}</p></section>
@@ -3182,7 +3200,7 @@ async function loadNextTaskExecution(details, focusReport = false) {
         data-session-task-id="${sessionTaskId}"
         data-assignment-id="${assignmentId}">
         <div class="next-report-task-identity" role="heading" aria-level="4">
-          <strong>Report Work — ${escapeHtml(task?.task_name || assignment?.task_name || 'Setup task')}</strong>
+          <strong>Report Work — ${escapeHtml(setupTaskDisplayName(task?.task_name || assignment?.task_name || 'Setup task'))}</strong>
           <span>Setup Day ${escapeHtml(day?.setup_day_number ?? '—')} · ${escapeHtml(day?.work_date || assignment?.work_date || '')} · ${escapeHtml(assignment?.shift_code === 'MORNING' ? 'AM' : assignment?.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')} · Crew ${escapeHtml(crew?.crew_code || assignment?.crew_lane || '—')}</span>
         </div>
         <div class="next-report-work-grid">

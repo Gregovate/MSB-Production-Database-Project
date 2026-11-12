@@ -84,7 +84,7 @@
         <div class="next-prerequisite-main">
           <span class="next-prerequisite-position">${index + 1}.</span>
           <div>
-            <div class="next-prerequisite-name">${escapeHtml(dep.task_name)}</div>
+            <div class="next-prerequisite-name">${escapeHtml(setupTaskDisplayName(dep.task_name))}</div>
             ${dep.dependency_note ? `<div class="next-prerequisite-note">${escapeHtml(dep.dependency_note)}</div>` : ''}
           </div>
         </div>

@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.121-qc-compact'};
+ if(path.includes('api/health')) body={version:'V0.3.122-qc-report'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -35,6 +35,9 @@ window.fetch=async (url,options={})=>{
   else if(action.action==='READY_FOR_PRODUCTION') qcFixture.signoffs.push({setup_session_task_id:action.setup_session_task_id,auditor_person_id:1,signed_at:new Date().toISOString(),test_evidence:action.note,sequence_reference:action.sequence_reference});
   else {
    const f=qcFixture.findings.find(f=>f.qc_finding_id===action.qc_finding_id);
+   if(action.action==='RETEST_FAIL') f.claimed_by_person_id=null;
+   if(action.action==='CLAIM_REPAIR') f.claimed_by_person_id=1;
+   if(action.note) f.events.push({type:action.action,note:action.note,person:'Tester'});
    f.status={CLAIM_REPAIR:'CLAIMED',REPAIRED:'AWAITING_RETEST',RETEST_FAIL:'OPEN',RETEST_PASS:'VERIFIED'}[action.action]||f.status;
   }
   body={result:{finding_id:71}};
@@ -60,11 +63,17 @@ addEventListener('load',()=>setTimeout(async()=>{
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active-view'));
   document.querySelector('#perform-view').classList.add('active-view');
   setupNextState.performBoard={tasks:[483,598].map(id=>({setup_session_task_id:id,
-   task_name:'Plug in Network to controller and watch display against 2 minute Test show',
+   task_name:'QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence', completion_point:'No Conn must be reported',
    stage_id:25,stage_key:'25',stage_name:'Racing Arches',scene_name:'Test scene',
    execution_status:'NOT_READY',prerequisite_count:1,prerequisites_complete:false})),assignments:[]};
   renderNextExecution();
   await click('#next-qc-check-tab');
+  assert(setupTaskDisplayName(setupNextState.performBoard.tasks[0].task_name)==='QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence','QC task wording');
+  assert(setupTaskDisplayName('Plug in Network Cables and test')==='Plug in Network Cables and test','Unrelated task renamed');
+  assert(setupTaskCompletion(setupNextState.performBoard.tasks[0]).includes('No Conn'),'QC completion guidance');
+  assert(setupNextState.performBoard.tasks[0].task_name.startsWith('QC Check'),'Saved task wording not rendered');
+  assert(document.querySelector('.next-qc-toolbar #next-qc-report'),'Report outside toolbar');
+  assert(document.querySelector('.next-qc-filterbar #next-qc-search'),'Search outside filterbar');
   for(const id of [483,598]) {
    await click('[data-qc-task-id="'+id+'"]');
    assert(document.querySelector('[data-qc-action="REPORT_LINES"]').getClientRects().length,'QC form missing '+id);
@@ -86,9 +95,30 @@ addEventListener('load',()=>setTimeout(async()=>{
   await click('#next-qc-fixes-tab');
   assert(document.querySelector('#next-perform-list').hidden,'Scheduled panel leaked');
   assert(!document.querySelector('#next-qc-search').getClientRects().length,'QC task search leaked into repairs');
+  assert(document.querySelector('[data-qc-repair-scope="mine"]').getAttribute('aria-pressed')==='true','My Repairs is not default');
+  assert(document.querySelector('[data-qc-fix-empty]').getClientRects().length,'Empty personal queue is unexplained');
+  await click('[data-qc-repair-scope="unclaimed"]');
+  const search=document.querySelector('[data-qc-fix-search]');
+  search.value='598 arch 3';search.dispatchEvent(new Event('input',{bubbles:true}));
+  assert(document.querySelector('[data-qc-fix-count]').textContent==='2 of 6 findings shown','Multiword task/problem search failed');
+  search.value='';search.dispatchEvent(new Event('input',{bubbles:true}));
   assert(document.querySelector('#next-qc-fixes-list [data-qc-finding="71"]').getClientRects().length,'Shared finding missing');
+  for (const theme of ['light','dark']) {
+    document.documentElement.dataset.theme=theme;
+    assert(getComputedStyle(document.querySelector('#next-qc-fixes-tab')).backgroundColor==='rgb(7, 89, 133)','Selected QC mode lacks blue fill in '+theme);
+    assert(getComputedStyle(document.querySelector('#next-qc-fixes-list [data-qc-action="CLAIM_REPAIR"]')).backgroundColor==='rgb(146, 64, 14)','Repair claim lacks amber fill in '+theme);
+  }
+  assert(document.querySelector('#next-qc-report').href.includes('season_year=2026'),'Full-history report link missing season');
   await click('#next-qc-fixes-list [data-qc-id="71"][data-qc-action="CLAIM_REPAIR"]');
   assert(!qcWrites.at(-1).note,'Claim incorrectly requires work evidence');
+  assert(!document.querySelector('#next-qc-fixes-list [data-qc-finding="71"]').getClientRects().length,'Claim stayed in Unclaimed');
+  await click('[data-qc-repair-scope="mine"]');
+  // Filters/search must not destroy a draft repair note.
+  document.querySelector('[data-qc-fix-note="71"]').value='Draft to preserve';
+  await click('[data-qc-repair-scope="all"]');
+  await click('[data-qc-repair-scope="mine"]');
+  assert(document.querySelector('[data-qc-fix-note="71"]').value==='Draft to preserve','Filter erased draft');
+  document.querySelector('[data-qc-fix-note="71"]').value='';
   let count=qcWrites.length;
   await click('[data-qc-action="REPAIRED"]');
   assert(qcWrites.length===count,'Repair allowed without notes');
@@ -100,6 +130,15 @@ addEventListener('load',()=>setTimeout(async()=>{
   assert(document.querySelector('[data-qc-task-id="598"]').dataset.qcState==='findings','Repair prematurely turned area green');
   assert(document.querySelector('[data-qc-task-id="598"]').textContent.includes('awaiting area sign-off'),'Verification status missing');
   await click('[data-qc-action="CLAIM_AUDIT"]');
+  await click('[data-qc-area-scope="mine"]');
+  assert(!document.querySelector('[data-qc-task-id="483"]').getClientRects().length,'Other area leaked into My QC Areas');
+  const areaSearch=document.querySelector('#next-qc-search');
+  areaSearch.value='#71 Reconnected';areaSearch.dispatchEvent(new Event('input',{bubbles:true}));
+  assert(document.querySelector('[data-qc-task-id="598"]').getClientRects().length,'QC search omitted finding/history');
+  areaSearch.value='no-match';areaSearch.dispatchEvent(new Event('input',{bubbles:true}));
+  assert(document.querySelector('[data-qc-area-empty]').getClientRects().length,'Missing QC no-match feedback');
+  areaSearch.value='';areaSearch.dispatchEvent(new Event('input',{bubbles:true}));
+  await click('[data-qc-area-scope="all"]');
   document.querySelector('[data-qc-finding="71"] .next-qc-observation').open=true;
   count=qcWrites.length;
   await click('[data-qc-action="RETEST_FAIL"]');
@@ -108,7 +147,9 @@ addEventListener('load',()=>setTimeout(async()=>{
   document.querySelector('[data-qc-observation="71"]').value='Still dark in actual test';
   await click('[data-qc-action="RETEST_FAIL"]');
   await click('#next-qc-fixes-tab');
+  await click('[data-qc-repair-scope="unclaimed"]');
   await click('#next-qc-fixes-list [data-qc-id="71"][data-qc-action="CLAIM_REPAIR"]');
+  await click('[data-qc-repair-scope="mine"]');
   document.querySelector('[data-qc-fix-note="71"]').value='Replaced connector';
   await click('[data-qc-action="REPAIRED"]');
   await click('#next-qc-check-tab');
@@ -120,6 +161,8 @@ addEventListener('load',()=>setTimeout(async()=>{
   const area=document.querySelector('[data-qc-task-id="598"]');
   assert(area.dataset.qcState==='review','Finding verification bypassed final auditor signoff');
   assert(area.textContent.includes('Final QC pending'),'Finding verification implied annual PASS');
+  assert(document.querySelector('[data-qc-detail="598"]').textContent.includes('Tester'),'Final signer identity hidden');
+  assert(document.querySelector('[data-qc-detail="598"]').textContent.includes('Issue #71'),'Completed finding history hidden');
   for(const theme of ['light','dark']) {
     document.documentElement.dataset.theme=theme;
     assert(getComputedStyle(area).backgroundColor==='rgb(255, 255, 255)','Pending final signoff incorrectly shows green');
@@ -172,6 +215,20 @@ addEventListener('load',()=>setTimeout(async()=>{
     assert(getComputedStyle(complete).backgroundColor==='rgb(220, 252, 231)','Final area not green in '+theme);
     complete.closest('details').open=false;
   }
+  // Same display names must never cause another person's repair to become mine.
+  qcFixture.findings.push({qc_finding_id:91,setup_session_task_id:483,title:'Other owner',status:'CLAIMED',claimed_by_person_id:2,repair_owner:'Tester',events:[]});
+  qcFixture.findings.push({qc_finding_id:92,setup_session_task_id:483,title:'My repair',status:'AWAITING_RETEST',claimed_by_person_id:1,repair_owner:'Tester',events:[]});
+  await click('#next-qc-fixes-tab');
+  await click('[data-qc-repair-scope="mine"]');
+  assert(!document.querySelector('#next-qc-fixes-list [data-qc-finding="91"]').getClientRects().length,'Same name confused repair ownership');
+  assert(document.querySelector('#next-qc-fixes-list [data-qc-finding="92"]').getClientRects().length,'Awaiting signoff lost My Repairs ownership');
+  const writesBeforeFilters=qcWrites.length;
+  for(const theme of ['light','dark']) {
+    document.documentElement.dataset.theme=theme;
+    assert(getComputedStyle(document.querySelector('[data-qc-repair-scope="mine"]')).backgroundColor==='rgb(7, 89, 133)','Selected assignment filter unreadable');
+  }
+  await click('[data-qc-repair-scope="all"]');
+  assert(qcWrites.length===writesBeforeFilters,'Filtering wrote data');
   await click('#next-qc-work-tab');
   assert(!document.querySelector('#next-perform-list').hidden,'Scheduled Work not restored');
   assert(document.querySelector('#next-qc-content').hidden,'QC remains visible in Scheduled Work');

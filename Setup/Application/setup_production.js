@@ -13,6 +13,17 @@ const appState = {
 
 const el = (id) => document.getElementById(id);
 
+// Show saved wording without masking differences between lists and the editor.
+function setupTaskDisplayName(value) {
+  return String(value ?? '');
+}
+
+const setupQcCompletionGuidance = 'Controller must register on network. No Conn on display or flashing controller light is a failure and must be reported. Channels fire in order 1-2-3-4..., usually left to right, with a half-second or one-second delay between channels turning on. If not, the channels are not wired to the correct controller ports. All expected lights must work. Report failures in QC Check.';
+
+function setupTaskCompletion(task) {
+  return task?.completion_point || 'Completion point not yet documented.';
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -454,12 +465,12 @@ function renderReviewList() {
         <div class="task-row-top">
           <div>
             <div class="eyebrow">Stage ${escapeHtml(task.stage_key || '—')} — ${escapeHtml(task.stage_name || 'General')}</div>
-            <h3>${escapeHtml(task.task_name)}</h3>
+            <h3>${escapeHtml(setupTaskDisplayName(task.task_name))}</h3>
           </div>
           <span class="pill ${verificationClass(task.verification_state)}">${verificationLabel(task.verification_state)}</span>
         </div>
         <div class="task-meta">Crew: ${escapeHtml(formatCrew(task))} · Time: ${escapeHtml(formatMinutes(task.expected_duration_minutes))}</div>
-        <div class="task-dependency">${deps.length ? `Requires: ${deps.map((dep) => escapeHtml(dep.task_name)).join('; ')}` : 'No task prerequisite recorded'}</div>
+        <div class="task-dependency">${deps.length ? `Requires: ${deps.map((dep) => escapeHtml(setupTaskDisplayName(dep.task_name))).join('; ')}` : 'No task prerequisite recorded'}</div>
       </article>
     `;
   }).join('') || '<div class="empty-state">No annual tasks match this filter.</div>';
@@ -505,10 +516,10 @@ function renderLibrary() {
           <div class="library-task">
             <div class="library-order">${escapeHtml(task.display_order)}</div>
             <div>
-              <strong>${escapeHtml(task.task_name)}</strong>
+              <strong>${escapeHtml(setupTaskDisplayName(task.task_name))}</strong>
               <div class="task-meta">Task ${task.setup_task_id} · ${escapeHtml(task.task_action_type)}${task.active_flag ? '' : ' · inactive'}</div>
             </div>
-            <div class="task-meta">${(task.dependencies || []).length ? `Requires: ${(task.dependencies || []).map((dep) => escapeHtml(dep.task_name)).join('; ')}` : 'No prerequisite'}</div>
+            <div class="task-meta">${(task.dependencies || []).length ? `Requires: ${(task.dependencies || []).map((dep) => escapeHtml(setupTaskDisplayName(dep.task_name))).join('; ')}` : 'No prerequisite'}</div>
             <div class="library-actions"><button type="button" class="small open-task" data-task-id="${task.setup_task_id}">Open</button></div>
           </div>
         `).join('')}
@@ -528,7 +539,7 @@ function renderLibrary() {
 function renderDependencyChips(task) {
   const deps = task.dependencies || [];
   el('detail-dependencies').innerHTML = deps.length
-    ? deps.map((dep) => `<span class="chip">${escapeHtml(dep.task_name)}${dep.dependency_note ? ` — ${escapeHtml(dep.dependency_note)}` : ''}</span>`).join('')
+    ? deps.map((dep) => `<span class="chip">${escapeHtml(setupTaskDisplayName(dep.task_name))}${dep.dependency_note ? ` — ${escapeHtml(dep.dependency_note)}` : ''}</span>`).join('')
     : '<span class="muted">No task prerequisite recorded.</span>';
 }
 
@@ -540,7 +551,7 @@ function selectTask(taskId) {
   el('review-empty').hidden = true;
   el('review-detail').hidden = false;
   el('detail-stage').textContent = `Stage ${task.stage_key || '—'} — ${task.stage_name || 'General'}`;
-  el('detail-task-name').textContent = task.task_name;
+  el('detail-task-name').textContent = setupTaskDisplayName(task.task_name);
   el('detail-task-id').textContent = `Reusable task ID ${task.setup_task_id} · Annual task ID ${task.setup_session_task_id || 'not in selected season'}`;
   el('detail-verification').textContent = verificationLabel(task.verification_state);
   el('detail-verification').className = `pill ${verificationClass(task.verification_state)}`;

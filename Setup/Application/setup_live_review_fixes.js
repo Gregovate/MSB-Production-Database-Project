@@ -255,7 +255,8 @@
 
     const syncSearchVisibility = () => {
       const view = typeof currentSetupViewName === 'function' ? currentSetupViewName() : '';
-      search.hidden = !['review', 'library', 'perform'].includes(view);
+      const qcActive=view==='perform' && typeof nextQcDiscovery!=='undefined' && nextQcDiscovery.mode!=='work';
+      search.hidden = qcActive || !['review', 'library', 'perform'].includes(view);
     };
 
     const applyActiveSearch = () => {

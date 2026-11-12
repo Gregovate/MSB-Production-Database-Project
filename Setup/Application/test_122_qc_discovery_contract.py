@@ -60,15 +60,15 @@ def test_theme_safe_qc_and_fresh_asset_pins():
     assert "background: var(--card" in CSS
     assert "color: var(--text" in CSS
     assert ".next-qc-row" in CSS
-    assert 'setup_next_pass.js?v=2026-11-11.121.1' in HTML
-    assert 'setup_next_pass.css?v=2026-11-11.121.1' in HTML
-    assert "V0.3.121-qc-compact" in (APP / "production_backend.py").read_text()
+    assert 'setup_next_pass.js?v=2026-11-12.122.4' in HTML
+    assert 'setup_next_pass.css?v=2026-11-12.122.3' in HTML
+    assert "V0.3.122-qc-report" in (APP / "production_backend.py").read_text()
 
 
 def test_final_qc_regex_and_multiword_search_are_executable_javascript_patterns():
     # A literal double backslash matches backslash+s, not spaces; it can
     # silently return zero QC tasks even when the annual tasks are present.
-    assert r"/plug\s+in\s+network\s+to\s+controller.*2\s+minute\s+test\s+show/i" in JS
+    assert r"plug\s+in\s+network\s+to\s+controller.*2\s+minute\s+test\s+show" in JS
     assert r"/plug\\s+in" not in JS
     assert r"query.split(/\s+/)" in JS
     assert r"query.split(/\\s+/)" not in JS
@@ -85,7 +85,7 @@ def test_qc_report_and_fixes_share_the_exact_same_finding_identity():
     assert 'data-qc-problems' in client
     assert 'data-qc-title' not in client
     assert 'data-qc-link-intake' not in client
-    assert 'setup_qc.js?v=2026-11-11.121.1' in HTML
+    assert 'setup_qc.js?v=2026-11-12.122.3' in HTML
     assert 'Setup/Application' not in client  # no raw file-loading or synthetic work items
 
 
