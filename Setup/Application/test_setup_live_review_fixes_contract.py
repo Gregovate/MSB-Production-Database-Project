@@ -9,7 +9,7 @@ APP_DIR = Path(__file__).resolve().parent
 def test_global_setup_search_is_hidden_outside_searchable_views() -> None:
     text = (APP_DIR / "setup_live_review_fixes.js").read_text(encoding="utf-8")
     assert "['review', 'library', 'perform'].includes(view)" in text
-    assert "search.hidden = !['review', 'library', 'perform'].includes(view);" in text
+    assert "search.hidden = qcActive || !['review', 'library', 'perform'].includes(view);" in text
 
 def test_live_review_dark_mode_defines_next_pass_surface_aliases() -> None:
     css = (APP_DIR / "setup_live_review_fixes.css").read_text(encoding="utf-8")
@@ -53,7 +53,7 @@ def test_live_review_restores_task_and_stage_search() -> None:
     assert "renderLibraryWithLiveSearch" in js
     assert "applyActiveSearch" in js
     assert "taskMap = new Map" in js
-    assert "search.hidden = !['review', 'library', 'perform'].includes(view);" in js
+    assert "search.hidden = qcActive || !['review', 'library', 'perform'].includes(view);" in js
     assert "showViewWithSearchVisibility" in js
     for field in ("task_name", "stage_key", "stage_name", "scene_name", "task_action_type"):
         assert field in js
@@ -68,7 +68,7 @@ def test_changed_live_review_assets_use_fresh_cache_keys() -> None:
         "setup_resource_review.css?v=2026-09-11.2",
         "setup_resource_review.js?v=2026-09-11.2",
         "setup_live_review_fixes.css?v=2026-09-08.3",
-        "setup_live_review_fixes.js?v=2026-11-11.111",
+        "setup_live_review_fixes.js?v=2026-11-12.122.2",
     ):
         assert asset in html
 

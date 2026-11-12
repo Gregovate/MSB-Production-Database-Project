@@ -1750,3 +1750,11 @@ disposable acceptance fixture writes on Production. Retain report and rollback
 archive. Final deployment status awaits the server receipt and protected UI check.
 
 QC report grouping clarification (2026-11-12): print one Stage/Scene header per exact annual QC task, with its auditors and final area sign-off once. List every finding and its reporter, repair claimant and complete chronological event history beneath that header. Preserve verified findings and sign-off evidence in the all-history report; never combine different task identities merely because names match.
+
+### November 12 assignment discovery follow-up (#489)
+
+QC Repairs Needed defaults to **My Repairs**, with **Unclaimed** and **All Repairs** alternatives and outstanding counts. Match the authenticated snapshot viewer to claimed_by_person_id; never infer ownership from names. Repaired findings remain assigned and visible until final area sign-off. QC Check offers **All Areas** (default for immediate problem reporting) and **My QC Areas**, matched through exact annual-task auditor membership. Completed history remains available and is never deleted.
+
+Both QC searches use case-insensitive, all-word matching across Stage, Scene, annual QC task number, finding number, full problem/observation/repair notes and assigned people. Search applies inside the chosen assignment filter; counts and an explicit no-match message distinguish an empty personal queue from an empty park queue. Preserve filters/search during view changes and saves; filtering itself must not replace typed repair notes or write data. Use large labeled buttons, clear selected styling and keyboard focus in both themes. Full-history report remains independent of screen filters and groups findings under one area header.
+
+Source-only implementation: reuse existing authorized snapshot fields; no schema, migration, task creation, lifecycle or permission changes. Production data corrections are separate from this candidate.

@@ -73,3 +73,11 @@ A new problem before final sign-off keeps or turns the area yellow. After final 
 ## Follow-up candidate: print findings and retained history
 
 The report/control follow-up is in browser review, not yet deployed. Its **QC report / PDF — all findings and history** link opens a report from either QC screen. Choose **Print / Save PDF**, then **Save as PDF** in the browser print dialog. The default includes completed findings, reporters, repair claimants, repair notes, auditors and final sign-off evidence. **Outstanding only** produces a current repair list. The report is read-only; printing does not complete work. Completed area details also retain the finding history.
+
+## Finding your assignments (candidate #489)
+
+In **QC Repairs Needed**, **My Repairs** shows your assigned problems, including repairs awaiting area sign-off. Choose **Unclaimed** to pick up a repair, or **All Repairs** to see the park. Counts show the outstanding work in each category. Search within the chosen category by area, QC task number, finding number, person or words in the report/history. Your typed repair notes remain when switching filters.
+
+In **QC Check**, **All Areas** lets anyone find an area to report a problem. Choose **My QC Areas** to see areas you claimed as auditor. Search also finds existing problem and repair notes. Completed areas remain in collapsed history; the full QC report includes completed findings regardless of your current filters.
+
+This source-only follow-up is not released until its new candidate passes disposable browser review and receives release approval.

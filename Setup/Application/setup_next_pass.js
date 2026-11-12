@@ -2521,6 +2521,7 @@ function nextQcFilteredTasks() {
   const query = nextQcDiscovery.search.trim().toLowerCase();
   const words = query.split(/\s+/).filter(Boolean);
   return nextQcAnnualTasks().filter(task => {
+    if (window.setupQcMatchesTaskSearch) return window.setupQcMatchesTaskSearch(task,query);
     const searchable = [task.setup_session_task_id, task.setup_task_id,
       task.stage_key, task.stage_name, task.scene_name, task.task_name,
       task.execution_status, task.readiness_state, task.annual_readiness_state].join(' ').toLowerCase();
@@ -2543,8 +2544,9 @@ function nextQcEnsureDiscovery() {
       </div>
       <a id="next-qc-report" class="next-qc-report" target="_blank" rel="noopener">QC report / PDF — all findings and history</a>
       <div id="next-qc-content" hidden>
+        <div id="next-qc-area-filters" class="next-qc-tabs" role="group" aria-label="QC auditor assignments"></div>
         <label for="next-qc-search"><strong>Pick an area</strong></label>
-        <input id="next-qc-search" type="search" placeholder="Search Stage, Scene or task number">
+        <input id="next-qc-search" type="search" placeholder="Search Stage, Scene, QC task, finding, person or notes">
         <div id="next-qc-count" class="muted" role="status"></div>
         <div id="next-qc-list"></div>
         <div id="next-qc-fixes-list" hidden></div>
@@ -2565,7 +2567,8 @@ function nextQcEnsureDiscovery() {
     });
     el('next-qc-search').addEventListener('input', event => {
       nextQcDiscovery.search = event.target.value;
-      nextQcRenderResults();
+      if(window.setupQcApplyFilters) window.setupQcApplyFilters();
+      else nextQcRenderResults();
     });
     el('next-qc-list').addEventListener('click', event => {
       const button = event.target.closest('button[data-qc-task-id]');
@@ -2579,10 +2582,14 @@ function nextQcEnsureDiscovery() {
   const qc = nextQcDiscovery.mode !== 'work';
   const fixes = nextQcDiscovery.mode === 'fixes';
   el('next-qc-content').hidden = !qc;
+  // QC owns its search; do not show the unrelated Scheduled Work search above it.
+  const sharedSearch=document.querySelector('.setup-live-search');
+  if(sharedSearch) sharedSearch.hidden=qc;
   // Report uses the full season snapshot, independent of active-list filters.
   el('next-qc-report').hidden = !qc;
   el('next-qc-report').href = `api/setup/qc/report?season_year=${encodeURIComponent(appState.seasonYear)}`;
   el('next-qc-search').hidden = fixes;
+  el('next-qc-area-filters').hidden = fixes;
   section.querySelector('label[for="next-qc-search"]').hidden = fixes;
   el('next-qc-count').hidden = fixes;
   el('next-qc-list').hidden = fixes;
@@ -2624,7 +2631,7 @@ function nextQcEnsureDiscovery() {
 function nextQcRenderResults() {
   const target = el('next-qc-list');
   if (!target) return;
-  const rows = nextQcFilteredTasks();
+  const rows = nextQcAnnualTasks();
   el('next-qc-count').textContent = rows.length + ' of ' + nextQcAnnualTasks().length
     + ' final QC annual tasks shown — includes never-scheduled tasks';
   target.innerHTML = rows.map(task => {

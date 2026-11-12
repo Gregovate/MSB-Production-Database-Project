@@ -8,6 +8,28 @@
   let loadedYear = null;
   let pending = null;
   let saving = false;
+  // Per-page preferences survive view changes and saves, not shared identities.
+  let repairScope = 'mine';
+  let repairSearch = '';
+  let auditScope = 'all';
+  const searchWords = value => String(value || '').toLowerCase().replace(/#/g,'').split(/\s+/).filter(Boolean);
+  const matchesWords = (values, words) => {
+    const text=values.join(' ').toLowerCase().replace(/#/g,'');
+    return words.every(word=>text.includes(word));
+  };
+  const mine = f => snapshot.viewer_person_id != null && f.claimed_by_person_id != null &&
+    Number(f.claimed_by_person_id)===Number(snapshot.viewer_person_id);
+  const myArea = id => snapshot.viewer_person_id != null && (snapshot.auditors || []).some(a=>
+    Number(a.setup_session_task_id)===Number(id) && Number(a.person_id)===Number(snapshot.viewer_person_id));
+  const findingSearch = f => [f.qc_finding_id,f.setup_session_task_id,f.stage_key,f.stage_name,
+    f.scene_name || 'Stage-level',f.title,f.task_name,f.location_detail,f.reporter,f.repair_owner,
+    ...(f.events || []).flatMap(e=>[e.note,e.person])];
+  window.setupQcMatchesTaskSearch = (task, query) => matchesWords([
+    task.setup_session_task_id,task.setup_task_id,task.stage_key,task.stage_name,
+    task.scene_name || 'Stage-level',task.task_name,task.annual_task_name,
+    ...taskFindings(task.setup_session_task_id).flatMap(findingSearch),
+    ...(snapshot.auditors || []).filter(a=>Number(a.setup_session_task_id)===Number(task.setup_session_task_id)).map(a=>a.auditor)
+  ],searchWords(query));
   let actionButton = null;
   let actionHost = null;
   // Keep validation beside the operator's action, including errors from SQL.
@@ -65,8 +87,37 @@
       const counter=document.getElementById('next-qc-count');
       if (counter) counter.textContent=(list.querySelectorAll('.next-qc-row').length-count)+' active areas · '+count+' Ready for Production';
       archive.querySelector('summary').textContent='Ready for Production ('+count+')';
+      // Filter existing rows rather than rebuilding forms and losing draft notes.
+      const matching=new Set(nextQcFilteredTasks().map(t=>Number(t.setup_session_task_id)));
+      let shown=0, completed=0;
+      list.querySelectorAll('.next-qc-row').forEach(row=>{
+        const id=Number(row.querySelector('[data-qc-task-id]').dataset.qcTaskId);
+        row.hidden=!matching.has(id) || (auditScope==='mine' && !myArea(id));
+        if (!row.hidden) { if(signoffFor(id)) completed++; else shown++; }
+      });
+      archive.hidden=!completed;
+      archive.querySelector('summary').textContent='Ready for Production ('+completed+')';
+      if(counter) counter.textContent=shown+' active areas shown · '+completed+' Ready for Production';
+      const filters=document.getElementById('next-qc-area-filters');
+      if(filters) {
+        const tasks=nextQcAnnualTasks();
+        filters.innerHTML=[['all','All Areas',tasks.length],['mine','My QC Areas',tasks.filter(t=>myArea(t.setup_session_task_id)).length]]
+          .map(([key,label,total])=>`<button type="button" data-qc-area-scope="${key}" aria-pressed="${auditScope===key}">${label} (${total})</button>`).join('');
+        if(!filters.dataset.bound) {
+          filters.dataset.bound='1';
+          filters.addEventListener('click',event=>{
+            const button=event.target.closest('[data-qc-area-scope]');
+            if(button) { auditScope=button.dataset.qcAreaScope;paintTaskStates(); }
+          });
+        }
+      }
+      let empty=list.querySelector('[data-qc-area-empty]');
+      if(!empty) {empty=document.createElement('p');empty.dataset.qcAreaEmpty='1';list.append(empty);}
+      empty.textContent='No areas match this filter and search. Choose All Areas or clear the search.';
+      empty.hidden=shown+completed>0;
     }
   }
+  window.setupQcApplyFilters=paintTaskStates;
   window.setupQcRefreshTaskStates=async function() {
     try { await currentData(); }
     catch (error) {
@@ -294,26 +345,42 @@
     catch (error) { host.textContent='QC repair list unavailable: '+(error.message||error);return; }
     if (!host.isConnected || nextQcDiscovery.mode!=='fixes') return;
     const active=snapshot.findings.filter(f=>f.status!=='VERIFIED' && !signoffFor(f.setup_session_task_id));
+    const totals={mine:active.filter(mine).length,unclaimed:active.filter(f=>f.claimed_by_person_id==null).length,all:active.length};
     host.innerHTML=`<h3>QC Repairs Needed · ${active.length} outstanding findings</h3>
-      <label>Find problem <input type="search" data-qc-fix-search
-        placeholder="Search Stage, Scene, issue, Display or channel"></label>
-      <p class="muted">Same findings reported under QC Check. Workers claim and repair here;
-        auditors verify those same records in QC Check.</p>
-      ${active.length ? active.map(f=>`<div class="next-qc-fix-group" data-qc-fix-group>
-        <strong>${html(f.stage_key)} ${html(f.stage_name)}
-          · ${html(f.scene_name || 'Stage-level')} · QC #${f.setup_session_task_id}</strong>
-        ${findingMarkup(f,true)}</div>`).join('') :
-        '<p>No outstanding QC findings in the new ledger.</p>'}`;
-    bindControls(host,null);
-    if (!host.dataset.qcFixSearchBound) {
-      host.dataset.qcFixSearchBound='1';
-      host.addEventListener('input', event=>{
-        if (!event.target.matches('[data-qc-fix-search]')) return;
-        const query=event.target.value.trim().toLowerCase();
-        host.querySelectorAll('[data-qc-fix-group]').forEach(card=>{
-          card.hidden=!card.textContent.toLowerCase().includes(query);
-        });
+      <div class="next-qc-tabs" role="group" aria-label="Repair assignments">
+        ${[['mine','My Repairs'],['unclaimed','Unclaimed'],['all','All Repairs']].map(([key,label])=>
+          `<button type="button" data-qc-repair-scope="${key}" aria-pressed="${repairScope===key}">${label} (${totals[key]})</button>`).join('')}
+      </div>
+      <label>Find problem <input type="search" data-qc-fix-search value="${html(repairSearch)}"
+        placeholder="Search Stage, Scene, QC task, finding, person or notes"></label>
+      <p data-qc-fix-count role="status"></p>
+      <p class="muted">Claim a problem here, then return to record the repair. The area auditor signs off in QC Check.</p>
+      ${active.map(f=>`<div class="next-qc-fix-group" data-qc-fix-group="${f.qc_finding_id}">
+        <strong>${html(f.stage_name || f.stage_key)} · ${html(f.scene_name || 'Stage-level')} · QC #${f.setup_session_task_id}</strong>
+        ${findingMarkup(f,true)}</div>`).join('')}
+      <p data-qc-fix-empty hidden>No repairs match this filter and search. Choose Unclaimed or All Repairs, or clear the search.</p>`;
+    const apply=()=>{
+      let shown=0;
+      const words=searchWords(repairSearch);
+      host.querySelectorAll('[data-qc-fix-group]').forEach(card=>{
+        const f=active.find(f=>Number(f.qc_finding_id)===Number(card.dataset.qcFixGroup));
+        const inScope=repairScope==='all' || (repairScope==='mine' ? mine(f) : f.claimed_by_person_id==null);
+        card.hidden=!inScope || !matchesWords(findingSearch(f),words);
+        if(!card.hidden) shown++;
       });
-    }
+      host.querySelector('[data-qc-fix-count]').textContent=shown+' of '+totals[repairScope]+' findings shown';
+      host.querySelector('[data-qc-fix-empty]').hidden=shown>0;
+      host.querySelectorAll('[data-qc-repair-scope]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.qcRepairScope===repairScope)));
+    };
+    // Replace filter callbacks on render so they cannot retain a stale snapshot.
+    host.oninput=event=>{
+      if(event.target.matches('[data-qc-fix-search]')) {repairSearch=event.target.value;apply();}
+    };
+    host.onclick=event=>{
+      const button=event.target.closest('[data-qc-repair-scope]');
+      if(button) {repairScope=button.dataset.qcRepairScope;apply();}
+    };
+    bindControls(host,null);
+    apply();
   };
 })();

@@ -31,3 +31,13 @@ Production clone. No migrations or Production writes; no Node dependency.
 Local application regression: 1023 passed,3 skipped. Focused report/API14 passed.
 Local Chromium could not start due environment socket restriction; hosted browser
 regression is required, not claimed from local tests. No Production deployment.
+
+## Assignment/search follow-up acceptance
+
+Operator returned CLEAN EXIT for the prior preview; this is cleanup evidence, not acceptance of the new filters. No migrations are required or permitted by this source-only launcher.
+
+- Sign in as Crew with assigned repairs: My Repairs defaults selected; another person with the same display name must not match. Unclaimed excludes assigned repairs; All Repairs shows all outstanding records. Repaired/awaiting-signoff findings remain under their owner until area sign-off.
+- Search multiple words, Stage/Scene, QC task number, finding number (with or without #), reporter, repair owner and observation/repair notes. Combine with each ownership filter. Check no-result messages and counts.
+- Type a repair note, switch filters and search, then return: draft remains. After claim, item leaves Unclaimed and appears in My Repairs. Filters/search persist across mode changes and saves.
+- QC Check defaults All Areas; My QC Areas matches exact auditor identity. Search finds finding/history text even before opening an area. Completed history and full report remain accessible.
+- Confirm large selected/filter buttons and focus in light/dark modes, Scheduled Work unchanged, no writes from search/filter/report. Finish CLEAN EXIT.
