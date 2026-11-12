@@ -82,8 +82,9 @@ def test_qc_report_and_fixes_share_the_exact_same_finding_identity():
     assert 'CLAIM_REPAIR' in client and 'REPAIRED' in client
     assert 'RETEST_PASS' in client and 'RETEST_FAIL' in client
     assert 'INITIAL_POWER' in client
-    assert 'data-qc-problem' in client
-    assert 'data-qc-evidence' in client
+    assert 'data-qc-title' in client
+    assert 'data-qc-description' in client
+    assert 'data-qc-link-intake' in client
     assert 'setup_qc.js?v=2026-11-11.112.2' in HTML
     assert 'Setup/Application' not in client  # no raw file-loading or synthetic work items
 
