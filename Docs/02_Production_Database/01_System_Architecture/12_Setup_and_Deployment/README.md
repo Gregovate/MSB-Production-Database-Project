@@ -7,7 +7,7 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-10-16 |
+| Last Reviewed | 2026-11-11 |
 | Keywords | Setup, 2026 Setup, Scheduling Board, Perform Work, Report Work, Report Correction, Rolling Pick List, Pick Delay, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
 
 Use this page to decide **what you are trying to do in Setup** and where to go next.
@@ -26,7 +26,7 @@ Work Days are numbered in date order. Adding a missing date can change the displ
 
 Use **+ Add Work Days** for today and future dates. Use the historical-day action for a missing past date. Removing an empty day requires a note; days with protected work history cannot be removed. The milestone strip shows important season dates alongside the schedule.
 
-If a screen appears old after an update, refresh it and check the Client version and Updated date. The accepted October 4 release displays Client V0.3.38 and Updated 2026-10-04.
+If a screen appears old after an update, refresh it and check the Client version and Updated date. The November 11 QC release displays Client V0.3.121-qc-compact and Updated 2026-11-11.
 
 [Install a reviewed Setup change](../../../../Setup/operatorSOP/Install_a_Reviewed_Setup_Change.md) explains the installation checks and what PASS or STOP means.
 
@@ -34,6 +34,7 @@ If a screen appears old after an update, refresh it and check the Client version
 
 | I need to... | Start here |
 |---|---|
+| Report a QC problem, claim a repair, or sign off an area | [QC problems, repairs and final checks](operatorSOP/Report_QC_Problems_and_Repairs.md) |
 | Schedule 2026 Setup work | Open **Plan / Schedule** in [Setup](https://my.sheboyganlights.org/setup/) |
 | Perform scheduled field work / report actual work | [Perform and Report Setup Work](operatorSOP/Perform_and_Report_Setup_Work.md) |
 | Pull the next physical material / review delayed picks | [Rolling Pick List and Pick Delay](operatorSOP/Rolling_Pick_List_and_Pick_Delay.md) |

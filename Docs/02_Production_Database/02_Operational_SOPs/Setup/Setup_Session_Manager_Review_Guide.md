@@ -7,7 +7,7 @@
 | Audience | Setup Managers and reviewers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-10-16 |
+| Last Reviewed | 2026-11-11 |
 | Keywords | Setup, 2026 Setup, Scheduling Board, Perform Work, Report Work, Report Correction, Pick List, Pick Delay, reusable task, Verification Queue, Copy Task, prerequisites, Display Ownership, Extra Materials, Kit Inventory |
 
 ## Purpose
@@ -15,6 +15,12 @@
 Use this guide while reviewing and correcting Setup tasks.
 
 It explains the normal, fastest way to do the work. You should not need engineering or database knowledge to use this guide.
+
+## QC Checks and Repairs
+
+Production Crew report Setup failures under **Perform Work → QC Check** and claim/complete repairs under **QC Repairs Needed**, without Manager approval or scheduling. Keep required task completion reports current: final sign-off checks the exact area’s required work. The claimed auditor observes the full two-minute test and signs off the area once all required work and repairs are complete.
+
+Use [QC problems, repairs and final checks](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Report_QC_Problems_and_Repairs.md). Do not create duplicate Intake or Work Orders for these Setup findings. Historical Intake/Work Order cleanup remains a separate administrator review; do not undo promotions or discard evidence.
 
 ## Open Setup
 
