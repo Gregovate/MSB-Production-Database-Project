@@ -1108,3 +1108,30 @@ body:not(.setup-schedule-view) #next-perform-list {
 .next-qc-events li { margin: 0.7rem 0; }
 .next-qc-note { white-space: pre-wrap; overflow-wrap: anywhere; }
 .next-qc-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+/* #485 QC status colors use explicit dark text on light state surfaces in
+   both themes. Text labels carry the meaning independently of color. */
+.next-qc-discovery .next-qc-open[data-qc-state="open"] { background: #fff; color: #172033; }
+.next-qc-discovery .next-qc-open[data-qc-state="findings"],
+.next-qc-discovery .next-qc-finding[data-qc-state="OPEN"],
+.next-qc-discovery .next-qc-finding[data-qc-state="CLAIMED"],
+.next-qc-discovery .next-qc-finding[data-qc-state="AWAITING_RETEST"] {
+  background: #fef3c7; color: #172033; border-color: #a16207;
+}
+.next-qc-discovery .next-qc-open[data-qc-state="verified"],
+.next-qc-discovery .next-qc-finding[data-qc-state="VERIFIED"] {
+  background: #dcfce7; color: #172033; border-color: #15803d;
+}
+.next-qc-discovery .next-qc-finding[data-qc-state] .muted,
+.next-qc-discovery .next-qc-finding[data-qc-state] label { color: #334155; }
+.next-qc-task-status { font-weight: 700; margin-left: auto; }
+.next-qc-state { display: inline-block; padding: .2rem .45rem; border-radius: .3rem; }
+.next-qc-finding[data-qc-state="AWAITING_RETEST"] .next-qc-state {
+  background: #854d0e; color: #fff;
+}
+.next-qc-discovery button[data-qc-action="RETEST_PASS"] {
+  background: #166534; border-color: #14532d; color: #fff; font-weight: 700;
+}
+.next-qc-discovery button[data-qc-action="RETEST_FAIL"] {
+  background: #854d0e; border-color: #713f12; color: #fff; font-weight: 700;
+}

@@ -2623,31 +2623,24 @@ function nextQcRenderResults() {
   const rows = nextQcFilteredTasks();
   el('next-qc-count').textContent = rows.length + ' of ' + nextQcAnnualTasks().length
     + ' final QC annual tasks shown — includes never-scheduled tasks';
-  const allAssignments = setupNextState.performBoard.assignments || [];
   target.innerHTML = rows.map(task => {
     const id = Number(task.setup_session_task_id);
-    const assignmentCount = allAssignments.filter(a => Number(a.setup_session_task_id) === id).length;
     const selected = nextQcDiscovery.selectedTaskId === id;
     const scope = task.scene_name ? task.scene_name : 'Stage-level';
-    const blockers = Number(task.prerequisite_count || 0) && !task.prerequisites_complete
-      ? ' · Prerequisite work incomplete' : '';
     return `<article class="next-qc-row">
       <button type="button" class="small secondary next-qc-open" data-qc-task-id="${id}"
          aria-expanded="${selected}" aria-controls="next-qc-task-${id}">
         <strong>${escapeHtml(task.stage_name || 'Site-wide')}</strong>
         <span> · ${escapeHtml(scope)} · QC #${id}</span>
+        <span class="next-qc-task-status" data-qc-task-status>Checking status…</span>
       </button>
       <div id="next-qc-task-${id}" ${selected ? '' : 'hidden'}>
-        <details><summary>QC task details</summary>
-        <p>${escapeHtml(task.task_name)}</p>
-        <p class="muted">Execution: ${escapeHtml(task.execution_status || 'Unknown')}
-          · ${assignmentCount ? assignmentCount+' assignment(s) recorded' : 'Never scheduled'}${escapeHtml(blockers)}</p>
-        <p class="muted">No QC PASS or repair status is inferred from annual task completion.</p>
-        </details>
         <div class="next-qc-task-detail" data-qc-detail="${id}"></div>
       </div>
     </article>`;
   }).join('') || '<p class="muted">No final QC tasks match. Try Stage, Scene or annual task number.</p>';
+  // Load park-wide finding states even before an area is opened.
+  if (typeof window.setupQcRefreshTaskStates==='function') void window.setupQcRefreshTaskStates();
   // Fail visibly when the QC module or API fails; never leave a blank record.
   if (nextQcDiscovery.selectedTaskId != null) {
     const host = target.querySelector('[data-qc-detail="' + Number(nextQcDiscovery.selectedTaskId) + '"]');

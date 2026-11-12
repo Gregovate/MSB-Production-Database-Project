@@ -33,11 +33,11 @@ def test_qc_controls_do_not_create_schedule_or_simulate_saved_qc():
     assert "Scheduled Work" in qc
     assert "QC Check" in qc
     assert "next-qc-search" in qc
-    assert "Never scheduled" in qc
-    assert "task.prerequisites_complete" in qc
+    assert "QC task details" not in qc
+    assert "task.prerequisites_complete" not in qc  # Reporting never gates on readiness.
     assert "QC Repairs Needed" in qc
     assert "window.setupQcRenderCurrent" in qc
-    assert "No QC PASS or repair status is inferred" in qc
+    assert "data-qc-task-status" in qc
     assert "commandOptions(" not in qc
     assert "/api/setup/" not in qc
     assert "POST" not in qc
@@ -60,9 +60,9 @@ def test_theme_safe_qc_and_fresh_asset_pins():
     assert "background: var(--card" in CSS
     assert "color: var(--text" in CSS
     assert ".next-qc-row" in CSS
-    assert 'setup_next_pass.js?v=2026-11-11.116.1' in HTML
-    assert 'setup_next_pass.css?v=2026-11-11.116.1' in HTML
-    assert "V0.3.116-qc-quick-report" in (APP / "production_backend.py").read_text()
+    assert 'setup_next_pass.js?v=2026-11-11.117.1' in HTML
+    assert 'setup_next_pass.css?v=2026-11-11.117.1' in HTML
+    assert "V0.3.117-qc-status" in (APP / "production_backend.py").read_text()
 
 
 def test_final_qc_regex_and_multiword_search_are_executable_javascript_patterns():
@@ -85,7 +85,7 @@ def test_qc_report_and_fixes_share_the_exact_same_finding_identity():
     assert 'data-qc-problems' in client
     assert 'data-qc-title' not in client
     assert 'data-qc-link-intake' not in client
-    assert 'setup_qc.js?v=2026-11-11.116.1' in HTML
+    assert 'setup_qc.js?v=2026-11-11.117.1' in HTML
     assert 'Setup/Application' not in client  # no raw file-loading or synthetic work items
 
 

@@ -18,9 +18,31 @@
   const taskFindings = id => snapshot.findings.filter(
     f => Number(f.setup_session_task_id) === Number(id)
   );
+  function paintTaskStates() {
+    // Exact annual identity owns the color; ordinary completion is not QC PASS.
+    document.querySelectorAll('[data-qc-task-id]').forEach(button => {
+      const findings=taskFindings(button.dataset.qcTaskId);
+      const active=findings.filter(f=>f.status!=='VERIFIED');
+      const retest=active.filter(f=>f.status==='AWAITING_RETEST').length;
+      button.dataset.qcState=active.length ? 'findings' : findings.length ? 'verified' : 'open';
+      const label=button.querySelector('[data-qc-task-status]');
+      if (label) label.textContent=active.length
+        ? `${active.length} open${retest ? ' · '+retest+' verification needed' : ' · Needs repair'}`
+        : findings.length ? 'Findings verified · Final QC pending' : 'No findings · QC pending';
+    });
+  }
+  window.setupQcRefreshTaskStates=async function() {
+    try { await currentData(); }
+    catch (error) {
+      document.querySelectorAll('[data-qc-task-status]').forEach(label=>{
+        label.textContent='Status unavailable';
+        delete label.closest('[data-qc-task-id]').dataset.qcState;
+      });
+    }
+  };
   const statusLabel = status => ({
     OPEN:'Needs repair',CLAIMED:'Repair claimed',
-    AWAITING_RETEST:'Repair complete — needs retest',VERIFIED:'Verified'
+    AWAITING_RETEST:'Verification needed',VERIFIED:'Verified'
   }[status] || status);
   const eventMarkup = f => (f.events || []).map(e =>
     `<li><strong>${html(e.person || 'Reporter')}</strong>
@@ -36,6 +58,7 @@
         const payload=await api(`api/setup/qc?season_year=${encodeURIComponent(year)}`);
         snapshot=payload.qc || {findings:[],auditors:[]};
         loadedYear=year;
+        if (year===Number(appState.seasonYear)) paintTaskStates();
       } finally { pending=null; }
     })();
     return pending;
@@ -81,11 +104,10 @@
                <button type="button" class="small secondary" data-qc-action="RETEST_FAIL" data-qc-id="${f.qc_finding_id}">Still Failing</button>`
             : ''}
         </div>`;
-    return `<section class="next-qc-finding" data-qc-finding="${f.qc_finding_id}">
+    return `<section class="next-qc-finding" data-qc-state="${status}" data-qc-finding="${f.qc_finding_id}">
       <strong>Issue #${f.qc_finding_id}: ${html((f.events || []).find(e=>e.type==='REPORTED')?.note || f.title)}</strong>
       <span class="next-qc-state">${html(statusLabel(status))}</span>
-      <div class="muted">${html(f.location_detail || 'Location unspecified')} ·
-        ${html(f.discovery_phase)} · Reported by ${html(f.reporter)} ·
+      <div class="muted">${f.location_detail ? html(f.location_detail)+' · ' : ''}Reported by ${html(f.reporter)} ·
         ${html(localTime(f.created_at))}</div>
       ${f.repair_owner ? `<div class="muted">Repair: ${html(f.repair_owner)}</div>` : ''}
       ${(f.linked_intake_ids || []).length ? `<div class="muted">Original Intake: ${f.linked_intake_ids.map(x=>'INTAKE-'+Number(x)).join(', ')}</div>` : ''}
@@ -162,7 +184,9 @@
     try { await currentData(); }
     catch (error) { host.textContent='QC details unavailable: '+(error.message||error);return; }
     if (!host.isConnected || id!==nextQcDiscovery.selectedTaskId) return;
-    const findings=taskFindings(id);
+    const allFindings=taskFindings(id);
+    const findings=allFindings.filter(f=>f.status!=='VERIFIED');
+    const verified=allFindings.filter(f=>f.status==='VERIFIED');
     const auditors=snapshot.auditors.filter(x=>Number(x.setup_session_task_id)===Number(id));
     host.innerHTML=`
       <div class="next-qc-record">
@@ -170,9 +194,13 @@
           ${auditors.length ? auditors.map(x=>html(x.auditor)).join(', ') : 'None yet'}
           <button type="button" class="small secondary" data-qc-action="CLAIM_AUDIT" data-qc-task="${id}">Assign to Me</button>
         </div>
-        <h4>Previously reported problems (${findings.length})</h4>
+        <h4>Open findings (${findings.length})</h4>
+        <div class="next-qc-active">
         ${findings.length ? findings.map(f=>findingMarkup(f,false)).join('')
-          : '<p>No QC findings saved yet for this task.</p>'}
+          : '<p>No open findings.</p>'}
+        </div>
+        ${verified.length ? `<details class="next-qc-verified-history"><summary>Verified history (${verified.length})</summary>
+          ${verified.map(f=>findingMarkup(f,false)).join('')}</details>` : ''}
         <form class="next-qc-new" onsubmit="return false">
           <h4>Report problems</h4>
           <label>What is wrong? One problem per line.

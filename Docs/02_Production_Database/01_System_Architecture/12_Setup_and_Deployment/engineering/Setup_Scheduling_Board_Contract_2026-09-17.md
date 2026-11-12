@@ -1454,6 +1454,25 @@ One click claims a finding; only recording the repair requires repair notes.
 Auditor assignment is optional for reporting and separate from the quick entry
 form. Retest evidence and final-signoff gates remain as specified below.
 
+### Visible QC status and active-list rules — 2026-11-11 local
+
+Stage/Scene selectors show white for areas with no recorded findings, yellow
+while any finding is unresolved, and green when every recorded finding is
+verified. Always display a text status as well as color. Waiting repairs say
+“Verification needed”; mixed lists show the number awaiting verification.
+A repaired but unverified finding keeps the area yellow. Adding any new finding
+turns a previously green area yellow again; mixed verified/unverified findings
+always remain yellow. Recompute this on every save and when revisiting the view.
+Green means the recorded findings have passed retest, not final annual QC:
+label it “Findings verified · Final QC pending” until final signoff exists.
+Do not infer colors or final approval from annual READY/COMPLETE flags.
+
+Verified findings leave both active QC Check and Report Fixes immediately.
+Keep attributed history and the ability to reopen a recurring failure in a
+collapsed verified-history section, outside the active list. Removing a finding
+from the active list never deletes it. Remove the QC task-details block from
+the reporting screen. Maintain readable state labels and controls in both themes.
+
 ### One finding through report, repair and verification
 
 One annual QC task can contain multiple distinct findings. Existing problems

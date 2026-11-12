@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.116-qc-quick-report'};
+ if(path.includes('api/health')) body={version:'V0.3.117-qc-status'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -93,6 +93,8 @@ addEventListener('load',()=>setTimeout(async()=>{
   document.querySelector('[data-qc-fix-note="71"]').value='Reconnected wire';
   await click('[data-qc-action="REPAIRED"]');
   await click('#next-qc-check-tab');
+  assert(document.querySelector('[data-qc-task-id="598"]').dataset.qcState==='findings','Repair prematurely turned area green');
+  assert(document.querySelector('[data-qc-task-id="598"]').textContent.includes('verification needed'),'Verification status missing');
   await click('[data-qc-action="CLAIM_AUDIT"]');
   count=qcWrites.length;
   await click('[data-qc-action="RETEST_FAIL"]');
@@ -108,15 +110,37 @@ addEventListener('load',()=>setTimeout(async()=>{
   await click('[data-qc-action="RETEST_PASS"]');
   await click('#next-qc-fixes-tab');
   assert(!document.querySelector('#next-qc-fixes-list [data-qc-finding="71"]'),'Verified finding remains outstanding');
+  await click('#next-qc-check-tab');
+  assert(!document.querySelector('.next-qc-active [data-qc-finding="71"]'),'Verified finding remains in active QC list');
+  assert(!document.querySelector('.next-qc-verified-history').open,'Verified history did not collapse');
+  assert(document.querySelector('[data-qc-task-id="598"]').dataset.qcState==='findings','One verified finding hid the remaining failures');
+  // Model all remaining findings verified, then a new failure in the same area.
+  qcFixture.findings.forEach(f=>f.status='VERIFIED');
+  await setupQcRenderCurrent();
+  const area=document.querySelector('[data-qc-task-id="598"]');
+  assert(area.dataset.qcState==='verified','All-verified area is not green');
+  assert(area.textContent.includes('Final QC pending'),'Finding verification implied annual PASS');
+  for(const theme of ['light','dark']) {
+    document.documentElement.dataset.theme=theme;
+    assert(getComputedStyle(area).backgroundColor==='rgb(220, 252, 231)','Green area lost its state color');
+    assert(getComputedStyle(document.querySelector('[data-qc-task-id="483"]')).backgroundColor==='rgb(255, 255, 255)','Open area is not white');
+  }
   // Simulate a second browser's new finding, then revisit the repairs screen.
   qcFixture.findings.push({qc_finding_id:80,setup_session_task_id:598,title:'Other worker report',status:'OPEN',events:[]});
-  await click('#next-qc-check-tab');await click('#next-qc-fixes-tab');
+  await setupQcRenderCurrent();
+  assert(document.querySelector('[data-qc-task-id="598"]').dataset.qcState==='findings','New finding did not turn green area yellow');
+  // A new finding alongside a repaired/unverified finding also stays yellow.
+  qcFixture.findings[0].status='AWAITING_RETEST';
+  await setupQcRenderCurrent();
+  assert(document.querySelector('[data-qc-task-id="598"]').textContent.includes('verification needed'),'Mixed unverified/new findings lost retest warning');
   assert(document.querySelector('[data-qc-finding="80"]'),'Other worker finding hidden by cached snapshot');
   for(const theme of ['light','dark']) {
    document.documentElement.dataset.theme=theme;
-   const card=document.querySelector('[data-qc-finding="80"]');
+   const card=document.querySelector('.next-qc-active [data-qc-finding="80"]');
    const style=getComputedStyle(card);
+   assert(getComputedStyle(document.querySelector('[data-qc-task-id="598"]')).backgroundColor==='rgb(254, 243, 199)','Area is not yellow');
    assert(style.color!==style.backgroundColor,'Unreadable '+theme+' card');
+   card.querySelectorAll('details').forEach(d=>d.open=true);
    const note=card.querySelector('textarea');
    assert(getComputedStyle(note).color!==getComputedStyle(note).backgroundColor,'Unreadable '+theme+' notes');
   }
