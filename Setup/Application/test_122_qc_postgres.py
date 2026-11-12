@@ -100,11 +100,11 @@ def test_actual_final_gate_and_post_signoff_boundary(db):
     with pytest.raises(psycopg2.errors.InsufficientPrivilege):
         final(email='outsider@test')
     gate = query('SELECT ops.setup_qc_final_gate(20)')
-    assert {x['id'] for x in gate['unfinished_work']} == {10,11,40}
-    # Same scene, shared Stage work and external reusable prerequisite all block.
+    assert {x['id'] for x in gate['unfinished_work']} == {10,40}
+    # Only exact Scene work and explicit prerequisites block; unrelated Stage work does not.
     with pytest.raises(psycopg2.errors.CheckViolation):
         final()
-    query("UPDATE ops.setup_session_task SET execution_status='COMPLETE' WHERE setup_session_task_id IN (10,11,40)")
+    query("UPDATE ops.setup_session_task SET execution_status='COMPLETE' WHERE setup_session_task_id IN (10,40)")
     query("UPDATE ops.setup_session_task SET annual_readiness_state='NOT_READY' WHERE setup_session_task_id=20")
     with pytest.raises(psycopg2.errors.CheckViolation):
         final()
@@ -135,5 +135,6 @@ def test_actual_final_gate_and_post_signoff_boundary(db):
     assert query("SELECT execution_status FROM ops.setup_session_task WHERE setup_session_task_id=20")=='COMPLETE'
     assert query('SELECT completed_by_person_id FROM ops.setup_session_task WHERE setup_session_task_id=20')==1
     assert query("SELECT execution_status FROM ops.setup_session_task WHERE setup_session_task_id=30")=='NOT_READY'
+    assert query("SELECT execution_status FROM ops.setup_session_task WHERE setup_session_task_id=11")=='NOT_READY'
     assert query('SELECT count(*) FROM ops.work_order')==0
     assert query('SELECT count(*) FROM stage.work_order_intake')==0

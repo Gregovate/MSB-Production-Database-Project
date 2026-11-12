@@ -1440,6 +1440,17 @@ problem-entry box and omit Assign to Me after the current auditor has claimed.
 A recorded repair does not waive unfinished required work; show that distinction
 explicitly beside the disabled signoff.
 
+### Exact Scene completion scope — operator correction, 2026-11-11 local
+
+The Front Entrance Open/Close Sign is unrelated to Entrance Arch QC. Scene QC
+must check the tasks in that exact Scene's annual list and authoritative explicit
+prerequisites. Do not automatically add Stage-level work merely because it shares
+the Scene's parent Stage. This supersedes the shared-Stage inference in the V118
+implementation below. An explicit cross-area dependency is still authoritative;
+missing or unfinished required work still blocks signoff. Regression must prove
+Scene signoff succeeds with unrelated Stage work incomplete while an explicit
+external prerequisite continues to block until complete.
+
 ### Identity and three Perform Work modes
 
 The existing annual QC task is the permanent home for functional findings

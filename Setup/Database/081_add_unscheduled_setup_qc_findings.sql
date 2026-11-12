@@ -278,8 +278,8 @@ GRANT EXECUTE ON FUNCTION ops.setup_qc_command(text,text,bigint,bigint,text,text
 
 -- Purpose: one authoritative final gate shared by browser read and command.
 -- Scope: current reusable graph + explicit annual edges + included area work.
--- Stage QC includes scene lists; scene QC includes shared Stage work but not
--- the parent Stage QC, avoiding a circular final-signoff dependency.
+-- Stage QC includes its area; Scene QC includes its exact Scene only.
+-- Cross-area work must be an explicit prerequisite, never inferred from Stage.
 CREATE FUNCTION ops.setup_qc_final_gate(p_task bigint)
 RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path=pg_catalog,ops,ref
@@ -304,9 +304,7 @@ WITH target AS (
   JOIN ops.setup_session_task pst ON pst.setup_session_id=t.setup_session_id
     AND pst.annual_stage_id IS NOT DISTINCT FROM t.annual_stage_id
   WHERE pst.included_flag AND pst.setup_session_task_id<>p_task
-    AND (t.annual_lor_scene_id IS NULL OR pst.annual_lor_scene_id=t.annual_lor_scene_id
-      OR (pst.annual_lor_scene_id IS NULL AND pst.annual_task_name !~*
-        'plug[[:space:]]+in[[:space:]]+network[[:space:]]+to[[:space:]]+controller.*2[[:space:]]+minute[[:space:]]+test[[:space:]]+show'))
+    AND (t.annual_lor_scene_id IS NULL OR pst.annual_lor_scene_id=t.annual_lor_scene_id)
 ), work AS (
   SELECT r.id,coalesce(pst.annual_task_name,'Missing annual prerequisite') AS name,
     CASE WHEN pst.annual_task_name ~*
