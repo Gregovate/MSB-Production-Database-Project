@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-09-17  V0.6.3
+Current Version : 2026-10-27  V0.6.6
 Author          : GAL / OpenAI
 
 Purpose:
@@ -84,7 +84,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.6.3"
+APP_VERSION = "V0.6.7"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 STAGE_AUTHORITY_ACTIONS = {
     "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",
@@ -151,6 +151,14 @@ def runner_request(path: str, payload: dict[str, Any] | None = None,
     if not isinstance(result, dict):
         raise ApiError("LOR runner returned an invalid response", 502)
     return result
+
+
+def signed_in_email() -> str:
+    """Read-only viewers share the existing trusted Access proxy boundary."""
+    email = request.headers.get("Cf-Access-Authenticated-User-Email", "").strip().lower()
+    if not email or "@" not in email:
+        raise ApiError("Authenticated MSB login required", 401)
+    return email
 
 
 def operator_email() -> str:
@@ -357,7 +365,7 @@ def dashboard_state(snapshot: dict[str, Any] | None,
     }
 
 
-def load_dashboard(conn: Any) -> dict[str, Any]:
+def load_dashboard(conn: Any, viewer: str | None = None) -> dict[str, Any]:
     """Load the current snapshot and its authoritative reconciliation owner."""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
@@ -417,7 +425,7 @@ def load_dashboard(conn: Any) -> dict[str, Any]:
         "latest_run": snapshot_run,
         "workflow": state,
         "reports_url": "reports/",
-        "operator": operator_email(),
+        "operator": viewer if viewer is not None else operator_email(),
         "parser_ingest_mode": "WEBSITE_RUNNER" if runner_state else "MANUAL",
         "parser_runner": runner_state,
         "parser_runner_error": runner_error,
@@ -549,9 +557,15 @@ def get_run(run_id: int) -> Response:
 
 @app.get("/dashboard")
 def get_dashboard() -> Response:
-    operator_email()
+    email = signed_in_email()
+    allowed = {item.strip().lower() for item in required_setting("LOR_PREFLIGHT_OPERATORS").split(",") if item.strip()}
     with database() as conn:
-        return jsonify(load_dashboard(conn))
+        document = load_dashboard(conn, viewer=email)
+    document["access"] = {"can_run_parser": email in allowed, "can_operate_lor": email in allowed,
+                          "can_publish_catalog": catalog_enabled() and email in catalog_publishers()}
+    response = jsonify(document)
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
 
 
 @app.post("/parser/candidate")
@@ -897,6 +911,91 @@ def retry_run_report(run_id: int) -> Response:
         report_url=completed["report_url"],
         snapshot_retention_warning=retention_warning,
     )
+
+
+@app.get("/current-source")
+def current_source() -> Response:
+    """#81-owned live authority; never cached or selected from report files."""
+    from current_source import SourceUnavailable, load_current_source
+    email = request.headers.get("Cf-Access-Authenticated-User-Email", "").strip().lower()
+    if not email:
+        raise ApiError("Authenticated MSB login required", 401)
+    try:
+        with database() as conn:
+            # Reuse the existing active Directus role/policy resolver. This
+            # route grants read-only preview authority, never operator actions.
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT * FROM ref.setup_browser_capabilities(%s)", (email,))
+                access = cur.fetchone()
+            if not access or not (
+                access.get("role_name") in {"Production Crew", "Manager", "Administrator"}
+                or set(access.get("policy_names") or []) & {"Production Crew", "Manager", "Administrator"}
+                or access.get("can_admin_setup")
+            ):
+                raise ApiError("Production Crew access required for LOR2PC", 403)
+            document = load_current_source(conn, RealDictCursor)
+    except SourceUnavailable as exc:
+        raise ApiError(str(exc), 409) from exc
+    if catalog_enabled():
+        document = runner_request("catalog/current", {"accepted_source": document})["source"]
+    response = jsonify(document)
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
+def catalog_enabled() -> bool:
+    return os.environ.get("LOR_PREVIEW_CATALOG_ENABLED") == "true"
+
+
+def catalog_publishers() -> set[str]:
+    # Deliberately independent of Production Crew and parser/reconciliation roles.
+    return {x.strip().lower() for x in os.environ.get("LOR_CATALOG_PUBLISHERS", "").split(",") if x.strip()}
+
+
+def catalog_publisher() -> str:
+    email = signed_in_email()
+    if not catalog_enabled() or email not in catalog_publishers():
+        raise ApiError("Official catalog publication is restricted to designated publishers", 403)
+    expected_origin = required_setting("LOR_CATALOG_ORIGIN")
+    if request.headers.get("Origin") != expected_origin:
+        raise ApiError("Catalog action requires the protected LOR2DB page", 403)
+    return email
+
+
+@app.post("/catalog/review")
+def catalog_review() -> Response:
+    from current_source import SourceUnavailable, load_current_source
+    actor = catalog_publisher()
+    json_body()  # Only JSON requests; all source/path authority is server-derived.
+    try:
+        with database() as conn:
+            accepted = load_current_source(conn, RealDictCursor)
+    except SourceUnavailable as exc:
+        raise ApiError(str(exc), 409) from exc
+    result = runner_request("catalog/review", {"accepted_source": accepted, "actor": actor}, timeout=180)
+    response = jsonify(result)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.post("/catalog/publish")
+def catalog_publish() -> Response:
+    from current_source import SourceUnavailable, load_current_source
+    actor = catalog_publisher()
+    body = json_body()
+    review_id = body.get("review_id")
+    if body.get("confirm_publish") is not True or not re.fullmatch(r"[a-f0-9]{64}", str(review_id)):
+        raise ApiError("Explicit approval of a valid catalog review is required")
+    try:
+        with database() as conn:
+            accepted = load_current_source(conn, RealDictCursor)
+    except SourceUnavailable as exc:
+        raise ApiError(str(exc), 409) from exc
+    result = runner_request("catalog/publish", {"accepted_source": accepted, "actor": actor,
+                            "review_id": review_id, "confirm_publish": True}, timeout=180)
+    response = jsonify(result)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 if __name__ == "__main__":

@@ -1,0 +1,26 @@
+MSB Preview Sync - Production Folder Cleanup
+Issue #299
+
+ADMINISTRATOR-ONLY migration for:
+
+G:\Shared drives\MSB Database\UserPreviewStaging\LOR2DB_2PC_Sync
+
+It does NOT update the local LOR preview library.
+
+AFTER SUCCESS, THE ROOT CONTAINS ONLY:
+- Update your PC Previews to LOR Master Files
+- READ ME - Update your PC Previews.txt
+- MSB Preview Sync Support
+
+SAFETY
+- Unknown root files block migration.
+- Current deployment is backed up before files are moved.
+- Shortcut is recreated to target the support folder.
+- Latest COMPLETED LOR2DB report must resolve an existing versioned master folder.
+- Receipt is written to MSB Preview Sync Support\PRODUCTION_LAYOUT.json.
+
+RUN
+1. Close any MSB Preview Update windows.
+2. Extract these installer files somewhere OUTSIDE the shared deployment folder.
+3. Double-click "Install MSB Preview Sync Production Layout.vbs".
+4. Do not manually move files in the shared deployment folder.
