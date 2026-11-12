@@ -15,7 +15,9 @@
   const searchWords = value => String(value || '').toLowerCase().replace(/#/g,'').split(/\s+/).filter(Boolean);
   const matchesWords = (values, words) => {
     const text=values.join(' ').toLowerCase().replace(/#/g,'');
-    return words.every(word=>text.includes(word));
+    // Numeric tokens must not make arch 3 match finding 73 or task 483.
+    return words.every(word=>/^\d+$/.test(word)
+      ? new RegExp('(^|\\D)'+word+'(\\D|$)').test(text) : text.includes(word));
   };
   const mine = f => snapshot.viewer_person_id != null && f.claimed_by_person_id != null &&
     Number(f.claimed_by_person_id)===Number(snapshot.viewer_person_id);
