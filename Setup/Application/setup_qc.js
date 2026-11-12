@@ -70,18 +70,23 @@
   }
   function findingMarkup(f, withFixes) {
     const status=f.status;
+    // The repair queue never verifies its own repairs. Retest belongs to QC Check.
     const controls=withFixes
       ? `<div class="next-qc-actions">
-          ${status==='OPEN' || status==='CLAIMED'
-            ? `<button type="button" class="small secondary" data-qc-action="CLAIM_REPAIR" data-qc-id="${f.qc_finding_id}">I'll Fix This</button>
-               <button type="button" class="small secondary" data-qc-action="REPAIRED" data-qc-id="${f.qc_finding_id}">Repair Complete</button>`
+          ${status==='OPEN'
+            ? `<button type="button" class="small secondary" data-qc-action="CLAIM_REPAIR" data-qc-id="${f.qc_finding_id}">I'll Fix This</button>`
             : ''}
+          ${status==='CLAIMED'
+            ? `<button type="button" class="small secondary" data-qc-action="REPAIRED" data-qc-id="${f.qc_finding_id}">Mark Repaired</button>`
+            : ''}
+          ${status==='AWAITING_RETEST' ? '<span>Awaiting auditor retest in QC Check</span>' : ''}
+        </div>`
+      : `<div class="next-qc-actions">
           ${status==='AWAITING_RETEST'
-            ? `<button type="button" class="small secondary" data-qc-action="RETEST_PASS" data-qc-id="${f.qc_finding_id}">Retest Passed</button>
+            ? `<button type="button" class="small secondary" data-qc-action="RETEST_PASS" data-qc-id="${f.qc_finding_id}">Verified</button>
                <button type="button" class="small secondary" data-qc-action="RETEST_FAIL" data-qc-id="${f.qc_finding_id}">Still Failing</button>`
             : ''}
-        </div>`
-      : '';
+        </div>`;
     return `<section class="next-qc-finding" data-qc-finding="${f.qc_finding_id}">
       <strong>Issue #${f.qc_finding_id}: ${html(f.title)}</strong>
       <span class="next-qc-state">${html(statusLabel(status))}</span>
@@ -90,6 +95,13 @@
         ${html(localTime(f.created_at))}</div>
       ${f.repair_owner ? `<div class="muted">Repair: ${html(f.repair_owner)}</div>` : ''}
       ${(f.linked_intake_ids || []).length ? `<div class="muted">Original Intake: ${f.linked_intake_ids.map(x=>'INTAKE-'+Number(x)).join(', ')}</div>` : ''}
+      ${(f.linked_intake_records || []).map(i=>`<details class="next-qc-source">
+        <summary>Original INTAKE-${Number(i.intake_id)} · ${html(i.submitter_name_raw)}</summary>
+        <div class="muted">${html(localTime(i.updated_at))}</div>
+        <div class="next-qc-note">${html(i.problem_raw)}</div>
+        ${i.notes_raw ? `<div class="next-qc-note">${html(i.notes_raw)}</div>` : ''}
+        ${i.photo_url_raw ? `<div class="next-qc-note">Photo reference: ${html(i.photo_url_raw)}</div>` : ''}
+      </details>`).join('')}
       <details><summary>Observations and repair history (${(f.events || []).length})</summary>
         <ul class="next-qc-events">${eventMarkup(f)}</ul>
       </details>
@@ -101,6 +113,7 @@
           placeholder="Additional details or corroborating observation"></textarea></label>
          <button type="button" class="small secondary" data-qc-action="OBSERVATION"
            data-qc-id="${f.qc_finding_id}">Add Observation</button>
+         ${controls}
          ${status==='VERIFIED'
            ? `<button type="button" class="small secondary"
              data-qc-action="REOPEN" data-qc-id="${f.qc_finding_id}">
@@ -115,7 +128,7 @@
       if (!btn || !host.contains(btn)) return;
       const action=btn.dataset.qcAction;
       const finding=Number(btn.dataset.qcId||0);
-      const noteField=['OBSERVATION','REOPEN'].includes(action)
+      const noteField=['OBSERVATION','REOPEN','RETEST_PASS','RETEST_FAIL'].includes(action)
         ? host.querySelector(`[data-qc-observation="${finding}"]`)
         : host.querySelector(`[data-qc-fix-note="${finding}"]`);
       let note=noteField?.value?.trim() || '';
@@ -292,10 +305,11 @@
     try { await currentData(); }
     catch (error) { host.textContent='QC repair list unavailable: '+(error.message||error);return; }
     const active=snapshot.findings.filter(f=>f.status!=='VERIFIED');
-    host.innerHTML=`<h3>Report Fixes · ${active.length} outstanding issues</h3>
+    host.innerHTML=`<h3>QC Repairs Needed · ${active.length} outstanding findings</h3>
       <label>Find problem <input type="search" data-qc-fix-search
         placeholder="Search Stage, Scene, issue, Display or channel"></label>
-      <p class="muted">Same records reported under QC Check. Repair Complete requires a functional retest.</p>
+      <p class="muted">Same findings reported under QC Check. Workers claim and repair here;
+        auditors verify those same records in QC Check.</p>
       ${active.length ? active.map(f=>`<div class="next-qc-fix-group" data-qc-fix-group>
         <strong>${html(f.stage_key)} ${html(f.stage_name)}
           · ${html(f.scene_name || 'Stage-level')} · QC #${f.setup_session_task_id}</strong>
