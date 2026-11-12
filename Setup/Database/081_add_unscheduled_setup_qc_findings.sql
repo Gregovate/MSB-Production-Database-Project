@@ -257,7 +257,20 @@ BEGIN
             SELECT jsonb_agg(l.intake_id ORDER BY l.intake_id)
             FROM ops.setup_qc_intake_link l
             WHERE l.qc_finding_id=f.qc_finding_id
-          ),'[]'::jsonb) AS linked_intake_ids
+          ),'[]'::jsonb) AS linked_intake_ids,
+          -- Crew repairing a finding must see its actual historical source,
+          -- not just an Intake number. Never mutate original Intake rows.
+          coalesce((
+            SELECT jsonb_agg(jsonb_build_object(
+              'intake_id',i.intake_id,'submitter_name_raw',i.submitter_name_raw,
+              'problem_raw',i.problem_raw,'notes_raw',i.notes_raw,
+              'updated_at',i.updated_at,
+              'photo_url_raw',to_jsonb(i)->>'photo_url_raw')
+              ORDER BY i.intake_id)
+            FROM ops.setup_qc_intake_link l
+            JOIN stage.work_order_intake i ON i.intake_id=l.intake_id
+            WHERE l.qc_finding_id=f.qc_finding_id
+          ),'[]'::jsonb) AS linked_intake_records
         FROM ops.setup_qc_finding f
         JOIN ops.setup_session_task t ON t.setup_session_task_id=f.setup_session_task_id
         JOIN ops.setup_session ss ON ss.setup_session_id=t.setup_session_id
