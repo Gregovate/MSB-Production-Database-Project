@@ -1477,8 +1477,9 @@ use the Work Order system, not new/reopened Setup QC findings. Enforce that
 boundary in server commands, not only by hiding buttons. Preserve all Setup
 findings, repair/retest history and final evidence. Do not automatically create
 Work Orders or move existing findings as a side effect of final signoff.
-This final signoff and handoff is required implementation, not yet available;
-keep the final control closed until implemented and accepted.
+The disposable V0.3.118 candidate implements this final signoff and handoff.
+Production release remains closed until exact-candidate SQL and operator browser
+acceptance, CLEAN EXIT and explicit release approval.
 
 Individually verified findings leave both active QC Check and Report Fixes
 immediately. Retain them in collapsed verified history. Before final annual
@@ -1557,9 +1558,8 @@ INTAKE86 exception does not authorize a general Work-Order-first QC reporting pa
 as evidence that the inspected Stage/Scene is ready for the show. This requires
 the three gates below, not merely a repair note, a claim, a READY flag or an
 ordinary annual-task COMPLETE status. The application must not present those
-intermediate states as accepted final QC. This guarantee is unfinished until
-the final signoff control enforces the gates and passes acceptance; keep that
-control unavailable in the meantime.
+intermediate states as accepted final QC. The final signoff control must enforce these gates in the database; candidate
+implementation is subject to SQL and operator acceptance before Production.
 
 Auditors may self-assign without scheduling. Normal test operation can use a
 command-center operator calling the actual two-minute LOR sequence and field
@@ -1574,8 +1574,12 @@ Final annual **Complete QC / PASS** requires all of:
 2. Recorded evidence of the actual two-minute test.
 3. All blocking findings resolved and verified.
 
-This final approval control is unfinished and must remain closed until
-implemented and accepted. None of these gates may block early fault reporting.
+The claimed auditor sees **Ready for Production — Sign Off**. The control is
+disabled with named blockers until the database reports required work complete,
+annual readiness confirmed and every finding verified. The auditor supplies a
+sequence/version reference, observed result, and explicit confirmation of the
+full two-minute test. The database rejects missing evidence, unclaimed auditors,
+unfinished work and unresolved findings even if a caller bypasses the UI. None of these gates may block early fault reporting.
 
 ### Implementation and acceptance boundary
 
@@ -1616,3 +1620,35 @@ files. Browser fixture tests must use that route rather than unrestricted file
 serving. Candidate identity: V0.3.115-qc-module. This changes delivery of the
 existing contract implementation, not the QC design. Disposable operator
 acceptance is still required; Production release remains HOLD.
+
+
+### Final auditor command implementation — V0.3.118 candidate
+
+Final QC is the last task of the annual instance of the reusable task list.
+Required work includes the current reusable dependency graph, explicit annual
+edges, and every included annual task in the applicable Stage/Scene. A scene
+list also includes shared Stage work; it excludes the parent Stage-level QC
+(which must follow its scene checks). Stage-level QC requires its scene QC
+signoffs as well as Stage work. Missing annual prerequisite instances block
+signoff. Current authoritative completed Work Order gates satisfy their linked
+work prerequisite; no new Work Order is created by any QC operation.
+
+The final command serializes with QC writes on the exact annual task and locks
+the relevant work/graph sources while checking them. It saves immutable auditor,
+time, sequence reference, actual test-duration attestation, observed result and
+required-work evidence, then marks only that annual QC task COMPLETE with its
+completion time and auditor. It creates no progress/work report, assignment,
+Intake or Work Order. The Scheduling Board displays that completed QC task at
+100%; ordinary Scheduled Work progress behavior remains unchanged.
+
+A finalized area appears only in collapsed green Ready for Production history.
+All subsequent QC mutation commands are rejected with the Work Order handoff
+message, including new reports, repair changes, and reopening a finding. A second
+signoff cannot overwrite original evidence. Before final signoff, new findings
+and failed retests retain the existing open/yellow lifecycle.
+
+Candidate validation includes claimed Crew and Manager UI paths, unfinished
+work/readiness/finding blockers, missing/short test evidence, exact annual
+completion, immutable history, and rejection of QC writes after handoff. Clone
+fixtures roll back; passing source/fixture tests does not assert actual physical
+show readiness or authorize Production release.

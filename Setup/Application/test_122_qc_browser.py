@@ -19,19 +19,20 @@ BROWSER = os.environ.get('MSB_QC_BROWSER')
 BOOT = r'''<script>
 window.qcTestErrors=[];
 addEventListener('error',e=>qcTestErrors.push(e.message));
-window.qcFixture={findings:[],auditors:[],unreconciled_intake:[{intake_id:85,stage_id:null,problem:"WRONG AREA LEGACY REPORT"}]};
+window.qcFixture={viewer_person_id:1,signoffs:[],final_gates:[483,598].map(id=>({task_id:id,readiness_met:true,unfinished_work:[],unresolved_findings:0})),findings:[],auditors:[],unreconciled_intake:[{intake_id:85,stage_id:null,problem:"WRONG AREA LEGACY REPORT"}]};
 window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.117-qc-status'};
+ if(path.includes('api/health')) body={version:'V0.3.118-qc-signoff'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
   if(action.action==='REPORT_LINES') action.note.split(/\r?\n/).filter(line=>line.trim()).forEach((line,index)=>qcFixture.findings.push({qc_finding_id:71+index,
     setup_session_task_id:action.setup_session_task_id,title:line,status:'OPEN',
     stage_key:'25',stage_name:'Racing Arches',scene_name:'Test scene',events:[{type:'REPORTED',note:line}]}));
-  else if(action.action==='CLAIM_AUDIT') qcFixture.auditors.push({setup_session_task_id:483,auditor:'Tester'});
+  else if(action.action==='CLAIM_AUDIT') qcFixture.auditors.push({setup_session_task_id:action.setup_session_task_id,person_id:1,auditor:'Tester'});
+  else if(action.action==='READY_FOR_PRODUCTION') qcFixture.signoffs.push({setup_session_task_id:action.setup_session_task_id,auditor_person_id:1,signed_at:new Date().toISOString(),test_evidence:action.note,sequence_reference:action.sequence_reference});
   else {
    const f=qcFixture.findings.find(f=>f.qc_finding_id===action.qc_finding_id);
    f.status={CLAIM_REPAIR:'CLAIMED',REPAIRED:'AWAITING_RETEST',RETEST_FAIL:'OPEN',RETEST_PASS:'VERIFIED'}[action.action]||f.status;
@@ -72,6 +73,7 @@ addEventListener('load',()=>setTimeout(async()=>{
   assert(!document.querySelector('[data-qc-link-intake]'),'Legacy reconciliation still visible');
   assert(!document.querySelector('#next-qc-content').textContent.includes('WRONG AREA LEGACY REPORT'),'Unclassified source shown as area finding');
   assert(!qcWrites.length,'Rendering wrote data');
+  assert(!document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]'),'Unclaimed auditor has signoff control');
   const problems='arch 3 - blue lights 21" to 28" and 76" to 80" from bottom\narch 3 - all red lights\narch 4 - all red lights\narch 8 - yellow lights 12" to 20" from top\narch 9 - blue lights from top to @1 foot down\narch 11 - all blue lights';
   document.querySelector('[data-qc-problems]').value=problems;
   await click('[data-qc-action="REPORT_LINES"]');
@@ -143,6 +145,33 @@ addEventListener('load',()=>setTimeout(async()=>{
    card.querySelectorAll('details').forEach(d=>d.open=true);
    const note=card.querySelector('textarea');
    assert(getComputedStyle(note).color!==getComputedStyle(note).backgroundColor,'Unreadable '+theme+' notes');
+  }
+  // Claimed auditor signs off only after work gates and every finding pass.
+  qcFixture.findings.forEach(f=>f.status='VERIFIED');
+  qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[{id:77,name:'Install wiring'}];
+  await setupQcRenderCurrent();
+  assert(document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]').disabled,'Unfinished task did not block signoff');
+  qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[];
+  await setupQcRenderCurrent();
+  assert(!document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]').disabled,'Claimed ready auditor cannot sign off');
+  const beforeFinal=qcWrites.length;
+  await click('[data-qc-action="READY_FOR_PRODUCTION"]');
+  assert(qcWrites.length===beforeFinal,'Missing test evidence allowed signoff');
+  document.querySelector('[data-qc-final-sequence]').value='Two minute show v1';
+  document.querySelector('[data-qc-final-evidence]').value='Full test observed; all sections working';
+  document.querySelector('[data-qc-final-tested]').checked=true;
+  await click('[data-qc-action="READY_FOR_PRODUCTION"]');
+  const complete=document.querySelector('[data-qc-task-id="598"]');
+  assert(complete.dataset.qcState==='verified','Final signed area did not turn green');
+  assert(complete.closest('[data-qc-completed-areas]'),'Signed area did not leave active list');
+  assert(!complete.getClientRects().length,'Completed area history is not collapsed');
+  assert(!document.querySelector('[data-qc-detail="598"] [data-qc-action="REPORT_LINES"]'),'Final area still accepts QC problems');
+  assert(document.querySelector('[data-qc-detail="598"]').textContent.includes('Work Orders'),'Final handoff instruction missing');
+  for(const theme of ['light','dark']) {
+    document.documentElement.dataset.theme=theme;
+    complete.closest('details').open=true;
+    assert(getComputedStyle(complete).backgroundColor==='rgb(220, 252, 231)','Final area not green in '+theme);
+    complete.closest('details').open=false;
   }
   await click('#next-qc-work-tab');
   assert(!document.querySelector('#next-perform-list').hidden,'Scheduled Work not restored');

@@ -30,6 +30,18 @@ class SetupQcRepository:
                 )
                 return cur.fetchone()[0]
 
+    def signoff(self, email: str, payload: dict) -> dict:
+        """Finalize only through the database-owned gate; no synthetic progress."""
+        with psycopg2.connect(self.dsn) as conn:
+            conn.set_session(readonly=False, autocommit=False)
+            with conn.cursor() as cur:
+                cur.execute("SELECT ops.setup_qc_ready_for_production(%s,%s,%s,%s,%s)", (
+                    email, payload['setup_session_task_id'], payload['note'],
+                    payload['test_seconds'], payload['sequence_reference']))
+                result = cur.fetchone()[0]
+            conn.commit()
+        return result
+
     def command(self, email: str, payload: dict) -> dict:
         with psycopg2.connect(self.dsn) as conn:
             # Installed fieldwiring_app defaults to read-only; explicitly opt

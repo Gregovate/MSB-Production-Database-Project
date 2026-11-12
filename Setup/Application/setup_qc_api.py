@@ -52,7 +52,7 @@ def api_setup_qc_action() -> Response:
     data=json_body()
     action=str(data.get("action") or "").strip().upper()
     allowed={"CLAIM_AUDIT","REPORT","REPORT_LINES","OBSERVATION","CLAIM_REPAIR","REPAIRED",
-             "RETEST_PASS","RETEST_FAIL","REOPEN","LINK_INTAKE"}
+             "RETEST_PASS","RETEST_FAIL","REOPEN","LINK_INTAKE","READY_FOR_PRODUCTION"}
     if action not in allowed:
         raise SetupCommandError("Unknown QC action")
     cmd={
@@ -67,6 +67,14 @@ def api_setup_qc_action() -> Response:
         if len(text)>limit:
             raise SetupCommandError(f"{key} is too long")
         cmd[key]=text or None
+    if action == "READY_FOR_PRODUCTION":
+        # Identity/claim, required work and all findings are checked again by SQL.
+        cmd['test_seconds'] = qc_integer(data.get('test_seconds'), 'test_seconds')
+        sequence = str(data.get('sequence_reference') or '').strip()
+        if not 3 <= len(sequence) <= 500:
+            raise SetupCommandError('Record the tested sequence / version')
+        cmd['sequence_reference'] = sequence
+        return jsonify(result=qc_repo().signoff(email,cmd))
     return jsonify(result=qc_repo().command(email,cmd))
 
 

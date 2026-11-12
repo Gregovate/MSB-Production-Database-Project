@@ -516,7 +516,7 @@ def test_205_schedule_board_shows_cumulative_progress_without_deriving_time() ->
     css = read_app("setup_scheduling_board.css")
 
     assert "max(p.percent_complete) AS percent_complete" in repo
-    assert "coalesce(progress.percent_complete, 0) AS percent_complete" in repo
+    assert "ELSE coalesce(progress.percent_complete, 0) END AS percent_complete" in repo
     assert "function board205ProgressPercent(task)" in ui
     assert "function board205ProgressGauge(task)" in ui
     assert 'class="setup-board205-progress-gauge"' in ui

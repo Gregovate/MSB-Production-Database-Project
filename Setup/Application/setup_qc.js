@@ -1,6 +1,6 @@
 /* #122/#205 QC record & shared repair queue. No scheduled assignments.
  * All changes saved through existing Setup command guard and DB-owned function.
- * Final annual QC approval is intentionally NOT supplied by this module.
+ * Final annual signoff uses the claimed-auditor database gate.
  */
 (() => {
   'use strict';
@@ -18,19 +18,41 @@
   const taskFindings = id => snapshot.findings.filter(
     f => Number(f.setup_session_task_id) === Number(id)
   );
+  const signoffFor = id => (snapshot.signoffs || []).find(q=>Number(q.setup_session_task_id)===Number(id));
   function paintTaskStates() {
     // Exact annual identity owns the color. All findings verified still awaits
-    // auditor final signoff; never show a green area before that gate exists.
+    // auditor final signoff; green requires the persisted final signoff record.
     document.querySelectorAll('[data-qc-task-id]').forEach(button => {
       const findings=taskFindings(button.dataset.qcTaskId);
       const active=findings.filter(f=>f.status!=='VERIFIED');
       const retest=active.filter(f=>f.status==='AWAITING_RETEST').length;
-      button.dataset.qcState=active.length ? 'findings' : findings.length ? 'review' : 'open';
+      const signoff=signoffFor(button.dataset.qcTaskId);
+      button.dataset.qcState=signoff ? 'verified' : active.length ? 'findings' : findings.length ? 'review' : 'open';
       const label=button.querySelector('[data-qc-task-status]');
-      if (label) label.textContent=active.length
+      if (label) label.textContent=signoff ? 'Ready for Production · 100%' : active.length
         ? `${active.length} open${retest ? ' · '+retest+' verification needed' : ' · Needs repair'}`
         : findings.length ? 'Findings verified · Final QC pending' : 'No findings · QC pending';
     });
+    // Move finalized areas into collapsed green history; keep the same delegated
+    // selection handler, and never discard their recorded evidence.
+    const list=document.getElementById('next-qc-list');
+    if (list) {
+      let archive=list.querySelector('[data-qc-completed-areas]');
+      if (!archive) {
+        archive=document.createElement('details');archive.dataset.qcCompletedAreas='1';
+        archive.innerHTML='<summary>Ready for Production</summary>';list.append(archive);
+      }
+      list.querySelectorAll('[data-qc-task-id]').forEach(button=>{
+        const row=button.closest('.next-qc-row');
+        if (signoffFor(button.dataset.qcTaskId)) archive.append(row);
+        else if (row.parentElement===archive) list.insertBefore(row,archive);
+      });
+      const count=archive.querySelectorAll('.next-qc-row').length;
+      archive.hidden=!count;
+      const counter=document.getElementById('next-qc-count');
+      if (counter) counter.textContent=(list.querySelectorAll('.next-qc-row').length-count)+' active areas · '+count+' Ready for Production';
+      archive.querySelector('summary').textContent='Ready for Production ('+count+')';
+    }
   }
   window.setupQcRefreshTaskStates=async function() {
     try { await currentData(); }
@@ -152,6 +174,16 @@
       let note=noteField?.value?.trim() || '';
       const targetId=Number(btn.dataset.qcTask || id ||
         snapshot.findings.find(x=>Number(x.qc_finding_id)===finding)?.setup_session_task_id);
+      if (action==='READY_FOR_PRODUCTION') {
+        const evidence=host.querySelector('[data-qc-final-evidence]')?.value?.trim();
+        const sequence=host.querySelector('[data-qc-final-sequence]')?.value?.trim();
+        if (!host.querySelector('[data-qc-final-tested]')?.checked || !evidence || !sequence) {
+          setAlert('Record the sequence and result, and confirm the full two-minute test passed.','error');return;
+        }
+        await command({action,setup_session_task_id:targetId,note:evidence,
+          test_seconds:120,sequence_reference:sequence});
+        return;
+      }
       if (action==='CLAIM_AUDIT') {
         await command({action,setup_session_task_id:targetId});
         return;
@@ -185,10 +217,22 @@
     try { await currentData(); }
     catch (error) { host.textContent='QC details unavailable: '+(error.message||error);return; }
     if (!host.isConnected || id!==nextQcDiscovery.selectedTaskId) return;
+    const final=signoffFor(id);
+    if (final) {
+      host.innerHTML=`<section class="next-qc-final-record"><h4>Ready for Production · 100%</h4>
+        <p>Signed ${html(localTime(final.signed_at))}</p>
+        <p>${html(final.sequence_reference)}</p><p class="next-qc-note">${html(final.test_evidence)}</p>
+        <p>Report subsequent problems through Work Orders.</p></section>`;
+      return;
+    }
     const allFindings=taskFindings(id);
     const findings=allFindings.filter(f=>f.status!=='VERIFIED');
     const verified=allFindings.filter(f=>f.status==='VERIFIED');
     const auditors=snapshot.auditors.filter(x=>Number(x.setup_session_task_id)===Number(id));
+    const ownsAudit=auditors.some(a=>Number(a.person_id)===Number(snapshot.viewer_person_id));
+    const gate=(snapshot.final_gates || []).find(g=>Number(g.task_id)===Number(id));
+    const unfinished=gate?.unfinished_work || [];
+    const canSign=ownsAudit && gate?.readiness_met && !unfinished.length && !findings.length;
     host.innerHTML=`
       <div class="next-qc-record">
         <div><strong>QC auditors:</strong>
@@ -202,6 +246,20 @@
         </div>
         ${verified.length ? `<details class="next-qc-verified-history"><summary>Verified history (${verified.length})</summary>
           ${verified.map(f=>findingMarkup(f,false)).join('')}</details>` : ''}
+        ${ownsAudit ? `<section class="next-qc-signoff">
+          <h4>Final QC — Ready for Production</h4>
+          ${!gate ? '<p>Readiness checks unavailable.</p>' : ''}
+          ${gate && !gate.readiness_met ? '<p>Blocked: annual readiness has not been confirmed.</p>' : ''}
+          ${unfinished.length ? `<p>Required work still incomplete:</p><ul>${unfinished.map(w=>`<li>#${html(w.id)} ${html(w.name)}</li>`).join('')}</ul>` : ''}
+          ${findings.length ? `<p>${findings.length} finding(s) still need repair or verification.</p>` : ''}
+          <label>Sequence / version tested
+            <input data-qc-final-sequence maxlength="500" placeholder="Sequence name and version, or explain if version is unknown"></label>
+          <label>Final test result
+            <textarea data-qc-final-evidence maxlength="6000" rows="3" placeholder="What you observed during the full test"></textarea></label>
+          <label class="next-qc-confirm"><input type="checkbox" data-qc-final-tested>
+            I ran the full two-minute test and confirmed the area works.</label>
+          <button type="button" data-qc-action="READY_FOR_PRODUCTION" data-qc-task="${id}" ${canSign ? '' : 'disabled'}>Ready for Production — Sign Off</button>
+        </section>` : ''}
         <form class="next-qc-new" onsubmit="return false">
           <h4>Report problems</h4>
           <label>What is wrong? One problem per line.
@@ -219,7 +277,7 @@
     try { await currentData(); }
     catch (error) { host.textContent='QC repair list unavailable: '+(error.message||error);return; }
     if (!host.isConnected || nextQcDiscovery.mode!=='fixes') return;
-    const active=snapshot.findings.filter(f=>f.status!=='VERIFIED');
+    const active=snapshot.findings.filter(f=>f.status!=='VERIFIED' && !signoffFor(f.setup_session_task_id));
     host.innerHTML=`<h3>QC Repairs Needed · ${active.length} outstanding findings</h3>
       <label>Find problem <input type="search" data-qc-fix-search
         placeholder="Search Stage, Scene, issue, Display or channel"></label>

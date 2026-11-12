@@ -11,6 +11,16 @@ jobs:
   engineering-compliance:
     name: Engineering Compliance
     runs-on: ubuntu-latest
+    services:
+      qc-postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: qc-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,6 +46,13 @@ jobs:
             python -m pytest -q -p no:cacheprovider Setup/Application
           else
             echo "SKIP: No Setup implementation changes"
+          fi
+      - name: QC final-signoff PostgreSQL fixture without Node
+        env:
+          MSB_QC_TEST_ADMIN_DSN: host=127.0.0.1 port=5432 dbname=postgres user=postgres password=qc-ci-only
+        run: |
+          if grep -Eq '^Setup/(Application|Database|Acceptance)/' /tmp/msb_changed_paths; then
+            python -m pytest -q -p no:cacheprovider Setup/Application/test_122_qc_postgres.py
           fi
       - name: QC browser DOM regression without Node
         shell: bash

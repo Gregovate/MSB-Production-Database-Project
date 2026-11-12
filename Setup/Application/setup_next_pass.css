@@ -1136,3 +1136,11 @@ body:not(.setup-schedule-view) #next-perform-list {
 .next-qc-discovery button[data-qc-action="RETEST_FAIL"] {
   background: #854d0e; border-color: #713f12; color: #fff; font-weight: 700;
 }
+
+/* Final signoff follows the actual auditor claim and database readiness gate. */
+.next-qc-discovery .next-qc-confirm { display: flex; align-items: center; gap: .5rem; }
+.next-qc-discovery .next-qc-confirm input { width: auto; margin: 0; }
+.next-qc-signoff { border-top: 2px solid var(--border, #71869a); margin-top: 1rem; padding-top: .5rem; }
+.next-qc-discovery button[data-qc-action="READY_FOR_PRODUCTION"] { background: #166534; color: #fff; }
+.next-qc-discovery button[data-qc-action="READY_FOR_PRODUCTION"]:disabled { opacity: .55; cursor: not-allowed; }
+.next-qc-final-record { background: #dcfce7; color: #172033; padding: .8rem; border-radius: .5rem; }

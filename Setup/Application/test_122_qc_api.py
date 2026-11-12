@@ -22,6 +22,10 @@ def client(monkeypatch):
             calls.append((email, data))
             return {'finding_id': 17}
 
+        def signoff(self, email, data):
+            calls.append((email, data))
+            return {'status': 'READY_FOR_PRODUCTION'}
+
         def snapshot(self, email, year):
             return {'findings': []}
 
@@ -98,3 +102,18 @@ def test_crew_operational_workflow_never_calls_manager_guard(client, monkeypatch
         'title': 'Arch 3 red string', 'note': 'Actual observed failure or repair evidence'})
     assert response.status_code == 200
     assert calls[-1][1]['action'] == action
+
+
+def test_final_signoff_passes_evidence_to_database_gate(client):
+    http, calls, _ = client
+    payload = {'action':'READY_FOR_PRODUCTION', 'setup_session_task_id':598,
+               'note':'Observed full sequence; all channels working',
+               'test_seconds':120, 'sequence_reference':'Two minute show v1'}
+    response = http.post('/api/setup/qc/action', headers=HEADERS, json=payload)
+    assert response.status_code == 200
+    assert calls[-1][1]['test_seconds'] == 120
+    assert calls[-1][1]['sequence_reference'] == 'Two minute show v1'
+    calls.clear()
+    payload['test_seconds'] = True
+    assert http.post('/api/setup/qc/action', headers=HEADERS, json=payload).status_code == 403
+    assert not calls

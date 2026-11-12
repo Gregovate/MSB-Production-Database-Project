@@ -239,4 +239,120 @@ BEGIN
   RAISE NOTICE 'QC 081 CLONE acceptance PASS: unscheduled %, report, observation, repair, failed and passed retest; no scheduling',v_task;
 END
 $test$;
+-- Purpose: final annual signoff positive/negative tests, clone-only fixture setup.
+-- Scope: fixture readiness/completion changes are rolled back in a subtransaction;
+-- these are software acceptance records, not actual physical test evidence.
+DO $signoff_test$
+DECLARE
+  v_task bigint; v_crew text; v_required bigint; v_gate jsonb; v_finding bigint;
+  v_before jsonb; v_after_fixture jsonb; v_annual_before jsonb; v_result jsonb;
+  v_person integer; v_status text;
+BEGIN
+  v_before := pg_temp.qc_protected_rows();
+  SELECT lower(u.email),p.person_id INTO v_crew,v_person
+  FROM public.directus_users u JOIN ref.person p ON p.directus_user_id=u.id
+  CROSS JOIN LATERAL ref.setup_browser_capabilities(lower(u.email)) c
+  WHERE u.status='active' AND c.can_read_setup AND NOT c.can_manage_setup
+    AND (c.role_name='Production Crew' OR 'Production Crew'=ANY(coalesce(c.policy_names,ARRAY[]::text[])))
+  ORDER BY lower(u.email),p.person_id LIMIT 1;
+  SELECT t.setup_session_task_id INTO v_task
+  FROM ops.setup_session_task t JOIN ops.setup_session ss USING(setup_session_id)
+  CROSS JOIN LATERAL (SELECT ops.setup_qc_final_gate(t.setup_session_task_id) g) gate
+  WHERE ss.season_year=2026 AND t.included_flag AND t.annual_lor_scene_id IS NOT NULL
+    AND t.annual_task_name ~* 'plug[[:space:]]+in[[:space:]]+network[[:space:]]+to[[:space:]]+controller.*2[[:space:]]+minute[[:space:]]+test[[:space:]]+show'
+    AND jsonb_array_length(gate.g->'required_work')>0
+    AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(gate.g->'required_work') w
+      WHERE w->>'id' IS NULL OR w->>'name' ~* 'plug[[:space:]]+in[[:space:]]+network[[:space:]]+to[[:space:]]+controller.*2[[:space:]]+minute[[:space:]]+test[[:space:]]+show')
+  ORDER BY t.setup_session_task_id LIMIT 1;
+  IF v_task IS NULL OR v_crew IS NULL THEN
+    RAISE EXCEPTION 'Final QC acceptance needs a scene QC list with existing ordinary required work and mapped Crew';
+  END IF;
+  BEGIN
+    -- Prepare only the disposable test scenario; preserve every source on rollback.
+    v_gate := ops.setup_qc_final_gate(v_task);
+    UPDATE ops.setup_session_task SET execution_status='COMPLETE'
+      WHERE setup_session_task_id IN (SELECT (w->>'id')::bigint
+        FROM jsonb_array_elements(v_gate->'required_work') w);
+    UPDATE ops.setup_session_task SET annual_readiness_state='READY' WHERE setup_session_task_id=v_task;
+    SELECT min((w->>'id')::bigint) INTO v_required FROM jsonb_array_elements(v_gate->'required_work') w;
+    BEGIN
+      PERFORM ops.setup_qc_ready_for_production(v_crew,v_task,'Fixture only',120,'Fixture sequence');
+      RAISE EXCEPTION 'Unclaimed auditor signed off';
+    EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    PERFORM ops.setup_qc_command(v_crew,'CLAIM_AUDIT',v_task);
+    BEGIN
+      PERFORM ops.setup_qc_ready_for_production('no-such-qc-user@example.test',v_task,'Fixture only',120,'Fixture sequence');
+      RAISE EXCEPTION 'Unauthorized identity signed off';
+    EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    BEGIN
+      PERFORM ops.setup_qc_ready_for_production(v_crew,v_task,'Fixture only',119,'Fixture sequence');
+      RAISE EXCEPTION 'Short test signed off';
+    EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+    BEGIN
+      PERFORM ops.setup_qc_ready_for_production(v_crew,v_task,NULL,120,'Fixture sequence');
+      RAISE EXCEPTION 'Missing evidence signed off';
+    EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+    UPDATE ops.setup_session_task SET annual_readiness_state='NOT_READY' WHERE setup_session_task_id=v_task;
+    BEGIN
+      PERFORM ops.setup_qc_ready_for_production(v_crew,v_task,'Fixture only',120,'Fixture sequence');
+      RAISE EXCEPTION 'NOT_READY annual task signed off';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+    UPDATE ops.setup_session_task SET annual_readiness_state='READY' WHERE setup_session_task_id=v_task;
+    UPDATE ops.setup_session_task SET execution_status='NOT_READY',linked_work_order_gate=false
+      WHERE setup_session_task_id=v_required;
+    BEGIN
+      PERFORM ops.setup_qc_ready_for_production(v_crew,v_task,'Fixture only',120,'Fixture sequence');
+      RAISE EXCEPTION 'Unfinished required task signed off';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+    UPDATE ops.setup_session_task SET execution_status='COMPLETE' WHERE setup_session_task_id=v_required;
+    v_finding := (ops.setup_qc_command(v_crew,'REPORT',v_task,NULL,'Fixture failure',
+      'Fixture failure','OTHER')->>'finding_id')::bigint;
+    FOREACH v_status IN ARRAY ARRAY['OPEN','CLAIMED','AWAITING_RETEST'] LOOP
+      IF v_status='CLAIMED' THEN PERFORM ops.setup_qc_command(v_crew,'CLAIM_REPAIR',v_task,v_finding); END IF;
+      IF v_status='AWAITING_RETEST' THEN PERFORM ops.setup_qc_command(v_crew,'REPAIRED',v_task,v_finding,'Fixture repair'); END IF;
+      BEGIN
+        PERFORM ops.setup_qc_ready_for_production(v_crew,v_task,'Fixture only',120,'Fixture sequence');
+        RAISE EXCEPTION 'Unresolved % finding allowed final signoff',v_status;
+      EXCEPTION WHEN check_violation THEN NULL; END;
+    END LOOP;
+    PERFORM ops.setup_qc_command(v_crew,'RETEST_PASS',v_task,v_finding,'Fixture retest');
+    v_after_fixture := pg_temp.qc_protected_rows();
+    SELECT to_jsonb(t) INTO v_annual_before FROM ops.setup_session_task t WHERE setup_session_task_id=v_task;
+    v_result := ops.setup_qc_ready_for_production(v_crew,v_task,'Disposable fixture only; not real show approval',120,'Acceptance fixture sequence');
+    IF v_result->>'status'<>'READY_FOR_PRODUCTION' OR NOT EXISTS (
+      SELECT 1 FROM ops.setup_qc_signoff q JOIN ops.setup_session_task t USING(setup_session_task_id)
+      WHERE q.setup_session_task_id=v_task AND q.auditor_person_id=v_person
+        AND q.test_seconds=120 AND t.execution_status='COMPLETE'
+        AND t.completed_by_person_id=v_person AND t.actual_completed_at=q.signed_at) THEN
+      RAISE EXCEPTION 'Final evidence or annual completion lost';
+    END IF;
+    IF (pg_temp.qc_protected_rows()-'ops.setup_session_task') IS DISTINCT FROM
+       (v_after_fixture-'ops.setup_session_task') THEN
+      RAISE EXCEPTION 'Signoff changed Intake, Work Order, schedule or ordinary progress';
+    END IF;
+    IF (SELECT to_jsonb(t)-ARRAY['execution_status','actual_completed_at','completed_by_person_id','completion_note','updated_at','updated_by','updated_by_person_id']
+        FROM ops.setup_session_task t WHERE setup_session_task_id=v_task) IS DISTINCT FROM
+       (v_annual_before-ARRAY['execution_status','actual_completed_at','completed_by_person_id','completion_note','updated_at','updated_by','updated_by_person_id']) THEN
+      RAISE EXCEPTION 'Signoff changed unrelated annual task fields';
+    END IF;
+    BEGIN
+      PERFORM ops.setup_qc_command(v_crew,'REPORT',v_task,NULL,'Future problem','Future problem','OTHER');
+      RAISE EXCEPTION 'Finalized area accepted a new QC problem';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+    BEGIN
+      PERFORM ops.setup_qc_command(v_crew,'REOPEN',v_task,v_finding,'Future recurrence');
+      RAISE EXCEPTION 'Finalized area reopened QC instead of Work Orders';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+    BEGIN
+      PERFORM ops.setup_qc_ready_for_production(v_crew,v_task,'Overwrite evidence',120,'Other sequence');
+      RAISE EXCEPTION 'Final evidence was overwritten';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+    RAISE EXCEPTION USING ERRCODE='ZX001',MESSAGE='Rollback final-signoff acceptance fixture';
+  EXCEPTION WHEN SQLSTATE 'ZX001' THEN NULL; END;
+  IF pg_temp.qc_protected_rows() IS DISTINCT FROM v_before THEN
+    RAISE EXCEPTION 'Final acceptance fixture did not restore protected source rows';
+  END IF;
+  RAISE NOTICE 'Final QC signoff acceptance PASS: claimed Crew auditor, all work, findings, evidence, annual completion and WO handoff guard';
+END
+$signoff_test$;
 ROLLBACK;

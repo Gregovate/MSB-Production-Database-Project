@@ -29,7 +29,7 @@ def test_qc_command_enforces_identity_and_no_scheduling():
     assert "v_action='CLAIM_AUDIT'" in SQL
     assert 'setup_session_task_id' in SQL
     assert 'INSERT INTO ops.setup_work_day_task' not in SQL
-    assert 'UPDATE ops.setup_session_task SET execution_status' not in SQL
+    assert 'UPDATE ops.setup_session_task SET execution_status' not in SQL.split('CREATE FUNCTION ops.setup_qc_ready_for_production',1)[0]
     assert "VALUES(p_finding,'INTAKE_LINK'" in SQL
     assert 'WHERE w.source_intake_id=p_intake_id' in SQL
     assert 'ON CONFLICT DO NOTHING' in SQL
