@@ -1695,3 +1695,23 @@ work/readiness/finding blockers, missing/short test evidence, exact annual
 completion, immutable history, and rejection of QC writes after handoff. Clone
 fixtures roll back; passing source/fixture tests does not assert actual physical
 show readiness or authorize Production release.
+
+### PR485 release scope and authorization — 2026-11-11 local
+
+Greg accepted the existing QC task coverage: no bulk additions, renaming or
+Stage/Scene reassignment in this release. Catalog coverage and annual assignment
+reconciliation are deferred. Historical Intake/Work Order cleanup is separate.
+Entrance Arch observation, repair claim, cross-view visibility, recorded repair,
+auditor self-assignment, final observation and removal from the active list passed
+on 3f281e49bf44a5d64a3be5e43f71319f59c8c27f, V0.3.121-qc-compact.
+The operator reported CLEAN EXIT, then explicitly authorized Production release
+for the following morning's meeting. This records authorization, not installation.
+
+Release tooling must install exactly that accepted application commit and only
+migration081. Reuse the Server Management controller via setup_maintenance_deploy.py
+and the existing committed-byte Windows transport. Preserve all existing ref/ops/
+stage business rows while frozen; new QC tables must be empty at installation.
+Verify exact command bodies, narrow EXECUTE grants, denied direct table/sequence
+access, source ancestry, snapshot, ONLINE health and live regression. Never run
+disposable acceptance fixture writes on Production. Retain report and rollback
+archive. Final deployment status awaits the server receipt and protected UI check.
