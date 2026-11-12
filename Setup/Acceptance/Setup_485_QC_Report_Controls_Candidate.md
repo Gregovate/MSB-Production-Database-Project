@@ -21,7 +21,9 @@ Production clone. No migrations or Production writes; no Node dependency.
    findings, including verified and completed-area history. Check full descriptions,
    reporter, claimant, repair/event notes, assigned auditors, actual final signer
    and Chicago timestamps. Outstanding-only excludes completed findings.
-5. Print/Save PDF; check long notes, multiple pages, repeated column headers,
+5. Confirm multiple findings in the same area share one Stage/Scene header,
+   auditor list and final sign-off; each finding retains its own full history.
+   Print/Save PDF; check long notes, multiple pages, repeated column headers,
    readable text and no clipped evidence. Report generation never changes status.
 6. Expand completed area: final signer and read-only finding history remain visible.
 7. Scheduled Work remains usable. Finish CLEAN EXIT. Release approval remains separate.

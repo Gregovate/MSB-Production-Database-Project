@@ -1748,3 +1748,5 @@ Verify exact command bodies, narrow EXECUTE grants, denied direct table/sequence
 access, source ancestry, snapshot, ONLINE health and live regression. Never run
 disposable acceptance fixture writes on Production. Retain report and rollback
 archive. Final deployment status awaits the server receipt and protected UI check.
+
+QC report grouping clarification (2026-11-12): print one Stage/Scene header per exact annual QC task, with its auditors and final area sign-off once. List every finding and its reporter, repair claimant and complete chronological event history beneath that header. Preserve verified findings and sign-off evidence in the all-history report; never combine different task identities merely because names match.
