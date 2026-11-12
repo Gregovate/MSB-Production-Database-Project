@@ -172,12 +172,16 @@ BEGIN
         claimed_by_person_id=v_person,updated_at=clock_timestamp()
         WHERE qc_finding_id=p_finding;
     ELSIF v_action='REPAIRED' THEN
-      IF v_status NOT IN ('OPEN','CLAIMED') THEN
-        RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Finding is not open for repair';
+      -- A repair must be made by the worker who explicitly claimed this
+      -- exact finding. Never silently claim or overwrite another technician.
+      IF v_status<>'CLAIMED' OR NOT EXISTS (
+        SELECT 1 FROM ops.setup_qc_finding WHERE qc_finding_id=p_finding
+          AND claimed_by_person_id=v_person
+      ) THEN
+        RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Claim this QC finding before marking your repair complete';
       END IF;
       UPDATE ops.setup_qc_finding SET status='AWAITING_RETEST',
-        claimed_by_person_id=v_person,updated_at=clock_timestamp()
-        WHERE qc_finding_id=p_finding;
+        updated_at=clock_timestamp() WHERE qc_finding_id=p_finding;
     ELSIF v_action='REOPEN' THEN
       IF v_status<>'VERIFIED' THEN
         RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Only a previously verified finding may be reopened';
@@ -187,6 +191,13 @@ BEGIN
     ELSIF v_action IN ('RETEST_PASS','RETEST_FAIL') THEN
       IF v_status<>'AWAITING_RETEST' THEN
         RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Repair must await retest before verification';
+      END IF;
+      -- Field verification is an auditor action, not a worker repair toggle.
+      IF NOT EXISTS (
+        SELECT 1 FROM ops.setup_qc_auditor a
+        WHERE a.setup_session_task_id=p_annual_task AND a.person_id=v_person
+      ) THEN
+        RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Claim this annual QC task as auditor before recording retest';
       END IF;
       -- Retest cannot be self-certification of final annual QC completion.
       UPDATE ops.setup_qc_finding
