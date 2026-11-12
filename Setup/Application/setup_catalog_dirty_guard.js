@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const CLIENT_BUILD = 'V0.3.114-qc-history';
+  const CLIENT_BUILD = 'V0.3.115-qc-module';
   const CLIENT_BADGE = `Client ${CLIENT_BUILD.split('-')[0]}`;
   const reusableFieldIds = new Set([
     'edit-task-name',

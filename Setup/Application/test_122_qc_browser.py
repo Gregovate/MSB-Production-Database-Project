@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.114-qc-history'};
+ if(path.includes('api/health')) body={version:'V0.3.115-qc-module'};
  if(path.includes('qc/intake-candidates')) return {ok:false,status:503,json:async()=>({error:'Fixture Intake unavailable'})};
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -149,7 +149,16 @@ def test_qc_real_page_controls_and_shared_finding_lifecycle(tmp_path, manager):
                 self.end_headers()
                 self.wfile.write(data)
             else:
-                super().do_GET()
+                # Use the real Flask asset boundary. A permissive file server
+                # hid the missing QC registration during the failed review.
+                from production_backend import app
+                with app.test_client() as client:
+                    response = client.get(self.path)
+                    self.send_response(response.status_code)
+                    self.send_header('Content-Type', response.content_type)
+                    self.send_header('Content-Length', str(len(response.data)))
+                    self.end_headers()
+                    self.wfile.write(response.data)
 
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     thread = Thread(target=server.serve_forever, daemon=True)
@@ -169,3 +178,26 @@ def test_qc_real_page_controls_and_shared_finding_lifecycle(tmp_path, manager):
         server.shutdown()
         server.server_close()
         thread.join(timeout=3)
+
+
+def test_production_page_scripts_are_served_by_real_backend():
+    """Catch missing asset registration without Chromium, Node or a database."""
+    # Backend startup installs repository extensions. Isolate that startup so
+    # this HTTP test does not alter unrelated repository-unit-test fixtures.
+    import sys
+    code = r'''import re
+from production_backend import app
+with app.test_client() as client:
+    page = client.get('/')
+    assert page.status_code == 200
+    scripts = re.findall(r'<script[^>]+src="([^"]+)"', page.get_data(as_text=True))
+    assert any(url.startswith('setup_qc.js?') for url in scripts)
+    for url in scripts:
+        response = client.get('/' + url)
+        assert response.status_code == 200, f'{url}: HTTP {response.status_code}'
+        assert response.mimetype == 'application/javascript', url
+    assert client.get('/setup_qc_api.py').status_code == 404
+'''
+    result = subprocess.run([sys.executable, '-c', code], cwd=APP,
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr

@@ -1543,3 +1543,23 @@ Use the existing Server Management reusable disposable preview on8898,
 migration081 and rollback acceptance. No Node dependency on the workstation
 or preview server. No Production migration or deployment without accepted
 browser testing, CLEAN EXIT and explicit operator release approval.
+
+
+### QC module delivery acceptance correction — 2026-11-12
+
+Operator review of candidate `6f933010` failed: discovery rendered, but both QC
+Check and QC Repairs Needed reported that the browser module did not load.
+Operator subsequently reported reusable preview CLEAN EXIT.
+
+Confirmed implementation defect: `setup_qc.js` was referenced by production.html
+but omitted from production_backend.PRODUCTION_ASSETS; the actual Flask route
+returned HTTP404. The fixture browser's generic static file server bypassed
+that boundary, so its earlier PASS did not prove application delivery.
+
+The correction registers only that asset in the existing explicit allowlist.
+Acceptance must request page scripts through the actual Flask asset route,
+check HTTP200 and JavaScript MIME type, and retain denial of non-public source
+files. Browser fixture tests must use that route rather than unrestricted file
+serving. Candidate identity: V0.3.115-qc-module. This changes delivery of the
+existing contract implementation, not the QC design. Disposable operator
+acceptance is still required; Production release remains HOLD.

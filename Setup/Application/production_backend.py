@@ -43,7 +43,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.114-qc-history"
+PRODUCTION_VERSION = "V0.3.115-qc-module"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -83,6 +83,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_review_usability.js",
         "setup_next_pass.css",
         "setup_next_pass.js",
+        # QC controls must be served by the same explicit asset boundary.
+        "setup_qc.js",
         "setup_predecessor_drag.css",
         "setup_predecessor_drag.js",
         "setup_prerequisite_editor.css",
