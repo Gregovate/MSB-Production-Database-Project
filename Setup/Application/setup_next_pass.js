@@ -179,10 +179,10 @@ function nextTasksForScope(stageId, sceneId) {
 }
 
 function nextTaskLabel(task) {
-  if (nextIsSitewide(task)) return `Site-wide / Infrastructure — ${task.task_name}`;
+  if (nextIsSitewide(task)) return `Site-wide / Infrastructure — ${setupTaskDisplayName(task.task_name)}`;
   const stage = `Stage ${task.stage_key || '—'}`;
   const scope = task.scene_name ? ` / ${task.scene_name}` : ' / Stage-level';
-  return `${stage}${scope} — ${task.task_name}`;
+  return `${stage}${scope} — ${setupTaskDisplayName(task.task_name)}`;
 }
 
 function setupAnnualMilestoneDates(seasonYear) {
@@ -1956,7 +1956,7 @@ function nextLateWorkSummary(assignments, board) {
     const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
     const captain = crew?.captain_display_name || 'CAPTAIN TBD';
     const task = (board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item;
-    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(nextPerformTaskNumberLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item))} · ${escapeHtml(item.task_name || 'Task')}</strong><div class="muted">${escapeHtml(nextPerformTaskScopeLabel({...item, ...task}))}</div> · ${escapeHtml(day?.work_date || item.work_date || '')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
+    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — ${nextAssignmentReviewLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)))}`)}<strong>${escapeHtml(nextPerformTaskNumberLabel((board.tasks || []).find(t => Number(t.setup_session_task_id) === Number(item.setup_session_task_id)) || item))} · ${escapeHtml(setupTaskDisplayName(item.task_name || 'Task'))}</strong><div class="muted">${escapeHtml(nextPerformTaskScopeLabel({...item, ...task}))}</div> · ${escapeHtml(day?.work_date || item.work_date || '')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
   }).join('')}</section>`;
 }
 
@@ -2916,7 +2916,7 @@ async function printNextPerformTask(details) {
       </div>
       <div class="setup-perform-print-generated"><strong>Generated:</strong> ${escapeHtml(new Date().toLocaleString('en-US', {timeZone: 'America/Chicago'}))}</div>
     </header>
-    <h2>${escapeHtml(assignment?.task_name || task?.task_name || 'Setup task')}</h2>
+    <h2>${escapeHtml(setupTaskDisplayName(assignment?.task_name || task?.task_name || 'Setup task'))}</h2>
     <div class="setup-perform-print-meta">
       <div><strong>Scope:</strong> ${escapeHtml(nextTaskScopeLabel(assignment || task || {}))}</div>
       <div><strong>Scheduled:</strong> Setup Day ${escapeHtml(day?.setup_day_number ?? '—')} · ${escapeHtml(day?.work_date || assignment?.work_date || '')} · ${escapeHtml(assignment?.shift_code === 'MORNING' ? 'AM' : assignment?.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}</div>
@@ -3200,7 +3200,7 @@ async function loadNextTaskExecution(details, focusReport = false) {
         data-session-task-id="${sessionTaskId}"
         data-assignment-id="${assignmentId}">
         <div class="next-report-task-identity" role="heading" aria-level="4">
-          <strong>Report Work — ${escapeHtml(task?.task_name || assignment?.task_name || 'Setup task')}</strong>
+          <strong>Report Work — ${escapeHtml(setupTaskDisplayName(task?.task_name || assignment?.task_name || 'Setup task'))}</strong>
           <span>Setup Day ${escapeHtml(day?.setup_day_number ?? '—')} · ${escapeHtml(day?.work_date || assignment?.work_date || '')} · ${escapeHtml(assignment?.shift_code === 'MORNING' ? 'AM' : assignment?.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')} · Crew ${escapeHtml(crew?.crew_code || assignment?.crew_lane || '—')}</span>
         </div>
         <div class="next-report-work-grid">

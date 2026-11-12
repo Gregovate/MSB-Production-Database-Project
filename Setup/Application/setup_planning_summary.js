@@ -301,7 +301,7 @@
       const scope = predecessor && !sameScope(task, predecessor) ? `${shortScopeLabel(predecessor)} · ` : '';
       const step = predecessor?.display_order != null ? `Step ${predecessor.display_order} — ` : '';
       const note = row.dependency_note ? ` — ${row.dependency_note}` : '';
-      return escapeHtml(`${scope}${step}${row.task_name}${note}`);
+      return escapeHtml(`${scope}${step}${setupTaskDisplayName(row.task_name)}${note}`);
     }).join('; ');
   }
 
