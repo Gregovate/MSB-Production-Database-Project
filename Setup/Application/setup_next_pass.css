@@ -1158,3 +1158,10 @@ body:not(.setup-schedule-view) #next-perform-list {
 .next-qc-confirm input[type="checkbox"] { width: 24px; height: 24px; min-height: 24px; flex-shrink: 0; }
 [data-qc-message] { padding: .75rem; margin-top: .5rem; border: 2px solid #b45309; background: #fef3c7; color: #172033; font-size: 18px; }
 [data-qc-message][data-kind="ok"] { background: #dcfce7; border-color: #166534; }
+
+/* Keep optional observations closed and the main signoff visible without shrinking text. */
+.next-qc-observation { margin-top: .4rem; }
+.next-qc-record h4 { margin: .65rem 0; }
+.next-qc-signoff { margin-top: .5rem; padding: .5rem 0; }
+.next-qc-signoff p, .next-qc-signoff ul { margin: .4rem 0; }
+.next-qc-new textarea { min-height: 5rem; }

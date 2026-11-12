@@ -1,8 +1,0 @@
-{
-  "profile": "482-unreported-guard",
-  "release_tag": "PR482-080",
-  "candidate": "37a02e2d9460d115e1d7255833b264a6bb5d8d80",
-  "target": "37a02e2d9460d115e1d7255833b264a6bb5d8d80",
-  "version": "V0.3.111-explicit-no-work",
-  "migration": "Setup/Database/080_prevent_unreported_setup_assignment_duplicates.sql"
-}

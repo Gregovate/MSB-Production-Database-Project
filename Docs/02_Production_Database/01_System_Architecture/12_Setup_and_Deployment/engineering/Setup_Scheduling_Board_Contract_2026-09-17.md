@@ -1433,7 +1433,12 @@ Production Crew without an auditor claim. All existing history is preserved.
 QC entry text, labels and buttons must be at least 18 CSS pixels, with readable
 contrast in both themes and controls at least 44 pixels high. Errors appear next
 to the action used, are announced and brought into view, and preserve entered
-text. Success is shown locally too. A page-top-only message is insufficient.
+text. Success is shown locally too. A page-top-only message is insufficient. Keep optional finding observations and
+Still Failing controls collapsed until requested. Put final signoff and its exact
+blockers immediately below the auditor, above findings. Use a short resizable
+problem-entry box and omit Assign to Me after the current auditor has claimed.
+A recorded repair does not waive unfinished required work; show that distinction
+explicitly beside the disabled signoff.
 
 ### Identity and three Perform Work modes
 

@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.120-qc-labels'};
+ if(path.includes('api/health')) body={version:'V0.3.121-qc-compact'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -100,9 +100,11 @@ addEventListener('load',()=>setTimeout(async()=>{
   assert(document.querySelector('[data-qc-task-id="598"]').dataset.qcState==='findings','Repair prematurely turned area green');
   assert(document.querySelector('[data-qc-task-id="598"]').textContent.includes('awaiting area sign-off'),'Verification status missing');
   await click('[data-qc-action="CLAIM_AUDIT"]');
+  document.querySelector('[data-qc-finding="71"] .next-qc-observation').open=true;
   count=qcWrites.length;
   await click('[data-qc-action="RETEST_FAIL"]');
   assert(qcWrites.length===count,'Retest allowed without evidence');
+  document.querySelector('[data-qc-finding="71"] .next-qc-observation').open=true;
   document.querySelector('[data-qc-observation="71"]').value='Still dark in actual test';
   await click('[data-qc-action="RETEST_FAIL"]');
   await click('#next-qc-fixes-tab');

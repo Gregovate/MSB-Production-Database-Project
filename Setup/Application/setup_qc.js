@@ -159,13 +159,12 @@
       ${withFixes ? `${status==='CLAIMED' ? `<label>Repair notes
          <textarea rows="3" maxlength="6000" data-qc-fix-note="${f.qc_finding_id}"
           placeholder="Describe the work actually performed"></textarea></label>` : ''}${controls}`
-      : `${status==='AWAITING_RETEST' ? '' : '<details><summary>Add an observation</summary>'}<label>${status==='AWAITING_RETEST' ? 'Observation (required only if still failing)' : 'Add to this existing issue'}
+      : `<details class="next-qc-observation"><summary>${status==='AWAITING_RETEST' ? 'Still failing / add observation' : 'Add an observation'}</summary><label>${status==='AWAITING_RETEST' ? 'Observation (required only if still failing)' : 'Add to this existing issue'}
          <textarea rows="3" maxlength="6000" data-qc-observation="${f.qc_finding_id}"
           placeholder="Additional details or corroborating observation"></textarea></label>
          <button type="button" class="small secondary" data-qc-action="OBSERVATION"
            data-qc-id="${f.qc_finding_id}">Add Observation</button>
-         ${status==='AWAITING_RETEST' ? '' : '</details>'}
-         ${controls}
+         ${controls}</details>
          ${status==='VERIFIED'
            ? `<button type="button" class="small secondary"
              data-qc-action="REOPEN" data-qc-id="${f.qc_finding_id}">
@@ -252,8 +251,18 @@
       <div class="next-qc-record">
         <div><strong>QC auditors:</strong>
           ${auditors.length ? auditors.map(x=>html(x.auditor)).join(', ') : 'None yet'}
-          <button type="button" class="small secondary" data-qc-action="CLAIM_AUDIT" data-qc-task="${id}">Assign to Me</button>
+          ${ownsAudit ? '<span> · Assigned to you</span>' : `<button type="button" class="small secondary" data-qc-action="CLAIM_AUDIT" data-qc-task="${id}">Assign to Me</button>`}
         </div>
+        ${ownsAudit ? `<section class="next-qc-signoff">
+          <h4>Final QC — Ready for Production</h4>
+          ${!gate ? '<p>Readiness checks unavailable.</p>' : ''}
+          ${gate && !gate.readiness_met ? '<p>Blocked: annual readiness has not been confirmed.</p>' : ''}
+          ${unfinished.length ? `<p>Sign-off blocked — complete this required work first:</p><ul>${unfinished.map(w=>`<li>#${html(w.id)} ${html(w.name)}</li>`).join('')}</ul>` : ''}
+          ${unrepaired.length ? `<p>${unrepaired.length} problem(s) still need repair.</p>` : ''}
+          <label class="next-qc-confirm"><input type="checkbox" data-qc-final-tested>
+            I observed the full two-minute test and confirmed this area works.</label>
+          <button type="button" data-qc-action="READY_FOR_PRODUCTION" data-qc-task="${id}" ${canSign ? '' : 'disabled'}>Ready for Production — Sign Off</button>
+        </section>` : ''}
         <h4>Open findings (${findings.length})</h4>
         <div class="next-qc-active">
         ${findings.length ? findings.map(f=>findingMarkup(f,false)).join('')
@@ -261,20 +270,10 @@
         </div>
         ${verified.length ? `<details class="next-qc-verified-history"><summary>Verified history (${verified.length})</summary>
           ${verified.map(f=>findingMarkup(f,false)).join('')}</details>` : ''}
-        ${ownsAudit ? `<section class="next-qc-signoff">
-          <h4>Final QC — Ready for Production</h4>
-          ${!gate ? '<p>Readiness checks unavailable.</p>' : ''}
-          ${gate && !gate.readiness_met ? '<p>Blocked: annual readiness has not been confirmed.</p>' : ''}
-          ${unfinished.length ? `<p>Required work still incomplete:</p><ul>${unfinished.map(w=>`<li>#${html(w.id)} ${html(w.name)}</li>`).join('')}</ul>` : ''}
-          ${unrepaired.length ? `<p>${unrepaired.length} problem(s) still need repair.</p>` : ''}
-          <label class="next-qc-confirm"><input type="checkbox" data-qc-final-tested>
-            I observed the full two-minute test and confirmed this area works.</label>
-          <button type="button" data-qc-action="READY_FOR_PRODUCTION" data-qc-task="${id}" ${canSign ? '' : 'disabled'}>Ready for Production — Sign Off</button>
-        </section>` : ''}
         <form class="next-qc-new" onsubmit="return false">
           <h4>Report problems</h4>
           <label>What is wrong? One problem per line.
-            <textarea data-qc-problems rows="7" maxlength="6000"
+            <textarea data-qc-problems rows="3" maxlength="6000"
               placeholder="arch 3 - blue lights 21 to 28 inches from bottom&#10;arch 4 - all red lights"></textarea>
           </label>
           <button type="button" data-qc-action="REPORT_LINES" data-qc-task="${id}">Save Problems</button>

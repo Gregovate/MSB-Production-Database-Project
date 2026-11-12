@@ -67,10 +67,10 @@ def test_release_version_and_assets_are_exact():
     backend = read(APP / "production_backend.py")
     client = read(APP / "setup_catalog_dirty_guard.js")
     html = read(APP / "production.html")
-    assert 'PRODUCTION_VERSION = "V0.3.120-qc-labels"' in backend
-    assert "CLIENT_BUILD = 'V0.3.120-qc-labels'" in client
+    assert 'PRODUCTION_VERSION = "V0.3.121-qc-compact"' in backend
+    assert "CLIENT_BUILD = 'V0.3.121-qc-compact'" in client
     for filename in ("setup_scheduling_board.js","setup_scheduling_board.css",
                      "setup_next_pass.js","setup_next_pass.css"):
-        pin = "2026-11-11.120.1" if filename.startswith("setup_next_pass") else "2026-11-11.111"
+        pin = "2026-11-11.121.1" if filename.startswith("setup_next_pass") else "2026-11-11.111"
         assert filename + "?v=" + pin in html
     assert "Updated 2026-11-11" in html
