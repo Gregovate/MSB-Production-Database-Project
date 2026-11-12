@@ -136,6 +136,9 @@ BEGIN
       JOIN ops.setup_session_task t ON t.setup_session_task_id=p_annual_task
       JOIN ops.setup_session ss ON ss.setup_session_id=t.setup_session_id
       WHERE i.intake_id=p_intake_id
+        -- Matching the year alone can attach the wrong park Stage.
+        -- Exact annual QC task is chosen by the Manager, and Stage must match.
+        AND i.stage_id IS NOT DISTINCT FROM t.annual_stage_id
         AND (i.target_year=ss.season_year OR
           (i.target_year IS NULL AND extract(year FROM i.updated_at
             AT TIME ZONE 'America/Chicago')::integer=ss.season_year))
