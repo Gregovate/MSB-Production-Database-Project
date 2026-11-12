@@ -6,9 +6,9 @@
 | System | Production Database — Setup and Deployment |
 | Task | Perform scheduled Setup work and report actual work |
 | Audience | Production Crew, Captains, Setup Managers |
-| Status | CURRENT — #205 V0.3.84 Production deployed 2026-10-16 |
+| Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-10-15 |
+| Last Reviewed | 2026-11-11 |
 | Keywords | Setup, Perform Work, Captain, Report Work, partial work, procedure, Print Task |
 
 ## Purpose
@@ -16,6 +16,10 @@
 Use **Perform Work** when you are ready to do scheduled Setup work in the field and record what actually happened.
 
 This screen uses the real 2026 Setup schedule. It keeps the original scheduled assignment separate from the actual work you report.
+
+## QC Problems and Repairs
+
+**Perform Work** has **Scheduled Work**, **QC Check**, and **QC Repairs Needed**. Continue reporting actual installation/task completion under Scheduled Work; unfinished required tasks block final QC sign-off. For functional failures, use [Report QC Problems, Repair Them, and Sign Off an Area](Report_QC_Problems_and_Repairs.md). Any Production Crew member can report and claim repairs without scheduling or Manager approval.
 
 ## Before You Start
 
@@ -226,7 +230,7 @@ Do not enter a second work report solely to repair a data-entry mistake.
 
 ## Task Feedback
 
-Use **Task Feedback** when the scheduled work exposes a field condition, Procedure problem, material relationship, data discrepancy, or other Setup information that may need correction.
+Use **Task Feedback** for Procedure, material relationship, or task/data corrections that need Manager review. **For something that does not work during Setup, use QC Check instead.** See [Report QC Problems, Repair Them, and Sign Off an Area](Report_QC_Problems_and_Repairs.md). Do not send QC repair problems into Intake.
 
 1. Open the scheduled task in **Perform Work**.
 2. Click **Task Feedback**.

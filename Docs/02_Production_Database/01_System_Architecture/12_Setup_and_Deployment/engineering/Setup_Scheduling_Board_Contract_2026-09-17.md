@@ -1403,6 +1403,14 @@ checks and disposable review; DRAFT/HOLD remains, final annual PASS closed.
 
 ## Current agreed QC workflow
 
+**Production status, November 11 local:** PR485 merged; migration081 and
+V0.3.121-qc-compact deployed with server PASS. [Release evidence](../../../../../Setup/Acceptance/Setup_485_QC_Production_Release.md)
+retains the snapshot and report. Protected live-browser confirmation remains
+pending. Earlier DRAFT/HOLD and verification UI descriptions below are historical;
+the simplified observation and exact-Scene corrections govern current behavior.
+Existing catalog coverage is retained and historical cleanup is deferred.
+
+
 **Design authority:** this controlled engineering document. PR485 consumes
 this contract; it does not own the design. This section records the operator's
 restated agreement and replaces the contradictory interpretation that removed
@@ -1471,7 +1479,7 @@ authorized Production Crew member can report, add observations, claim a problem
 to fix and record their actual repair without Manager involvement. Auditor
 self-assignment for retest also requires no Manager or calendar assignment.
 
-Reuse the familiar Task Feedback form fields, but save directly to the annual
+Use the simplified multiline form specified below and save directly to the annual
 task's QC findings. Normal QC reporting creates **no Intake record, Work Order,
 calendar assignment or artificial work report**. Historical reconciliation
 must not become a required step in this normal reporting path.

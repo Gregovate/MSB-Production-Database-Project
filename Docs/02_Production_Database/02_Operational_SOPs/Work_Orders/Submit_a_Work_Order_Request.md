@@ -1,5 +1,10 @@
 # Submit a Work Order Request
 
+## Setup QC before the show
+
+For functional problems found during Setup, use **Setup → Perform Work → QC Check**; claim and record repairs under **QC Repairs Needed**. Do not submit duplicate Intake or Work Orders. Work Orders are used once the show starts. Finalized QC areas retain their history; later failures use Work Orders. See [QC reporting, repairs and final checks](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Report_QC_Problems_and_Repairs.md).
+
+
 [↑ Work Orders Home](README.md) | [Next: Triage a Work Order Request →](Triage_a_Work_Order_Request.md)
 
 | Document Control | Value |

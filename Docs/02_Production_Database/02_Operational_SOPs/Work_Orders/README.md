@@ -1,5 +1,10 @@
 # Work Order Operational SOPs
 
+## Setup QC before the show
+
+For functional problems found during Setup, use **Setup → Perform Work → QC Check**; claim and record repairs under **QC Repairs Needed**. Do not submit duplicate Intake or Work Orders. Work Orders are used once the show starts. Finalized QC areas retain their history; later failures use Work Orders. See [QC reporting, repairs and final checks](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Report_QC_Problems_and_Repairs.md).
+
+
 | Document Control | Value |
 |---|---|
 | Document Type | Operator Portal |

@@ -1,5 +1,10 @@
 # Setup Session Application
 
+## November 11 QC release
+
+[Production server receipt and closeout](../Acceptance/Setup_485_QC_Production_Release.md): migration081 installed, Setup ONLINE; protected live browser check pending. [Operator QC procedure](../../Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Report_QC_Problems_and_Repairs.md).
+
+
 ## Pending final launch candidate: controller location and container pickup
 
 PR463 adds CTRL identity to Record Location and uses the existing Controller park-map symbol. Scan Controller still opens inventory, with an explicit Record Location action. The Container Scan card adds **Setup Complete Return to Shop**. Confirm an empty container, physical Stage and simple pickup location; the printable `/setup/container-pickups/` list is sorted by Stage. Record actual arrival with **Returned to Home Location** to close the request. Cancellation only cancels collection. No contents reconciliation or takedown redesign is included. Pending SQL 077/078 applies only in the disposable preview until release approval. Scan source and dist changes require the established Scan extension deployment in addition to Setup/FieldWiring. Protected browser acceptance is pending.
@@ -40,8 +45,8 @@ Setup/Application/production_backend.py
 Current reported version and Production application target:
 
 ```text
-V0.3.50-container-movement-report
-1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e
+V0.3.121-qc-compact
+3f281e49bf44a5d64a3be5e43f71319f59c8c27f
 ```
 
 ## 2026-10-09 — #205 scheduling corrections — Production PASS
