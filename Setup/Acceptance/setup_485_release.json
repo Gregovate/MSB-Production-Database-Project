@@ -1,0 +1,8 @@
+{
+  "profile": "485-qc",
+  "release_tag": "PR485-081",
+  "candidate": "3f281e49bf44a5d64a3be5e43f71319f59c8c27f",
+  "target": "3f281e49bf44a5d64a3be5e43f71319f59c8c27f",
+  "version": "V0.3.121-qc-compact",
+  "migration": "Setup/Database/081_add_unscheduled_setup_qc_findings.sql"
+}
