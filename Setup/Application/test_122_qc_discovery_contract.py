@@ -35,7 +35,7 @@ def test_qc_controls_do_not_create_schedule_or_simulate_saved_qc():
     assert "next-qc-search" in qc
     assert "Never scheduled" in qc
     assert "task.prerequisites_complete" in qc
-    assert "Report Fixes" in qc
+    assert "QC Repairs Needed" in qc
     assert "window.setupQcRenderCurrent" in qc
     assert "No QC PASS or repair status is inferred" in qc
     assert "commandOptions(" not in qc
