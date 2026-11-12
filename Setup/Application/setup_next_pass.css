@@ -1068,7 +1068,7 @@ body:not(.setup-schedule-view) #next-perform-list {
   padding: 0.55rem 0.8rem;
   color: var(--text, #172b43);
 }
-.next-qc-row [hidden], #next-qc-content[hidden] { display: none !important; }
+.next-qc-discovery [hidden] { display: none !important; }
 
 /* #122 QC task reporting, shared repairs: PR483 contrast tokens. */
 .next-qc-record,.next-qc-finding,.next-qc-fix-group {

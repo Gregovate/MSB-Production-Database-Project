@@ -7,17 +7,20 @@ PR #485 current-Production disposable QC Check browser review.
 param(
     [Parameter(Mandatory = $true)][string]$CandidateSha,
     [string]$ReviewerEmail = 'gliebig@sheboyganlights.org',
-    [string]$PrimaryRepo = 'C:\lor\ImportExport\MSB-Main'
+    [string]$PrimaryRepo = 'C:\Users\Greg\Github\MSB-Production-Database-Project'
 )
 $ErrorActionPreference = 'Stop'
 $Ref = 'feature/122-perform-work-qc-finder-post483'
-$ExpectedVersion = 'V0.3.112-qc-findings'
+$ExpectedVersion = 'V0.3.113-qc-review'
 if ($CandidateSha -cnotmatch '^[a-f0-9]{40}$') { throw 'HOLD: exact candidate SHA required.' }
 if (-not (Test-Path -LiteralPath $PrimaryRepo -PathType Container)) { throw 'HOLD: MSB main worktree missing.' }
 $Origin = (& git -C $PrimaryRepo remote get-url origin)
 if ($LASTEXITCODE -ne 0 -or ([string]$Origin) -notmatch 'Gregovate/MSB-Production-Database-Project(?:\.git)?$') {
     throw 'HOLD: unexpected repository origin.'
 }
+# Discover registered worktrees before choosing a new review directory.
+& git -C $PrimaryRepo worktree list --porcelain
+if ($LASTEXITCODE -ne 0) { throw 'HOLD: worktree discovery failed.' }
 # Fetch just this branch; do NOT switch, pull or overwrite the current checkout.
 & git -C $PrimaryRepo fetch origin "+refs/heads/${Ref}:refs/remotes/origin/${Ref}"
 if ($LASTEXITCODE -ne 0) { throw 'HOLD: candidate fetch failed.' }
@@ -38,7 +41,7 @@ try {
     $wasCreated = $true
     Set-Location -LiteralPath $Review
     Write-Host "PR485 TEST CANDIDATE: $CandidateSha"
-    Write-Host 'Test Scheduled Work / QC Check / Report Fixes. QC writes remain disposable.'
+    Write-Host 'WRITABLE DISPOSABLE REVIEW: Scheduled Work / QC Check / QC Repairs Needed. All test writes go to the clone.'
     Write-Host 'Production unchanged; ordinary Production activity can continue.'
     & (Join-Path $Review 'Setup\Acceptance\run_setup_disposable_browser_preview.ps1') `
        -PreviewPort 8898 `

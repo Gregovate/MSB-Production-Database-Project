@@ -1304,3 +1304,50 @@ shares identical finding IDs. Do not promote historical Intake for this test.
 **Two independent state machines:** a finding moves OPEN → CLAIMED → AWAITING_RETEST → VERIFIED or OPEN (failed retest); the annual test separately moves from ineligible to test-ready/in-progress/final PASS only after verified prerequisites, required actual test evidence and unresolved finding checks. Neither READY nor COMPLETE on the annual task means final QC PASS. Final approval control remains unfinished and must fail closed.
 
 **Current PR485 engineering status:** restored Manager historical Intake review and link controls in QC Check while leaving new direct QC reports independent of any Intake read; preserved 081 governed task/finding/event/intake-link tables. Source must receive exact-SHA CI, current-Production disposable 081 acceptance and Crew/Manager browser PASS in light/dark before merge or Production approval. A read-only historical reconciliation inventory and operator-confirmed classification are mandatory before any data backfill. PR485 is DRAFT/HOLD; no Production mutation.
+
+
+## November 11 — PR485 resumed engineering after d432cdd8
+
+PR485 remains **DRAFT/HOLD**, not browser accepted or released. Current main
+`c91a5b20385cd8ecec83ef14524378fd6b9153e8` adds only PR482/483 closeout
+records relative to the candidate base; those records are reconciled without
+changing the QC design. The last comment's `36071f09` is obsolete: later
+commits added repair ownership, auditor retest gates, restored Manager
+historical links and original evidence, and Stage identity checks.
+
+Confirmed review gaps in d432cdd8: five stale asset-pin regression assertions;
+QC data cached for the season (other workers' new findings were invisible on
+view reentry); SQL required a note for merely claiming a repair while the
+client invented one; unlinked Intake leaked through the Crew snapshot despite
+the Manager-only review contract. The corrected candidate uses one-click
+note-free claim commands with a database-owned claim audit event. Actual
+repair/retest/observation notes remain mandatory. View entry refreshes shared
+findings, and Manager source-link inventory is invalidated after linking.
+Linked original evidence remains readable to repair Crew; unlinked inventory
+and reconciliation stay Manager-only. New QC uses familiar findings and
+optional suggested-correction/evidence fields on the same direct QC command.
+
+The candidate identity is **V0.3.113-qc-review**, migration081 only. All changes
+remain inside PR485. Final annual PASS is still unavailable. No automatic
+historical conversion, Production migration, or release is authorized.
+
+Validation additions reuse the existing Engineering Compliance workflow:
+Python launches Chromium directly against the actual candidate HTML/scripts
+with fixture API responses, exercising both roles, exact #483/#598 form
+rendering, routing, same finding IDs, claim/repair/retest, fresh shared data,
+and theme styles. This has no Node dependency and is a DOM regression only,
+not PostgreSQL or operator acceptance. The existing Server Management reusable
+8898 preview remains the sole operator-review mechanism. Its dedicated
+launcher discovers worktrees and explicitly says **writable disposable
+review**. The workstation needs PowerShell/Git/SSH; no Node installation.
+
+The rollback SQL additionally checks real Crew/Manager boundaries, direct
+reports before auditor claims, note-free claiming, ownership/evidence
+rejections, linked original evidence, promoted Intake rejection, and complete
+protected-row fingerprints for annual tasks, scheduling, ordinary work
+reports, Intake and Work Orders. Fixture links are disposable tests only,
+not Manager confirmation of actual historical defects. Live clone SQL and
+protected browser checks remain required, including both themes and CLEAN
+EXIT. Local sandbox Chromium cannot start (socket permission denied), so no
+local browser PASS is claimed. Hosted DOM regression and current-Production
+clone acceptance must be recorded separately before another review handoff.

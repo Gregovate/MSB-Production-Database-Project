@@ -66,3 +66,19 @@ and read for this step. No SQL/maintenance/archive; restart only Setup. Existing
 source gates/rollback/fingerprint apply; briefly pause edits for preservation.
 Tooling/doc/test-only follow-up preserves every accepted runtime file.
 Actual Production report and protected live theme check remain pending.
+
+## Production deployment and protected browser PASS
+
+Greg returned source installer PASS in `/home/msbadmin/setup-deployment-reports/PR483-Source-20261111T192732Z`
+and confirmed Production browser PASS with the corrected dark summary/shift
+screenshot. Exact installed application is the profile-pinned
+`fdf1549e4215c305cb82b3e6e70e327ade574dd2` / V0.3.111-explicit-no-work,
+asset111.8. Integration/tooling main is3ee52204e64e9d14bc7a9e2306a736645855f0ae.
+Runner PASS contract includes exact source, Setup-only restart/health, focused
+Python tests and unchanged data/shared source. Actual fingerprint/shared SHA
+remain in retained result/report; not independently probed or transcribed here.
+No SQL,080 replay, PostgreSQL snapshot or maintenance transition. Rollback source
+is37a02e2d9460d115e1d7255833b264a6bb5d8d80; no rollback reported.
+Release run started at13:27:32 America/Chicago (19:27:32 UTC). Both-theme disposable
+review, CLEAN EXIT and separate approval preceded it. No further runtime release
+is needed for documentation. Local review-worktree cleanup awaits command receipt.

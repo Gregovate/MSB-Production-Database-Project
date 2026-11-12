@@ -39,26 +39,30 @@
       <div class="next-qc-note">${html(e.note)}</div></li>`).join('');
   async function refresh() {
     const year=Number(appState.seasonYear);
-    if (pending) await pending;
-    pending = api(`api/setup/qc?season_year=${encodeURIComponent(year)}`);
-    try {
-      const payload=await pending;
-      snapshot=payload.qc || {findings:[],auditors:[]};
-      loadedYear=year;
-    } finally {
-      pending=null;
-    }
+    // Coalesce concurrent renders; revisit the server on each view entry so
+    // another worker's findings and repairs do not stay hidden all season.
+    if (pending) return pending;
+    pending = (async () => {
+      try {
+        const payload=await api(`api/setup/qc?season_year=${encodeURIComponent(year)}`);
+        snapshot=payload.qc || {findings:[],auditors:[]};
+        loadedYear=year;
+      } finally { pending=null; }
+    })();
+    return pending;
   }
   async function currentData() {
+    await refresh();
     if (loadedYear !== Number(appState.seasonYear)) await refresh();
   }
   async function command(data) {
     try {
       setBusy(true);
       const payload=await api('api/setup/qc/action', commandOptions('POST',data));
-      await refresh();
-      window.setupQcRenderCurrent();
-      window.setupQcRenderFixes();
+      // A successful link invalidates the Manager's source-link inventory.
+      if (data.action==='LINK_INTAKE') intakeLoadedYear=null;
+      await window.setupQcRenderCurrent();
+      await window.setupQcRenderFixes();
       setAlert('QC record saved.','ok');
       return payload;
     } catch (error) {
@@ -105,10 +109,10 @@
       <details><summary>Observations and repair history (${(f.events || []).length})</summary>
         <ul class="next-qc-events">${eventMarkup(f)}</ul>
       </details>
-      ${withFixes ? `<label>Repair or retest notes
+      ${withFixes ? `<label>Repair notes
          <textarea rows="3" maxlength="6000" data-qc-fix-note="${f.qc_finding_id}"
-          placeholder="What was repaired? What did the retest show?"></textarea></label>${controls}`
-      : `<label>Add to this existing issue
+          placeholder="Describe the work actually performed"></textarea></label>${controls}`
+      : `<label>${status==='AWAITING_RETEST' ? 'Retest evidence / observation' : 'Add to this existing issue'}
          <textarea rows="3" maxlength="6000" data-qc-observation="${f.qc_finding_id}"
           placeholder="Additional details or corroborating observation"></textarea></label>
          <button type="button" class="small secondary" data-qc-action="OBSERVATION"
@@ -153,14 +157,22 @@
       if (action==='REPORT') {
         const title=host.querySelector('[data-qc-title]')?.value?.trim();
         note=host.querySelector('[data-qc-description]')?.value?.trim();
+        const evidence=host.querySelector('[data-qc-evidence]')?.value?.trim();
+        if (evidence) note += '\n\nSuggested correction / evidence:\n'+evidence;
         const phase=host.querySelector('[data-qc-phase]')?.value;
         const location=host.querySelector('[data-qc-location]')?.value?.trim();
-        if (!title || !note) { setAlert('Describe the problem before saving.','error');return; }
+        if (!title || !host.querySelector('[data-qc-description]')?.value?.trim()) { setAlert('Describe the problem before saving.','error');return; }
+        if (note.length>6000) { setAlert('Findings and evidence together must be 6000 characters or fewer.','error');return; }
         await command({action,setup_session_task_id:targetId,title,
           note,discovery_phase:phase,location_detail:location});
         return;
       }
-      if (action==='CLAIM_REPAIR' && !note) note='Claimed repair';
+      // Claim is intent only. The database records the claim event; no work
+      // evidence or invented repair note is required from the operator.
+      if (action==='CLAIM_REPAIR') {
+        await command({action,setup_session_task_id:targetId,qc_finding_id:finding});
+        return;
+      }
       if (!note) { setAlert('Enter a repair, retest or observation note.','error'); return; }
       await command({action,setup_session_task_id:targetId,qc_finding_id:finding,note});
     });
@@ -255,8 +267,10 @@
             <option value="FINAL_TEST">Final Test</option>
             <option value="OTHER">Other</option>
           </select></label>
-          <label>Detailed findings <textarea data-qc-description rows="7" maxlength="6000"
+          <label>What did you find? <textarea data-qc-description rows="7" maxlength="6000"
             placeholder="What worked, what did not, and how to reproduce it"></textarea></label>
+          <label>Suggested correction / evidence <span class="muted">(optional)</span>
+            <textarea data-qc-evidence rows="3" maxlength="2000"></textarea></label>
           <button type="button" data-qc-action="REPORT" data-qc-task="${id}">Save QC Problem</button>
         </form>
       </div>`;
@@ -304,6 +318,7 @@
     if (!host || nextQcDiscovery.mode!=='fixes') return;
     try { await currentData(); }
     catch (error) { host.textContent='QC repair list unavailable: '+(error.message||error);return; }
+    if (!host.isConnected || nextQcDiscovery.mode!=='fixes') return;
     const active=snapshot.findings.filter(f=>f.status!=='VERIFIED');
     host.innerHTML=`<h3>QC Repairs Needed · ${active.length} outstanding findings</h3>
       <label>Find problem <input type="search" data-qc-fix-search

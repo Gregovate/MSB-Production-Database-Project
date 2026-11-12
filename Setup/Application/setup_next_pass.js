@@ -2579,6 +2579,7 @@ function nextQcEnsureDiscovery() {
   const fixes = nextQcDiscovery.mode === 'fixes';
   el('next-qc-content').hidden = !qc;
   el('next-qc-search').hidden = fixes;
+  section.querySelector('label[for="next-qc-search"]').hidden = fixes;
   el('next-qc-count').hidden = fixes;
   el('next-qc-list').hidden = fixes;
   el('next-qc-fixes-list').hidden = !fixes;

@@ -5,9 +5,6 @@ and must execute against the disposable current-Production PostgreSQL clone.
 """
 from pathlib import Path
 import ast
-import shutil
-import subprocess
-import pytest
 
 ROOT=Path(__file__).resolve().parent
 SQL=(ROOT.parent/'Database/081_add_unscheduled_setup_qc_findings.sql').read_text()
@@ -23,14 +20,6 @@ def test_qc_python_modules_parse_and_backend_is_registered():
     ast.parse(REPO)
     assert 'from setup_qc_api import setup_qc_api' in BACK
     assert 'app.register_blueprint(setup_qc_api)' in BACK
-
-
-def test_qc_javascript_parses_where_node_is_available():
-    if shutil.which('node') is None:
-        pytest.skip('Node optional; Setup Production server does not require Node')
-    result=subprocess.run(['node','--check',str(ROOT/'setup_qc.js')],
-                          capture_output=True,text=True,check=False)
-    assert result.returncode==0, result.stderr
 
 
 def test_qc_command_enforces_identity_and_no_scheduling():

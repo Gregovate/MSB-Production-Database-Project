@@ -1,4 +1,7 @@
 -- #122/#205 Migration 081: task-scoped QC findings, no scheduled work.
+-- Purpose: persist annual QC findings and audited repair/retest evidence.
+-- Scope: supplemental QC objects/functions only; no Intake, Work Order,
+-- scheduling, ordinary work-report, or annual completion writes.
 -- Candidate only: disposable current-Production clone before any release.
 BEGIN;
 DO $preflight$
@@ -157,6 +160,11 @@ BEGIN
         VALUES(p_finding,'INTAKE_LINK',v_person,'INTAKE-'||p_intake_id||': '||v_note);
     END IF;
   ELSE
+    -- Claim records intent, not performed work; create its audit note here.
+    -- Repair, retest and observation still require the operator's evidence.
+    IF v_action='CLAIM_REPAIR' AND v_note IS NULL THEN
+      v_note := 'Claimed repair';
+    END IF;
     IF v_action NOT IN ('OBSERVATION','CLAIM_REPAIR','REPAIRED','RETEST_PASS','RETEST_FAIL','REOPEN')
        OR v_note IS NULL OR length(v_note)>6000 THEN
       RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Known QC action and note (1-6000) required';
@@ -289,7 +297,7 @@ BEGIN
           'setup_session_task_id',a.setup_session_task_id,'person_id',a.person_id,
           'claimed_at',a.claimed_at,
           'auditor',coalesce(nullif(btrim(concat_ws(' ',p.first_name,p.last_name)),''),p.email))
-          ORDER BY a.setup_session_task_id,a.claimed_at)
+          ORDER BY a.setup_session_task_id,a.claimed_at,a.person_id)
       FROM ops.setup_qc_auditor a
       JOIN ops.setup_session_task t ON t.setup_session_task_id=a.setup_session_task_id
       JOIN ops.setup_session ss ON ss.setup_session_id=t.setup_session_id
@@ -303,7 +311,9 @@ BEGIN
         'problem',i.problem_raw,'notes',i.notes_raw,
         'updated_at',i.updated_at) ORDER BY i.intake_id DESC)
       FROM stage.work_order_intake i
-      WHERE (i.target_year=p_year OR
+      WHERE EXISTS (SELECT 1 FROM ref.setup_browser_capabilities(p_email) c
+        WHERE c.can_manage_setup)
+        AND (i.target_year=p_year OR
         (i.target_year IS NULL AND extract(year FROM i.updated_at AT TIME ZONE
           'America/Chicago')::integer=p_year))
         AND NOT EXISTS (SELECT 1 FROM ops.work_order w
