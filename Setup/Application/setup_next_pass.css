@@ -1144,3 +1144,5 @@ body:not(.setup-schedule-view) #next-perform-list {
 .next-qc-discovery button[data-qc-action="READY_FOR_PRODUCTION"] { background: #166534; color: #fff; }
 .next-qc-discovery button[data-qc-action="READY_FOR_PRODUCTION"]:disabled { opacity: .55; cursor: not-allowed; }
 .next-qc-final-record { background: #dcfce7; color: #172033; padding: .8rem; border-radius: .5rem; }
+/* Completed areas leave the active layout until their history is expanded. */
+[data-qc-completed-areas]:not([open]) > .next-qc-row { display: none; }
