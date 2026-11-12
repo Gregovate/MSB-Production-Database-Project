@@ -2541,6 +2541,7 @@ function nextQcEnsureDiscovery() {
         <button type="button" class="small secondary" id="next-qc-check-tab">QC Check</button>
         <button type="button" class="small secondary" id="next-qc-fixes-tab">QC Repairs Needed</button>
       </div>
+      <a id="next-qc-report" class="next-qc-report" target="_blank" rel="noopener">QC report / PDF — all findings and history</a>
       <div id="next-qc-content" hidden>
         <label for="next-qc-search"><strong>Pick an area</strong></label>
         <input id="next-qc-search" type="search" placeholder="Search Stage, Scene or task number">
@@ -2578,6 +2579,9 @@ function nextQcEnsureDiscovery() {
   const qc = nextQcDiscovery.mode !== 'work';
   const fixes = nextQcDiscovery.mode === 'fixes';
   el('next-qc-content').hidden = !qc;
+  // Report uses the full season snapshot, independent of active-list filters.
+  el('next-qc-report').hidden = !qc;
+  el('next-qc-report').href = `api/setup/qc/report?season_year=${encodeURIComponent(appState.seasonYear)}`;
   el('next-qc-search').hidden = fixes;
   section.querySelector('label[for="next-qc-search"]').hidden = fixes;
   el('next-qc-count').hidden = fixes;

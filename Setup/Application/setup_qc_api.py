@@ -9,6 +9,7 @@ from setup_api import (
     require_setup_command, json_body, setup_database_dsn
 )
 from setup_qc_repository import SetupQcRepository
+from setup_qc_report import render_qc_report
 
 setup_qc_api = Blueprint("setup_qc_api", __name__)
 
@@ -36,6 +37,20 @@ def api_setup_qc_read() -> Response:
     _repo,email,_access=require_reader()
     year=qc_integer(request.args.get("season_year"),"season_year")
     return jsonify(qc=qc_repo().snapshot(email,year))
+
+
+@setup_qc_api.get("/api/setup/qc/report")
+def api_setup_qc_report() -> Response:
+    """Authenticated read-only history, including findings hidden from active work."""
+    _repo, email, _access = require_reader()
+    year = qc_integer(request.args.get("season_year"), "season_year")
+    scope = request.args.get("scope", "all")
+    if scope not in {"all", "outstanding"}:
+        raise SetupCommandError("Report scope must be all or outstanding")
+    response = Response(render_qc_report(qc_repo().snapshot(email, year), year, scope),
+                        mimetype="text/html")
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @setup_qc_api.get("/api/setup/qc/intake-candidates")

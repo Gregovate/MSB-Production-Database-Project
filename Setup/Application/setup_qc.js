@@ -233,9 +233,15 @@
     const final=signoffFor(id);
     if (final) {
       host.innerHTML=`<section class="next-qc-final-record"><h4>Ready for Production · 100%</h4>
-        <p>Signed ${html(localTime(final.signed_at))}</p>
+        <p>Signed by ${html((snapshot.auditors || []).find(a=>Number(a.person_id)===Number(final.auditor_person_id) && Number(a.setup_session_task_id)===Number(id))?.auditor || 'Auditor #'+final.auditor_person_id)} · ${html(localTime(final.signed_at))}</p>
         <p>${html(final.sequence_reference)}</p><p class="next-qc-note">${html(final.test_evidence)}</p>
-        <p>Report subsequent problems through Work Orders.</p></section>`;
+        <p>Report subsequent problems through Work Orders.</p>
+        <h4>Findings and repair history (${taskFindings(id).length})</h4>
+        ${taskFindings(id).map(f=>`<section class="next-qc-finding" data-qc-state="VERIFIED">
+          <strong>Issue #${html(f.qc_finding_id)}: ${html((f.events || []).find(e=>e.type==='REPORTED')?.note || f.title)}</strong>
+          <p>Reported by ${html(f.reporter)} · Repair: ${html(f.repair_owner || 'Unclaimed')}</p>
+          <ul>${eventMarkup(f)}</ul></section>`).join('')}
+        </section>`;
       return;
     }
     const allFindings=taskFindings(id);

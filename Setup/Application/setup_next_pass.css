@@ -1165,3 +1165,16 @@ body:not(.setup-schedule-view) #next-perform-list {
 .next-qc-signoff { margin-top: .5rem; padding: .5rem 0; }
 .next-qc-signoff p, .next-qc-signoff ul { margin: .4rem 0; }
 .next-qc-new textarea { min-height: 5rem; }
+
+/* QC follow-up: selection is visibly filled; action colors retain text meaning. */
+.next-qc-tabs button { min-height:44px; font-size:18px; border:2px solid #64748b; }
+.next-qc-tabs button[aria-pressed="true"] { background:#075985; color:#fff; border-color:#075985; box-shadow:0 3px 0 #083344; }
+.next-qc-tabs button:hover { box-shadow:0 0 0 3px #7dd3fc; }
+.next-qc-discovery button[data-qc-action="CLAIM_AUDIT"] { background:#6b21a8; color:#fff; border-color:#6b21a8; }
+.next-qc-discovery button[data-qc-action="CLAIM_REPAIR"],
+.next-qc-discovery button[data-qc-action="REPAIRED"] { background:#92400e; color:#fff; border-color:#92400e; }
+.next-qc-discovery button:focus-visible, .next-qc-report:focus-visible { outline:3px solid #0284c7; outline-offset:3px; }
+.next-qc-discovery button[data-qc-action]:hover:not(:disabled) { box-shadow:0 0 0 3px #94a3b8; }
+.next-qc-report { display:inline-block; margin:.75rem 0; padding:.65rem 1rem; background:#075985; color:#fff; border-radius:.4rem; font-size:18px; font-weight:700; }
+.next-qc-report[hidden] { display:none; }
+.tab.active { background:#075985; color:#fff; border:2px solid #075985; }

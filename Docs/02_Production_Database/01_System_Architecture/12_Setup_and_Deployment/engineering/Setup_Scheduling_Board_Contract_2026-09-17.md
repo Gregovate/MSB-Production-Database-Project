@@ -1401,6 +1401,31 @@ Retain the failed local review worktree. Corrected source needs new exact-SHA
 checks and disposable review; DRAFT/HOLD remains, final annual PASS closed.
 
 
+## November 12 QC follow-up — controls and durable reporting
+
+Operator confirmed Production problem entry PASS. The deployed controls lack clear
+selected-mode/action distinction, and final-area rendering hides finding history.
+Implement a source-only follow-up; do not alter lifecycle, permissions or data.
+
+- Selected Perform Work/navigation and QC mode have a filled blue treatment and
+  explicit selected state. Repair claim is amber, auditor claim purple, final
+  sign-off green. Use readable text, focus rings, hover feedback and 44px targets
+  in both themes; colors never replace labels or imply completion.
+- QC Check and QC Repairs Needed expose **QC report / PDF**. Reuse the existing
+  printable HTML / browser Save as PDF mechanism, not a new rendering service.
+  Default report includes all findings, including VERIFIED/completed areas;
+  an explicit outstanding-only link is available. Screen filters never silently
+  suppress report history. Require existing authenticated Setup read access.
+- Report season, generation time in America/Chicago, exact Stage/Scene/task and
+  finding IDs, full original description, reporter/time, current repair claimant,
+  all repair/observation/retest events with actor/time/notes, assigned auditors
+  and the actual final signer/time/evidence. Sort Stage, Scene, task, finding,
+  then event timestamp/ID deterministically. Escape all user content.
+- Completed area detail retains read-only findings and attributed event history,
+  with final auditor identity. Never reintroduce mutation buttons after signoff.
+- No new Intake, Work Order, scheduling, database writes or schema changes in the
+  report. Existing source-only preview/release gates apply; not yet deployed.
+
 ## Current agreed QC workflow
 
 **Production status, November 11 local:** PR485 merged; migration081 and

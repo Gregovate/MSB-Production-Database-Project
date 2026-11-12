@@ -116,3 +116,19 @@ def test_final_signoff_passes_evidence_to_database_gate(client):
     payload['observed_test'] = 'true'
     assert http.post('/api/setup/qc/action', headers=HEADERS, json=payload).status_code == 403
     assert not calls
+
+
+def test_report_requires_reader_and_is_read_only(client):
+    http, calls, access = client
+    url = '/api/setup/qc/report?season_year=2026'
+    assert http.get(url).status_code == 401
+    access['can_read_setup'] = False
+    assert http.get(url, headers=HEADERS).status_code == 403
+    access['can_read_setup'] = True
+    response = http.get(url, headers=HEADERS)
+    assert response.status_code == 200
+    assert response.mimetype == 'text/html'
+    assert response.headers['Cache-Control'] == 'no-store'
+    assert b'Print / Save PDF' in response.data
+    assert http.get(url+'&scope=invalid', headers=HEADERS).status_code == 403
+    assert not calls

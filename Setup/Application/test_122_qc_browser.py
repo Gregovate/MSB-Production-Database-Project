@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.121-qc-compact'};
+ if(path.includes('api/health')) body={version:'V0.3.122-qc-report'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -87,6 +87,12 @@ addEventListener('load',()=>setTimeout(async()=>{
   assert(document.querySelector('#next-perform-list').hidden,'Scheduled panel leaked');
   assert(!document.querySelector('#next-qc-search').getClientRects().length,'QC task search leaked into repairs');
   assert(document.querySelector('#next-qc-fixes-list [data-qc-finding="71"]').getClientRects().length,'Shared finding missing');
+  for (const theme of ['light','dark']) {
+    document.documentElement.dataset.theme=theme;
+    assert(getComputedStyle(document.querySelector('#next-qc-fixes-tab')).backgroundColor==='rgb(7, 89, 133)','Selected QC mode lacks blue fill in '+theme);
+    assert(getComputedStyle(document.querySelector('#next-qc-fixes-list [data-qc-action="CLAIM_REPAIR"]')).backgroundColor==='rgb(146, 64, 14)','Repair claim lacks amber fill in '+theme);
+  }
+  assert(document.querySelector('#next-qc-report').href.includes('season_year=2026'),'Full-history report link missing season');
   await click('#next-qc-fixes-list [data-qc-id="71"][data-qc-action="CLAIM_REPAIR"]');
   assert(!qcWrites.at(-1).note,'Claim incorrectly requires work evidence');
   let count=qcWrites.length;
@@ -120,6 +126,8 @@ addEventListener('load',()=>setTimeout(async()=>{
   const area=document.querySelector('[data-qc-task-id="598"]');
   assert(area.dataset.qcState==='review','Finding verification bypassed final auditor signoff');
   assert(area.textContent.includes('Final QC pending'),'Finding verification implied annual PASS');
+  assert(document.querySelector('[data-qc-detail="598"]').textContent.includes('Tester'),'Final signer identity hidden');
+  assert(document.querySelector('[data-qc-detail="598"]').textContent.includes('Issue #71'),'Completed finding history hidden');
   for(const theme of ['light','dark']) {
     document.documentElement.dataset.theme=theme;
     assert(getComputedStyle(area).backgroundColor==='rgb(255, 255, 255)','Pending final signoff incorrectly shows green');

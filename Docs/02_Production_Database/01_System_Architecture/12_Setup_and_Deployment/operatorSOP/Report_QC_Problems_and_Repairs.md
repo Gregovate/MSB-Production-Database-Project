@@ -69,3 +69,7 @@ A new problem before final sign-off keeps or turns the area yellow. After final 
 - [Perform and Report Setup Work](Perform_and_Report_Setup_Work.md)
 - [Setup Operator Procedures](README.md)
 - [Setup and Deployment](../README.md)
+
+## Follow-up candidate: print findings and retained history
+
+The report/control follow-up is in browser review, not yet deployed. Its **QC report / PDF — all findings and history** link opens a report from either QC screen. Choose **Print / Save PDF**, then **Save as PDF** in the browser print dialog. The default includes completed findings, reporters, repair claimants, repair notes, auditors and final sign-off evidence. **Outstanding only** produces a current repair list. The report is read-only; printing does not complete work. Completed area details also retain the finding history.
