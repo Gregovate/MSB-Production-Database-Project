@@ -43,6 +43,7 @@ try {
     Write-Host "PR485 TEST CANDIDATE: $CandidateSha"
     Write-Host 'WRITABLE DISPOSABLE REVIEW: Scheduled Work / QC Check / QC Repairs Needed. All test writes go to the clone.'
     Write-Host 'Production unchanged; ordinary Production activity can continue.'
+    Write-Host 'Review normal Crew reporting and repairs without Manager approval or scheduling. Historical Intake cleanup is separate.'
     & (Join-Path $Review 'Setup\Acceptance\run_setup_disposable_browser_preview.ps1') `
        -PreviewPort 8898 `
        -CandidateSha $CandidateSha `

@@ -1423,7 +1423,10 @@ Do not create another task master or require a calendar assignment.
 QC problem reporting is available during Installation, Initial Power-Up,
 Final Test or Other. It does not require an auditor claim, scheduled work day,
 READY state or completed prerequisites. An authorized Setup worker can report
-a failure immediately, including while the annual task is NOT_READY.
+a failure immediately, including while the annual task is NOT_READY. Every
+authorized Production Crew member can report, add observations, claim a problem
+to fix and record their actual repair without Manager involvement. Auditor
+self-assignment for retest also requires no Manager or calendar assignment.
 
 Reuse the familiar Task Feedback form fields, but save directly to the annual
 task's QC findings. Normal QC reporting creates **no Intake record, Work Order,
@@ -1454,10 +1457,12 @@ QC PASS. Finding verification and annual QC approval are separate decisions.
 
 ### Historical reports and duplicate prevention
 
-Historical Intake reconciliation is part of this QC engineering scope, not
-a separate future feature or the normal new-report mechanism. Original Intake
-rows remain intact and are linked to the resulting QC findings. Manager
-review establishes exact physical failure/section overlap; use many-to-many
+Operator scope correction (2026-11-12): finish the ordinary Production Crew
+QC reporting and repair workflow first. Historical Intake reconciliation is a
+separate, one-shot manual correction and is not an implementation or acceptance
+blocker for that workflow. Do not build further reconciliation UI for PR485.
+Original Intake rows must remain intact; any later manual correction must retain
+source links and attribution. Manager review establishes exact physical failure/section overlap; use many-to-many
 links so one report can support several findings and several reports can
 corroborate the same finding. Never collapse records solely because they
 share a Stage or similar wording.
@@ -1490,10 +1495,18 @@ Other already-promoted pre-show reports require an inventory and deliberate
 reconciliation of their original Intake, Work Orders and any repair evidence.
 Establish one active repair owner for each physical finding; do not automatically
 undo promotions, delete history, mark work completed or create duplicate QC
-repairs. This is unfinished PR485 scope. The INTAKE86 exception does not
-authorize a general Work-Order-first QC reporting path.
+repairs. This is deferred to the separate one-shot manual correction. The
+INTAKE86 exception does not authorize a general Work-Order-first QC reporting path.
 
 ### Final two-minute test and annual approval
+
+**Completion guarantee:** the operator must be able to rely on **Complete QC**
+as evidence that the inspected Stage/Scene is ready for the show. This requires
+the three gates below, not merely a repair note, a claim, a READY flag or an
+ordinary annual-task COMPLETE status. The application must not present those
+intermediate states as accepted final QC. This guarantee is unfinished until
+the final signoff control enforces the gates and passes acceptance; keep that
+control unavailable in the meantime.
 
 Auditors may self-assign without scheduling. Normal test operation can use a
 command-center operator calling the actual two-minute LOR sequence and field
@@ -1520,9 +1533,10 @@ prove reporting, repairs, historical reconciliation or final signoff.
 PR485 remains DRAFT/HOLD. Implement and validate the controls against this
 contract, including Manager/Crew positive and negative authorization, same-ID
 persistence across views, both themes, Scheduled Work preservation and no new
-Intake/WO/schedule/work-report records from normal QC actions. Historical
-reconciliation must preserve source evidence and prevent duplicate repair
-ownership. Separate source/fixture tests from actual current-Production-clone
+Intake/WO/schedule/work-report records from normal QC actions. The separate
+manual historical correction must preserve source evidence and prevent duplicate
+repair ownership; it does not gate the normal Crew workflow. Separate
+source/fixture tests from actual current-Production-clone
 SQL and operator browser acceptance.
 
 Use the existing Server Management reusable disposable preview on8898,

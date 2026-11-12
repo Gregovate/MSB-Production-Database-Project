@@ -83,3 +83,18 @@ def test_historical_intake_review_is_manager_only(client):
     access['can_manage_setup'] = True
     assert http.get(url, headers=HEADERS).status_code == 200
     assert calls == [('intake', 2026)]
+
+
+@pytest.mark.parametrize('action', ['REPORT', 'OBSERVATION', 'CLAIM_REPAIR', 'REPAIRED'])
+def test_crew_operational_workflow_never_calls_manager_guard(client, monkeypatch, action):
+    """Ordinary reporting and repairs must stay independent of historical review."""
+    http, calls, access = client
+    assert not access['can_manage_setup']
+    def forbidden_manager_guard():
+        pytest.fail('Normal Crew QC action incorrectly required a Manager')
+    monkeypatch.setattr(qc, 'require_manager', forbidden_manager_guard)
+    response = http.post('/api/setup/qc/action', headers=HEADERS, json={
+        'action': action, 'setup_session_task_id': 598, 'qc_finding_id': 17,
+        'title': 'Arch 3 red string', 'note': 'Actual observed failure or repair evidence'})
+    assert response.status_code == 200
+    assert calls[-1][1]['action'] == action

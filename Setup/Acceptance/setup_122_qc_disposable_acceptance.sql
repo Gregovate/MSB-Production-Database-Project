@@ -93,32 +93,8 @@ BEGIN
     PERFORM ops.setup_qc_intake_candidates(v_crew,2026);
     RAISE EXCEPTION 'Crew obtained Manager Intake candidates';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-  BEGIN
-    PERFORM ops.setup_qc_command(v_crew,'LINK_INTAKE',v_task,v_finding,
-      'Not authorized',NULL,NULL,NULL,85);
-    RAISE EXCEPTION 'Crew linked historical Intake';
-  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-  -- Clone-only link fixture; this is not operational classification/backfill.
-  PERFORM ops.setup_qc_command(v_actor,'LINK_INTAKE',598,v_other_finding,
-    'Disposable acceptance only; not a physical defect reconciliation',NULL,NULL,NULL,85);
-  PERFORM ops.setup_qc_command(v_actor,'LINK_INTAKE',598,v_other_finding,
-    'Disposable acceptance only; not a physical defect reconciliation',NULL,NULL,NULL,85);
-  IF (SELECT count(*) FROM ops.setup_qc_intake_link
-      WHERE intake_id=85 AND qc_finding_id=v_other_finding)<>1 THEN
-    RAISE EXCEPTION 'Historical link is not idempotent';
-  END IF;
-  v_snapshot := ops.setup_qc_snapshot(v_crew,2026);
-  IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_snapshot->'findings') f,
-      LATERAL jsonb_array_elements(f->'linked_intake_records') i
-      WHERE (f->>'qc_finding_id')::bigint=v_other_finding
-        AND (i->>'intake_id')::integer=85 AND i->>'problem_raw' IS NOT NULL) THEN
-    RAISE EXCEPTION 'Linked original evidence unavailable to repair Crew';
-  END IF;
-  BEGIN
-    PERFORM ops.setup_qc_command(v_actor,'LINK_INTAKE',598,v_other_finding,
-      'Disposable promoted duplication negative test',NULL,NULL,NULL,86);
-    RAISE EXCEPTION 'Promoted INTAKE-86 accepted into QC';
-  EXCEPTION WHEN check_violation THEN NULL; END;
+  -- Historical Intake correction is a separate operator-owned one-shot task.
+  -- Normal QC acceptance must not depend on specific old Intake IDs or promotion state.
   BEGIN
     PERFORM ops.setup_qc_command(v_actor,'OBSERVATION',598,v_finding,'Wrong annual task');
     RAISE EXCEPTION 'Finding accepted under another annual task';
@@ -183,6 +159,30 @@ BEGIN
   IF (SELECT status FROM ops.setup_qc_finding WHERE qc_finding_id=v_finding)
      <> 'OPEN' THEN
     RAISE EXCEPTION 'Reopened failure did not return to repair queue';
+  END IF;
+  -- Prove the complete operational path under a non-Manager Crew identity.
+  -- No Manager command, calendar assignment or Intake source is needed here.
+  PERFORM ops.setup_qc_command(v_crew,'OBSERVATION',598,v_other_finding,
+    'Crew confirms the same early failure');
+  PERFORM ops.setup_qc_command(v_crew,'CLAIM_REPAIR',598,v_other_finding);
+  PERFORM ops.setup_qc_command(v_crew,'REPAIRED',598,v_other_finding,
+    'Crew repaired the observed connection');
+  PERFORM ops.setup_qc_command(v_crew,'CLAIM_AUDIT',598);
+  PERFORM ops.setup_qc_command(v_crew,'RETEST_FAIL',598,v_other_finding,
+    'Actual retest still shows the failure');
+  IF (SELECT status FROM ops.setup_qc_finding WHERE qc_finding_id=v_other_finding)<>'OPEN' THEN
+    RAISE EXCEPTION 'Crew failed retest did not reopen the same finding';
+  END IF;
+  PERFORM ops.setup_qc_command(v_crew,'CLAIM_REPAIR',598,v_other_finding);
+  PERFORM ops.setup_qc_command(v_crew,'REPAIRED',598,v_other_finding,
+    'Crew corrected the remaining connection');
+  PERFORM ops.setup_qc_command(v_crew,'RETEST_PASS',598,v_other_finding,
+    'Actual retest confirms the reported channel works');
+  v_snapshot := ops.setup_qc_snapshot(v_crew,2026);
+  IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_snapshot->'findings') f
+    WHERE (f->>'qc_finding_id')::bigint=v_other_finding
+      AND (f->>'setup_session_task_id')::bigint=598 AND f->>'status'='VERIFIED') THEN
+    RAISE EXCEPTION 'Crew lifecycle lost the original finding or verified state';
   END IF;
   SELECT count(*) INTO v_after FROM ops.setup_work_day_task;
   IF v_before<>v_after THEN
