@@ -544,6 +544,7 @@
       photos.append(item);
     }
     $("ticket-photos").hidden = !photos.children.length;
+    // Wiring/verify candidates belong only in optional Manager Intake approval.
     document.dispatchEvent(new CustomEvent("wo419:ticket", { detail: row }));
   }
 

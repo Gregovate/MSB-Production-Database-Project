@@ -301,6 +301,24 @@ def ticket(key: str) -> Response:
     return jsonify(ticket=result, read_only=True)
 
 
+@app.get("/api/work-orders/tickets/<key>/intake-approval-review")
+def intake_approval_review(key: str) -> Response:
+    """Manager-only comparison before a public Intake can be promoted."""
+    result = store().intake_approval_review(
+        actor=actor(), ticket_key=ticket_key(key)
+    )
+    return jsonify(intake_approval_review=result, read_only=True)
+
+
+@app.get("/api/work-orders/tickets/<key>/wiring-accountability")
+def ticket_wiring_accountability(key: str) -> Response:
+    """Manager-only; no implicit ticket/task link or changes to source data."""
+    result = store().wiring_accountability(
+        actor=actor(), ticket_key=ticket_key(key)
+    )
+    return jsonify(wiring_accountability=result, read_only=True)
+
+
 @app.get("/api/work-orders/tickets/<key>/related-information")
 def related_information(key: str) -> Response:
     result = store().related_information(

@@ -661,10 +661,22 @@ class WorkManagementRepository:
             row["photos"] = photo_references(
                 detail.pop("photo_url", None), detail.pop("intake_photo_url", None))
             # Old read-only clones may not yet have migration005.
-            cur.execute("SELECT to_regclass('ops.work_management_duplicate_link') AS relation")
+            cur.execute(
+                "SELECT to_regclass('ops.work_management_duplicate_link') AS relation, "
+                "CASE WHEN to_regclass('ops.work_management_duplicate_link') IS NULL "
+                "THEN false ELSE has_table_privilege(current_user, "
+                "'ops.work_management_duplicate_link', 'SELECT') END AS can_read"
+            )
             duplicate_relation = cur.fetchone() or {}
             row["duplicate_of"] = None
-            if duplicate_relation.get("relation"):
+            # Legacy pre-V1 clone reader is fieldwiring_app and does not hold
+            # migration005 duplicate-table SELECT. Do not grant this role wider
+            # rights or let a discretionary link read block Intake detail.
+            # Native Work Management role already has reviewed SELECT.
+            row["duplicate_lookup_available"] = bool(
+                duplicate_relation.get("relation") and duplicate_relation.get("can_read")
+            )
+            if row["duplicate_lookup_available"]:
                 cur.execute(
                     "SELECT 'WO-'||target_work_order_id AS ticket "
                     "FROM ops.work_management_duplicate_link WHERE source_ticket=%s",
@@ -675,6 +687,35 @@ class WorkManagementRepository:
             row["detail"] = detail
             row["setup_context"] = context
             return row
+
+    def wiring_accountability(
+        self, *, actor: dict[str, Any], ticket_key: str,
+    ) -> dict[str, Any]:
+        """Manager-only, read-only candidate wiring step for an existing ticket."""
+        if not actor.get("can_manage"):
+            raise WorkManagementError("Manager review required.", 403)
+        # ticket() enforces existing row-level ticket authorization first.
+        record = self.ticket(actor=actor, ticket_key=ticket_key)
+        from setup_accountability import fetch_wiring_candidates
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            return fetch_wiring_candidates(cur, record)
+
+    def intake_approval_review(
+        self, *, actor: dict[str, Any], ticket_key: str,
+    ) -> dict[str, Any]:
+        """Manager-only candidate comparison, no promotion or duplicate action."""
+        if not actor.get("can_manage"):
+            raise WorkManagementError("Manager review required.", 403)
+        record = self.ticket(actor=actor, ticket_key=ticket_key)
+        if record["type"] not in ("INTAKE_REQUEST", "TASK_FEEDBACK"):
+            raise WorkManagementError("Select an Intake request for approval.", 400)
+        from setup_accountability import fetch_related_requests, fetch_wiring_candidates
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            related = fetch_related_requests(cur, record)
+            wiring = fetch_wiring_candidates(cur, record)
+        return {"source_ticket":ticket_key, "related":related, "wiring":wiring,
+                "promotion_approved":False,
+                "notice":"Review possible duplicate reports and the precise wiring/verify step before promotion."}
 
     def related_information(
         self, *, actor: dict[str, Any], ticket_key: str,
