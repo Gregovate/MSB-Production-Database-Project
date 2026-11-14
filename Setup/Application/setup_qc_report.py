@@ -51,6 +51,9 @@ def render_qc_report(snapshot, year, scope='all'):
         history += ''.join('<tr><td>'+text(local_time(c.get('corrected_at')))+'</td><td>'+text(c.get('person'))+
                            '</td><td>Issue corrected</td><td class="note">QC #'+text(c.get('old_task_id'))+' → QC #'+text(c.get('new_task_id'))+
                            '<br>Before: '+text(c.get('old_description'))+'<br>After: '+text(c.get('new_description'))+'</td></tr>' for c in finding.get('corrections', []))
+        if finding.get('accepted_work_order_id'):
+            exception=finding.get('season_exception') or {}
+            history += '<tr><td>'+text(local_time(exception.get('approved_at')))+'</td><td>'+text(exception.get('approved_by'))+'</td><td>Accepted for this season</td><td>Off-season WO-'+text(finding['accepted_work_order_id'])+' · '+text(exception.get('reason'))+'</td></tr>'
         audit = ', '.join(str(a.get('auditor') or 'Auditor #'+str(a['person_id']))+
                           ' (claimed '+local_time(a.get('claimed_at'))+')' for a in people) or 'None assigned'
         final_html = '<p><b>Final area sign-off:</b> Pending</p>'
@@ -71,7 +74,7 @@ def render_qc_report(snapshot, year, scope='all'):
                                  text(evidence.get('test_evidence'))+'<br>Reopened: '+
                                  text(local_time(prior.get('invalidated_at')))+' · '+text(prior.get('reason'))+'</p>')
             current_task = task
-        cards.append(f'''<article><h3>Issue #{text(finding['qc_finding_id'])} — {text(labels.get(finding['status'], finding['status']))}</h3>
+        cards.append(f'''<article><h3>Issue #{text(finding['qc_finding_id'])} — {text(('Accepted for this season — off-season repair' if finding.get('accepted_work_order_id') else labels.get(finding['status'], finding['status'])))}</h3>
 <p class="note">{text(description)}</p>
 <p><b>Reported by:</b> {text(finding.get('reporter'))} · {text(local_time(finding.get('created_at')))}<br>
 <b>Repair claimed by:</b> {text(finding.get('repair_owner') or 'Unclaimed')}</p>
@@ -93,7 +96,7 @@ def render_qc_punch_list(snapshot, year, include_pending=False):
     statuses = {'OPEN', 'CLAIMED'}
     if include_pending:
         statuses.add('AWAITING_RETEST')
-    findings = sorted((f for f in snapshot.get('findings', []) if f['status'] in statuses),
+    findings = sorted((f for f in snapshot.get('findings', []) if f['status'] in statuses and not f.get('accepted_work_order_id')),
                       key=lambda f: (str(f.get('stage_key') or ''), str(f.get('scene_name') or ''),
                                      int(f['setup_session_task_id']), int(f['qc_finding_id'])))
     labels = {'OPEN': 'Unclaimed', 'CLAIMED': 'Claimed',

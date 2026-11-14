@@ -30,6 +30,7 @@ LANGUAGE plpgsql AS $$ BEGIN IF $1<>'crew@test' THEN RAISE EXCEPTION USING ERRCO
 RETURN QUERY SELECT 1,false; END $$;
 CREATE FUNCTION ref.setup_browser_capabilities(text) RETURNS TABLE(can_read_setup boolean,can_manage_setup boolean)
 LANGUAGE sql AS $$ SELECT $1='crew@test',false $$;
+CREATE TABLE ref.task_type(task_type_id integer PRIMARY KEY,task_type_name text,active_flag boolean);
 CREATE TABLE ref.stage(stage_id integer PRIMARY KEY,stage_key text,stage_name text);
 CREATE TABLE ref.lor_scene(lor_scene_id integer PRIMARY KEY,scene_name text);
 CREATE TABLE ops.setup_session(setup_session_id integer PRIMARY KEY,season_year integer);
@@ -263,3 +264,38 @@ def test_edit_issue_moves_preserves_history_and_reopens_signed_area(corrected_db
             cur.execute("SELECT ops.setup_qc_edit_finding('crew@test',%s,50,20,'Cannot rewrite repair',%s)",(finding,version))
         with pytest.raises(psycopg2.errors.InsufficientPrivilege):
             cur.execute('SELECT * FROM ops.setup_qc_correction')
+
+
+def test_season_exception_is_manager_only_atomic_and_does_not_fake_repair(corrected_db):
+    """Real QC transaction/gates; native WO contract is a recording fixture here."""
+    with corrected_db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/083_repeatable_preshow_qc.sql').read_text())
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',20,NULL,'Small interior rope light section out')")
+        finding=cur.fetchone()[0]['finding_ids'][0]
+        cur.execute("SELECT updated_at FROM ops.setup_qc_finding WHERE qc_finding_id=%s",(finding,));version=cur.fetchone()[0]
+        with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+            cur.execute("SELECT ops.setup_qc_accept_for_season('crew@test',%s,20,'Accept small cosmetic gap','2027-02-01',1,%s)",(finding,version))
+        cur.execute("CREATE OR REPLACE FUNCTION ref.setup_execution_actor(text,bigint) RETURNS TABLE(person_id integer,can_manage_setup boolean) LANGUAGE sql AS $$ SELECT 1,true $$")
+        # A failure in the real WO boundary must leave no accepted exception.
+        cur.execute("CREATE FUNCTION ops.work_management_v1_command(text,text,text,jsonb,uuid) RETURNS jsonb LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'WO unavailable'; END $$")
+        with pytest.raises(psycopg2.errors.RaiseException):
+            cur.execute("SELECT ops.setup_qc_accept_for_season('crew@test',%s,20,'Accept small cosmetic gap','2027-02-01',1,%s)",(finding,version))
+        cur.execute('SELECT count(*) FROM ops.setup_qc_season_exception');assert cur.fetchone()[0]==0
+        cur.execute("""CREATE OR REPLACE FUNCTION ops.work_management_v1_command(text,text,text,jsonb,uuid) RETURNS jsonb LANGUAGE plpgsql AS $$ BEGIN
+          IF $2<>'create' OR $4->>'urgency'<>'5' OR $4->>'target_year'<>'2027' OR $4->>'stage_id'<>'5' OR $4->>'due_by'<>'2027-02-01' THEN RAISE EXCEPTION 'Invalid WO contract'; END IF;
+          INSERT INTO ops.work_order(work_order_id) VALUES(900);
+          RETURN '{"ticket":"WO-900"}'::jsonb; END $$""")
+        cur.execute("SELECT ops.setup_qc_accept_for_season('crew@test',%s,20,'Accept small cosmetic gap','2027-02-01',1,%s)",(finding,version))
+        assert cur.fetchone()[0]['work_order_id']==900
+        # Retry cannot create a duplicate Work Order.
+        cur.execute("SELECT ops.setup_qc_accept_for_season('crew@test',%s,20,'Accept small cosmetic gap','2027-02-01',1,%s)",(finding,version))
+        assert cur.fetchone()[0]['work_order_id']==900
+        cur.execute("SELECT status FROM ops.setup_qc_finding WHERE qc_finding_id=%s",(finding,));assert cur.fetchone()[0]=='OPEN'
+        cur.execute("SELECT ops.setup_qc_final_gate(20)");gate=cur.fetchone()[0]
+        assert gate['unrepaired_findings']==0 and len(gate['accepted_exceptions'])==1
+        assert len(gate['unfinished_work'])>0
+        cur.execute("UPDATE ops.setup_session_task SET execution_status='COMPLETE' WHERE setup_session_task_id IN(10,40)")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','CLAIM_AUDIT',20)")
+        cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',20,'Observed test; cosmetic exception accepted',120,'Full test')")
+        assert cur.fetchone()[0]['status']=='READY_FOR_PRODUCTION'
+        cur.execute("SELECT count(*) FROM ops.setup_qc_event WHERE qc_finding_id=%s AND event_type IN('REPAIRED','RETEST_PASS')",(finding,));assert cur.fetchone()[0]==0

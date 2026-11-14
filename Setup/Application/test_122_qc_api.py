@@ -23,6 +23,7 @@ def client(monkeypatch):
             return {'finding_id': 17}
 
         edit_finding = command
+        accept_exception = command
 
         def signoff(self, email, data):
             calls.append((email, data))
@@ -143,4 +144,13 @@ def test_edit_issue_requires_identity_destination_and_version(client):
     assert response.status_code==200
     assert calls[-1][1]['target_task_id']==461
     payload.pop('expected_updated_at')
+    assert http.post('/api/setup/qc/action',headers=HEADERS,json=payload).status_code==403
+
+
+def test_accept_exception_validates_work_order_fields(client):
+    http,calls,_=client
+    payload=dict(action='ACCEPT_FOR_SEASON',setup_session_task_id=411,qc_finding_id=37,note='Small cosmetic defect',due_by='2027-02-01',task_type_id=1,expected_updated_at='2026-11-14T12:00:00Z')
+    assert http.post('/api/setup/qc/action',headers=HEADERS,json=payload).status_code==200
+    assert str(calls[-1][1]['due_by'])=='2027-02-01'
+    payload['due_by']='invalid'
     assert http.post('/api/setup/qc/action',headers=HEADERS,json=payload).status_code==403

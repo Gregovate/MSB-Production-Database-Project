@@ -19,6 +19,7 @@
     return words.every(word=>/^\d+$/.test(word)
       ? new RegExp('(^|\\D)'+word+'(\\D|$)').test(text) : text.includes(word));
   };
+  const unclaimed = f => f.status==='OPEN' && f.claimed_by_person_id==null;
   const mine = f => snapshot.viewer_person_id != null && f.claimed_by_person_id != null &&
     Number(f.claimed_by_person_id)===Number(snapshot.viewer_person_id);
   const myArea = id => snapshot.viewer_person_id != null && (snapshot.auditors || []).some(a=>
@@ -61,12 +62,13 @@
     // auditor final signoff; green requires the persisted final signoff record.
     document.querySelectorAll('[data-qc-task-id]').forEach(button => {
       const findings=taskFindings(button.dataset.qcTaskId);
-      const active=findings.filter(f=>f.status!=='VERIFIED');
+      const active=findings.filter(f=>f.status!=='VERIFIED' && !f.accepted_work_order_id);
       const retest=active.filter(f=>f.status==='AWAITING_RETEST').length;
       const signoff=signoffFor(button.dataset.qcTaskId);
       button.dataset.qcState=signoff ? 'verified' : active.length ? 'findings' : findings.length ? 'review' : 'open';
+      const exceptions=findings.filter(f=>f.accepted_work_order_id).length;
       const label=button.querySelector('[data-qc-task-status]');
-      if (label) label.textContent=signoff ? 'Ready for Production · 100%' : active.length
+      if (label) label.textContent=signoff ? 'Ready for Production'+(exceptions ? ' · '+exceptions+' accepted for season' : ' · 100%') : active.length
         ? `${active.length-retest} need repair${retest ? ' · '+retest+' repaired — awaiting area sign-off' : ''}`
         : findings.length ? 'Findings verified · Final QC pending' : 'No findings · QC pending';
     });
@@ -169,7 +171,7 @@
     </details>`;
   }
   function findingMarkup(f, withFixes) {
-    const status=f.status;
+    const status=f.accepted_work_order_id ? 'ACCEPTED' : f.status;
     // The repair queue never verifies its own repairs. Retest belongs to QC Check.
     const controls=withFixes
       ? `<div class="next-qc-actions">
@@ -188,7 +190,7 @@
         </div>`;
     return `<section class="next-qc-finding" data-qc-state="${status}" data-qc-finding="${f.qc_finding_id}">
       <strong>Issue #${f.qc_finding_id}: ${html(descriptionFor(f))}</strong>
-      <span class="next-qc-state">${html(statusLabel(status))}</span>
+      <span class="next-qc-state">${html(status==='ACCEPTED' ? 'Accepted for this season — off-season repair' : statusLabel(status))}</span>
       <div class="muted">${f.location_detail ? html(f.location_detail)+' · ' : ''}Reported by ${html(f.reporter)} ·
         ${html(localTime(f.created_at))}</div>
       ${f.repair_owner ? `<div class="muted">Repair: ${html(f.repair_owner)}</div>` : ''}
@@ -205,6 +207,14 @@
       </details>
       ${(f.corrections || []).length ? `<details><summary>Issue corrections (${f.corrections.length})</summary>${f.corrections.map(c=>`<p>${html(c.person)} · ${html(localTime(c.corrected_at))} · QC #${c.old_task_id} → QC #${c.new_task_id}</p><p>Before: ${html(c.old_description)}</p><p>After: ${html(c.new_description)}</p>`).join('')}</details>` : ''}
       ${editMarkup(f)}
+      ${f.accepted_work_order_id ? `<p><strong>Off-season Work Order: WO-${Number(f.accepted_work_order_id)}</strong><br>${html(f.season_exception?.reason)}<br>Approved by ${html(f.season_exception?.approved_by)} · ${html(localTime(f.season_exception?.approved_at))}</p>` : ''}
+      ${snapshot.can_accept_exception && ['OPEN','CLAIMED'].includes(status) ? `<details class="next-qc-edit"><summary>Accept for this season / off-season repair</summary>
+        <p>This defect will remain recorded. Create a Work Order for the off-season repair and allow this issue through final QC.</p>
+        <label>Why is this acceptable for this season?<textarea rows="3" maxlength="2000" data-qc-exception-reason="${f.qc_finding_id}"></textarea></label>
+        <label>Work Order type<select data-qc-exception-type="${f.qc_finding_id}"><option value="">Choose type</option>${(snapshot.work_order_types || []).map(t=>`<option value="${t.id}">${html(t.name)}</option>`).join('')}</select></label>
+        <label>Off-season repair due date<input type="date" data-qc-exception-due="${f.qc_finding_id}"></label>
+        <button type="button" data-qc-action="ACCEPT_FOR_SEASON" data-qc-id="${f.qc_finding_id}">Create Work Order and Accept for Season</button>
+      </details>` : ''}
       ${withFixes ? `${status==='CLAIMED' ? `<label>Repair notes
          <textarea rows="3" maxlength="6000" data-qc-fix-note="${f.qc_finding_id}"
           placeholder="Describe the work actually performed"></textarea></label>` : ''}${controls}`
@@ -243,6 +253,15 @@
       let note=noteField?.value?.trim() || '';
       const targetId=Number(btn.dataset.qcTask || id ||
         snapshot.findings.find(x=>Number(x.qc_finding_id)===finding)?.setup_session_task_id);
+      if (action==='ACCEPT_FOR_SEASON') {
+        const f=snapshot.findings.find(f=>Number(f.qc_finding_id)===finding);
+        const reason=host.querySelector(`[data-qc-exception-reason="${finding}"]`).value.trim();
+        const type=Number(host.querySelector(`[data-qc-exception-type="${finding}"]`).value);
+        const due=host.querySelector(`[data-qc-exception-due="${finding}"]`).value;
+        if(reason.length<3 || !type || !due) {qcMessage('Enter the acceptance reason, Work Order type and off-season due date.');return;}
+        await command({action,setup_session_task_id:targetId,qc_finding_id:finding,
+          note:reason,task_type_id:type,due_by:due,expected_updated_at:f.updated_at});return;
+      }
       if (action==='EDIT_ISSUE') {
         const f=snapshot.findings.find(f=>Number(f.qc_finding_id)===finding);
         const description=host.querySelector(`[data-qc-edit-description="${finding}"]`).value.trim();
@@ -303,8 +322,9 @@
     if (!host.isConnected || id!==nextQcDiscovery.selectedTaskId) return;
     const final=signoffFor(id);
     const allFindings=taskFindings(id);
-    const findings=allFindings.filter(f=>f.status!=='VERIFIED');
-    const verified=allFindings.filter(f=>f.status==='VERIFIED');
+    const findings=allFindings.filter(f=>f.status!=='VERIFIED' && !f.accepted_work_order_id);
+    const exceptions=allFindings.filter(f=>f.accepted_work_order_id);
+    const verified=allFindings.filter(f=>f.status==='VERIFIED' && !f.accepted_work_order_id);
     const auditors=snapshot.auditors.filter(x=>Number(x.setup_session_task_id)===Number(id));
     const ownsAudit=auditors.some(a=>Number(a.person_id)===Number(snapshot.viewer_person_id));
     const gate=(snapshot.final_gates || []).find(g=>Number(g.task_id)===Number(id));
@@ -327,9 +347,10 @@
           ${unfinished.length ? `<p>Sign-off blocked — complete this required work first:</p><ul>${unfinished.map(w=>`<li>#${html(w.id)} ${html(w.name)}</li>`).join('')}</ul>` : ''}
           ${unrepaired.length ? `<p>${unrepaired.length} problem(s) still need repair.</p>` : ''}
           <label class="next-qc-confirm"><input type="checkbox" data-qc-final-tested>
-            I observed the full two-minute test and confirmed this area works.</label>
+            I observed the full two-minute test and confirmed this area is ready${exceptions.length ? ", with the listed accepted exceptions" : ""}.</label>
           <button type="button" data-qc-action="READY_FOR_PRODUCTION" data-qc-task="${id}" ${canSign ? '' : 'disabled'}>Ready for Production — Sign Off</button>
         </section>` : ''}
+        ${exceptions.length ? `<section><h4>Accepted for this season (${exceptions.length})</h4>${exceptions.map(f=>findingMarkup(f,false)).join('')}</section>` : ''}
         <h4>Open findings (${findings.length})</h4>
         <div class="next-qc-active">
         ${findings.length ? findings.map(f=>findingMarkup(f,false)).join('')
@@ -354,9 +375,9 @@
     try { await currentData(); }
     catch (error) { host.textContent='QC repair list unavailable: '+(error.message||error);return; }
     if (!host.isConnected || nextQcDiscovery.mode!=='fixes') return;
-    const active=snapshot.findings.filter(f=>f.status!=='VERIFIED' && !signoffFor(f.setup_session_task_id));
+    const active=snapshot.findings.filter(f=>f.status!=='VERIFIED' && !f.accepted_work_order_id && !signoffFor(f.setup_session_task_id));
     const groups=[...new Set(active.map(f=>Number(f.setup_session_task_id)))];
-    const totals={mine:active.filter(mine).length,unclaimed:active.filter(f=>f.claimed_by_person_id==null).length,all:active.length};
+    const totals={mine:active.filter(mine).length,unclaimed:active.filter(unclaimed).length,all:active.length};
     host.innerHTML=`<h3>QC Repairs Needed · ${active.length} outstanding findings</h3>
       <div class="next-qc-filterbar"><div class="next-qc-tabs" role="group" aria-label="Repair assignments">
         ${[['mine','My Repairs'],['unclaimed','Unclaimed'],['all','All Repairs']].map(([key,label])=>
@@ -379,7 +400,7 @@
       const words=searchWords(nextQcDiscovery.search);
       host.querySelectorAll('[data-qc-fix-group]').forEach(card=>{
         const f=active.find(f=>Number(f.qc_finding_id)===Number(card.dataset.qcFixGroup));
-        const inScope=repairScope==='all' || (repairScope==='mine' ? mine(f) : f.claimed_by_person_id==null);
+        const inScope=repairScope==='all' || (repairScope==='mine' ? mine(f) : unclaimed(f));
         card.hidden=!inScope || !matchesWords(findingSearch(f),words);
         if(!card.hidden) shown++;
       });

@@ -31,6 +31,10 @@ window.fetch=async (url,options={})=>{
   if(action.action==='REPORT_LINES') action.note.split(/\r?\n/).filter(line=>line.trim()).forEach((line,index)=>qcFixture.findings.push({qc_finding_id:71+index,
     setup_session_task_id:action.setup_session_task_id,title:line,status:'OPEN',
     stage_key:'25',stage_name:'Racing Arches',scene_name:'Test scene',events:[{type:'REPORTED',note:line}]}));
+  else if(action.action==='ACCEPT_FOR_SEASON') {
+   const f=qcFixture.findings.find(f=>f.qc_finding_id===action.qc_finding_id);
+   f.accepted_work_order_id=900;f.season_exception={reason:action.note,approved_by:'Tester'};
+  }
   else if(action.action==='EDIT_ISSUE') {
    const f=qcFixture.findings.find(f=>f.qc_finding_id===action.qc_finding_id);
    f.setup_session_task_id=action.target_task_id;f.current_description=action.note;
@@ -64,6 +68,7 @@ addEventListener('load',()=>setTimeout(async()=>{
  try {
   appState.access={can_read_setup:true,can_manage_setup:ROLE,role_name:ROLE?'Manager':'Production Crew'};
   appState.seasonYear=2026;
+  qcFixture.can_accept_exception=ROLE;qcFixture.work_order_types=[{id:1,name:'Repair'}];
   window.msbSetupEnsureServerBuild=async()=>true;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active-view'));
   document.querySelector('#perform-view').classList.add('active-view');
@@ -260,6 +265,16 @@ addEventListener('load',()=>setTimeout(async()=>{
   await click('#next-qc-check-tab');
   if(nextQcDiscovery.selectedTaskId!==598) await click('[data-qc-task-id="598"]');
   assert(document.querySelector('[data-qc-detail="598"] [data-qc-finding="99"] .next-qc-edit'),'QC Check missing same Edit Issue');
+  if(ROLE) {
+    const acceptance=document.querySelector('[data-qc-detail="598"] [data-qc-finding="99"] [data-qc-exception-reason]').closest('details');
+    acceptance.open=true;
+    acceptance.querySelector('textarea').value='Small cosmetic section accepted';
+    acceptance.querySelector('select').value='1';acceptance.querySelector('input').value='2027-02-01';
+    await click('[data-qc-detail="598"] [data-qc-action="ACCEPT_FOR_SEASON"][data-qc-id="99"]');
+    assert(qcWrites.at(-1).due_by==='2027-02-01','Off-season date lost');
+    assert(document.querySelector('[data-qc-detail="598"] [data-qc-finding="99"]').textContent.includes('WO-900'),'Accepted issue lost WO');
+    assert(qcFixture.findings.find(f=>f.qc_finding_id===99).status==='OPEN','Accepted issue falsely marked repaired');
+  } else assert(!document.querySelector('[data-qc-action="ACCEPT_FOR_SEASON"]'),'Crew can approve season exception');
   await click('#next-qc-work-tab');
   assert(!document.querySelector('#next-perform-list').hidden,'Scheduled Work not restored');
   assert(document.querySelector('#next-qc-content').hidden,'QC remains visible in Scheduled Work');

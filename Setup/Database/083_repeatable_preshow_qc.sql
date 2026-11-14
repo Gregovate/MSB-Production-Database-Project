@@ -179,6 +179,9 @@ BEGIN
     IF v_action='CLAIM_REPAIR' AND v_note IS NULL THEN
       v_note := 'Claimed repair';
     END IF;
+    IF EXISTS(SELECT 1 FROM ops.setup_qc_season_exception WHERE qc_finding_id=p_finding) AND v_action<>'OBSERVATION' THEN
+      RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='This repair is tracked by its off-season Work Order';
+    END IF;
     IF v_action NOT IN ('OBSERVATION','CLAIM_REPAIR','REPAIRED','RETEST_PASS','RETEST_FAIL','REOPEN')
        OR v_note IS NULL OR length(v_note)>6000 THEN
       RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Known QC action and note (1-6000) required';
@@ -240,6 +243,16 @@ BEGIN
 END
 $function$;
 
+-- A manager-approved season exception retains the defect and its repair debt.
+CREATE TABLE ops.setup_qc_season_exception (
+ qc_finding_id bigint PRIMARY KEY REFERENCES ops.setup_qc_finding(qc_finding_id),
+ work_order_id integer NOT NULL REFERENCES ops.work_order(work_order_id),
+ approved_by_person_id integer NOT NULL REFERENCES ref.person(person_id),
+ reason text NOT NULL CHECK(length(btrim(reason)) BETWEEN 3 AND 2000),
+ approved_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+REVOKE ALL ON ops.setup_qc_season_exception FROM PUBLIC,fieldwiring_app;
+
 CREATE OR REPLACE FUNCTION ops.setup_qc_final_gate(p_task bigint)
 RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path=pg_catalog,ops,ref
@@ -280,8 +293,9 @@ SELECT jsonb_build_object(
   'readiness_met',coalesce((SELECT annual_readiness_state='READY' FROM target),false),
   'required_work',coalesce((SELECT jsonb_agg(to_jsonb(w) ORDER BY w.id NULLS FIRST) FROM work w),'[]'::jsonb),
   'unfinished_work',coalesce((SELECT jsonb_agg(to_jsonb(w) ORDER BY w.id NULLS FIRST) FROM work w WHERE NOT complete),'[]'::jsonb),
-  'unrepaired_findings',(SELECT count(*) FROM ops.setup_qc_finding f WHERE f.setup_session_task_id=p_task AND f.status IN ('OPEN','CLAIMED')),
-  'unresolved_findings',(SELECT count(*) FROM ops.setup_qc_finding f WHERE f.setup_session_task_id=p_task AND f.status<>'VERIFIED')
+  'unrepaired_findings',(SELECT count(*) FROM ops.setup_qc_finding f WHERE f.setup_session_task_id=p_task AND f.status IN ('OPEN','CLAIMED') AND NOT EXISTS(SELECT 1 FROM ops.setup_qc_season_exception x WHERE x.qc_finding_id=f.qc_finding_id)),
+  'accepted_exceptions',coalesce((SELECT jsonb_agg(to_jsonb(x)) FROM ops.setup_qc_season_exception x JOIN ops.setup_qc_finding f USING(qc_finding_id) WHERE f.setup_session_task_id=p_task),'[]'::jsonb),
+  'unresolved_findings',(SELECT count(*) FROM ops.setup_qc_finding f WHERE f.setup_session_task_id=p_task AND f.status<>'VERIFIED' AND NOT EXISTS(SELECT 1 FROM ops.setup_qc_season_exception x WHERE x.qc_finding_id=f.qc_finding_id))
 );
 $gate$;
 
@@ -381,7 +395,7 @@ BEGIN
  IF f.setup_session_task_id IS DISTINCT FROM p_source OR f.updated_at IS DISTINCT FROM p_expected THEN
   RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Issue changed. Refresh before editing';
  END IF;
- IF f.status NOT IN('OPEN','CLAIMED') OR EXISTS(SELECT 1 FROM ops.setup_qc_event WHERE qc_finding_id=p_finding AND event_type IN('REPAIRED','RETEST_PASS')) THEN
+ IF EXISTS(SELECT 1 FROM ops.setup_qc_season_exception WHERE qc_finding_id=p_finding) OR f.status NOT IN('OPEN','CLAIMED') OR EXISTS(SELECT 1 FROM ops.setup_qc_event WHERE qc_finding_id=p_finding AND event_type IN('REPAIRED','RETEST_PASS')) THEN
   RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='A repair has been recorded. Add an observation instead';
  END IF;
  IF length(btrim(coalesce(p_description,''))) NOT BETWEEN 3 AND 6000 THEN
@@ -401,6 +415,45 @@ $edit$;
 REVOKE ALL ON FUNCTION ops.setup_qc_edit_finding(text,bigint,bigint,bigint,text,timestamptz) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ops.setup_qc_edit_finding(text,bigint,bigint,bigint,text,timestamptz) TO fieldwiring_app;
 
+-- Create the native planning WO and approve this one exception atomically.
+-- Existing Work Management identity, validation, activity and mail intents own WO creation.
+CREATE OR REPLACE FUNCTION ops.setup_qc_accept_for_season(
+ p_email text,p_finding bigint,p_task bigint,p_reason text,p_due date,p_type integer,p_expected timestamptz
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,ops,ref
+AS $accept$
+DECLARE f ops.setup_qc_finding%ROWTYPE; t ops.setup_session_task%ROWTYPE;
+ actor integer; manager boolean; season integer; result jsonb; wo integer; description text;
+BEGIN
+ SELECT * INTO t FROM ops.setup_session_task WHERE setup_session_task_id=p_task FOR UPDATE;
+ IF NOT FOUND OR NOT ops.setup_qc_is_final_task(p_task) THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Choose an existing QC area'; END IF;
+ SELECT person_id,can_manage_setup INTO actor,manager FROM ref.setup_execution_actor(p_email,t.setup_task_id);
+ IF actor IS NULL OR NOT coalesce(manager,false) THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Only a manager may accept a season exception'; END IF;
+ SELECT * INTO f FROM ops.setup_qc_finding WHERE qc_finding_id=p_finding FOR UPDATE;
+ IF NOT FOUND OR f.setup_session_task_id<>p_task THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Issue does not belong to this area'; END IF;
+ SELECT work_order_id INTO wo FROM ops.setup_qc_season_exception WHERE qc_finding_id=p_finding;
+ IF FOUND THEN RETURN jsonb_build_object('finding_id',p_finding,'work_order_id',wo); END IF;
+ IF f.updated_at IS DISTINCT FROM p_expected OR f.status NOT IN('OPEN','CLAIMED') THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Issue changed; refresh before accepting'; END IF;
+ SELECT season_year INTO season FROM ops.setup_session WHERE setup_session_id=t.setup_session_id;
+ IF p_due IS NULL OR extract(year FROM p_due)<=season OR length(btrim(coalesce(p_reason,''))) NOT BETWEEN 3 AND 2000 THEN
+  RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Enter the acceptance reason and an off-season due date in the following year or later';
+ END IF;
+ description:=coalesce(f.current_description,(SELECT note FROM ops.setup_qc_event WHERE qc_finding_id=p_finding AND event_type='REPORTED' ORDER BY created_at,qc_event_id LIMIT 1),f.title);
+ description:='Off-season repair for QC issue #'||p_finding||' (QC #'||p_task||'). '||description||chr(10)||'Accepted for season '||season||': '||btrim(p_reason);
+ IF length(description)>5000 THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Description and reason exceed Work Order limit; shorten the issue wording first'; END IF;
+ result:=ops.work_management_v1_command(p_email,'create',NULL,jsonb_build_object(
+  'problem',description,'task_type_id',p_type,'stage_id',t.annual_stage_id,
+  'urgency','5','target_year',extract(year FROM p_due)::integer,'due_by',p_due::text,'person_ids','[]'::jsonb),gen_random_uuid());
+ IF coalesce(result->>'ticket','') !~ '^WO-[1-9][0-9]*$' THEN RAISE EXCEPTION 'Work Order creation returned no valid ticket'; END IF;
+ wo:=split_part(result->>'ticket','-',2)::integer;
+ INSERT INTO ops.setup_qc_season_exception(qc_finding_id,work_order_id,approved_by_person_id,reason) VALUES(p_finding,wo,actor,btrim(p_reason));
+ UPDATE ops.setup_qc_finding SET updated_at=clock_timestamp() WHERE qc_finding_id=p_finding;
+ RETURN jsonb_build_object('finding_id',p_finding,'work_order_id',wo);
+END
+$accept$;
+REVOKE ALL ON FUNCTION ops.setup_qc_accept_for_season(text,bigint,bigint,text,date,integer,timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.setup_qc_accept_for_season(text,bigint,bigint,text,date,integer,timestamptz) TO fieldwiring_app;
+
 CREATE OR REPLACE FUNCTION ops.setup_qc_snapshot(p_email text,p_year integer)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = pg_catalog,ops,ref
@@ -412,6 +465,8 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='QC read requires authenticated Setup access';
   END IF;
   SELECT jsonb_build_object(
+    'can_accept_exception',coalesce((SELECT can_manage_setup FROM ref.setup_browser_capabilities(p_email)),false),
+    'work_order_types',coalesce((SELECT jsonb_agg(jsonb_build_object('id',task_type_id,'name',task_type_name) ORDER BY task_type_name) FROM ref.task_type WHERE active_flag),'[]'::jsonb),
     'viewer_person_id',(SELECT p.person_id FROM ref.person p
       JOIN public.directus_users u ON u.id=p.directus_user_id
       WHERE lower(u.email)=lower(btrim(p_email)) AND u.status='active' ORDER BY p.person_id LIMIT 1),
@@ -429,12 +484,14 @@ BEGIN
       FROM (
         SELECT f.qc_finding_id,f.setup_session_task_id,f.title,f.location_detail,
           f.discovery_phase,f.status,f.created_at,f.updated_at,f.current_description,
-          (f.status IN('OPEN','CLAIMED') AND NOT EXISTS(SELECT 1 FROM ops.setup_qc_event pe WHERE pe.qc_finding_id=f.qc_finding_id AND pe.event_type IN('REPAIRED','RETEST_PASS'))
+          (f.status IN('OPEN','CLAIMED') AND NOT EXISTS(SELECT 1 FROM ops.setup_qc_season_exception x WHERE x.qc_finding_id=f.qc_finding_id) AND NOT EXISTS(SELECT 1 FROM ops.setup_qc_event pe WHERE pe.qc_finding_id=f.qc_finding_id AND pe.event_type IN('REPAIRED','RETEST_PASS'))
            AND (EXISTS(SELECT 1 FROM ref.setup_browser_capabilities(p_email) WHERE can_manage_setup)
             OR EXISTS(SELECT 1 FROM ref.person vp JOIN public.directus_users vu ON vu.id=vp.directus_user_id WHERE vp.person_id=f.created_by_person_id AND lower(vu.email)=lower(btrim(p_email)) AND vu.status='active'))) AS can_edit,
           coalesce((SELECT jsonb_agg(to_jsonb(c) || jsonb_build_object('person',concat_ws(' ',ep.first_name,ep.last_name)) ORDER BY c.corrected_at,c.correction_id)
            FROM ops.setup_qc_correction c LEFT JOIN ref.person ep ON ep.person_id=c.person_id WHERE c.qc_finding_id=f.qc_finding_id),'[]'::jsonb) AS corrections,
           f.created_by_person_id,f.claimed_by_person_id,
+          (SELECT work_order_id FROM ops.setup_qc_season_exception x WHERE x.qc_finding_id=f.qc_finding_id) AS accepted_work_order_id,
+          (SELECT jsonb_build_object('reason',x.reason,'approved_at',x.approved_at,'approved_by',concat_ws(' ',xp.first_name,xp.last_name)) FROM ops.setup_qc_season_exception x JOIN ref.person xp ON xp.person_id=x.approved_by_person_id WHERE x.qc_finding_id=f.qc_finding_id) AS season_exception,
           coalesce(nullif(btrim(concat_ws(' ',cp.first_name,cp.last_name)),''),cp.email) AS reporter,
           coalesce(nullif(btrim(concat_ws(' ',rp.first_name,rp.last_name)),''),rp.email) AS repair_owner,
           t.annual_task_name AS task_name,s.stage_key,s.stage_name,ls.scene_name,

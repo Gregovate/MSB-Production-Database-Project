@@ -67,7 +67,7 @@ def api_setup_qc_action() -> Response:
     data=json_body()
     action=str(data.get("action") or "").strip().upper()
     allowed={"CLAIM_AUDIT","REPORT","REPORT_LINES","OBSERVATION","CLAIM_REPAIR","REPAIRED",
-             "RETEST_PASS","RETEST_FAIL","REOPEN","LINK_INTAKE","READY_FOR_PRODUCTION","EDIT_ISSUE"}
+             "RETEST_PASS","RETEST_FAIL","REOPEN","LINK_INTAKE","READY_FOR_PRODUCTION","EDIT_ISSUE","ACCEPT_FOR_SEASON"}
     if action not in allowed:
         raise SetupCommandError("Unknown QC action")
     cmd={
@@ -82,10 +82,11 @@ def api_setup_qc_action() -> Response:
         if len(text)>limit:
             raise SetupCommandError(f"{key} is too long")
         cmd[key]=text or None
-    if action == "EDIT_ISSUE":
+    if action in {"EDIT_ISSUE", "ACCEPT_FOR_SEASON"}:
         from datetime import datetime
         cmd['qc_finding_id'] = qc_integer(data.get('qc_finding_id'), 'qc_finding_id')
-        cmd['target_task_id'] = qc_integer(data.get('target_task_id'), 'target_task_id')
+        if action == 'EDIT_ISSUE':
+            cmd['target_task_id'] = qc_integer(data.get('target_task_id'), 'target_task_id')
         try:
             expected = datetime.fromisoformat(str(data.get('expected_updated_at', '')).replace('Z', '+00:00'))
             if expected.tzinfo is None:
@@ -93,6 +94,14 @@ def api_setup_qc_action() -> Response:
         except ValueError:
             raise SetupCommandError('Refresh the issue before editing')
         cmd['expected_updated_at'] = expected
+        if action == 'ACCEPT_FOR_SEASON':
+            from datetime import date
+            try:
+                cmd['due_by'] = date.fromisoformat(str(data.get('due_by', '')))
+            except ValueError:
+                raise SetupCommandError('Choose an off-season due date')
+            cmd['task_type_id'] = qc_integer(data.get('task_type_id'), 'task_type_id')
+            return jsonify(result=qc_repo().accept_exception(email, cmd))
         return jsonify(result=qc_repo().edit_finding(email, cmd))
     if action == "READY_FOR_PRODUCTION":
         # One explicit observation supplies the evidence; no sequence-entry burden.
@@ -101,7 +110,7 @@ def api_setup_qc_action() -> Response:
             raise SetupCommandError('Confirm that you observed the full two-minute test and this area works')
         cmd['test_seconds'] = 120
         cmd['sequence_reference'] = 'Standard two-minute test'
-        cmd['note'] = 'I observed the full two-minute test and confirmed this area works.'
+        cmd['note'] = 'I observed the full two-minute test and confirmed this area is ready for production, subject to its recorded accepted exceptions.'
         return jsonify(result=qc_repo().signoff(email,cmd))
     return jsonify(result=qc_repo().command(email,cmd))
 

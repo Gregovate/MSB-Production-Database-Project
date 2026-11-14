@@ -73,3 +73,14 @@ class SetupQcRepository:
                 result = cur.fetchone()[0]
             conn.commit()
         return result
+
+    def accept_exception(self, email: str, payload: dict) -> dict:
+        with psycopg2.connect(self.dsn) as conn:
+            conn.set_session(readonly=False, autocommit=False)
+            with conn.cursor() as cur:
+                cur.execute("SELECT ops.setup_qc_accept_for_season(%s,%s,%s,%s,%s,%s,%s)", (
+                    email,payload['qc_finding_id'],payload['setup_session_task_id'],payload['note'],
+                    payload['due_by'],payload['task_type_id'],payload['expected_updated_at']))
+                result=cur.fetchone()[0]
+            conn.commit()
+        return result
