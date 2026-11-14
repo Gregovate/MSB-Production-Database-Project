@@ -52,9 +52,9 @@ Continue recording actual task completion under **Scheduled Work**. Unreported o
 
 - **White:** no unresolved findings; final QC still pending.
 - **Yellow:** problems need repair or repaired problems await final area sign-off.
-- **Green:** final sign-off complete. The area leaves the active list and remains in completed history.
+- **Green:** final sign-off complete. The area remains on the main list and accepts new pre-show findings.
 
-A new problem before final sign-off keeps or turns the area yellow. After final sign-off, the QC record is retained as history and no longer accepts repairs. Later failures use Work Orders; do not create another QC task to reopen the area.
+A new problem before final sign-off keeps or turns the area yellow. Before the show starts, report new problems against the same green area. Saving a problem turns it yellow again; repair and repeat the final check. Prior sign-offs remain in history. Work Orders begin when the show starts, not when an area passes QC.
 
 ## If Something Is Wrong
 
@@ -89,3 +89,13 @@ The report action is beside the activity tabs. Assignment filters and search are
 
 
 If someone else claimed a repair and you completed it, open **All Repairs**, find the issue, enter what you repaired and select **Mark Repaired**. You do not have to unassign the original worker. History keeps the original claim and records you as the person completing the repair. The area auditor still performs final sign-off.
+
+## V0.3.123 candidate (not yet deployed)
+
+Green areas remain visible. New problems turn them yellow until repaired and signed off again. Punch list / PDF shows only repair-needed findings by default; choose Include awaiting final check or Full history as needed. Problem boxes are empty; type one problem per line.
+
+### November 14 — correction review; Production approval withdrawn
+QC Check and QC Repairs share all-word area/issue/person/notes search, explicit expandable area headers, and the same Edit Issue form. Repairs group findings once per area and initially show Unclaimed; My Repairs and All Repairs remain available. Signed-off areas stay visible in QC Check. Reporter or manager may correct description and destination within the same season before a repair has been recorded; a claim alone does not count as a completed repair. Save preserves finding identity, original reporting, claimant, correction author/time and before/after wording/location. Stale edits are rejected. Moving an unresolved issue into a signed-off area archives its prior approval and turns it yellow; no automatic approval of the source area. Both screens and reports use corrected wording. No live data corrections or deployment have occurred. Prior report layout acceptance remains valid; screen acceptance and release authorization must be renewed.
+
+### Explicit season exception — approved scope, not production authorization
+A manager can accept a specific outstanding defect for the current season and create a native Planning Work Order for off-season repair in one transaction. Enter a reason, active Work Order type and due date in the next calendar year or later. Reuse the existing Work Management command, permissions, notification intents and Work Order authority; create no annual Setup dependency. If creation fails, acceptance rolls back. Retrying an accepted issue returns its existing WO. Preserve the defect as unrepaired with approval attribution and WO reference; exclude only explicitly accepted findings from the repair blocker and repair punch list. Full history and QC area retain the accepted exception. All other work/readiness/repair requirements and auditor observation remain mandatory. A normal Work Order never waives QC. No live emails or Work Orders have been created during engineering. The existing disposable environment remains the acceptance boundary.

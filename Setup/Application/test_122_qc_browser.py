@@ -24,13 +24,22 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.122-qc-report'};
+ if(path.includes('api/health')) body={version:'V0.3.123-qc-recheck'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
   if(action.action==='REPORT_LINES') action.note.split(/\r?\n/).filter(line=>line.trim()).forEach((line,index)=>qcFixture.findings.push({qc_finding_id:71+index,
     setup_session_task_id:action.setup_session_task_id,title:line,status:'OPEN',
     stage_key:'25',stage_name:'Racing Arches',scene_name:'Test scene',events:[{type:'REPORTED',note:line}]}));
+  else if(action.action==='ACCEPT_FOR_SEASON') {
+   const f=qcFixture.findings.find(f=>f.qc_finding_id===action.qc_finding_id);
+   f.accepted_work_order_id=900;f.season_exception={reason:action.note,approved_by:'Tester'};
+  }
+  else if(action.action==='EDIT_ISSUE') {
+   const f=qcFixture.findings.find(f=>f.qc_finding_id===action.qc_finding_id);
+   f.setup_session_task_id=action.target_task_id;f.current_description=action.note;
+   qcFixture.signoffs=qcFixture.signoffs.filter(s=>s.setup_session_task_id!==action.target_task_id);
+  }
   else if(action.action==='CLAIM_AUDIT') qcFixture.auditors.push({setup_session_task_id:action.setup_session_task_id,person_id:1,auditor:'Tester'});
   else if(action.action==='READY_FOR_PRODUCTION') qcFixture.signoffs.push({setup_session_task_id:action.setup_session_task_id,auditor_person_id:1,signed_at:new Date().toISOString(),test_evidence:action.note,sequence_reference:action.sequence_reference});
   else {
@@ -59,6 +68,7 @@ addEventListener('load',()=>setTimeout(async()=>{
  try {
   appState.access={can_read_setup:true,can_manage_setup:ROLE,role_name:ROLE?'Manager':'Production Crew'};
   appState.seasonYear=2026;
+  qcFixture.can_accept_exception=ROLE;qcFixture.work_order_types=[{id:1,name:'Repair'}];
   window.msbSetupEnsureServerBuild=async()=>true;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active-view'));
   document.querySelector('#perform-view').classList.add('active-view');
@@ -66,6 +76,13 @@ addEventListener('load',()=>setTimeout(async()=>{
    task_name:'QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence', completion_point:'No Conn must be reported',
    stage_id:25,stage_key:'25',stage_name:'Racing Arches',scene_name:'Test scene',
    execution_status:'NOT_READY',prerequisite_count:1,prerequisites_complete:false})),assignments:[]};
+  // Execute discovery cases in the existing browser harness, never Node on the server.
+  for (const [stage, name, expected] of [
+    ['Show Animation EL 90 Elf On Shelf-1','Plug in Network & Test',true],
+    ['Ordinary Stage','Plug in Network & Test',false],
+    ['Show Animation EL 90 Elf On Shelf-1','Locate Power & Network',false],
+    ['Show Animation EL 90 Elf On Shelf-1','PLUG IN & VERIFY: Wire Displays to Controller',false]
+  ]) assert(nextIsFinalShowQc({stage_name:stage,task_name:name})===expected,'Show Animation discovery: '+stage+' / '+name);
   renderNextExecution();
   await click('#next-qc-check-tab');
   assert(setupTaskDisplayName(setupNextState.performBoard.tasks[0].task_name)==='QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence','QC task wording');
@@ -80,6 +97,13 @@ addEventListener('load',()=>setTimeout(async()=>{
   }
   // Unclassified historical sources never appear under either selected area.
   assert(!document.querySelector('[data-qc-link-intake]'),'Legacy reconciliation still visible');
+  assert(setupQcMatchesTaskSearch({setup_session_task_id:413,stage_name:'05a-Mega Star-MS'},'stars'),'Stars search does not find Mega Star');
+  // Collapse/reopen must retain draft text and expose explicit expanded state.
+  document.querySelector('[data-qc-detail="598"] [data-qc-problems]').value='Draft preserved';
+  await click('[data-qc-task-id="598"]');
+  assert(document.querySelector('[data-qc-task-id="598"]').getAttribute('aria-expanded')==='false','QC cannot collapse');
+  await click('[data-qc-task-id="598"]');
+  assert(document.querySelector('[data-qc-detail="598"] [data-qc-problems]').value==='Draft preserved','Collapse erased draft');
   assert(!document.querySelector('#next-qc-content').textContent.includes('WRONG AREA LEGACY REPORT'),'Unclassified source shown as area finding');
   assert(!qcWrites.length,'Rendering wrote data');
   assert(!document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]'),'Unclaimed auditor has signoff control');
@@ -95,9 +119,12 @@ addEventListener('load',()=>setTimeout(async()=>{
   await click('#next-qc-fixes-tab');
   assert(document.querySelector('#next-perform-list').hidden,'Scheduled panel leaked');
   assert(!document.querySelector('#next-qc-search').getClientRects().length,'QC task search leaked into repairs');
-  assert(document.querySelector('[data-qc-repair-scope="mine"]').getAttribute('aria-pressed')==='true','My Repairs is not default');
-  assert(document.querySelector('[data-qc-fix-empty]').getClientRects().length,'Empty personal queue is unexplained');
+  assert(document.querySelector('[data-qc-repair-scope="unclaimed"]').getAttribute('aria-pressed')==='true','Unclaimed repairs must be first');
   await click('[data-qc-repair-scope="unclaimed"]');
+  assert(document.querySelectorAll('[data-qc-repair-area]').length===1,'Repairs repeats area header');
+  await click('[data-qc-repair-toggle="598"]');
+  assert(document.querySelector('#qc-repair-area-598').hidden,'Repairs cannot collapse');
+  await click('[data-qc-repair-toggle="598"]');
   const search=document.querySelector('[data-qc-fix-search]');
   search.value='598 arch 3';search.dispatchEvent(new Event('input',{bubbles:true}));
   assert(document.querySelector('[data-qc-fix-count]').textContent==='2 of 6 findings shown','Multiword task/problem search failed');
@@ -205,15 +232,13 @@ addEventListener('load',()=>setTimeout(async()=>{
   await click('[data-qc-action="READY_FOR_PRODUCTION"]');
   const complete=document.querySelector('[data-qc-task-id="598"]');
   assert(complete.dataset.qcState==='verified','Final signed area did not turn green');
-  assert(complete.closest('[data-qc-completed-areas]'),'Signed area did not leave active list');
-  assert(!complete.getClientRects().length,'Completed area history is not collapsed');
-  assert(!document.querySelector('[data-qc-detail="598"] [data-qc-action="REPORT_LINES"]'),'Final area still accepts QC problems');
-  assert(document.querySelector('[data-qc-detail="598"]').textContent.includes('Work Orders'),'Final handoff instruction missing');
+  assert(!complete.closest('[data-qc-completed-areas]'),'Signed area was removed from the main list');
+  assert(complete.getClientRects().length,'Green area is hidden');
+  assert(document.querySelector('[data-qc-detail="598"] [data-qc-action="REPORT_LINES"]'),'Green area cannot report a new problem');
+  assert(!document.querySelector('[data-qc-detail="598"]').textContent.includes('through Work Orders'),'Premature Work Order handoff');
   for(const theme of ['light','dark']) {
     document.documentElement.dataset.theme=theme;
-    complete.closest('details').open=true;
     assert(getComputedStyle(complete).backgroundColor==='rgb(220, 252, 231)','Final area not green in '+theme);
-    complete.closest('details').open=false;
   }
   // Same display names must never cause another person's repair to become mine.
   qcFixture.findings.push({qc_finding_id:91,setup_session_task_id:483,title:'Other owner',status:'CLAIMED',claimed_by_person_id:2,repair_owner:'Tester',events:[]});
@@ -229,6 +254,27 @@ addEventListener('load',()=>setTimeout(async()=>{
   }
   await click('[data-qc-repair-scope="all"]');
   assert(qcWrites.length===writesBeforeFilters,'Filtering wrote data');
+  qcFixture.findings.push({qc_finding_id:99,setup_session_task_id:483,title:'Wrong area text',current_description:'Correctable description',status:'OPEN',can_edit:true,updated_at:'2026-11-14T12:00:00Z',stage_name:'Racing Arches',events:[]});
+  await setupQcRenderFixes();
+  const edit=document.querySelector('#next-qc-fixes-list [data-qc-finding="99"] .next-qc-edit');
+  assert(edit,'Repairs missing Edit Issue');edit.open=true;
+  edit.querySelector('textarea').value='Clarified description';
+  edit.querySelector('select').value='598';
+  await click('#next-qc-fixes-list [data-qc-id="99"][data-qc-action="EDIT_ISSUE"]');
+  assert(qcWrites.at(-1).target_task_id===598 && qcWrites.at(-1).note==='Clarified description','Edit payload incorrect');
+  await click('#next-qc-check-tab');
+  if(nextQcDiscovery.selectedTaskId!==598) await click('[data-qc-task-id="598"]');
+  assert(document.querySelector('[data-qc-detail="598"] [data-qc-finding="99"] .next-qc-edit'),'QC Check missing same Edit Issue');
+  if(ROLE) {
+    const acceptance=document.querySelector('[data-qc-detail="598"] [data-qc-finding="99"] [data-qc-exception-reason]').closest('details');
+    acceptance.open=true;
+    acceptance.querySelector('textarea').value='Small cosmetic section accepted';
+    acceptance.querySelector('select').value='1';acceptance.querySelector('input').value='2027-02-01';
+    await click('[data-qc-detail="598"] [data-qc-action="ACCEPT_FOR_SEASON"][data-qc-id="99"]');
+    assert(qcWrites.at(-1).due_by==='2027-02-01','Off-season date lost');
+    assert(document.querySelector('[data-qc-detail="598"] [data-qc-finding="99"]').textContent.includes('WO-900'),'Accepted issue lost WO');
+    assert(qcFixture.findings.find(f=>f.qc_finding_id===99).status==='OPEN','Accepted issue falsely marked repaired');
+  } else assert(!document.querySelector('[data-qc-action="ACCEPT_FOR_SEASON"]'),'Crew can approve season exception');
   await click('#next-qc-work-tab');
   assert(!document.querySelector('#next-perform-list').hidden,'Scheduled Work not restored');
   assert(document.querySelector('#next-qc-content').hidden,'QC remains visible in Scheduled Work');

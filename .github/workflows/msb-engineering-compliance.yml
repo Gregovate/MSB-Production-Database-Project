@@ -52,7 +52,7 @@ jobs:
           MSB_QC_TEST_ADMIN_DSN: host=127.0.0.1 port=5432 dbname=postgres user=postgres password=qc-ci-only
         run: |
           if grep -Eq '^Setup/(Application|Database|Acceptance)/' /tmp/msb_changed_paths; then
-            python -m pytest -q -p no:cacheprovider Setup/Application/test_122_qc_postgres.py Setup/Acceptance/test_setup_485_release.py
+            python -m pytest -q -p no:cacheprovider Setup/Application/test_122_qc_postgres.py Setup/Acceptance/test_setup_485_release.py Setup/Acceptance/test_setup_490_release.py
           fi
       - name: QC browser DOM regression without Node
         shell: bash

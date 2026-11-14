@@ -30,6 +30,7 @@ LANGUAGE plpgsql AS $$ BEGIN IF $1<>'crew@test' THEN RAISE EXCEPTION USING ERRCO
 RETURN QUERY SELECT 1,false; END $$;
 CREATE FUNCTION ref.setup_browser_capabilities(text) RETURNS TABLE(can_read_setup boolean,can_manage_setup boolean)
 LANGUAGE sql AS $$ SELECT $1='crew@test',false $$;
+CREATE TABLE ref.task_type(task_type_id integer PRIMARY KEY,task_type_name text,active_flag boolean);
 CREATE TABLE ref.stage(stage_id integer PRIMARY KEY,stage_key text,stage_name text);
 CREATE TABLE ref.lor_scene(lor_scene_id integer PRIMARY KEY,scene_name text);
 CREATE TABLE ops.setup_session(setup_session_id integer PRIMARY KEY,season_year integer);
@@ -174,3 +175,127 @@ def test_saved_wording_and_another_workers_repair(corrected_db):
         assert cur.fetchone() == ('AWAITING_RETEST',2)
         cur.execute("SELECT person_id,note FROM ops.setup_qc_event WHERE qc_finding_id=%s AND event_type='REPAIRED'",(finding,))
         assert cur.fetchone() == (1,'Replaced fixture')
+
+
+def test_repeatable_preshow_signoff_preserves_evidence(corrected_db):
+    """Green -> yellow -> green, with invalid input and direct-write protection."""
+    with corrected_db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/083_repeatable_preshow_qc.sql').read_text())
+        cur.execute("UPDATE ops.setup_session_task SET execution_status='COMPLETE' WHERE setup_session_task_id IN (10,40)")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','CLAIM_AUDIT',20)")
+        cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',20,'First full test passed',120,'Two minute test')")
+        first = cur.fetchone()[0]
+        with pytest.raises(psycopg2.errors.InvalidParameterValue):
+            cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',20,NULL,'x')")
+        cur.execute("SELECT count(*) FROM ops.setup_qc_signoff WHERE setup_session_task_id=20")
+        assert cur.fetchone()[0] == 1
+        cur.execute("SET ROLE fieldwiring_app")
+        with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+            cur.execute("SELECT ops.setup_qc_invalidate_signoff(20,1,'unauthorized')")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',20,NULL,'New light failure')")
+        finding = cur.fetchone()[0]['finding_ids'][0]
+        cur.execute("SELECT ops.setup_qc_snapshot('crew@test',2026)")
+        snapshot = cur.fetchone()[0]
+        assert snapshot['signoffs'] == []
+        assert len(snapshot['signoff_history']) == 1
+        assert snapshot['signoff_history'][0]['evidence']['test_evidence'] == 'First full test passed'
+        with pytest.raises(psycopg2.errors.CheckViolation):
+            cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',20,'Cannot approve open repair',120,'Two minute test')")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPAIRED',20,%s,'Replaced failed lights')", (finding,))
+        cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',20,'Second full test passed',120,'Two minute test')")
+        assert cur.fetchone()[0]['signed_at'] != first['signed_at']
+        cur.execute("SELECT ops.setup_qc_snapshot('crew@test',2026)")
+        snapshot = cur.fetchone()[0]
+        assert snapshot['signoffs'][0]['test_evidence'] == 'Second full test passed'
+        assert len(snapshot['signoff_history']) == 1
+        assert snapshot['findings'][0]['status'] == 'VERIFIED'
+
+
+def test_show_animation_existing_tasks_support_complete_qc(corrected_db):
+    with corrected_db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/083_repeatable_preshow_qc.sql').read_text())
+        for stage, task in [(91,471),(92,472),(93,479),(94,473),(95,474)]:
+            cur.execute("INSERT INTO ref.stage VALUES(%s,%s,%s)", (stage,str(stage-1),f'Show Animation EL {stage-1} Elf On Shelf'))
+            cur.execute("INSERT INTO ops.setup_session_task(setup_session_task_id,setup_session_id,setup_task_id,annual_stage_id,annual_task_name) VALUES(%s,1,%s,%s,'Plug in Network & Test')",(task,task+1000,stage))
+        cur.execute("SET ROLE fieldwiring_app")
+        for task in [471,472,479,473,474]:
+            cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',%s,NULL,'Elf light failure')",(task,))
+            finding=cur.fetchone()[0]['finding_ids'][0]
+            cur.execute("SELECT ops.setup_qc_command('crew@test','REPAIRED',%s,%s,'Replaced light')",(task,finding))
+            cur.execute("SELECT ops.setup_qc_command('crew@test','CLAIM_AUDIT',%s)",(task,))
+            cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',%s,'Observed full test pass',120,'Two minute test')",(task,))
+            assert cur.fetchone()[0]['status']=='READY_FOR_PRODUCTION'
+        cur.execute("SELECT ops.setup_qc_snapshot('crew@test',2026)")
+        snap=cur.fetchone()[0]
+        assert {471,472,479,473,474} <= {g['task_id'] for g in snap['final_gates']}
+        cur.execute("RESET ROLE")
+        cur.execute("UPDATE ops.setup_session_task SET annual_task_name='Locate Power & Network' WHERE setup_session_task_id=471")
+        cur.execute("SELECT ops.setup_qc_is_final_task(471)")
+        assert cur.fetchone()[0] is False
+        cur.execute("UPDATE ref.stage SET stage_name='Ordinary Stage' WHERE stage_id=92")
+        cur.execute("SELECT ops.setup_qc_is_final_task(472)")
+        assert cur.fetchone()[0] is False
+
+
+def test_edit_issue_moves_preserves_history_and_reopens_signed_area(corrected_db):
+    with corrected_db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/083_repeatable_preshow_qc.sql').read_text())
+        cur.execute("INSERT INTO ops.setup_session_task(setup_session_task_id,setup_session_id,setup_task_id,annual_stage_id,annual_task_name) SELECT 50,1,150,9,annual_task_name FROM ops.setup_session_task WHERE setup_session_task_id=20")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','CLAIM_AUDIT',50)")
+        cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',50,'Original area passed',120,'Full test')")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',20,NULL,'Original misplaced report')")
+        finding=cur.fetchone()[0]['finding_ids'][0]
+        cur.execute("SELECT updated_at FROM ops.setup_qc_finding WHERE qc_finding_id=%s",(finding,));version=cur.fetchone()[0]
+        cur.execute("SET ROLE fieldwiring_app")
+        cur.execute("SELECT ops.setup_qc_edit_finding('crew@test',%s,20,50,'Strings should light one through eight',%s)",(finding,version))
+        cur.execute("SELECT ops.setup_qc_snapshot('crew@test',2026)")
+        snap=cur.fetchone()[0];f=next(f for f in snap['findings'] if f['qc_finding_id']==finding)
+        assert f['setup_session_task_id']==50 and f['current_description']=='Strings should light one through eight'
+        assert f['events'][0]['note']=='Original misplaced report'
+        assert f['corrections'][0]['old_task_id']==20 and f['can_edit']
+        assert not snap['signoffs'] and snap['signoff_history'][0]['evidence']['test_evidence']=='Original area passed'
+        with pytest.raises(psycopg2.errors.CheckViolation):
+            cur.execute("SELECT ops.setup_qc_edit_finding('crew@test',%s,20,50,'Stale overwrite',%s)",(finding,version))
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPAIRED',50,%s,'Corrected wiring')",(finding,))
+        cur.execute("RESET ROLE")
+        cur.execute("SELECT updated_at FROM ops.setup_qc_finding WHERE qc_finding_id=%s",(finding,));version=cur.fetchone()[0]
+        cur.execute("SET ROLE fieldwiring_app")
+        with pytest.raises(psycopg2.errors.CheckViolation):
+            cur.execute("SELECT ops.setup_qc_edit_finding('crew@test',%s,50,20,'Cannot rewrite repair',%s)",(finding,version))
+        with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+            cur.execute('SELECT * FROM ops.setup_qc_correction')
+
+
+def test_season_exception_is_manager_only_atomic_and_does_not_fake_repair(corrected_db):
+    """Real QC transaction/gates; native WO contract is a recording fixture here."""
+    with corrected_db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/083_repeatable_preshow_qc.sql').read_text())
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',20,NULL,'Small interior rope light section out')")
+        finding=cur.fetchone()[0]['finding_ids'][0]
+        cur.execute("SELECT updated_at FROM ops.setup_qc_finding WHERE qc_finding_id=%s",(finding,));version=cur.fetchone()[0]
+        with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+            cur.execute("SELECT ops.setup_qc_accept_for_season('crew@test',%s,20,'Accept small cosmetic gap','2027-02-01',1,%s)",(finding,version))
+        cur.execute("CREATE OR REPLACE FUNCTION ref.setup_execution_actor(text,bigint) RETURNS TABLE(person_id integer,can_manage_setup boolean) LANGUAGE sql AS $$ SELECT 1,true $$")
+        # A failure in the real WO boundary must leave no accepted exception.
+        cur.execute("CREATE FUNCTION ops.work_management_v1_command(text,text,text,jsonb,uuid) RETURNS jsonb LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'WO unavailable'; END $$")
+        with pytest.raises(psycopg2.errors.RaiseException):
+            cur.execute("SELECT ops.setup_qc_accept_for_season('crew@test',%s,20,'Accept small cosmetic gap','2027-02-01',1,%s)",(finding,version))
+        cur.execute('SELECT count(*) FROM ops.setup_qc_season_exception');assert cur.fetchone()[0]==0
+        cur.execute("""CREATE OR REPLACE FUNCTION ops.work_management_v1_command(text,text,text,jsonb,uuid) RETURNS jsonb LANGUAGE plpgsql AS $$ BEGIN
+          IF $2<>'create' OR $4->>'urgency'<>'5' OR $4->>'target_year'<>'2027' OR $4->>'stage_id'<>'5' OR $4->>'due_by'<>'2027-02-01' THEN RAISE EXCEPTION 'Invalid WO contract'; END IF;
+          INSERT INTO ops.work_order(work_order_id) VALUES(900);
+          RETURN '{"ticket":"WO-900"}'::jsonb; END $$""")
+        cur.execute("SELECT ops.setup_qc_accept_for_season('crew@test',%s,20,'Accept small cosmetic gap','2027-02-01',1,%s)",(finding,version))
+        assert cur.fetchone()[0]['work_order_id']==900
+        # Retry cannot create a duplicate Work Order.
+        cur.execute("SELECT ops.setup_qc_accept_for_season('crew@test',%s,20,'Accept small cosmetic gap','2027-02-01',1,%s)",(finding,version))
+        assert cur.fetchone()[0]['work_order_id']==900
+        cur.execute("SELECT status FROM ops.setup_qc_finding WHERE qc_finding_id=%s",(finding,));assert cur.fetchone()[0]=='OPEN'
+        cur.execute("SELECT ops.setup_qc_final_gate(20)");gate=cur.fetchone()[0]
+        assert gate['unrepaired_findings']==0 and len(gate['accepted_exceptions'])==1
+        assert len(gate['unfinished_work'])>0
+        cur.execute("UPDATE ops.setup_session_task SET execution_status='COMPLETE' WHERE setup_session_task_id IN(10,40)")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','CLAIM_AUDIT',20)")
+        cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',20,'Observed test; cosmetic exception accepted',120,'Full test')")
+        assert cur.fetchone()[0]['status']=='READY_FOR_PRODUCTION'
+        cur.execute("SELECT count(*) FROM ops.setup_qc_event WHERE qc_finding_id=%s AND event_type IN('REPAIRED','RETEST_PASS')",(finding,));assert cur.fetchone()[0]==0

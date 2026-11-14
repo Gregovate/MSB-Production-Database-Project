@@ -45,3 +45,34 @@ def test_area_header_and_signoff_once_with_all_finding_histories():
     for note in ['Arch 3 repaired', 'Arch 4 repaired', 'Separate task history']:
         assert note in report
     assert report.count('<section') == report.count('</section>') == 2
+
+
+def test_punch_list_is_compact_and_filters_pending_repairs():
+    rows = [dict(qc_finding_id=i, setup_session_task_id=598, stage_key='25',
+                 stage_name='Racing Arches', scene_name=None, status=status,
+                 title=title, repair_owner=owner,
+                 events=[dict(type='OBSERVATION', note='AUDIT DETAIL NOT FOR PUNCH LIST')])
+            for i, status, title, owner in [
+                (1,'OPEN','Arch 1 red lights',None),
+                (2,'CLAIMED','Arch 2 blue lights','Paul'),
+                (3,'AWAITING_RETEST','Arch 3 yellow lights','Rich'),
+                (4,'VERIFIED','Arch 4 green lights','Tim')]]
+    snapshot = {'findings': rows}
+    report = render_qc_report(snapshot,2026,'punch')
+    assert report.count('Racing Arches') == 1
+    assert 'Arch 1 red lights' in report and 'Paul' in report
+    assert 'Arch 3 yellow lights' not in report and 'Arch 4 green lights' not in report
+    assert 'AUDIT DETAIL NOT FOR PUNCH LIST' not in report
+    assert 'Arch 3 yellow lights' in render_qc_report(snapshot,2026,'punch_pending')
+
+
+def test_old_outstanding_link_uses_compact_punch_list():
+    snapshot = {'findings': [dict(qc_finding_id=1,setup_session_task_id=20,
+        stage_name='Test area',status='OPEN',title='Repair lights',
+        events=[dict(type='OBSERVATION',note='HISTORY MUST NOT EXPAND')])]}
+    report = render_qc_report(snapshot,2026,'outstanding')
+    assert 'QC punch list' in report
+    assert 'Repair lights' in report
+    assert 'HISTORY MUST NOT EXPAND' not in report
+    assert 'Notes / evidence' not in report
+    assert 'Full history' in report

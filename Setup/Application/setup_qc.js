@@ -9,22 +9,23 @@
   let pending = null;
   let saving = false;
   // Per-page preferences survive view changes and saves, not shared identities.
-  let repairScope = 'mine';
-  let repairSearch = '';
+  let repairScope = 'unclaimed';
+  const repairExpanded = new Map();
   let auditScope = 'all';
-  const searchWords = value => String(value || '').toLowerCase().replace(/#/g,'').split(/\s+/).filter(Boolean);
+  const searchWords = value => String(value || '').toLowerCase().replace(/\bstars\b/g,'star').replace(/#/g,'').split(/\s+/).filter(Boolean);
   const matchesWords = (values, words) => {
-    const text=values.join(' ').toLowerCase().replace(/#/g,'');
+    const text=values.join(' ').toLowerCase().replace(/\bstars\b/g,'star').replace(/#/g,'');
     // Numeric tokens must not make arch 3 match finding 73 or task 483.
     return words.every(word=>/^\d+$/.test(word)
       ? new RegExp('(^|\\D)'+word+'(\\D|$)').test(text) : text.includes(word));
   };
+  const unclaimed = f => f.status==='OPEN' && f.claimed_by_person_id==null;
   const mine = f => snapshot.viewer_person_id != null && f.claimed_by_person_id != null &&
     Number(f.claimed_by_person_id)===Number(snapshot.viewer_person_id);
   const myArea = id => snapshot.viewer_person_id != null && (snapshot.auditors || []).some(a=>
     Number(a.setup_session_task_id)===Number(id) && Number(a.person_id)===Number(snapshot.viewer_person_id));
   const findingSearch = f => [f.qc_finding_id,f.setup_session_task_id,f.stage_key,f.stage_name,
-    f.scene_name || 'Stage-level',f.title,f.task_name,f.location_detail,f.reporter,f.repair_owner,
+    f.scene_name || 'Stage-level',f.current_description,f.title,f.task_name,f.location_detail,f.reporter,f.repair_owner,
     ...(f.events || []).flatMap(e=>[e.note,e.person])];
   window.setupQcMatchesTaskSearch = (task, query) => matchesWords([
     task.setup_session_task_id,task.setup_task_id,task.stage_key,task.stage_name,
@@ -61,34 +62,20 @@
     // auditor final signoff; green requires the persisted final signoff record.
     document.querySelectorAll('[data-qc-task-id]').forEach(button => {
       const findings=taskFindings(button.dataset.qcTaskId);
-      const active=findings.filter(f=>f.status!=='VERIFIED');
+      const active=findings.filter(f=>f.status!=='VERIFIED' && !f.accepted_work_order_id);
       const retest=active.filter(f=>f.status==='AWAITING_RETEST').length;
       const signoff=signoffFor(button.dataset.qcTaskId);
       button.dataset.qcState=signoff ? 'verified' : active.length ? 'findings' : findings.length ? 'review' : 'open';
+      const exceptions=findings.filter(f=>f.accepted_work_order_id).length;
       const label=button.querySelector('[data-qc-task-status]');
-      if (label) label.textContent=signoff ? 'Ready for Production · 100%' : active.length
+      if (label) label.textContent=signoff ? 'Ready for Production'+(exceptions ? ' · '+exceptions+' accepted for season' : ' · 100%') : active.length
         ? `${active.length-retest} need repair${retest ? ' · '+retest+' repaired — awaiting area sign-off' : ''}`
         : findings.length ? 'Findings verified · Final QC pending' : 'No findings · QC pending';
     });
-    // Move finalized areas into collapsed green history; keep the same delegated
-    // selection handler, and never discard their recorded evidence.
+    // Green areas remain in their normal position and remain searchable.
     const list=document.getElementById('next-qc-list');
     if (list) {
-      let archive=list.querySelector('[data-qc-completed-areas]');
-      if (!archive) {
-        archive=document.createElement('details');archive.dataset.qcCompletedAreas='1';
-        archive.innerHTML='<summary>Ready for Production</summary>';list.append(archive);
-      }
-      list.querySelectorAll('[data-qc-task-id]').forEach(button=>{
-        const row=button.closest('.next-qc-row');
-        if (signoffFor(button.dataset.qcTaskId)) archive.append(row);
-        else if (row.parentElement===archive) list.insertBefore(row,archive);
-      });
-      const count=archive.querySelectorAll('.next-qc-row').length;
-      archive.hidden=!count;
       const counter=document.getElementById('next-qc-count');
-      if (counter) counter.textContent=(list.querySelectorAll('.next-qc-row').length-count)+' active areas · '+count+' Ready for Production';
-      archive.querySelector('summary').textContent='Ready for Production ('+count+')';
       // Filter existing rows rather than rebuilding forms and losing draft notes.
       const matching=new Set(nextQcFilteredTasks().map(t=>Number(t.setup_session_task_id)));
       let shown=0, completed=0;
@@ -97,9 +84,7 @@
         row.hidden=!matching.has(id) || (auditScope==='mine' && !myArea(id));
         if (!row.hidden) { if(signoffFor(id)) completed++; else shown++; }
       });
-      archive.hidden=!completed;
-      archive.querySelector('summary').textContent='Ready for Production ('+completed+')';
-      if(counter) counter.textContent=shown+' active areas shown · '+completed+' Ready for Production';
+      if(counter) counter.textContent=(shown+completed)+' areas shown · '+completed+' Ready for Production';
       const filters=document.getElementById('next-qc-area-filters');
       if(filters) {
         const tasks=nextQcAnnualTasks();
@@ -174,8 +159,19 @@
       setBusy(false);
     }
   }
+  const descriptionFor = f => f.current_description || (f.events || []).find(e=>e.type==='REPORTED')?.note || f.title;
+  function editMarkup(f) {
+    if (!f.can_edit) return '';
+    return `<details class="next-qc-edit"><summary>Edit Issue</summary>
+      <label>Stage / Scene<select data-qc-edit-area="${f.qc_finding_id}">
+      ${nextQcAnnualTasks().map(t=>`<option value="${t.setup_session_task_id}" ${Number(t.setup_session_task_id)===Number(f.setup_session_task_id)?'selected':''}>${html(t.stage_name)} · ${html(t.scene_name || 'Stage-level')} · QC #${t.setup_session_task_id}</option>`).join('')}</select></label>
+      <label>Problem description<textarea rows="4" maxlength="6000" data-qc-edit-description="${f.qc_finding_id}">${html(descriptionFor(f))}</textarea></label>
+      <button type="button" data-qc-action="EDIT_ISSUE" data-qc-id="${f.qc_finding_id}">Save Changes</button>
+      <button type="button" data-qc-edit-cancel="${f.qc_finding_id}">Cancel</button>
+    </details>`;
+  }
   function findingMarkup(f, withFixes) {
-    const status=f.status;
+    const status=f.accepted_work_order_id ? 'ACCEPTED' : f.status;
     // The repair queue never verifies its own repairs. Retest belongs to QC Check.
     const controls=withFixes
       ? `<div class="next-qc-actions">
@@ -193,8 +189,8 @@
             : ''}
         </div>`;
     return `<section class="next-qc-finding" data-qc-state="${status}" data-qc-finding="${f.qc_finding_id}">
-      <strong>Issue #${f.qc_finding_id}: ${html((f.events || []).find(e=>e.type==='REPORTED')?.note || f.title)}</strong>
-      <span class="next-qc-state">${html(statusLabel(status))}</span>
+      <strong>Issue #${f.qc_finding_id}: ${html(descriptionFor(f))}</strong>
+      <span class="next-qc-state">${html(status==='ACCEPTED' ? 'Accepted for this season — off-season repair' : statusLabel(status))}</span>
       <div class="muted">${f.location_detail ? html(f.location_detail)+' · ' : ''}Reported by ${html(f.reporter)} ·
         ${html(localTime(f.created_at))}</div>
       ${f.repair_owner ? `<div class="muted">Repair: ${html(f.repair_owner)}</div>` : ''}
@@ -209,6 +205,16 @@
       <details><summary>Observations and repair history (${(f.events || []).length})</summary>
         <ul class="next-qc-events">${eventMarkup(f)}</ul>
       </details>
+      ${(f.corrections || []).length ? `<details><summary>Issue corrections (${f.corrections.length})</summary>${f.corrections.map(c=>`<p>${html(c.person)} · ${html(localTime(c.corrected_at))} · QC #${c.old_task_id} → QC #${c.new_task_id}</p><p>Before: ${html(c.old_description)}</p><p>After: ${html(c.new_description)}</p>`).join('')}</details>` : ''}
+      ${editMarkup(f)}
+      ${f.accepted_work_order_id ? `<p><strong>Off-season Work Order: WO-${Number(f.accepted_work_order_id)}</strong><br>${html(f.season_exception?.reason)}<br>Approved by ${html(f.season_exception?.approved_by)} · ${html(localTime(f.season_exception?.approved_at))}</p>` : ''}
+      ${snapshot.can_accept_exception && ['OPEN','CLAIMED'].includes(status) ? `<details class="next-qc-edit"><summary>Accept for this season / off-season repair</summary>
+        <p>This defect will remain recorded. Create a Work Order for the off-season repair and allow this issue through final QC.</p>
+        <label>Why is this acceptable for this season?<textarea rows="3" maxlength="2000" data-qc-exception-reason="${f.qc_finding_id}"></textarea></label>
+        <label>Work Order type<select data-qc-exception-type="${f.qc_finding_id}"><option value="">Choose type</option>${(snapshot.work_order_types || []).map(t=>`<option value="${t.id}">${html(t.name)}</option>`).join('')}</select></label>
+        <label>Off-season repair due date<input type="date" data-qc-exception-due="${f.qc_finding_id}"></label>
+        <button type="button" data-qc-action="ACCEPT_FOR_SEASON" data-qc-id="${f.qc_finding_id}">Create Work Order and Accept for Season</button>
+      </details>` : ''}
       ${withFixes ? `${status==='CLAIMED' ? `<label>Repair notes
          <textarea rows="3" maxlength="6000" data-qc-fix-note="${f.qc_finding_id}"
           placeholder="Describe the work actually performed"></textarea></label>` : ''}${controls}`
@@ -228,6 +234,14 @@
     if (!host || host.dataset.qcBound) return;
     host.dataset.qcBound='1';
     host.addEventListener('click', async event => {
+      const cancel=event.target.closest('[data-qc-edit-cancel]');
+      if(cancel) {
+        const f=snapshot.findings.find(f=>Number(f.qc_finding_id)===Number(cancel.dataset.qcEditCancel));
+        const form=cancel.closest('details');
+        form.querySelector('textarea').value=descriptionFor(f);
+        form.querySelector('select').value=String(f.setup_session_task_id);
+        form.open=false;return;
+      }
       const btn=event.target.closest('[data-qc-action]');
       if (!btn || !host.contains(btn)) return;
       actionButton=btn;actionHost=host;
@@ -239,6 +253,29 @@
       let note=noteField?.value?.trim() || '';
       const targetId=Number(btn.dataset.qcTask || id ||
         snapshot.findings.find(x=>Number(x.qc_finding_id)===finding)?.setup_session_task_id);
+      if (action==='ACCEPT_FOR_SEASON') {
+        const f=snapshot.findings.find(f=>Number(f.qc_finding_id)===finding);
+        const reason=host.querySelector(`[data-qc-exception-reason="${finding}"]`).value.trim();
+        const type=Number(host.querySelector(`[data-qc-exception-type="${finding}"]`).value);
+        const due=host.querySelector(`[data-qc-exception-due="${finding}"]`).value;
+        if(reason.length<3 || !type || !due) {qcMessage('Enter the acceptance reason, Work Order type and off-season due date.');return;}
+        await command({action,setup_session_task_id:targetId,qc_finding_id:finding,
+          note:reason,task_type_id:type,due_by:due,expected_updated_at:f.updated_at});return;
+      }
+      if (action==='EDIT_ISSUE') {
+        const f=snapshot.findings.find(f=>Number(f.qc_finding_id)===finding);
+        const description=host.querySelector(`[data-qc-edit-description="${finding}"]`).value.trim();
+        const destination=Number(host.querySelector(`[data-qc-edit-area="${finding}"]`).value);
+        if(description.length<3) {qcMessage('Enter a problem description.');return;}
+        const result=await command({action,setup_session_task_id:targetId,qc_finding_id:finding,
+          target_task_id:destination,note:description,expected_updated_at:f.updated_at});
+        if(result && nextQcDiscovery.mode==='qc' && destination!==targetId) {
+          nextQcDiscovery.selectedTaskId=destination;
+          nextQcDiscovery.search='';auditScope='all';
+          nextQcRenderResults();
+        }
+        return;
+      }
       if (action==='READY_FOR_PRODUCTION') {
         if (!host.querySelector('[data-qc-final-tested]')?.checked) {
           qcMessage('Confirm that you observed the full two-minute test and this area works.');return;
@@ -284,22 +321,10 @@
     catch (error) { host.textContent='QC details unavailable: '+(error.message||error);return; }
     if (!host.isConnected || id!==nextQcDiscovery.selectedTaskId) return;
     const final=signoffFor(id);
-    if (final) {
-      host.innerHTML=`<section class="next-qc-final-record"><h4>Ready for Production · 100%</h4>
-        <p>Signed by ${html((snapshot.auditors || []).find(a=>Number(a.person_id)===Number(final.auditor_person_id) && Number(a.setup_session_task_id)===Number(id))?.auditor || 'Auditor #'+final.auditor_person_id)} · ${html(localTime(final.signed_at))}</p>
-        <p>${html(final.sequence_reference)}</p><p class="next-qc-note">${html(final.test_evidence)}</p>
-        <p>Report subsequent problems through Work Orders.</p>
-        <h4>Findings and repair history (${taskFindings(id).length})</h4>
-        ${taskFindings(id).map(f=>`<section class="next-qc-finding" data-qc-state="VERIFIED">
-          <strong>Issue #${html(f.qc_finding_id)}: ${html((f.events || []).find(e=>e.type==='REPORTED')?.note || f.title)}</strong>
-          <p>Reported by ${html(f.reporter)} · Repair: ${html(f.repair_owner || 'Unclaimed')}</p>
-          <ul>${eventMarkup(f)}</ul></section>`).join('')}
-        </section>`;
-      return;
-    }
     const allFindings=taskFindings(id);
-    const findings=allFindings.filter(f=>f.status!=='VERIFIED');
-    const verified=allFindings.filter(f=>f.status==='VERIFIED');
+    const findings=allFindings.filter(f=>f.status!=='VERIFIED' && !f.accepted_work_order_id);
+    const exceptions=allFindings.filter(f=>f.accepted_work_order_id);
+    const verified=allFindings.filter(f=>f.status==='VERIFIED' && !f.accepted_work_order_id);
     const auditors=snapshot.auditors.filter(x=>Number(x.setup_session_task_id)===Number(id));
     const ownsAudit=auditors.some(a=>Number(a.person_id)===Number(snapshot.viewer_person_id));
     const gate=(snapshot.final_gates || []).find(g=>Number(g.task_id)===Number(id));
@@ -308,20 +333,24 @@
     const canSign=ownsAudit && gate?.readiness_met && !unfinished.length && !unrepaired.length;
     host.innerHTML=`
       <div class="next-qc-record">
+        ${final ? '<p class="next-qc-final-record"><strong>Ready for Production</strong> · '+html(localTime(final.signed_at))+' — report any newly found problem below.</p>' : ''}
+        ${(snapshot.signoff_history || []).filter(h=>Number(h.setup_session_task_id)===Number(id)).length ? '<details><summary>Previous area sign-offs</summary>'+ (snapshot.signoff_history || []).filter(h=>Number(h.setup_session_task_id)===Number(id)).map(h=>'<p>'+html(localTime(h.evidence.signed_at))+' · '+html(h.evidence.test_evidence)+'<br>Reopened: '+html(localTime(h.invalidated_at))+' · '+html(h.reason)+'</p>').join('')+'</details>' : ''}
+
         <div><strong>QC auditors:</strong>
           ${auditors.length ? auditors.map(x=>html(x.auditor)).join(', ') : 'None yet'}
           ${ownsAudit ? '<span> · Assigned to you</span>' : `<button type="button" class="small secondary" data-qc-action="CLAIM_AUDIT" data-qc-task="${id}">Assign to Me</button>`}
         </div>
-        ${ownsAudit ? `<section class="next-qc-signoff">
+        ${ownsAudit && !final ? `<section class="next-qc-signoff">
           <h4>Final QC — Ready for Production</h4>
           ${!gate ? '<p>Readiness checks unavailable.</p>' : ''}
           ${gate && !gate.readiness_met ? '<p>Blocked: annual readiness has not been confirmed.</p>' : ''}
           ${unfinished.length ? `<p>Sign-off blocked — complete this required work first:</p><ul>${unfinished.map(w=>`<li>#${html(w.id)} ${html(w.name)}</li>`).join('')}</ul>` : ''}
           ${unrepaired.length ? `<p>${unrepaired.length} problem(s) still need repair.</p>` : ''}
           <label class="next-qc-confirm"><input type="checkbox" data-qc-final-tested>
-            I observed the full two-minute test and confirmed this area works.</label>
+            I observed the full two-minute test and confirmed this area is ready${exceptions.length ? ", with the listed accepted exceptions" : ""}.</label>
           <button type="button" data-qc-action="READY_FOR_PRODUCTION" data-qc-task="${id}" ${canSign ? '' : 'disabled'}>Ready for Production — Sign Off</button>
         </section>` : ''}
+        ${exceptions.length ? `<section><h4>Accepted for this season (${exceptions.length})</h4>${exceptions.map(f=>findingMarkup(f,false)).join('')}</section>` : ''}
         <h4>Open findings (${findings.length})</h4>
         <div class="next-qc-active">
         ${findings.length ? findings.map(f=>findingMarkup(f,false)).join('')
@@ -333,7 +362,7 @@
           <h4>Report problems</h4>
           <label>What is wrong? One problem per line.
             <textarea data-qc-problems rows="3" maxlength="6000"
-              placeholder="arch 3 - blue lights 21 to 28 inches from bottom&#10;arch 4 - all red lights"></textarea>
+></textarea>
           </label>
           <button type="button" data-qc-action="REPORT_LINES" data-qc-task="${id}">Save Problems</button>
         </form>
@@ -346,29 +375,39 @@
     try { await currentData(); }
     catch (error) { host.textContent='QC repair list unavailable: '+(error.message||error);return; }
     if (!host.isConnected || nextQcDiscovery.mode!=='fixes') return;
-    const active=snapshot.findings.filter(f=>f.status!=='VERIFIED' && !signoffFor(f.setup_session_task_id));
-    const totals={mine:active.filter(mine).length,unclaimed:active.filter(f=>f.claimed_by_person_id==null).length,all:active.length};
+    const active=snapshot.findings.filter(f=>f.status!=='VERIFIED' && !f.accepted_work_order_id && !signoffFor(f.setup_session_task_id));
+    const groups=[...new Set(active.map(f=>Number(f.setup_session_task_id)))];
+    const totals={mine:active.filter(mine).length,unclaimed:active.filter(unclaimed).length,all:active.length};
     host.innerHTML=`<h3>QC Repairs Needed · ${active.length} outstanding findings</h3>
       <div class="next-qc-filterbar"><div class="next-qc-tabs" role="group" aria-label="Repair assignments">
         ${[['mine','My Repairs'],['unclaimed','Unclaimed'],['all','All Repairs']].map(([key,label])=>
           `<button type="button" data-qc-repair-scope="${key}" aria-pressed="${repairScope===key}">${label} (${totals[key]})</button>`).join('')}
       </div>
-      <label class="next-qc-search-field">Find problem <input type="search" data-qc-fix-search value="${html(repairSearch)}"
+      <label class="next-qc-search-field">Find problem <input type="search" data-qc-fix-search value="${html(nextQcDiscovery.search)}"
         placeholder="Search Stage, Scene, QC task, finding, person or notes"></label></div>
       <p data-qc-fix-count role="status"></p>
       <p class="muted">Claim a problem here, then return to record the repair. The area auditor signs off in QC Check.</p>
-      ${active.map(f=>`<div class="next-qc-fix-group" data-qc-fix-group="${f.qc_finding_id}">
-        <strong>${html(f.stage_name || f.stage_key)} · ${html(f.scene_name || 'Stage-level')} · QC #${f.setup_session_task_id}</strong>
-        ${findingMarkup(f,true)}</div>`).join('')}
+      ${groups.map(id=>{const findings=active.filter(f=>Number(f.setup_session_task_id)===id),f=findings[0];
+        const open=repairExpanded.get(id)!==false;
+        return `<article class="next-qc-row" data-qc-repair-area="${id}">
+        <button type="button" class="small secondary next-qc-open" data-qc-repair-toggle="${id}" aria-expanded="${open}" aria-controls="qc-repair-area-${id}">
+          <strong>${html(f.stage_name || f.stage_key)}</strong> · ${html(f.scene_name || 'Stage-level')} · QC #${id}
+          <span data-qc-repair-area-count></span></button>
+        <div id="qc-repair-area-${id}" ${open?'':'hidden'}>${findings.map(f=>`<div data-qc-fix-group="${f.qc_finding_id}">${findingMarkup(f,true)}</div>`).join('')}</div></article>`;}).join('')}
       <p data-qc-fix-empty hidden>No repairs match this filter and search. Choose Unclaimed or All Repairs, or clear the search.</p>`;
     const apply=()=>{
       let shown=0;
-      const words=searchWords(repairSearch);
+      const words=searchWords(nextQcDiscovery.search);
       host.querySelectorAll('[data-qc-fix-group]').forEach(card=>{
         const f=active.find(f=>Number(f.qc_finding_id)===Number(card.dataset.qcFixGroup));
-        const inScope=repairScope==='all' || (repairScope==='mine' ? mine(f) : f.claimed_by_person_id==null);
+        const inScope=repairScope==='all' || (repairScope==='mine' ? mine(f) : unclaimed(f));
         card.hidden=!inScope || !matchesWords(findingSearch(f),words);
         if(!card.hidden) shown++;
+      });
+      host.querySelectorAll('[data-qc-repair-area]').forEach(area=>{
+        const visible=[...area.querySelectorAll('[data-qc-fix-group]')].filter(card=>!card.hidden).length;
+        area.hidden=visible===0;
+        area.querySelector('[data-qc-repair-area-count]').textContent=' · '+visible+' issues';
       });
       host.querySelector('[data-qc-fix-count]').textContent=shown+' of '+totals[repairScope]+' findings shown';
       host.querySelector('[data-qc-fix-empty]').hidden=shown>0;
@@ -376,9 +415,15 @@
     };
     // Replace filter callbacks on render so they cannot retain a stale snapshot.
     host.oninput=event=>{
-      if(event.target.matches('[data-qc-fix-search]')) {repairSearch=event.target.value;apply();}
+      if(event.target.matches('[data-qc-fix-search]')) {nextQcDiscovery.search=event.target.value;apply();}
     };
     host.onclick=event=>{
+      const toggle=event.target.closest('[data-qc-repair-toggle]');
+      if(toggle) {
+        const id=Number(toggle.dataset.qcRepairToggle),open=toggle.getAttribute('aria-expanded')!=='true';
+        repairExpanded.set(id,open);toggle.setAttribute('aria-expanded',String(open));
+        document.getElementById(toggle.getAttribute('aria-controls')).hidden=!open;
+      }
       const button=event.target.closest('[data-qc-repair-scope]');
       if(button) {repairScope=button.dataset.qcRepairScope;apply();}
     };
