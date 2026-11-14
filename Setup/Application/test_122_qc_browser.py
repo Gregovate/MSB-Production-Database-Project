@@ -66,6 +66,13 @@ addEventListener('load',()=>setTimeout(async()=>{
    task_name:'QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence', completion_point:'No Conn must be reported',
    stage_id:25,stage_key:'25',stage_name:'Racing Arches',scene_name:'Test scene',
    execution_status:'NOT_READY',prerequisite_count:1,prerequisites_complete:false})),assignments:[]};
+  // Execute discovery cases in the existing browser harness, never Node on the server.
+  for (const [stage, name, expected] of [
+    ['Show Animation EL 90 Elf On Shelf-1','Plug in Network & Test',true],
+    ['Ordinary Stage','Plug in Network & Test',false],
+    ['Show Animation EL 90 Elf On Shelf-1','Locate Power & Network',false],
+    ['Show Animation EL 90 Elf On Shelf-1','PLUG IN & VERIFY: Wire Displays to Controller',false]
+  ]) assert(nextIsFinalShowQc({stage_name:stage,task_name:name})===expected,'Show Animation discovery: '+stage+' / '+name);
   renderNextExecution();
   await click('#next-qc-check-tab');
   assert(setupTaskDisplayName(setupNextState.performBoard.tasks[0].task_name)==='QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence','QC task wording');
