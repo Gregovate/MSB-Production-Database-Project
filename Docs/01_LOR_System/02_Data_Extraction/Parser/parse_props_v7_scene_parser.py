@@ -2,7 +2,9 @@
 #
 # Baseline: parse_props_v6.py V6.8.3
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2026-08-21  V7.0.11
+# Current Version : 2026-11-14  V7.0.12
+# Change: classify SPARE by Display Comment; retain independent renamed channel
+# masters and explicit child links. No preview UUID or container changes.
 #
 # Author:
 #   Greg Liebig
@@ -361,7 +363,7 @@ def get_reports_dir() -> str:
 
 
 # ---- Global flags & defaults (must be defined before functions) ----
-PARSER_VERSION = "V7.0.11"  # GAL 2026-08-21: additive grouped-DMX source preservation
+PARSER_VERSION = "V7.0.12"  # GAL 2026-11-14: preserve renamed SPARE channel masters and explicit child links
 
 DEBUG = False  # Global debug flag
 
@@ -2074,7 +2076,7 @@ def reconcile_subprops_to_canonical_master(db_file: str):
           FROM props p
           WHERE p.DeviceType='LOR'
             AND TRIM(IFNULL(p.LORComment,'')) <> ''
-            AND UPPER(p.LORComment) <> 'SPARE'
+            AND UPPER(TRIM(p.LORComment)) <> 'SPARE'
         ),
         min_uid AS (
           SELECT PreviewId, Display_Name, MIN(uid) AS min_uid
@@ -2633,6 +2635,16 @@ def process_dmx_props(preview_id, root):
     conn.commit()
     conn.close()
 
+def is_unassigned_spare(node):
+    """Comment is Display identity; a channel Name may change during authoring.
+
+    Preserve independent SPARE masters even when renamed for sponsor signs.
+    Retain legacy Name detection only if no Display Comment is supplied.
+    """
+    comment = (node.get("Comment") or "").strip()
+    return comment.upper() == "SPARE" or (not comment and "spare" in (node.get("Name") or "").lower())
+
+
 def process_lor_props(preview_id, root):
     """
     RULES
@@ -2708,7 +2720,7 @@ def process_lor_props(preview_id, root):
         ch_raw = (prop.get("ChannelGrid") or "").strip()
         if ";" in ch_raw:
             continue  # multi-grid handled elsewhere
-        if "spare" in name.lower():
+        if is_unassigned_spare(prop) and not (prop.get("MasterPropId") or "").strip():
             grid = parse_single_grid(ch_raw) or {}
             raw_id = prop.get("id") or ""
             prop_id_scoped = scoped_id(preview_id, raw_id)
@@ -2780,7 +2792,7 @@ def process_lor_props(preview_id, root):
         master = xml_by_id.get(m_raw)
         sub_comment    = (sp.get("Comment") or "").strip()
         master_comment = (master.get("Comment") or "").strip() if master is not None else ""
-        if sub_comment == master_comment:
+        if sub_comment == master_comment or is_unassigned_spare(sp):
             manuals_same.append((sp, master))
         else:
             changed_by_comment.setdefault(sub_comment, []).append(sp)
@@ -2846,7 +2858,7 @@ def process_lor_props(preview_id, root):
             continue
         if (node.get("MasterPropId") or "").strip():
             continue
-        if "spare" in (node.get("Name") or "").lower():
+        if is_unassigned_spare(node):
             continue
         key = (node.get("Comment") or "").strip()
         nonmanual_by_comment.setdefault(key, []).append(node)
@@ -2990,7 +3002,7 @@ def process_lor_props(preview_id, root):
         if prop.get("DeviceType") != "LOR":
             continue
         name = (prop.get("Name") or "")
-        if "spare" in name.lower():
+        if is_unassigned_spare(prop):
             continue
         if (prop.get("MasterPropId") or "").strip():
             continue  # manuals handled in 0B
@@ -3618,7 +3630,7 @@ def collapse_duplicate_masters(db_file: str):
         FROM props p
         WHERE p.DeviceType='LOR'
           AND TRIM(COALESCE(p.LORComment,'')) <> ''
-          AND UPPER(p.LORComment) <> 'SPARE';
+          AND UPPER(TRIM(p.LORComment)) <> 'SPARE';
 
         -- Choose by (UID, StartChannel) — UID first, then StartChannel
         DROP TABLE IF EXISTS _min_uid;
@@ -3669,14 +3681,14 @@ def collapse_duplicate_masters(db_file: str):
           ON cp.PreviewId=p.PreviewId AND cp.Display_Name=p.LORComment
         WHERE p.DeviceType='LOR'
           AND TRIM(COALESCE(p.LORComment,'')) <> ''
-          AND UPPER(p.LORComment) <> 'SPARE'
+          AND UPPER(TRIM(p.LORComment)) <> 'SPARE'
           AND p.PropID <> cp.CanonPropID;
 
         -- Delete the demoted PROPs
         DELETE FROM props
         WHERE DeviceType='LOR'
           AND TRIM(COALESCE(LORComment,'')) <> ''
-          AND UPPER(LORComment) <> 'SPARE'
+          AND UPPER(TRIM(LORComment)) <> 'SPARE'
           AND EXISTS (
                 SELECT 1 FROM _canon_pick cp
                 WHERE cp.PreviewId = props.PreviewId
@@ -3744,7 +3756,7 @@ def audit_displayname_masters_unique_across_previews(
       FROM props p
       JOIN previews pv ON pv.id = p.PreviewId
       WHERE TRIM(COALESCE(p.LORComment,'')) <> ''
-        AND UPPER(p.LORComment) <> 'SPARE'
+        AND UPPER(TRIM(p.LORComment)) <> 'SPARE'
         AND p.MasterPropId IS NULL
     ),
     offenders AS (
@@ -3782,7 +3794,7 @@ def audit_displayname_masters_unique_across_previews(
              'props' AS Source
       FROM props p
       JOIN previews pv ON pv.id = p.PreviewId
-      WHERE TRIM(COALESCE(p.LORComment,'')) <> '' AND UPPER(p.LORComment) <> 'SPARE'
+      WHERE TRIM(COALESCE(p.LORComment,'')) <> '' AND UPPER(TRIM(p.LORComment)) <> 'SPARE'
       UNION ALL
       SELECT sp.PreviewId, pv.Name AS PreviewName,
              UPPER(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment))) AS DisplayKey,
@@ -4730,7 +4742,7 @@ def audit_duplicate_display_names(db_path: str, out_csv: str = "duplicate_displa
         p.PropID AS ItemID
       FROM props p
       JOIN previews pv ON pv.id = p.PreviewId
-      WHERE TRIM(COALESCE(p.LORComment,'')) <> '' AND UPPER(p.LORComment) <> 'SPARE'
+      WHERE TRIM(COALESCE(p.LORComment,'')) <> '' AND UPPER(TRIM(p.LORComment)) <> 'SPARE'
 
       UNION ALL
 
