@@ -12,9 +12,9 @@
   let repairScope = 'unclaimed';
   const repairExpanded = new Map();
   let auditScope = 'all';
-  const searchWords = value => String(value || '').toLowerCase().replace(/#/g,'').split(/\s+/).filter(Boolean);
+  const searchWords = value => String(value || '').toLowerCase().replace(/\bstars\b/g,'star').replace(/#/g,'').split(/\s+/).filter(Boolean);
   const matchesWords = (values, words) => {
-    const text=values.join(' ').toLowerCase().replace(/#/g,'');
+    const text=values.join(' ').toLowerCase().replace(/\bstars\b/g,'star').replace(/#/g,'');
     // Numeric tokens must not make arch 3 match finding 73 or task 483.
     return words.every(word=>/^\d+$/.test(word)
       ? new RegExp('(^|\\D)'+word+'(\\D|$)').test(text) : text.includes(word));

@@ -92,6 +92,7 @@ addEventListener('load',()=>setTimeout(async()=>{
   }
   // Unclassified historical sources never appear under either selected area.
   assert(!document.querySelector('[data-qc-link-intake]'),'Legacy reconciliation still visible');
+  assert(setupQcMatchesTaskSearch({setup_session_task_id:413,stage_name:'05a-Mega Star-MS'},'stars'),'Stars search does not find Mega Star');
   // Collapse/reopen must retain draft text and expose explicit expanded state.
   document.querySelector('[data-qc-detail="598"] [data-qc-problems]').value='Draft preserved';
   await click('[data-qc-task-id="598"]');
