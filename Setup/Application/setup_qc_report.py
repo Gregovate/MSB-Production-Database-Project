@@ -45,9 +45,12 @@ def render_qc_report(snapshot, year, scope='all'):
         people = [a for a in auditors if str(a['setup_session_task_id']) == task]
         final = signoffs.get(task)
         events = sorted(finding.get('events', []), key=lambda e: (str(e.get('at') or ''), int(e.get('id') or 0)))
-        description = next((e.get('note') for e in events if e.get('type') == 'REPORTED'), None) or finding.get('title')
+        description = finding.get('current_description') or next((e.get('note') for e in events if e.get('type') == 'REPORTED'), None) or finding.get('title')
         history = ''.join('<tr><td>'+text(local_time(e.get('at')))+'</td><td>'+text(e.get('person'))+
                           '</td><td>'+text(e.get('type'))+'</td><td class="note">'+text(e.get('note'))+'</td></tr>' for e in events)
+        history += ''.join('<tr><td>'+text(local_time(c.get('corrected_at')))+'</td><td>'+text(c.get('person'))+
+                           '</td><td>Issue corrected</td><td class="note">QC #'+text(c.get('old_task_id'))+' → QC #'+text(c.get('new_task_id'))+
+                           '<br>Before: '+text(c.get('old_description'))+'<br>After: '+text(c.get('new_description'))+'</td></tr>' for c in finding.get('corrections', []))
         audit = ', '.join(str(a.get('auditor') or 'Auditor #'+str(a['person_id']))+
                           ' (claimed '+local_time(a.get('claimed_at'))+')' for a in people) or 'None assigned'
         final_html = '<p><b>Final area sign-off:</b> Pending</p>'
@@ -106,7 +109,7 @@ def render_qc_punch_list(snapshot, year, include_pending=False):
                             text(f.get('scene_name') or 'Stage-level')+
                             '</h2><table><thead><tr><th>Issue</th><th>Problem</th><th>Assigned to</th><th>Status</th></tr></thead><tbody>')
             current = area
-        description = next((e.get('note') for e in f.get('events', []) if e.get('type') == 'REPORTED'), None) or f.get('title')
+        description = f.get('current_description') or next((e.get('note') for e in f.get('events', []) if e.get('type') == 'REPORTED'), None) or f.get('title')
         sections.append('<tr><td>#'+text(f['qc_finding_id'])+'</td><td>'+text(description)+
                         '</td><td>'+text(f.get('repair_owner') or 'Unclaimed')+'</td><td>'+
                         labels[f['status']]+'</td></tr>')

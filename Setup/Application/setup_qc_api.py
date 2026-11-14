@@ -67,7 +67,7 @@ def api_setup_qc_action() -> Response:
     data=json_body()
     action=str(data.get("action") or "").strip().upper()
     allowed={"CLAIM_AUDIT","REPORT","REPORT_LINES","OBSERVATION","CLAIM_REPAIR","REPAIRED",
-             "RETEST_PASS","RETEST_FAIL","REOPEN","LINK_INTAKE","READY_FOR_PRODUCTION"}
+             "RETEST_PASS","RETEST_FAIL","REOPEN","LINK_INTAKE","READY_FOR_PRODUCTION","EDIT_ISSUE"}
     if action not in allowed:
         raise SetupCommandError("Unknown QC action")
     cmd={
@@ -82,6 +82,18 @@ def api_setup_qc_action() -> Response:
         if len(text)>limit:
             raise SetupCommandError(f"{key} is too long")
         cmd[key]=text or None
+    if action == "EDIT_ISSUE":
+        from datetime import datetime
+        cmd['qc_finding_id'] = qc_integer(data.get('qc_finding_id'), 'qc_finding_id')
+        cmd['target_task_id'] = qc_integer(data.get('target_task_id'), 'target_task_id')
+        try:
+            expected = datetime.fromisoformat(str(data.get('expected_updated_at', '')).replace('Z', '+00:00'))
+            if expected.tzinfo is None:
+                raise ValueError('Timezone required')
+        except ValueError:
+            raise SetupCommandError('Refresh the issue before editing')
+        cmd['expected_updated_at'] = expected
+        return jsonify(result=qc_repo().edit_finding(email, cmd))
     if action == "READY_FOR_PRODUCTION":
         # One explicit observation supplies the evidence; no sequence-entry burden.
         # SQL independently enforces auditor claim, unfinished work and repair gates.

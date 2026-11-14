@@ -31,6 +31,11 @@ window.fetch=async (url,options={})=>{
   if(action.action==='REPORT_LINES') action.note.split(/\r?\n/).filter(line=>line.trim()).forEach((line,index)=>qcFixture.findings.push({qc_finding_id:71+index,
     setup_session_task_id:action.setup_session_task_id,title:line,status:'OPEN',
     stage_key:'25',stage_name:'Racing Arches',scene_name:'Test scene',events:[{type:'REPORTED',note:line}]}));
+  else if(action.action==='EDIT_ISSUE') {
+   const f=qcFixture.findings.find(f=>f.qc_finding_id===action.qc_finding_id);
+   f.setup_session_task_id=action.target_task_id;f.current_description=action.note;
+   qcFixture.signoffs=qcFixture.signoffs.filter(s=>s.setup_session_task_id!==action.target_task_id);
+  }
   else if(action.action==='CLAIM_AUDIT') qcFixture.auditors.push({setup_session_task_id:action.setup_session_task_id,person_id:1,auditor:'Tester'});
   else if(action.action==='READY_FOR_PRODUCTION') qcFixture.signoffs.push({setup_session_task_id:action.setup_session_task_id,auditor_person_id:1,signed_at:new Date().toISOString(),test_evidence:action.note,sequence_reference:action.sequence_reference});
   else {
@@ -87,6 +92,12 @@ addEventListener('load',()=>setTimeout(async()=>{
   }
   // Unclassified historical sources never appear under either selected area.
   assert(!document.querySelector('[data-qc-link-intake]'),'Legacy reconciliation still visible');
+  // Collapse/reopen must retain draft text and expose explicit expanded state.
+  document.querySelector('[data-qc-detail="598"] [data-qc-problems]').value='Draft preserved';
+  await click('[data-qc-task-id="598"]');
+  assert(document.querySelector('[data-qc-task-id="598"]').getAttribute('aria-expanded')==='false','QC cannot collapse');
+  await click('[data-qc-task-id="598"]');
+  assert(document.querySelector('[data-qc-detail="598"] [data-qc-problems]').value==='Draft preserved','Collapse erased draft');
   assert(!document.querySelector('#next-qc-content').textContent.includes('WRONG AREA LEGACY REPORT'),'Unclassified source shown as area finding');
   assert(!qcWrites.length,'Rendering wrote data');
   assert(!document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]'),'Unclaimed auditor has signoff control');
@@ -102,9 +113,12 @@ addEventListener('load',()=>setTimeout(async()=>{
   await click('#next-qc-fixes-tab');
   assert(document.querySelector('#next-perform-list').hidden,'Scheduled panel leaked');
   assert(!document.querySelector('#next-qc-search').getClientRects().length,'QC task search leaked into repairs');
-  assert(document.querySelector('[data-qc-repair-scope="mine"]').getAttribute('aria-pressed')==='true','My Repairs is not default');
-  assert(document.querySelector('[data-qc-fix-empty]').getClientRects().length,'Empty personal queue is unexplained');
+  assert(document.querySelector('[data-qc-repair-scope="unclaimed"]').getAttribute('aria-pressed')==='true','Unclaimed repairs must be first');
   await click('[data-qc-repair-scope="unclaimed"]');
+  assert(document.querySelectorAll('[data-qc-repair-area]').length===1,'Repairs repeats area header');
+  await click('[data-qc-repair-toggle="598"]');
+  assert(document.querySelector('#qc-repair-area-598').hidden,'Repairs cannot collapse');
+  await click('[data-qc-repair-toggle="598"]');
   const search=document.querySelector('[data-qc-fix-search]');
   search.value='598 arch 3';search.dispatchEvent(new Event('input',{bubbles:true}));
   assert(document.querySelector('[data-qc-fix-count]').textContent==='2 of 6 findings shown','Multiword task/problem search failed');
@@ -234,6 +248,17 @@ addEventListener('load',()=>setTimeout(async()=>{
   }
   await click('[data-qc-repair-scope="all"]');
   assert(qcWrites.length===writesBeforeFilters,'Filtering wrote data');
+  qcFixture.findings.push({qc_finding_id:99,setup_session_task_id:483,title:'Wrong area text',current_description:'Correctable description',status:'OPEN',can_edit:true,updated_at:'2026-11-14T12:00:00Z',stage_name:'Racing Arches',events:[]});
+  await setupQcRenderFixes();
+  const edit=document.querySelector('#next-qc-fixes-list [data-qc-finding="99"] .next-qc-edit');
+  assert(edit,'Repairs missing Edit Issue');edit.open=true;
+  edit.querySelector('textarea').value='Clarified description';
+  edit.querySelector('select').value='598';
+  await click('#next-qc-fixes-list [data-qc-id="99"][data-qc-action="EDIT_ISSUE"]');
+  assert(qcWrites.at(-1).target_task_id===598 && qcWrites.at(-1).note==='Clarified description','Edit payload incorrect');
+  await click('#next-qc-check-tab');
+  if(nextQcDiscovery.selectedTaskId!==598) await click('[data-qc-task-id="598"]');
+  assert(document.querySelector('[data-qc-detail="598"] [data-qc-finding="99"] .next-qc-edit'),'QC Check missing same Edit Issue');
   await click('#next-qc-work-tab');
   assert(!document.querySelector('#next-perform-list').hidden,'Scheduled Work not restored');
   assert(document.querySelector('#next-qc-content').hidden,'QC remains visible in Scheduled Work');

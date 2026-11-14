@@ -61,3 +61,15 @@ class SetupQcRepository:
                 result=cur.fetchone()[0]
             conn.commit()
         return result
+
+    def edit_finding(self, email: str, payload: dict) -> dict:
+        """One audited correction; preserve original reports and exact identity."""
+        with psycopg2.connect(self.dsn) as conn:
+            conn.set_session(readonly=False, autocommit=False)
+            with conn.cursor() as cur:
+                cur.execute("SELECT ops.setup_qc_edit_finding(%s,%s,%s,%s,%s,%s)", (
+                    email, payload['qc_finding_id'], payload['setup_session_task_id'],
+                    payload['target_task_id'], payload['note'], payload['expected_updated_at']))
+                result = cur.fetchone()[0]
+            conn.commit()
+        return result

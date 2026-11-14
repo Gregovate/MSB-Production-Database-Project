@@ -337,6 +337,70 @@ BEGIN
 END
 $final$;
 
+-- Current wording is separate from immutable reporting and correction evidence.
+ALTER TABLE ops.setup_qc_finding ADD COLUMN current_description text;
+CREATE TABLE ops.setup_qc_correction (
+  correction_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  qc_finding_id bigint NOT NULL REFERENCES ops.setup_qc_finding(qc_finding_id),
+  old_task_id bigint NOT NULL REFERENCES ops.setup_session_task(setup_session_task_id),
+  new_task_id bigint NOT NULL REFERENCES ops.setup_session_task(setup_session_task_id),
+  old_description text NOT NULL, new_description text NOT NULL,
+  person_id integer NOT NULL REFERENCES ref.person(person_id),
+  corrected_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+REVOKE ALL ON ops.setup_qc_correction FROM PUBLIC,fieldwiring_app;
+REVOKE ALL ON SEQUENCE ops.setup_qc_correction_correction_id_seq FROM PUBLIC,fieldwiring_app;
+
+-- Lock both area identities in order, then recheck the finding/version. A repair
+-- or concurrent correction cannot be silently overwritten by an old edit form.
+CREATE OR REPLACE FUNCTION ops.setup_qc_edit_finding(
+ p_email text,p_finding bigint,p_source bigint,p_target bigint,
+ p_description text,p_expected timestamptz
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,ops,ref
+AS $edit$
+DECLARE f ops.setup_qc_finding%ROWTYPE; actor integer; manager boolean;
+ source_task ops.setup_session_task%ROWTYPE; target_task ops.setup_session_task%ROWTYPE;
+ prior text;
+BEGIN
+ PERFORM 1 FROM ops.setup_session_task WHERE setup_session_task_id IN(p_source,p_target)
+ ORDER BY setup_session_task_id FOR UPDATE;
+ SELECT * INTO source_task FROM ops.setup_session_task WHERE setup_session_task_id=p_source;
+ SELECT * INTO target_task FROM ops.setup_session_task WHERE setup_session_task_id=p_target;
+ IF NOT ops.setup_qc_is_final_task(p_source) OR NOT ops.setup_qc_is_final_task(p_target)
+ OR source_task.setup_session_id IS DISTINCT FROM target_task.setup_session_id THEN
+  RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Choose a QC area in this same season';
+ END IF;
+ SELECT person_id,can_manage_setup INTO actor,manager FROM ref.setup_execution_actor(p_email,source_task.setup_task_id);
+ PERFORM 1 FROM ref.setup_execution_actor(p_email,target_task.setup_task_id);
+ SELECT * INTO f FROM ops.setup_qc_finding WHERE qc_finding_id=p_finding FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='P0002',MESSAGE='Issue no longer exists'; END IF;
+ IF actor IS NULL OR NOT (coalesce(manager,false) OR actor=f.created_by_person_id) THEN
+  RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Only the reporter or a manager can edit this issue';
+ END IF;
+ IF f.setup_session_task_id IS DISTINCT FROM p_source OR f.updated_at IS DISTINCT FROM p_expected THEN
+  RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Issue changed. Refresh before editing';
+ END IF;
+ IF f.status NOT IN('OPEN','CLAIMED') OR EXISTS(SELECT 1 FROM ops.setup_qc_event WHERE qc_finding_id=p_finding AND event_type IN('REPAIRED','RETEST_PASS')) THEN
+  RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='A repair has been recorded. Add an observation instead';
+ END IF;
+ IF length(btrim(coalesce(p_description,''))) NOT BETWEEN 3 AND 6000 THEN
+  RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Enter the problem description (3 to 6000 characters)';
+ END IF;
+ prior:=coalesce(f.current_description,(SELECT note FROM ops.setup_qc_event WHERE qc_finding_id=p_finding AND event_type='REPORTED' ORDER BY created_at,qc_event_id LIMIT 1),f.title);
+ IF p_target=p_source AND prior=btrim(p_description) THEN RETURN jsonb_build_object('finding_id',p_finding,'task_id',p_target); END IF;
+ INSERT INTO ops.setup_qc_correction(qc_finding_id,old_task_id,new_task_id,old_description,new_description,person_id)
+ VALUES(p_finding,p_source,p_target,prior,btrim(p_description),actor);
+ PERFORM ops.setup_qc_invalidate_signoff(p_target,actor,'Issue #'||p_finding||' corrected into this area');
+ UPDATE ops.setup_qc_finding SET setup_session_task_id=p_target,title=left(btrim(p_description),200),
+ current_description=btrim(p_description),updated_at=clock_timestamp() WHERE qc_finding_id=p_finding;
+ -- Removing a misplaced issue never automatically signs off its former area.
+ RETURN jsonb_build_object('finding_id',p_finding,'task_id',p_target);
+END
+$edit$;
+REVOKE ALL ON FUNCTION ops.setup_qc_edit_finding(text,bigint,bigint,bigint,text,timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.setup_qc_edit_finding(text,bigint,bigint,bigint,text,timestamptz) TO fieldwiring_app;
+
 CREATE OR REPLACE FUNCTION ops.setup_qc_snapshot(p_email text,p_year integer)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = pg_catalog,ops,ref
@@ -364,7 +428,12 @@ BEGIN
       SELECT jsonb_agg(row_to_json(rows)::jsonb ORDER BY rows.stage_key,rows.qc_finding_id)
       FROM (
         SELECT f.qc_finding_id,f.setup_session_task_id,f.title,f.location_detail,
-          f.discovery_phase,f.status,f.created_at,f.updated_at,
+          f.discovery_phase,f.status,f.created_at,f.updated_at,f.current_description,
+          (f.status IN('OPEN','CLAIMED') AND NOT EXISTS(SELECT 1 FROM ops.setup_qc_event pe WHERE pe.qc_finding_id=f.qc_finding_id AND pe.event_type IN('REPAIRED','RETEST_PASS'))
+           AND (EXISTS(SELECT 1 FROM ref.setup_browser_capabilities(p_email) WHERE can_manage_setup)
+            OR EXISTS(SELECT 1 FROM ref.person vp JOIN public.directus_users vu ON vu.id=vp.directus_user_id WHERE vp.person_id=f.created_by_person_id AND lower(vu.email)=lower(btrim(p_email)) AND vu.status='active'))) AS can_edit,
+          coalesce((SELECT jsonb_agg(to_jsonb(c) || jsonb_build_object('person',concat_ws(' ',ep.first_name,ep.last_name)) ORDER BY c.corrected_at,c.correction_id)
+           FROM ops.setup_qc_correction c LEFT JOIN ref.person ep ON ep.person_id=c.person_id WHERE c.qc_finding_id=f.qc_finding_id),'[]'::jsonb) AS corrections,
           f.created_by_person_id,f.claimed_by_person_id,
           coalesce(nullif(btrim(concat_ws(' ',cp.first_name,cp.last_name)),''),cp.email) AS reporter,
           coalesce(nullif(btrim(concat_ws(' ',rp.first_name,rp.last_name)),''),rp.email) AS repair_owner,

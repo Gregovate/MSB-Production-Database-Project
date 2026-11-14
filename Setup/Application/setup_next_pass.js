@@ -2504,6 +2504,7 @@ function setup205WireActionCenter(root) {
 // #122 QC discovery: existing annual task identity is authoritative.
 // Final QC is NOT a scheduled work assignment and NEVER creates work reports.
 const nextQcDiscovery = {mode: 'work', search: '', selectedTaskId: null};
+const nextQcDetailCache = new Map();
 function nextIsFinalShowQc(task) {
   const name = String(task?.task_name || task?.annual_task_name || '').trim();
   // Show Animation already has a final test task. Keep its existing identity.
@@ -2582,8 +2583,27 @@ function nextQcEnsureDiscovery() {
       if (!button) return;
       const id = Number(button.dataset.qcTaskId);
       if (!nextQcAnnualTasks().some(task => Number(task.setup_session_task_id) === id)) return;
-      nextQcDiscovery.selectedTaskId = id;
-      nextQcRenderResults();
+      nextQcDiscovery.selectedTaskId = nextQcDiscovery.selectedTaskId === id ? null : id;
+      // Toggle the existing section so collapsing does not discard draft notes.
+      el('next-qc-list').querySelectorAll('[data-qc-task-id]').forEach(row => {
+        const open = Number(row.dataset.qcTaskId) === nextQcDiscovery.selectedTaskId;
+        row.setAttribute('aria-expanded', String(open));
+        const panel=el(row.getAttribute('aria-controls'));
+        const detail=panel.querySelector('[data-qc-detail]');
+        const key=Number(row.dataset.qcTaskId);
+        panel.hidden = !open;
+        if (!open && detail.childNodes.length) {
+          const saved=document.createDocumentFragment();
+          while(detail.firstChild) saved.append(detail.firstChild);
+          nextQcDetailCache.set(key,saved);
+        } else if(open && nextQcDetailCache.has(key)) {
+          detail.append(nextQcDetailCache.get(key));nextQcDetailCache.delete(key);
+        }
+      });
+      const detail=el('next-qc-list').querySelector('[data-qc-detail="'+id+'"]');
+      if (nextQcDiscovery.selectedTaskId && detail && !detail.childElementCount) {
+        void window.setupQcRenderCurrent();
+      }
     });
   }
   const qc = nextQcDiscovery.mode !== 'work';
@@ -2638,6 +2658,7 @@ function nextQcEnsureDiscovery() {
   }
 }
 function nextQcRenderResults() {
+  nextQcDetailCache.clear();
   const target = el('next-qc-list');
   if (!target) return;
   const rows = nextQcAnnualTasks();

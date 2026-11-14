@@ -234,3 +234,32 @@ def test_show_animation_existing_tasks_support_complete_qc(corrected_db):
         cur.execute("UPDATE ref.stage SET stage_name='Ordinary Stage' WHERE stage_id=92")
         cur.execute("SELECT ops.setup_qc_is_final_task(472)")
         assert cur.fetchone()[0] is False
+
+
+def test_edit_issue_moves_preserves_history_and_reopens_signed_area(corrected_db):
+    with corrected_db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/083_repeatable_preshow_qc.sql').read_text())
+        cur.execute("INSERT INTO ops.setup_session_task(setup_session_task_id,setup_session_id,setup_task_id,annual_stage_id,annual_task_name) SELECT 50,1,150,9,annual_task_name FROM ops.setup_session_task WHERE setup_session_task_id=20")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','CLAIM_AUDIT',50)")
+        cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',50,'Original area passed',120,'Full test')")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',20,NULL,'Original misplaced report')")
+        finding=cur.fetchone()[0]['finding_ids'][0]
+        cur.execute("SELECT updated_at FROM ops.setup_qc_finding WHERE qc_finding_id=%s",(finding,));version=cur.fetchone()[0]
+        cur.execute("SET ROLE fieldwiring_app")
+        cur.execute("SELECT ops.setup_qc_edit_finding('crew@test',%s,20,50,'Strings should light one through eight',%s)",(finding,version))
+        cur.execute("SELECT ops.setup_qc_snapshot('crew@test',2026)")
+        snap=cur.fetchone()[0];f=next(f for f in snap['findings'] if f['qc_finding_id']==finding)
+        assert f['setup_session_task_id']==50 and f['current_description']=='Strings should light one through eight'
+        assert f['events'][0]['note']=='Original misplaced report'
+        assert f['corrections'][0]['old_task_id']==20 and f['can_edit']
+        assert not snap['signoffs'] and snap['signoff_history'][0]['evidence']['test_evidence']=='Original area passed'
+        with pytest.raises(psycopg2.errors.CheckViolation):
+            cur.execute("SELECT ops.setup_qc_edit_finding('crew@test',%s,20,50,'Stale overwrite',%s)",(finding,version))
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPAIRED',50,%s,'Corrected wiring')",(finding,))
+        cur.execute("RESET ROLE")
+        cur.execute("SELECT updated_at FROM ops.setup_qc_finding WHERE qc_finding_id=%s",(finding,));version=cur.fetchone()[0]
+        cur.execute("SET ROLE fieldwiring_app")
+        with pytest.raises(psycopg2.errors.CheckViolation):
+            cur.execute("SELECT ops.setup_qc_edit_finding('crew@test',%s,50,20,'Cannot rewrite repair',%s)",(finding,version))
+        with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+            cur.execute('SELECT * FROM ops.setup_qc_correction')

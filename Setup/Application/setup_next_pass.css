@@ -1193,3 +1193,11 @@ button.tab[data-view="perform"].active { background:#075985; color:#fff; border:
 .next-qc-guide p { max-width:75ch; }
 .next-qc-toolbar .next-qc-report[hidden], .next-qc-filterbar[hidden] { display:none; }
 @media (max-width:640px) { .next-qc-filterbar { align-items:stretch; } .next-qc-search-field { flex-basis:100%; } }
+
+/* Shared area disclosure and issue correction controls in both QC views. */
+.next-qc-open[aria-expanded]::before { content: '▸'; margin-right: .5rem; }
+.next-qc-open[aria-expanded="true"]::before { content: '▾'; }
+.next-qc-edit { margin: .75rem 0; }
+.next-qc-edit label { display: block; margin: .65rem 0; }
+.next-qc-edit select, .next-qc-edit textarea { width: 100%; font-size: 18px; min-height: 44px; }
+.next-qc-edit summary { cursor: pointer; font-weight: 700; min-height: 44px; }
