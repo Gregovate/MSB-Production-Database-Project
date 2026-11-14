@@ -5,6 +5,7 @@ param([Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{40}$')][string]$Ca
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $repo='C:\MSB_LORRunner'
+$powershell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 $prefix='Docs/01_LOR_System/02_Data_Extraction/Parser/'
 $modules=ConvertFrom-Json '[{"name": "parse_props_v7_scene_parser.py", "old": ["4beb9985fb33f476c9e20ce02fff7eb2e81b66a64a2dc6ceb45a1b4e6f998945", "18cf65990609ccf180f62db3bdc8ef781e40a96e89bc8ac45324d963eac60bc0"], "new": "1708049f0f0e18195984e821730d71b61a040b59f58e3a5c26dfdd82a102e905"}]'
 function Require($value,$reason) { if (-not $value) { throw $reason } }
@@ -47,7 +48,7 @@ foreach ($module in $modules) {
 }
 Write-Host "Backup/report: $report"
 $launcher=Join-Path $repo 'run_lor_runner.ps1'
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher -Action Stop -DeploymentProfile PrintServerUnattended
+& $powershell -NoProfile -ExecutionPolicy Bypass -File $launcher -Action Stop -DeploymentProfile PrintServerUnattended
 Require ($LASTEXITCODE -eq 0) 'Managed Stop failed; retain report'
 try {
     foreach ($module in $modules) {
@@ -59,12 +60,12 @@ try {
     Require ((Hash $tokenPath) -eq $tokenHash -and (Export-ScheduledTask -TaskName $taskName) -ceq $taskBefore) 'Task or pairing changed'
     Start-ScheduledTask -TaskName $taskName
     Start-Sleep -Seconds 3
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher -Action Status -DeploymentProfile PrintServerUnattended
+    & $powershell -NoProfile -ExecutionPolicy Bypass -File $launcher -Action Status -DeploymentProfile PrintServerUnattended
     Require ($LASTEXITCODE -eq 0) 'Runner status verification failed'
     Write-Host 'PASS: parser V7.0.12 installed; renamed SPARE masters and explicit child links preserved. No parser, ingest or publication performed.'
 } catch {
     $failure=$_
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $launcher -Action Stop -DeploymentProfile PrintServerUnattended
+    & $powershell -NoProfile -ExecutionPolicy Bypass -File $launcher -Action Stop -DeploymentProfile PrintServerUnattended
     Require ($LASTEXITCODE -eq 0) 'Rollback HOLD: managed Stop failed'
     foreach ($module in $modules) {
         $target=Join-Path $repo ($prefix+$module.name);$backup=Join-Path $report ($module.name+'.before')
