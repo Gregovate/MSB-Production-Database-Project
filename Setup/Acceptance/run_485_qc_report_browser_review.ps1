@@ -1,5 +1,5 @@
 <#
-PR #485 report/control and correction082 follow-up, current-Production disposable QC Check browser review.
+PR #485 report/control and correction083 follow-up, current-Production disposable QC Check browser review.
 - Exact commit; one temporary detached-source review branch; no Production writes.
 - Uses EXISTING Setup acceptance runner, port 8898 and Server Management profile.
 - Preserves any failed/dirty review worktree for diagnosis.
@@ -10,8 +10,8 @@ param(
     [string]$PrimaryRepo = 'C:\Users\Greg\Github\MSB-Production-Database-Project'
 )
 $ErrorActionPreference = 'Stop'
-$Ref = 'fix/485-qc-report-controls'
-$ExpectedVersion = 'V0.3.122-qc-report'
+$Ref = 'fix/qc-area-coverage'
+$ExpectedVersion = 'V0.3.123-qc-recheck'
 if ($CandidateSha -cnotmatch '^[a-f0-9]{40}$') { throw 'HOLD: exact candidate SHA required.' }
 if (-not (Test-Path -LiteralPath $PrimaryRepo -PathType Container)) { throw 'HOLD: MSB main worktree missing.' }
 $Origin = (& git -C $PrimaryRepo remote get-url origin)
@@ -42,11 +42,11 @@ try {
     Set-Location -LiteralPath $Review
     Write-Host "PR485 TEST CANDIDATE: $CandidateSha"
     Write-Host 'WRITABLE DISPOSABLE REVIEW: Scheduled Work / QC Check / QC Repairs Needed. All test writes go to the clone.'
-    Write-Host 'Correction082 applies only to the disposable clone; no migration081 replay.'
+    Write-Host 'Correction083 applies only to the disposable clone; no migration081 replay.'
     Write-Host 'Production unchanged; ordinary Production activity can continue.'
     Write-Host 'Review normal Crew reporting and repairs without Manager approval or scheduling. Historical Intake cleanup is separate.'
     & (Join-Path $Review 'Setup\Acceptance\run_setup_disposable_browser_preview.ps1') `
-       -MigrationPaths @('Setup/Database/082_correct_qc_wording_and_shared_repairs.sql') `
+       -MigrationPaths @('Setup/Database/083_repeatable_preshow_qc.sql') `
        -PreviewPort 8898 `
        -CandidateSha $CandidateSha `
        -TargetRef $Ref `

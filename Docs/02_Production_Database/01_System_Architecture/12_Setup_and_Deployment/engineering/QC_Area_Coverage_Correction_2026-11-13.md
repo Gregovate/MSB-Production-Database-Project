@@ -3,7 +3,7 @@
 | Document control | Value |
 |---|---|
 | Owner | Setup engineering, #122 / #205 |
-| Status | Engineering investigation; not implemented or deployed |
+| Status | Candidate implementation in PR490; not deployed |
 | Reviewed | 2026-11-13 America/Chicago |
 | Baseline | main e55450eb32b03d0aa86e957ec1f9fb3707025014; deployed V0.3.122 |
 | Authority | Setup_Scheduling_Board_Contract_2026-09-17.md |
@@ -19,10 +19,10 @@ Current browser discovery matches the final two-minute task name. Database081/08
 
 ## Required behavior
 - Reporting must expose the correct current Stage and Scene without requiring Greg to manufacture reusable or annual tasks.
-- Show signed-off areas as discoverable locations with explicit readiness and the existing Work Order handoff. Do not silently reopen signed evidence or weaken the agreed post-signoff boundary.
+- Controlling November13 clarification: signed-off areas stay green on the main QC list. Before show start, a valid new problem preserves prior signoff evidence and returns the area to yellow. Work Orders start at show start, never at individual signoff.
 - Separate finding location from final-check task eligibility. Resolve current location identities from authoritative Stage/Scene relationships; never infer identity by title.
 - Existing findings retain IDs, reporters, claimants, completing actors, event timestamps, source intake links and signoff evidence.
-- A manager location correction must be audited and transactionally preserve that history. Destination validity and signed-off constraints must be checked. No automatic reassignment based on free text.
+- A manager location correction must be audited and transactionally preserve that history. Destination validity and current readiness impact must be checked. No automatic reassignment based on free text.
 - One visible Stage heading, Scenes nested below. Multiple final tasks at the same scope remain distinct records internally; determine the purpose of Santa Workshop588/590 rather than deleting either.
 - Compact finding presentation: issue, complete problem text, clear status, assigned worker and latest repair note. Full history on demand. Distinguish assigned worker from actual repair recorder.
 - Punch list PDF: one heading per Stage/Scene, compact rows, repair-needed items by default, optional awaiting-signoff items; full audit report remains separately available.
@@ -36,5 +36,8 @@ Trace every consumer of finding.task, including command gates, snapshot, report,
 The previous source-only assumption does not cover decoupling reporting from task identity.
 
 ## Acceptance
-On the same reusable disposable clone: report a new finding for a valid scene with no final QC task; it appears under the exact location in repair queue and punch list. Existing findings and signoffs compare unchanged. Signed areas remain searchable with explicit handoff. Manager correction records old/new location and actor without erasing events. Invalid cross-stage scene selection is rejected. Duplicate-scope tasks do not duplicate findings. Repaired items do not appear as unclaimed work. Full-history report remains complete. Print review includes long notes and multiple findings in one scene; browser review covers both themes, large text and mobile.
+On the same reusable disposable clone: report a new finding for a valid scene with no final QC task; it appears under the exact location in repair queue and punch list. Existing findings and signoffs compare unchanged. Signed areas remain visible and accept new pre-show problems; repeat repair and signoff restores green. Manager correction records old/new location and actor without erasing events. Invalid cross-stage scene selection is rejected. Duplicate-scope tasks do not duplicate findings. Repaired items do not appear as unclaimed work. Full-history report remains complete. Print review includes long notes and multiple findings in one scene; browser review covers both themes, large text and mobile.
 Production is unchanged until an exact tested candidate is reviewed and authorized using the existing preview and deployment tooling.
+
+## Existing tooling reuse
+The existing run_485_qc_report_browser_review.ps1 wrapper selects the exact PR490 branch/version and applies only083 to the disposable current-Production clone through run_setup_disposable_browser_preview.ps1 on8898. No new launcher, service, Production write or replay of081/082. Missing-task coverage and location correction remain unfinished; this candidate addresses existing signed areas and punch-list readability first.
