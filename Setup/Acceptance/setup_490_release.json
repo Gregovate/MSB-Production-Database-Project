@@ -1,0 +1,8 @@
+{
+  "profile": "490-qc",
+  "release_tag": "PR490-083",
+  "candidate": "9c86ff45b2efb2b1f5f65f3272c1b43d730dd7ef",
+  "target": "9c86ff45b2efb2b1f5f65f3272c1b43d730dd7ef",
+  "version": "V0.3.123-qc-recheck",
+  "migration": "Setup/Database/083_repeatable_preshow_qc.sql"
+}
