@@ -208,3 +208,29 @@ def test_repeatable_preshow_signoff_preserves_evidence(corrected_db):
         assert snapshot['signoffs'][0]['test_evidence'] == 'Second full test passed'
         assert len(snapshot['signoff_history']) == 1
         assert snapshot['findings'][0]['status'] == 'VERIFIED'
+
+
+def test_show_animation_existing_tasks_support_complete_qc(corrected_db):
+    with corrected_db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/083_repeatable_preshow_qc.sql').read_text())
+        for stage, task in [(91,471),(92,472),(93,479),(94,473),(95,474)]:
+            cur.execute("INSERT INTO ref.stage VALUES(%s,%s,%s)", (stage,str(stage-1),f'Show Animation EL {stage-1} Elf On Shelf'))
+            cur.execute("INSERT INTO ops.setup_session_task(setup_session_task_id,setup_session_id,setup_task_id,annual_stage_id,annual_task_name) VALUES(%s,1,%s,%s,'Plug in Network & Test')",(task,task+1000,stage))
+        cur.execute("SET ROLE fieldwiring_app")
+        for task in [471,472,479,473,474]:
+            cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',%s,NULL,'Elf light failure')",(task,))
+            finding=cur.fetchone()[0]['finding_ids'][0]
+            cur.execute("SELECT ops.setup_qc_command('crew@test','REPAIRED',%s,%s,'Replaced light')",(task,finding))
+            cur.execute("SELECT ops.setup_qc_command('crew@test','CLAIM_AUDIT',%s)",(task,))
+            cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',%s,'Observed full test pass',120,'Two minute test')",(task,))
+            assert cur.fetchone()[0]['status']=='READY_FOR_PRODUCTION'
+        cur.execute("SELECT ops.setup_qc_snapshot('crew@test',2026)")
+        snap=cur.fetchone()[0]
+        assert {471,472,479,473,474} <= {g['task_id'] for g in snap['final_gates']}
+        cur.execute("RESET ROLE")
+        cur.execute("UPDATE ops.setup_session_task SET annual_task_name='Locate Power & Network' WHERE setup_session_task_id=471")
+        cur.execute("SELECT ops.setup_qc_is_final_task(471)")
+        assert cur.fetchone()[0] is False
+        cur.execute("UPDATE ref.stage SET stage_name='Ordinary Stage' WHERE stage_id=92")
+        cur.execute("SELECT ops.setup_qc_is_final_task(472)")
+        assert cur.fetchone()[0] is False

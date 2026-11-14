@@ -2505,9 +2505,11 @@ function setup205WireActionCenter(root) {
 // Final QC is NOT a scheduled work assignment and NEVER creates work reports.
 const nextQcDiscovery = {mode: 'work', search: '', selectedTaskId: null};
 function nextIsFinalShowQc(task) {
-  return /(?:plug\s+in\s+network\s+to\s+controller.*2\s+minute\s+test\s+show|^QC Check - Verify Stage\/Scene sequence lights during the 2 minute test sequence$)/i.test(
-    String(task?.task_name || task?.annual_task_name || '')
-  );
+  const name = String(task?.task_name || task?.annual_task_name || '').trim();
+  // Show Animation already has a final test task. Keep its existing identity.
+  const animationTest = /^Show\s+Animation(?:\s|$)/i.test(String(task?.stage_name || '')) &&
+    /^Plug\s+in\s+Network\s*&\s*Test$/i.test(name);
+  return animationTest || /(?:plug\s+in\s+network\s+to\s+controller.*2\s+minute\s+test\s+show|^QC Check - Verify Stage\/Scene sequence lights during the 2 minute test sequence$)/i.test(name);
 }
 function nextQcAnnualTasks() {
   // Scheduling Board contains all included annual tasks, including unscheduled

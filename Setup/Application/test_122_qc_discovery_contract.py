@@ -101,3 +101,17 @@ def test_qc_writes_are_narrow_governed_commands_not_scheduling_rows():
     assert 'INSERT INTO ops.setup_work_day_task' not in sql
     assert 'INSERT INTO ops.work_order' not in sql
     assert 'UPDATE stage.work_order_intake' not in sql
+
+
+def test_show_animation_final_test_discovery_executes():
+    import subprocess
+    function = "function nextIsFinalShowQc(task) {" + segment("function nextIsFinalShowQc(task) {", "function nextQcAnnualTasks()")
+    cases = [
+        {"stage_name": "Show Animation EL 90 Elf On Shelf-1", "task_name": "Plug in Network & Test"},
+        {"stage_name": "Ordinary Stage", "task_name": "Plug in Network & Test"},
+        {"stage_name": "Show Animation EL 90 Elf On Shelf-1", "task_name": "Locate Power & Network"},
+        {"stage_name": "Show Animation EL 90 Elf On Shelf-1", "task_name": "PLUG IN & VERIFY: Wire Displays to Controller"},
+    ]
+    import json
+    result = subprocess.run(["node", "-e", function + "console.log(JSON.stringify(" + json.dumps(cases) + ".map(nextIsFinalShowQc)))"], capture_output=True, text=True, check=True)
+    assert json.loads(result.stdout) == [True, False, False, False]

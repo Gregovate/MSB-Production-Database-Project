@@ -29,6 +29,22 @@ BEGIN
 END
 $invalidate$;
 REVOKE ALL ON FUNCTION ops.setup_qc_invalidate_signoff(bigint,integer,text) FROM PUBLIC,fieldwiring_app;
+-- Reuse existing Show Animation final tests; wiring tasks are not final QC.
+CREATE OR REPLACE FUNCTION ops.setup_qc_is_final_task(p_task bigint)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path=pg_catalog,ops,ref
+AS $eligible$
+SELECT EXISTS (
+  SELECT 1 FROM ops.setup_session_task t
+  LEFT JOIN ref.stage s ON s.stage_id=t.annual_stage_id
+  WHERE t.setup_session_task_id=p_task AND t.included_flag
+    AND (t.annual_task_name ~* '(plug[[:space:]]+in[[:space:]]+network[[:space:]]+to[[:space:]]+controller.*2[[:space:]]+minute[[:space:]]+test[[:space:]]+show|^QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence$)'
+      OR (s.stage_name ~* '^Show[[:space:]]+Animation([[:space:]]|$)'
+        AND btrim(t.annual_task_name) ~* '^Plug[[:space:]]+in[[:space:]]+Network[[:space:]]*&[[:space:]]*Test$'))
+);
+$eligible$;
+REVOKE ALL ON FUNCTION ops.setup_qc_is_final_task(bigint) FROM PUBLIC,fieldwiring_app;
+
 CREATE OR REPLACE FUNCTION ops.setup_qc_command(
   p_email text, p_action text, p_annual_task bigint,
   p_finding bigint DEFAULT NULL, p_note text DEFAULT NULL,
@@ -57,7 +73,7 @@ BEGIN
     WHERE t.setup_session_task_id=p_annual_task AND t.included_flag
     FOR UPDATE;
   IF NOT FOUND OR v_reusable IS NULL OR
-     v_task_name !~* '(plug[[:space:]]+in[[:space:]]+network[[:space:]]+to[[:space:]]+controller.*2[[:space:]]+minute[[:space:]]+test[[:space:]]+show|^QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence$)'
+     NOT ops.setup_qc_is_final_task(p_annual_task)
   THEN
     RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Exact final QC annual task is required';
   END IF;
@@ -224,6 +240,103 @@ BEGIN
 END
 $function$;
 
+CREATE OR REPLACE FUNCTION ops.setup_qc_final_gate(p_task bigint)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path=pg_catalog,ops,ref
+AS $gate$
+WITH target AS (
+  SELECT * FROM ops.setup_session_task WHERE setup_session_task_id=p_task
+), required AS (
+  SELECT pst.setup_session_task_id AS id
+  FROM target t JOIN ref.setup_task_dependency rd ON rd.setup_task_id=t.setup_task_id
+  LEFT JOIN ops.setup_session_task pst ON pst.setup_session_id=t.setup_session_id
+    AND pst.setup_task_id=rd.prerequisite_setup_task_id
+  WHERE t.task_origin='REUSABLE'
+  UNION
+  SELECT ad.prerequisite_setup_session_task_id
+  FROM target t JOIN ops.setup_session_task_dependency ad ON ad.setup_session_task_id=p_task
+  LEFT JOIN ops.setup_session_task pst ON pst.setup_session_task_id=ad.prerequisite_setup_session_task_id
+  WHERE t.task_origin='SEASON_ONLY' OR (ad.dependency_origin='ANNUAL' AND NOT EXISTS (
+    SELECT 1 FROM ref.setup_task_dependency rd WHERE rd.setup_task_id=t.setup_task_id
+      AND rd.prerequisite_setup_task_id=pst.setup_task_id))
+  UNION
+  SELECT pst.setup_session_task_id FROM target t
+  JOIN ops.setup_session_task pst ON pst.setup_session_id=t.setup_session_id
+    AND pst.annual_stage_id IS NOT DISTINCT FROM t.annual_stage_id
+  WHERE pst.included_flag AND pst.setup_session_task_id<>p_task
+    AND (t.annual_lor_scene_id IS NULL OR pst.annual_lor_scene_id=t.annual_lor_scene_id)
+), work AS (
+  SELECT r.id,coalesce(pst.annual_task_name,'Missing annual prerequisite') AS name,
+    CASE WHEN ops.setup_qc_is_final_task(pst.setup_session_task_id)
+      THEN EXISTS (SELECT 1 FROM ops.setup_qc_signoff q WHERE q.setup_session_task_id=pst.setup_session_task_id)
+      ELSE coalesce(pst.execution_status='COMPLETE' OR
+        (pst.linked_work_order_gate AND wo.date_completed IS NOT NULL),false)
+    END AS complete
+  FROM required r LEFT JOIN ops.setup_session_task pst ON pst.setup_session_task_id=r.id
+  LEFT JOIN ops.setup_scheduling_work_order_gate wo ON wo.work_order_id=pst.linked_work_order_id
+)
+SELECT jsonb_build_object(
+  'task_id',p_task,
+  'readiness_met',coalesce((SELECT annual_readiness_state='READY' FROM target),false),
+  'required_work',coalesce((SELECT jsonb_agg(to_jsonb(w) ORDER BY w.id NULLS FIRST) FROM work w),'[]'::jsonb),
+  'unfinished_work',coalesce((SELECT jsonb_agg(to_jsonb(w) ORDER BY w.id NULLS FIRST) FROM work w WHERE NOT complete),'[]'::jsonb),
+  'unrepaired_findings',(SELECT count(*) FROM ops.setup_qc_finding f WHERE f.setup_session_task_id=p_task AND f.status IN ('OPEN','CLAIMED')),
+  'unresolved_findings',(SELECT count(*) FROM ops.setup_qc_finding f WHERE f.setup_session_task_id=p_task AND f.status<>'VERIFIED')
+);
+$gate$;
+
+CREATE OR REPLACE FUNCTION ops.setup_qc_ready_for_production(
+  p_email text,p_task bigint,p_evidence text,p_test_seconds integer,p_sequence text
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,ops,ref
+AS $final$
+DECLARE v_task ops.setup_session_task%ROWTYPE; v_person integer; v_gate jsonb; v_at timestamptz;
+BEGIN
+  -- Freeze authoritative work/graph evidence during the short final transaction.
+  -- Acquire table locks before row locks; all QC commands then serialize on task.
+  LOCK TABLE ops.setup_session_task IN SHARE ROW EXCLUSIVE MODE;
+  LOCK TABLE ref.setup_task_dependency,ops.setup_session_task_dependency,ops.work_order IN SHARE MODE;
+  SELECT * INTO v_task FROM ops.setup_session_task WHERE setup_session_task_id=p_task FOR UPDATE;
+  IF NOT FOUND OR NOT v_task.included_flag OR NOT ops.setup_qc_is_final_task(p_task) THEN
+    RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Exact final QC annual task required';
+  END IF;
+  SELECT person_id INTO v_person FROM ref.setup_execution_actor(p_email,v_task.setup_task_id);
+  IF v_person IS NULL OR NOT EXISTS (SELECT 1 FROM ops.setup_qc_auditor
+    WHERE setup_session_task_id=p_task AND person_id=v_person) THEN
+    RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Only an auditor who claimed this QC task may sign off';
+  END IF;
+  IF EXISTS (SELECT 1 FROM ops.setup_qc_signoff WHERE setup_session_task_id=p_task) THEN
+    RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Already Ready for Production; report any new problem in QC Check';
+  END IF;
+  IF p_test_seconds IS NULL OR p_test_seconds<120
+    OR length(btrim(coalesce(p_evidence,''))) NOT BETWEEN 3 AND 6000
+    OR length(btrim(coalesce(p_sequence,''))) NOT BETWEEN 3 AND 500 THEN
+    RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Record the actual two-minute test, sequence reference and observed result';
+  END IF;
+  v_gate := ops.setup_qc_final_gate(p_task);
+  IF NOT (v_gate->>'readiness_met')::boolean OR jsonb_array_length(v_gate->'unfinished_work')>0
+    OR (v_gate->>'unrepaired_findings')::integer>0 THEN
+    RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Signoff blocked: required work and readiness must be complete; every problem must be repaired';
+  END IF;
+  v_at := clock_timestamp();
+  -- One area observation verifies repaired findings atomically with final signoff.
+  -- Never close an OPEN/CLAIMED defect; the locked gate above rejects those.
+  INSERT INTO ops.setup_qc_event(qc_finding_id,event_type,person_id,note,created_at)
+    SELECT qc_finding_id,'RETEST_PASS',v_person,btrim(p_evidence),v_at
+    FROM ops.setup_qc_finding WHERE setup_session_task_id=p_task AND status='AWAITING_RETEST'
+    ORDER BY qc_finding_id;
+  UPDATE ops.setup_qc_finding SET status='VERIFIED',updated_at=v_at
+    WHERE setup_session_task_id=p_task AND status='AWAITING_RETEST';
+  INSERT INTO ops.setup_qc_signoff(setup_session_task_id,auditor_person_id,signed_at,
+    test_seconds,sequence_reference,test_evidence,required_work_evidence)
+  VALUES(p_task,v_person,v_at,p_test_seconds,btrim(p_sequence),btrim(p_evidence),v_gate);
+  UPDATE ops.setup_session_task SET execution_status='COMPLETE',actual_completed_at=v_at,
+    completed_by_person_id=v_person,completion_note='QC Ready for Production: '||btrim(p_evidence)
+    WHERE setup_session_task_id=p_task;
+  RETURN jsonb_build_object('task_id',p_task,'status','READY_FOR_PRODUCTION','signed_at',v_at,'auditor_person_id',v_person);
+END
+$final$;
+
 CREATE OR REPLACE FUNCTION ops.setup_qc_snapshot(p_email text,p_year integer)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = pg_catalog,ops,ref
@@ -246,8 +359,7 @@ BEGIN
       JOIN ops.setup_session ss USING(setup_session_id) WHERE ss.season_year=p_year),'[]'::jsonb),
     'final_gates',coalesce((SELECT jsonb_agg(ops.setup_qc_final_gate(t.setup_session_task_id) ORDER BY t.setup_session_task_id)
       FROM ops.setup_session_task t JOIN ops.setup_session ss USING(setup_session_id)
-      WHERE ss.season_year=p_year AND t.included_flag AND t.annual_task_name ~*
-        '(plug[[:space:]]+in[[:space:]]+network[[:space:]]+to[[:space:]]+controller.*2[[:space:]]+minute[[:space:]]+test[[:space:]]+show|^QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence$)'),'[]'::jsonb),
+      WHERE ss.season_year=p_year AND t.included_flag AND ops.setup_qc_is_final_task(t.setup_session_task_id)),'[]'::jsonb),
     'findings',coalesce((
       SELECT jsonb_agg(row_to_json(rows)::jsonb ORDER BY rows.stage_key,rows.qc_finding_id)
       FROM (

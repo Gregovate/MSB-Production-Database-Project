@@ -41,3 +41,6 @@ Production is unchanged until an exact tested candidate is reviewed and authoriz
 
 ## Existing tooling reuse
 The existing run_485_qc_report_browser_review.ps1 wrapper selects the exact PR490 branch/version and applies only083 to the disposable current-Production clone through run_setup_disposable_browser_preview.ps1 on8898. No new launcher, service, Production write or replay of081/082. Missing-task coverage and location correction remain unfinished; this candidate addresses existing signed areas and punch-list readability first.
+
+### Confirmed Show Animation coverage
+Operator inventory confirms included stage-level final test tasks 471, 472, 479, 473, 474 on stages 91–95 (keys 90–94). Recognize `Plug in Network & Test` only for stages whose names begin `Show Animation`. Reuse these annual records without adding tasks, moving scene scope, or changing names. Apply identical eligibility to discovery, reporting, snapshots, prerequisite gates, and final sign-off. Ordinary network and wiring tasks remain excluded.
