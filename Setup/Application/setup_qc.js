@@ -70,25 +70,10 @@
         ? `${active.length-retest} need repair${retest ? ' · '+retest+' repaired — awaiting area sign-off' : ''}`
         : findings.length ? 'Findings verified · Final QC pending' : 'No findings · QC pending';
     });
-    // Move finalized areas into collapsed green history; keep the same delegated
-    // selection handler, and never discard their recorded evidence.
+    // Green areas remain in their normal position and remain searchable.
     const list=document.getElementById('next-qc-list');
     if (list) {
-      let archive=list.querySelector('[data-qc-completed-areas]');
-      if (!archive) {
-        archive=document.createElement('details');archive.dataset.qcCompletedAreas='1';
-        archive.innerHTML='<summary>Ready for Production</summary>';list.append(archive);
-      }
-      list.querySelectorAll('[data-qc-task-id]').forEach(button=>{
-        const row=button.closest('.next-qc-row');
-        if (signoffFor(button.dataset.qcTaskId)) archive.append(row);
-        else if (row.parentElement===archive) list.insertBefore(row,archive);
-      });
-      const count=archive.querySelectorAll('.next-qc-row').length;
-      archive.hidden=!count;
       const counter=document.getElementById('next-qc-count');
-      if (counter) counter.textContent=(list.querySelectorAll('.next-qc-row').length-count)+' active areas · '+count+' Ready for Production';
-      archive.querySelector('summary').textContent='Ready for Production ('+count+')';
       // Filter existing rows rather than rebuilding forms and losing draft notes.
       const matching=new Set(nextQcFilteredTasks().map(t=>Number(t.setup_session_task_id)));
       let shown=0, completed=0;
@@ -97,9 +82,7 @@
         row.hidden=!matching.has(id) || (auditScope==='mine' && !myArea(id));
         if (!row.hidden) { if(signoffFor(id)) completed++; else shown++; }
       });
-      archive.hidden=!completed;
-      archive.querySelector('summary').textContent='Ready for Production ('+completed+')';
-      if(counter) counter.textContent=shown+' active areas shown · '+completed+' Ready for Production';
+      if(counter) counter.textContent=(shown+completed)+' areas shown · '+completed+' Ready for Production';
       const filters=document.getElementById('next-qc-area-filters');
       if(filters) {
         const tasks=nextQcAnnualTasks();
@@ -284,19 +267,6 @@
     catch (error) { host.textContent='QC details unavailable: '+(error.message||error);return; }
     if (!host.isConnected || id!==nextQcDiscovery.selectedTaskId) return;
     const final=signoffFor(id);
-    if (final) {
-      host.innerHTML=`<section class="next-qc-final-record"><h4>Ready for Production · 100%</h4>
-        <p>Signed by ${html((snapshot.auditors || []).find(a=>Number(a.person_id)===Number(final.auditor_person_id) && Number(a.setup_session_task_id)===Number(id))?.auditor || 'Auditor #'+final.auditor_person_id)} · ${html(localTime(final.signed_at))}</p>
-        <p>${html(final.sequence_reference)}</p><p class="next-qc-note">${html(final.test_evidence)}</p>
-        <p>Report subsequent problems through Work Orders.</p>
-        <h4>Findings and repair history (${taskFindings(id).length})</h4>
-        ${taskFindings(id).map(f=>`<section class="next-qc-finding" data-qc-state="VERIFIED">
-          <strong>Issue #${html(f.qc_finding_id)}: ${html((f.events || []).find(e=>e.type==='REPORTED')?.note || f.title)}</strong>
-          <p>Reported by ${html(f.reporter)} · Repair: ${html(f.repair_owner || 'Unclaimed')}</p>
-          <ul>${eventMarkup(f)}</ul></section>`).join('')}
-        </section>`;
-      return;
-    }
     const allFindings=taskFindings(id);
     const findings=allFindings.filter(f=>f.status!=='VERIFIED');
     const verified=allFindings.filter(f=>f.status==='VERIFIED');
@@ -308,11 +278,14 @@
     const canSign=ownsAudit && gate?.readiness_met && !unfinished.length && !unrepaired.length;
     host.innerHTML=`
       <div class="next-qc-record">
+        ${final ? '<p class="next-qc-final-record"><strong>Ready for Production</strong> · '+html(localTime(final.signed_at))+' — report any newly found problem below.</p>' : ''}
+        ${(snapshot.signoff_history || []).filter(h=>Number(h.setup_session_task_id)===Number(id)).length ? '<details><summary>Previous area sign-offs</summary>'+ (snapshot.signoff_history || []).filter(h=>Number(h.setup_session_task_id)===Number(id)).map(h=>'<p>'+html(localTime(h.evidence.signed_at))+' · '+html(h.evidence.test_evidence)+'<br>Reopened: '+html(localTime(h.invalidated_at))+' · '+html(h.reason)+'</p>').join('')+'</details>' : ''}
+
         <div><strong>QC auditors:</strong>
           ${auditors.length ? auditors.map(x=>html(x.auditor)).join(', ') : 'None yet'}
           ${ownsAudit ? '<span> · Assigned to you</span>' : `<button type="button" class="small secondary" data-qc-action="CLAIM_AUDIT" data-qc-task="${id}">Assign to Me</button>`}
         </div>
-        ${ownsAudit ? `<section class="next-qc-signoff">
+        ${ownsAudit && !final ? `<section class="next-qc-signoff">
           <h4>Final QC — Ready for Production</h4>
           ${!gate ? '<p>Readiness checks unavailable.</p>' : ''}
           ${gate && !gate.readiness_met ? '<p>Blocked: annual readiness has not been confirmed.</p>' : ''}
@@ -333,7 +306,7 @@
           <h4>Report problems</h4>
           <label>What is wrong? One problem per line.
             <textarea data-qc-problems rows="3" maxlength="6000"
-              placeholder="arch 3 - blue lights 21 to 28 inches from bottom&#10;arch 4 - all red lights"></textarea>
+></textarea>
           </label>
           <button type="button" data-qc-action="REPORT_LINES" data-qc-task="${id}">Save Problems</button>
         </form>

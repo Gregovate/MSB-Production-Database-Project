@@ -26,6 +26,8 @@ def local_time(value):
 
 def render_qc_report(snapshot, year, scope='all'):
     """Deterministic area/finding/event order; completed history is the default."""
+    if scope in {'punch', 'punch_pending'}:
+        return render_qc_punch_list(snapshot, year, include_pending=scope == 'punch_pending')
     signoffs = {str(s['setup_session_task_id']): s for s in snapshot.get('signoffs', [])}
     auditors = snapshot.get('auditors', [])
     findings = sorted(snapshot.get('findings', []), key=lambda f: (
@@ -58,6 +60,13 @@ def render_qc_report(snapshot, year, scope='all'):
                 cards.append('</section>')
             cards.append(f'''<section class="qc-area"><h2>{text(finding.get('stage_name') or finding.get('stage_key'))} · {text(finding.get('scene_name') or 'Stage-level')} · QC #{text(task)}</h2>
 <p><b>QC auditors:</b> {text(audit)}</p>{final_html}''')
+            for prior in snapshot.get('signoff_history', []):
+                if str(prior['setup_session_task_id']) == task:
+                    evidence = prior['evidence']
+                    cards.append('<p><b>Previous sign-off:</b> '+text(local_time(evidence.get('signed_at')))+
+                                 ' · Auditor #'+text(evidence.get('auditor_person_id'))+' · '+
+                                 text(evidence.get('test_evidence'))+'<br>Reopened: '+
+                                 text(local_time(prior.get('invalidated_at')))+' · '+text(prior.get('reason'))+'</p>')
             current_task = task
         cards.append(f'''<article><h3>Issue #{text(finding['qc_finding_id'])} — {text(labels.get(finding['status'], finding['status']))}</h3>
 <p class="note">{text(description)}</p>
@@ -74,3 +83,38 @@ def render_qc_report(snapshot, year, scope='all'):
 <h1>Setup QC report — {text(year)}</h1><p>{title} · {len(findings)} finding(s)<br>Generated {generated} · America/Chicago</p>
 {''.join(cards) or '<p>No findings in this report scope.</p>'}
 </body></html>'''
+
+
+def render_qc_punch_list(snapshot, year, include_pending=False):
+    """Compact actionable work; complete evidence remains in the history report."""
+    statuses = {'OPEN', 'CLAIMED'}
+    if include_pending:
+        statuses.add('AWAITING_RETEST')
+    findings = sorted((f for f in snapshot.get('findings', []) if f['status'] in statuses),
+                      key=lambda f: (str(f.get('stage_key') or ''), str(f.get('scene_name') or ''),
+                                     int(f['setup_session_task_id']), int(f['qc_finding_id'])))
+    labels = {'OPEN': 'Unclaimed', 'CLAIMED': 'Claimed',
+              'AWAITING_RETEST': 'Awaiting final check'}
+    sections = []
+    current = None
+    for f in findings:
+        area = (f.get('stage_key'), f.get('stage_name'), f.get('scene_name'))
+        if area != current:
+            if current is not None:
+                sections.append('</tbody></table></section>')
+            sections.append('<section><h2>'+text(f.get('stage_name') or f.get('stage_key'))+' · '+
+                            text(f.get('scene_name') or 'Stage-level')+
+                            '</h2><table><thead><tr><th>Issue</th><th>Problem</th><th>Assigned to</th><th>Status</th></tr></thead><tbody>')
+            current = area
+        description = next((e.get('note') for e in f.get('events', []) if e.get('type') == 'REPORTED'), None) or f.get('title')
+        sections.append('<tr><td>#'+text(f['qc_finding_id'])+'</td><td>'+text(description)+
+                        '</td><td>'+text(f.get('repair_owner') or 'Unclaimed')+'</td><td>'+
+                        labels[f['status']]+'</td></tr>')
+    if current is not None:
+        sections.append('</tbody></table></section>')
+    generated = datetime.now(ZoneInfo('America/Chicago')).strftime('%m/%d/%Y %I:%M %p %Z')
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>QC punch list — {text(year)}</title>
+<style>body{{font:18px/1.3 Arial;color:#172033;margin:20px}}h1{{font-size:24px}}h2{{font-size:18px;margin:14px 0 5px}}table{{width:100%;border-collapse:collapse}}td,th{{border:1px solid #94a3b8;padding:6px;text-align:left;vertical-align:top}}td:nth-child(2){{width:65%;white-space:pre-wrap;overflow-wrap:anywhere}}tr{{break-inside:avoid}}h2{{break-after:avoid}}thead{{display:table-header-group}}.tools a,.tools button{{margin-right:12px;font:inherit}}@page{{size:landscape;margin:12mm}}@media print{{.tools{{display:none}}body{{font-size:11pt;margin:0}}}}</style></head><body>
+<div class="tools"><button onclick="window.print()">Print / Save PDF</button><a href="?season_year={year}&amp;scope=punch">Needs repair</a><a href="?season_year={year}&amp;scope=punch_pending">Include awaiting final check</a><a href="?season_year={year}&amp;scope=all">Full history</a></div>
+<h1>QC punch list — {text(year)}</h1><p>{len(findings)} findings · {generated}</p>
+{''.join(sections) or '<p>No findings in this selection.</p>'}</body></html>"""

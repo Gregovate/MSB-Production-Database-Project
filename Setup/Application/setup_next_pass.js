@@ -2543,7 +2543,7 @@ function nextQcEnsureDiscovery() {
         <button type="button" class="small secondary" id="next-qc-check-tab">QC Check</button>
         <button type="button" class="small secondary" id="next-qc-fixes-tab">QC Repairs Needed</button>
       </div>
-      <a id="next-qc-report" class="next-qc-report" target="_blank" rel="noopener" title="All findings and history, including completed areas">QC report / PDF</a>
+      <a id="next-qc-report" class="next-qc-report" target="_blank" rel="noopener" title="All findings and history, including completed areas">Punch list / PDF</a>
       </div>
       <div id="next-qc-content" hidden>
         <div class="next-qc-filterbar" id="next-qc-filterbar">

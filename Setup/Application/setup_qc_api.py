@@ -44,9 +44,9 @@ def api_setup_qc_report() -> Response:
     """Authenticated read-only history, including findings hidden from active work."""
     _repo, email, _access = require_reader()
     year = qc_integer(request.args.get("season_year"), "season_year")
-    scope = request.args.get("scope", "all")
-    if scope not in {"all", "outstanding"}:
-        raise SetupCommandError("Report scope must be all or outstanding")
+    scope = request.args.get("scope", "punch")
+    if scope not in {"all", "outstanding", "punch", "punch_pending"}:
+        raise SetupCommandError("Unknown QC report selection")
     response = Response(render_qc_report(qc_repo().snapshot(email, year), year, scope),
                         mimetype="text/html")
     response.headers["Cache-Control"] = "no-store"

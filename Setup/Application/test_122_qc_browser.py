@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.122-qc-report'};
+ if(path.includes('api/health')) body={version:'V0.3.123-qc-recheck'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -205,15 +205,13 @@ addEventListener('load',()=>setTimeout(async()=>{
   await click('[data-qc-action="READY_FOR_PRODUCTION"]');
   const complete=document.querySelector('[data-qc-task-id="598"]');
   assert(complete.dataset.qcState==='verified','Final signed area did not turn green');
-  assert(complete.closest('[data-qc-completed-areas]'),'Signed area did not leave active list');
-  assert(!complete.getClientRects().length,'Completed area history is not collapsed');
-  assert(!document.querySelector('[data-qc-detail="598"] [data-qc-action="REPORT_LINES"]'),'Final area still accepts QC problems');
-  assert(document.querySelector('[data-qc-detail="598"]').textContent.includes('Work Orders'),'Final handoff instruction missing');
+  assert(!complete.closest('[data-qc-completed-areas]'),'Signed area was removed from the main list');
+  assert(complete.getClientRects().length,'Green area is hidden');
+  assert(document.querySelector('[data-qc-detail="598"] [data-qc-action="REPORT_LINES"]'),'Green area cannot report a new problem');
+  assert(!document.querySelector('[data-qc-detail="598"]').textContent.includes('through Work Orders'),'Premature Work Order handoff');
   for(const theme of ['light','dark']) {
     document.documentElement.dataset.theme=theme;
-    complete.closest('details').open=true;
     assert(getComputedStyle(complete).backgroundColor==='rgb(220, 252, 231)','Final area not green in '+theme);
-    complete.closest('details').open=false;
   }
   // Same display names must never cause another person's repair to become mine.
   qcFixture.findings.push({qc_finding_id:91,setup_session_task_id:483,title:'Other owner',status:'CLAIMED',claimed_by_person_id:2,repair_owner:'Tester',events:[]});

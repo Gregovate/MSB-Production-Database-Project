@@ -174,3 +174,37 @@ def test_saved_wording_and_another_workers_repair(corrected_db):
         assert cur.fetchone() == ('AWAITING_RETEST',2)
         cur.execute("SELECT person_id,note FROM ops.setup_qc_event WHERE qc_finding_id=%s AND event_type='REPAIRED'",(finding,))
         assert cur.fetchone() == (1,'Replaced fixture')
+
+
+def test_repeatable_preshow_signoff_preserves_evidence(corrected_db):
+    """Green -> yellow -> green, with invalid input and direct-write protection."""
+    with corrected_db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/083_repeatable_preshow_qc.sql').read_text())
+        cur.execute("UPDATE ops.setup_session_task SET execution_status='COMPLETE' WHERE setup_session_task_id IN (10,40)")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','CLAIM_AUDIT',20)")
+        cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',20,'First full test passed',120,'Two minute test')")
+        first = cur.fetchone()[0]
+        with pytest.raises(psycopg2.errors.InvalidParameterValue):
+            cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',20,NULL,'x')")
+        cur.execute("SELECT count(*) FROM ops.setup_qc_signoff WHERE setup_session_task_id=20")
+        assert cur.fetchone()[0] == 1
+        cur.execute("SET ROLE fieldwiring_app")
+        with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+            cur.execute("SELECT ops.setup_qc_invalidate_signoff(20,1,'unauthorized')")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',20,NULL,'New light failure')")
+        finding = cur.fetchone()[0]['finding_ids'][0]
+        cur.execute("SELECT ops.setup_qc_snapshot('crew@test',2026)")
+        snapshot = cur.fetchone()[0]
+        assert snapshot['signoffs'] == []
+        assert len(snapshot['signoff_history']) == 1
+        assert snapshot['signoff_history'][0]['evidence']['test_evidence'] == 'First full test passed'
+        with pytest.raises(psycopg2.errors.CheckViolation):
+            cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',20,'Cannot approve open repair',120,'Two minute test')")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPAIRED',20,%s,'Replaced failed lights')", (finding,))
+        cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',20,'Second full test passed',120,'Two minute test')")
+        assert cur.fetchone()[0]['signed_at'] != first['signed_at']
+        cur.execute("SELECT ops.setup_qc_snapshot('crew@test',2026)")
+        snapshot = cur.fetchone()[0]
+        assert snapshot['signoffs'][0]['test_evidence'] == 'Second full test passed'
+        assert len(snapshot['signoff_history']) == 1
+        assert snapshot['findings'][0]['status'] == 'VERIFIED'

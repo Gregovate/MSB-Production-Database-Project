@@ -52,9 +52,9 @@ Continue recording actual task completion under **Scheduled Work**. Unreported o
 
 - **White:** no unresolved findings; final QC still pending.
 - **Yellow:** problems need repair or repaired problems await final area sign-off.
-- **Green:** final sign-off complete. The area leaves the active list and remains in completed history.
+- **Green:** final sign-off complete. The area remains on the main list and accepts new pre-show findings.
 
-A new problem before final sign-off keeps or turns the area yellow. After final sign-off, the QC record is retained as history and no longer accepts repairs. Later failures use Work Orders; do not create another QC task to reopen the area.
+A new problem before final sign-off keeps or turns the area yellow. Before the show starts, report new problems against the same green area. Saving a problem turns it yellow again; repair and repeat the final check. Prior sign-offs remain in history. Work Orders begin when the show starts, not when an area passes QC.
 
 ## If Something Is Wrong
 
@@ -89,3 +89,7 @@ The report action is beside the activity tabs. Assignment filters and search are
 
 
 If someone else claimed a repair and you completed it, open **All Repairs**, find the issue, enter what you repaired and select **Mark Repaired**. You do not have to unassign the original worker. History keeps the original claim and records you as the person completing the repair. The area auditor still performs final sign-off.
+
+## V0.3.123 candidate (not yet deployed)
+
+Green areas remain visible. New problems turn them yellow until repaired and signed off again. Punch list / PDF shows only repair-needed findings by default; choose Include awaiting final check or Full history as needed. Problem boxes are empty; type one problem per line.
