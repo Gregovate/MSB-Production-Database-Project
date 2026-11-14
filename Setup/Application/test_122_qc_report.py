@@ -64,3 +64,15 @@ def test_punch_list_is_compact_and_filters_pending_repairs():
     assert 'Arch 3 yellow lights' not in report and 'Arch 4 green lights' not in report
     assert 'AUDIT DETAIL NOT FOR PUNCH LIST' not in report
     assert 'Arch 3 yellow lights' in render_qc_report(snapshot,2026,'punch_pending')
+
+
+def test_old_outstanding_link_uses_compact_punch_list():
+    snapshot = {'findings': [dict(qc_finding_id=1,setup_session_task_id=20,
+        stage_name='Test area',status='OPEN',title='Repair lights',
+        events=[dict(type='OBSERVATION',note='HISTORY MUST NOT EXPAND')])]}
+    report = render_qc_report(snapshot,2026,'outstanding')
+    assert 'QC punch list' in report
+    assert 'Repair lights' in report
+    assert 'HISTORY MUST NOT EXPAND' not in report
+    assert 'Notes / evidence' not in report
+    assert 'Full history' in report
