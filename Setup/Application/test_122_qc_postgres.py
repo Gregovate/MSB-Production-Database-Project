@@ -299,3 +299,32 @@ def test_season_exception_is_manager_only_atomic_and_does_not_fake_repair(correc
         cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',20,'Observed test; cosmetic exception accepted',120,'Full test')")
         assert cur.fetchone()[0]['status']=='READY_FOR_PRODUCTION'
         cur.execute("SELECT count(*) FROM ops.setup_qc_event WHERE qc_finding_id=%s AND event_type IN('REPAIRED','RETEST_PASS')",(finding,));assert cur.fetchone()[0]==0
+
+
+def test_qc_classification_survives_rename_and_blocks_scheduling(corrected_db):
+    # Real trigger execution: preserve historical assignment, reject new/moved QC.
+    with corrected_db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/083_repeatable_preshow_qc.sql').read_text())
+        cur.execute('''CREATE TABLE ops.setup_work_day_task(
+            setup_work_day_task_id integer PRIMARY KEY, setup_session_task_id bigint,
+            setup_work_day_id integer, setup_work_day_crew_id integer, shift_code text);
+            INSERT INTO ops.setup_work_day_task VALUES(1,20,1,1,'AM');''')
+        cur.execute((Path(__file__).parents[1]/'Database/084_classify_unscheduled_qc_checks.sql').read_text())
+        cur.execute("UPDATE ops.setup_session_task SET annual_task_name='Renamed check' WHERE setup_session_task_id=20")
+        cur.execute('SELECT ops.setup_qc_is_final_task(20)')
+        assert cur.fetchone() == (True,)
+        cur.execute('SELECT qc_check_flag FROM ref.setup_task WHERE setup_task_id=120')
+        assert cur.fetchone() == (True,)
+        cur.execute('''INSERT INTO ops.setup_session_task
+            (setup_session_task_id,setup_session_id,setup_task_id,annual_task_name)
+            VALUES(21,1,120,'Next annual snapshot')''')
+        cur.execute('SELECT qc_check_flag FROM ops.setup_session_task WHERE setup_session_task_id=21')
+        assert cur.fetchone() == (True,)
+        with pytest.raises(psycopg2.errors.InvalidParameterValue):
+            cur.execute("INSERT INTO ops.setup_work_day_task VALUES(2,20,1,1,'AM')")
+        with pytest.raises(psycopg2.errors.InvalidParameterValue):
+            cur.execute('UPDATE ops.setup_work_day_task SET setup_work_day_id=2 WHERE setup_work_day_task_id=1')
+        # Ordinary setup still schedules; QC history remains exactly where it was.
+        cur.execute("INSERT INTO ops.setup_work_day_task VALUES(3,10,2,1,'AM')")
+        cur.execute('SELECT setup_work_day_id FROM ops.setup_work_day_task WHERE setup_work_day_task_id=1')
+        assert cur.fetchone() == (1,)

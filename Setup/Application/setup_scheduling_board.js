@@ -1489,7 +1489,7 @@ function board205ApplyHistoricalCatalogOverlay() {
       .filter((task) => task.setup_task_id != null && task.task_origin === 'REUSABLE')
       .map((task) => [Number(task.setup_task_id), task])
   );
-  const currentTasks = (appState.tasks || []).filter((task) => Boolean(task.active_flag));
+  const currentTasks = (appState.tasks || []).filter((task) => Boolean(task.active_flag)).filter(task => !task.qc_check_flag);
   const merged = [];
   const mergedDependencies = [];
 
@@ -2512,11 +2512,25 @@ function board205FocusWorkDate(workDate) {
   }
 }
 
+// Keep the full API snapshot available to QC. Scheduling gets its own projection;
+// historical assignment rows stay in the database, outside current crew workload.
+function board205SchedulingOnly(board, sourceQcIds = []) {
+  const qcIds = new Set([...sourceQcIds, ...(board.tasks || [])
+    .filter(task => task.qc_check_flag).map(task => Number(task.setup_session_task_id))]);
+  return {...board,
+    tasks: (board.tasks || []).filter(task => !task.qc_check_flag),
+    assignments: (board.assignments || []).filter(row => !qcIds.has(Number(row.setup_session_task_id)))
+  };
+}
+
 async function board205Load() {
   try {
     const payload = await api(`api/setup/scheduling-board?season_year=${encodeURIComponent(appState.seasonYear)}`);
     setupBoard205State.board = payload.board || { session: null, work_days: [], crews: [], captain_candidates: [], work_orders: [], tasks: [], assignments: [], dependencies: [] };
+    const sourceQcIds = (setupBoard205State.board.tasks || [])
+      .filter(task => task.qc_check_flag).map(task => Number(task.setup_session_task_id));
     board205ApplyHistoricalCatalogOverlay();
+    setupBoard205State.board = board205SchedulingOnly(setupBoard205State.board, sourceQcIds);
     // One-shot Perform Work handoff: expose the requested day, then focus it.
     const requestedDate = new URLSearchParams(window.location.search).get('work_date');
     if (requestedDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(requestedDate)) {

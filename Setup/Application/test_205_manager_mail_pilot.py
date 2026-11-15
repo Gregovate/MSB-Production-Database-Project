@@ -583,3 +583,30 @@ def test_nov3_completed_tasks_leave_brief_but_keep_partial_and_unreported_histor
         assert f'{percent}% reported; review assignment' in report['overdue_lines']
     assert html.count('No work reported for this task') == 3
     assert board == original
+
+
+def test_qc_is_separate_from_setup_totals_pace_and_assignment_followup():
+    # A claimed QC with an old schedule must not generate crew work reminders.
+    board = fixture_board()
+    qc = dict(board['tasks'][1], setup_session_task_id=4, qc_check_flag=True,
+              task_name='Renamed QC')
+    board['tasks'] += [qc, dict(qc, setup_session_task_id=5, effective_complete=True,
+                               completion_work_date='2026-10-16')]
+    board['assignments'].append(dict(board['assignments'][0],
+                                    setup_work_day_task_id=34, setup_session_task_id=4))
+    report = mail.summarize(board, date(2026,10,17))
+    baseline = mail.summarize(fixture_board(), date(2026,10,17))
+    for key in ('total_tasks','completed_tasks','remaining_tasks','actual_pace',
+                'continuation_needed','missing_report_occurrences','readiness_exceptions'):
+        assert report[key] == baseline[key]
+    assert (report['qc_total'], report['qc_ready'], report['qc_pending']) == (2,1,1)
+
+
+def test_qc_only_session_does_not_divide_by_zero_or_schedule_qc():
+    board = fixture_board()
+    for task in board['tasks']:
+        task['qc_check_flag'] = True
+    report = mail.summarize(board, date(2026,10,17))
+    assert report['total_tasks'] == report['remaining_tasks'] == 0
+    assert report['qc_total'] == 3
+    assert report['missing_report_occurrences'] == 0

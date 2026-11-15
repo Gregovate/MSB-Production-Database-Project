@@ -1,7 +1,8 @@
 Good morning $recipient_name,
 
 2026 SETUP — $report_date
-TOTAL $total_tasks  |  COMPLETED $completed_tasks  |  REMAINING $remaining_tasks
+SETUP WORK — TOTAL $total_tasks  |  COMPLETED $completed_tasks  |  REMAINING $remaining_tasks
+QC — TOTAL $qc_total | READY $qc_ready | PENDING $qc_pending
 Blocked / NOT READY: $blocked_tasks
 Task pace: $actual_pace completed/day (last 7 days) vs $required_pace needed/day by November 17
 Task-based projected finish: $projected_finish
@@ -39,7 +40,7 @@ STARTED TASKS NEEDING CONTINUATION
 $continuation_lines
 
 CONTAINER ACTIONS AND CURRENT REVIEWS
-Only Containers needing action appear below. Display placement is reviewed separately.
+Only Containers needing action appear below.
 
 $container_detail_lines
 
@@ -51,4 +52,4 @@ https://my.sheboyganlights.org/setup/
 
 Unresolved items remain in the Manager Action Center until corrected. Captain reminders remain OFF; activation requires separate Manager approval.
 
-MSB Production DB — automated message; replies are not monitored.
+MSB Production DB — unmonitored mailbox.

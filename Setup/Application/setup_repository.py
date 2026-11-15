@@ -162,6 +162,7 @@ class SetupRepository:
                     t.task_action_type,
                     t.display_order,
                     t.baseline_plan_order,
+                    t.qc_check_flag,
                     t.active_flag,
                     t.requires_display_material,
                     t.normal_crew_min,
