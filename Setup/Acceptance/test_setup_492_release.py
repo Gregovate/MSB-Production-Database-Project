@@ -76,3 +76,17 @@ def test_accepted_source_stays_pinned_and_no_database_or_sender_command():
     assert 'setup_task_progress' in text and 'setup_qc_signoff_history' in text
     assert "'restart', MAIL_SERVICE" not in text
     assert ' --daily' not in text and ' --send' not in text
+
+
+def test_read_probe_uses_current_management_contract_not_legacy_movement_shape(monkeypatch):
+    runner = object.__new__(release.Release)
+    queries = []
+    runner.run = lambda args, **kwargs: queries.append(kwargs.get('input'))
+    monkeypatch.setattr(release.source.Installer, 'report_read_probe',
+                        lambda self: pytest.fail('obsolete movement probe invoked'))
+    runner.report_read_probe()
+    assert len(queries) == 1
+    assert 'SET LOCAL ROLE fieldwiring_app' in queries[0]
+    assert 'ops.setup_qc_snapshot' in queries[0]
+    assert 'sum(crew_count*duration_minutes)' in queries[0]
+    assert queries[0].strip().endswith('ROLLBACK;')

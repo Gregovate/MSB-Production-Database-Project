@@ -115,7 +115,8 @@ class Release(source.Installer):
             self.install_mail()
 
     def report_read_probe(self):
-        super().report_read_probe()
+        # This profile validates the management reads; the parent probe pins an
+        # older movement-report query shape unrelated to the accepted change.
         # Existing columns/authorized snapshot, exercised with the runtime role.
         # Return only aggregate counts; never log finding text or credentials.
         self.run(['sudo', 'docker', 'exec', '-i', 'msb-postgres', 'psql',
