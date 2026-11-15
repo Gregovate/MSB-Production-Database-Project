@@ -1964,7 +1964,7 @@ function nextLateWorkSummary(assignments, board) {
 /* #205 Whole-Setup deadline dashboard. Read-only; annual tasks are counted once.
    A historical assignment report does not imply annual-task completion. */
 function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
-  const tasks = [...new Map((board.tasks || []).filter(t => t.setup_session_task_id != null)
+  const tasks = [...new Map((board.tasks || []).filter(t => t.setup_session_task_id != null && !t.qc_check_flag)
     .map(t => [Number(t.setup_session_task_id), t])).values()];
   const incomplete = tasks.filter(t => !t.effective_complete);
   const complete = tasks.filter(t => Boolean(t.effective_complete));
@@ -1983,7 +1983,8 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
     if (t.readiness_state === 'NOT_READY') reasons.push('NOT READY');
     return {task: t, reasons};
   }).filter(t => t.reasons.length);
-  const assignments = board.assignments || [];
+  const workIds = new Set(tasks.map(t => Number(t.setup_session_task_id)));
+  const assignments = (board.assignments || []).filter(a => workIds.has(Number(a.setup_session_task_id)));
   const dayById = new Map((board.work_days || []).map(d => [Number(d.setup_work_day_id), d]));
   const overdue = assignments.filter(a => {
     const day = dayById.get(Number(a.setup_work_day_id));
@@ -2049,6 +2050,28 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
     recentPotentialWorkdays, workdayPace, pace, undated, futureDated, reliable, projectedFinish};
 }
 
+// Both the browser and scheduled email use the repository's shared summary.
+function setup205ManagementMetricsHtml(board) {
+  const m = board.management_metrics;
+  if (!m) return '<p>Labor and QC summary unavailable; refresh current actions.</p>';
+  const safe = v => escapeHtml(String(v));
+  return '<div class="setup205-management-summary">' +
+    '<p><strong>QC readiness:</strong> ' + safe(m.qc_ready) + ' Ready for Production · ' +
+    safe(m.qc_pending) + ' awaiting final QC · ' + safe(m.qc_total) + ' total areas.</p>' +
+    '<p>QC findings: ' + safe(m.qc_unclaimed) + ' unclaimed · ' + safe(m.qc_claimed) +
+    ' claimed · ' + safe(m.qc_retest) + ' repaired, awaiting recheck · ' + safe(m.qc_accepted) + ' accepted for season.</p>' +
+    '<p><strong>Setup labor (person-hours):</strong> Annual estimate ' + safe(m.planned_person_hours) +
+    ' · Reported to date ' + safe(m.reported_person_hours) + '</p>' +
+    '<p>Completed tasks with estimates and labor reports (' + safe(m.matched_completed_tasks) +
+    '): planned ' + safe(m.matched_planned_hours) + ' · reported ' + safe(m.matched_reported_hours) +
+    ' · variance (reported minus planned) ' + safe(m.matched_variance_hours) + ' person-hours.</p>' +
+    '<p class="muted">' + safe(m.estimate_missing_tasks) + ' tasks lack estimates · ' +
+    safe(m.unreported_tasks) + ' tasks have no work report · ' + safe(m.labor_missing_reports) +
+    ' reports lack labor details. Annual estimate = normal minimum crew × task duration, once per task. ' +
+    'Reported hours are recorded labor, not elapsed time or an estimate of all work performed. ' +
+    'QC is separate; repairs alone do not make an area Ready for Production.</p></div>';
+}
+
 function setup205ManagementReportHtml(board, year) {
   const k = setup205DeadlineKpiModel(board, year);
   const safe = v => escapeHtml(String(v ?? ''));
@@ -2108,7 +2131,7 @@ function setup205ManagementReportHtml(board, year) {
     '<span>Total <strong>' + k.tasks.length + '</strong></span>' +
     '<span>Completed <strong>' + k.complete.length + '</strong></span>' +
     '<span>Remaining <strong>' + k.incomplete.length + '</strong></span>' +
-    '<span>Blocked / NOT READY <strong>' + k.blocked.length + '</strong></span>' +
+    '<span>Blocked setup tasks <strong>' + k.blocked.length + '</strong></span>' +
     '<span>Actual last 7 days <strong>' + n(k.pace) + '/day</strong></span>' +
     '<span>Required <strong>' + n(k.required) + '/day</strong></span>' +
     '<span>Deadline <strong>' + safe(fmt(k.deadline)) + '</strong></span>' +
@@ -2116,15 +2139,15 @@ function setup205ManagementReportHtml(board, year) {
       safe(k.reliable ? fmt(k.projectedFinish) : 'INSUFFICIENT DATA') + '</strong></span>' +
     '</div>';
   return '<section class="setup-205-deadline-kpis" aria-label="Whole Setup schedule performance">' +
-    glance +
+    glance + setup205ManagementMetricsHtml(board) +
     '<details class="setup205-kpi-expand"><summary>Detailed performance numbers and task categories</summary>' +
     '<div class="setup205-kpi-expanded">' +
-    '<div style="font-weight:800;margin-bottom:8px">Setup performance · all tasks (task-count estimates)</div>' +
+    '<div style="font-weight:800;margin-bottom:8px">Setup work · excludes QC checks (task-count estimates)</div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:8px">' +
     '<span>Total <strong>' + k.tasks.length + '</strong></span>' +
     '<span>Completed <strong>' + k.complete.length + '</strong></span>' +
     '<span>Remaining <strong>' + k.incomplete.length + '</strong></span>' +
-    '<span>Blocked / NOT READY <strong>' + k.blocked.length + '</strong></span>' +
+    '<span>Blocked setup tasks <strong>' + k.blocked.length + '</strong></span>' +
     '<span>Past assignments with no report <strong>' + k.overdue.length + '</strong> (' +
     k.lateNoReportTaskCount + ' tasks)</span>' +
     '<span>NOT READY <strong>' + k.notReady.length + '</strong></span>' +
@@ -2148,7 +2171,7 @@ function setup205ManagementReportHtml(board, year) {
     'Recent non-Sunday pace excludes Sunday completions, including zero-completion weekdays. ' +
     safe(k.deferred.length) + ' deferred tasks included in remaining, excluded from required pace; ' +
     safe(k.partial.length) + ' unfinished tasks show partial progress. Captain filters do not change this summary.</div>' +
-    '<details style="margin-top:8px"><summary>Blocked / NOT READY (' + k.blocked.length +
+    '<details style="margin-top:8px"><summary>Blocked setup tasks (' + k.blocked.length +
     ') — task and reason</summary>' +
     (canManage ? '<ul>' + (blockerRows || '<li>No recorded readiness blockers</li>') + '</ul>'
                : '<p>Manager task details require Setup Manager access.</p>') + '</details>' +
@@ -2198,9 +2221,11 @@ async function loadSetup205ActionCenter() {
       encodeURIComponent(appState.seasonYear));
     if (!appState.access?.can_manage_setup) return;
     const board = payload.board || {};
+    const qcPayload = await api('api/setup/qc?season_year=' + encodeURIComponent(appState.seasonYear));
+    board.management_metrics = {...board.management_metrics, ...qcPayload.management_metrics};
     setup205WireActionCenter(target);
-    target.innerHTML = setup205ActionCenterHtml(board) +
-      setup205ManagementReportHtml(board, appState.seasonYear);
+    target.innerHTML = setup205ManagementReportHtml(board, appState.seasonYear) +
+      setup205ActionCenterHtml(board);
   } catch (error) {
     target.textContent = 'Unable to load current Setup actions: ' + (error.message || error);
     setAlert(error.message || error, 'error');
@@ -2254,6 +2279,9 @@ function setup205LatestWorkReportHtml(task, button) {
 function setup205ActionCenterHtml(board, model) {
   if (!appState.access?.can_manage_setup) return '';
   const k = model || setup205DeadlineKpiModel(board, appState.seasonYear);
+  // Keep QC history available on the full board, outside management workload.
+  const workIds = new Set(k.tasks.map(t => Number(t.setup_session_task_id)));
+  board = {...board, assignments: (board.assignments || []).filter(a => workIds.has(Number(a.setup_session_task_id)))};
   const safe = value => escapeHtml(String(value ?? ''));
   const taskById = new Map(k.tasks.map(t => [Number(t.setup_session_task_id), t]));
   const crewById = new Map((board.crews || []).map(c => [Number(c.setup_work_day_crew_id), c]));

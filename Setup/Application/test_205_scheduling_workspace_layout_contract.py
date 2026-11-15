@@ -41,7 +41,8 @@ def test_kpi_glance_precedes_closed_disclosure_and_all_manager_actions_survive()
     assert "setup205ActionCenterHtml(board, k)" not in fn
     assert "setup205-open-action-center" in fn
     assert "function setup205ManagementReportHtml(board, year)" in js
-    assert "setup205ActionCenterHtml(board) +" in js
+    assert "setup205ManagementReportHtml(board, appState.seasonYear) +" in js
+    assert "setup205ActionCenterHtml(board);" in js
     assert "setup205WireActionCenter(target)" in js
     assert "loadSetup205ActionCenter()" in js
     for key in ("k.tasks.length", "k.complete.length", "k.incomplete.length",

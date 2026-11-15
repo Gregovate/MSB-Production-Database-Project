@@ -69,6 +69,9 @@ def manager_email_preview():
         raise RuntimeError("No eligible Manager recipients; review People directory")
     g.manager_preview_stage = "read scheduling board"
     board = SetupSchedulingBoardRepository(dsn).board(2026)
+    if any(t.get("qc_check_flag") for t in board.get("tasks", [])):
+        from setup_management_metrics import read_qc_metrics
+        board["qc_summary"] = read_qc_metrics(dsn, authenticated, 2026)
     now = datetime.now(CHICAGO)
     report = pilot.summarize(board, now.date())
     g.manager_preview_stage = "read Report Work evidence"
