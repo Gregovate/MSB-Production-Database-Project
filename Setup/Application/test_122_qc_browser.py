@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.126-perform-work-qc'};
+ if(path.includes('api/health')) body={version:'V0.3.127-inline-planning'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);

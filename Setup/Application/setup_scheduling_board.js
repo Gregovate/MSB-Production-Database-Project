@@ -301,6 +301,40 @@ function board205MissingEstimates(task) {
   return missing;
 }
 
+// Missing planning values belong in the assignment dialog, never a second modal.
+function board205NeedsInlinePlanning(task) {
+  return board205MissingEstimates(task).length > 0 && !Number(task?.progress_entries || 0)
+    && !task?.actual_started_at && !task?.actual_completed_at;
+}
+
+function board205ScheduleMessage(message) {
+  const notice = document.getElementById('setup-board205-schedule-error');
+  if (notice) { notice.textContent = message; notice.hidden = !message; }
+}
+
+function board205PopulateInlinePlanning(task) {
+  const section = document.getElementById('setup-board205-schedule-planning');
+  if (!section) return;
+  section.hidden = !board205NeedsInlinePlanning(task);
+  for (const [field, key] of Object.entries({min:'normal_crew_min', max:'normal_crew_max',
+      minutes:'expected_duration_minutes', effort:'effort_level'})) {
+    const input = document.getElementById('setup-board205-schedule-plan-' + field);
+    input.value = task?.[key] ?? '';
+    input.disabled = section.hidden;
+  }
+}
+
+function board205InlinePlanningDraft(task) {
+  const draft = board205PlanningTaskState(task);
+  for (const [field, key] of Object.entries({min:'normal_crew_min', max:'normal_crew_max',
+      minutes:'expected_duration_minutes'})) {
+    const value = document.getElementById('setup-board205-schedule-plan-' + field).value;
+    draft[key] = value === '' ? null : Number(value);
+  }
+  draft.effort_level = document.getElementById('setup-board205-schedule-plan-effort').value || null;
+  return draft;
+}
+
 function board205RequireEstimates(task) {
   const missing = board205MissingEstimates(task);
   if (!missing.length) return true;
@@ -309,6 +343,10 @@ function board205RequireEstimates(task) {
   if (Number(task?.progress_entries || 0) > 0 || task?.actual_started_at || task?.actual_completed_at) {
     setAlert(`Historical estimates are locked; missing ${missing.join(', ')} remains TBD for this continuation.`, 'error');
     return true;
+  }
+  if (document.getElementById('setup-board205-schedule-dialog')?.open) {
+    board205ScheduleMessage(`Complete the missing planning information below: ${missing.join(', ')}.`);
+    return false;
   }
   setAlert(`Enter estimated ${missing.join(', ')} before scheduling. A rough estimate is enough; save Planning Info, then schedule again.`, 'error');
   document.getElementById('setup-board205-schedule-dialog')?.close();
@@ -1048,6 +1086,7 @@ function board205StatusLabel(status) {
 
 function board205StatusBadgeClass(task, catalogReview, hardBlocked, readinessOnly) {
   if (hardBlocked) return 'status-blocked';
+  if (task?.board_status === 'READY_TO_SCHEDULE' && board205NeedsInlinePlanning(task)) return 'status-waiting';
   if (readinessOnly) return 'status-waiting';
   const status = catalogReview ? 'CATALOG_ONLY' : String(task?.board_status || '').toUpperCase();
   const classes = {
@@ -1605,7 +1644,7 @@ function board205TaskCard(task) {
               : readinessOnly
                 ? 'NOT READY'
                 : 'CURRENT CATALOG'
-            : board205NeedsContinuation(task) ? board205ReschedulingLabel(task) : board205StatusLabel(task.board_status)
+            : board205NeedsContinuation(task) ? board205ReschedulingLabel(task) : (task.board_status === 'READY_TO_SCHEDULE' && board205NeedsInlinePlanning(task) ? 'PLANNING INFO NEEDED' : board205StatusLabel(task.board_status))
         )}</span>
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${board205WorkOrderBadge(task)}
@@ -3477,6 +3516,9 @@ function board205OpenScheduleDialog(target) {
     board205PopulateCrewSelect(Number(daySelect.value || 0));
   }
   board205ScheduleCaptainVisibility();
+  const planningTask = board205Task(target.kind === 'task' ? target.id : board205Assignment(target.id)?.setup_session_task_id);
+  board205PopulateInlinePlanning(planningTask);
+  board205ScheduleMessage('');
   dialog.showModal();
 }
 
@@ -3505,12 +3547,12 @@ async function board205SubmitScheduleDialog(event) {
   const sizeValue = document.getElementById('setup-board205-schedule-size').value;
   const crewSize = sizeValue !== '' ? Number(sizeValue) : null;
   if (crewSize != null && (!Number.isInteger(crewSize) || crewSize < 1)) {
-    setAlert('Crew size must be a whole number of at least 1, or blank if unknown.', 'error');
+    board205ScheduleMessage('Crew size must be a whole number of at least 1, or blank if unknown.');
     return;
   }
 
   const item = target.kind === 'assignment' ? board205Assignment(target.id) : null;
-  const task = target.kind === 'task'
+  let task = target.kind === 'task'
     ? board205Task(target.id)
     : board205Task(item?.setup_session_task_id);
   const changedPlacement = target.kind === 'task' || (
@@ -3528,10 +3570,28 @@ async function board205SubmitScheduleDialog(event) {
     document.getElementById('setup-board205-schedule-no-work')?.focus();
     return;
   }
+  let planningDraft = null;
+  if (changedPlacement && board205NeedsInlinePlanning(task)) {
+    planningDraft = board205InlinePlanningDraft(task);
+    const missing = board205MissingEstimates(planningDraft);
+    if (missing.length || (planningDraft.normal_crew_max != null && planningDraft.normal_crew_max < planningDraft.normal_crew_min)) {
+      board205ScheduleMessage(missing.length ? `Enter estimated ${missing.join(', ')} below.` : 'Crew maximum must be at least the crew minimum.');
+      return;
+    }
+    task = {...task, ...planningDraft};
+  }
   if (changedPlacement && !board205ConfirmPlacement(task, crewId, shift, crewSize)) return;
 
   try {
     setBusy(true);
+    // Save estimates through the existing governed endpoint. Keep the assignment
+    // selections intact if either request fails; do not reload or close early.
+    if (planningDraft) {
+      await api(`api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/planning-info`,
+        commandOptions('PATCH', planningDraft));
+      Object.assign(board205Task(task.setup_session_task_id), planningDraft);
+      board205PopulateInlinePlanning(task);
+    }
     const sortOrder = board205EndSort(dayId, shift, crewId);
     if (creatingCrew || crewId) {
       const payload = {
@@ -3552,8 +3612,7 @@ async function board205SubmitScheduleDialog(event) {
     document.getElementById('setup-board205-schedule-dialog').close();
     await board205Load();
   } catch (error) {
-    setAlert(error.message || error, 'error');
-    window.alert(error.message || error);
+    board205ScheduleMessage(String(error.message || error));
   } finally {
     setBusy(false);
   }
@@ -4266,6 +4325,17 @@ function board205InstallView() {
       <form id="setup-board205-schedule-dialog-form">
         <h3 id="setup-board205-schedule-heading">Schedule Annual Task</h3>
         <p id="setup-board205-schedule-task-name"></p>
+        <p id="setup-board205-schedule-error" role="alert" hidden></p>
+        <fieldset id="setup-board205-schedule-planning" hidden>
+          <legend>Planning information needed</legend>
+          <p>Complete these estimates, then save the assignment. Your day and crew selections stay below.</p>
+          <div class="setup-board205-form-grid">
+            <label>Normal crew minimum<input id="setup-board205-schedule-plan-min" type="number" min="1" step="1" required></label>
+            <label>Normal crew maximum<input id="setup-board205-schedule-plan-max" type="number" min="1" step="1"></label>
+            <label>Expected duration (minutes)<input id="setup-board205-schedule-plan-minutes" type="number" min="1" step="1" required></label>
+            <label>Physical effort<select id="setup-board205-schedule-plan-effort" required><option value="">Choose physical effort</option><option value="LIGHT">Light</option><option value="MODERATE">Moderate</option><option value="HEAVY">Heavy</option></select></label>
+          </div>
+        </fieldset>
         <p id="setup-board205-schedule-original" class="muted" hidden></p>
         <div id="setup-board205-schedule-no-work-row" hidden>
           <label><input id="setup-board205-schedule-no-work" type="checkbox"><span>No work was performed on this assignment. Move it instead of reporting work.</span></label>
