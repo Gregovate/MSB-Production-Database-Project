@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.123-qc-recheck'};
+ if(path.includes('api/health')) body={version:'V0.3.124-qc-unscheduled'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -83,6 +83,16 @@ addEventListener('load',()=>setTimeout(async()=>{
     ['Show Animation EL 90 Elf On Shelf-1','Locate Power & Network',false],
     ['Show Animation EL 90 Elf On Shelf-1','PLUG IN & VERIFY: Wire Displays to Controller',false]
   ]) assert(nextIsFinalShowQc({stage_name:stage,task_name:name})===expected,'Show Animation discovery: '+stage+' / '+name);
+  // Schedule projection must remove QC without mutating the shared QC snapshot.
+  const mixed={tasks:[{setup_session_task_id:81,qc_check_flag:true,task_name:'Renamed check'},
+    {setup_session_task_id:87,qc_check_flag:false,task_name:'Controllers put out'}],
+    assignments:[{setup_session_task_id:81},{setup_session_task_id:87}]};
+  const scheduled=board205SchedulingOnly(mixed);
+  assert(scheduled.tasks.length===1 && scheduled.tasks[0].setup_session_task_id===87,'QC leaked into scheduling');
+  assert(scheduled.assignments.length===1 && scheduled.assignments[0].setup_session_task_id===87,'QC workload leaked');
+  assert(mixed.tasks.length===2 && mixed.assignments.length===2,'QC source/history removed');
+  assert(nextIsFinalShowQc(mixed.tasks[0]),'Renamed classified QC disappeared');
+  assert(!nextIsFinalShowQc({qc_check_flag:false,task_name:'QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence'}),'Name overrode classification');
   renderNextExecution();
   await click('#next-qc-check-tab');
   assert(setupTaskDisplayName(setupNextState.performBoard.tasks[0].task_name)==='QC Check - Verify Stage/Scene sequence lights during the 2 minute test sequence','QC task wording');

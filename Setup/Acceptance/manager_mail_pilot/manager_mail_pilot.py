@@ -609,6 +609,9 @@ def summarize(board: dict, today: date) -> dict:
     tasks = list({int(t["setup_session_task_id"]): t for t in board.get("tasks", [])}.values())
     if not tasks:
         raise PilotStop("The 2026 annual task list is empty")
+    # QC is a readiness workflow, never an unscheduled job or crew workload.
+    qc_tasks = [t for t in tasks if t.get("qc_check_flag")]
+    tasks = [t for t in tasks if not t.get("qc_check_flag")]
     complete = [t for t in tasks if t.get("effective_complete")]
     remaining = [t for t in tasks if not t.get("effective_complete")]
     actionable = [t for t in remaining if t.get("execution_status") != "DEFERRED"]
@@ -693,7 +696,10 @@ def summarize(board: dict, today: date) -> dict:
     lines = lambda values: "\n".join(values) if values else "- None"
     return {
         "report_date":today.isoformat(), "total_tasks":len(tasks),
-        "completion_percent":f"{(len(complete) * 100 / len(tasks)):.1f}",
+        "completion_percent":f"{(len(complete) * 100 / len(tasks)) if tasks else 0:.1f}",
+        "qc_total":len(qc_tasks),
+        "qc_ready":sum(bool(t.get("effective_complete")) for t in qc_tasks),
+        "qc_pending":sum(not t.get("effective_complete") for t in qc_tasks),
         "completed_tasks":len(complete), "remaining_tasks":len(remaining),
         "blocked_tasks":len(blocked), "missing_report_occurrences":len(past),
         "continuation_needed":len(continuations),

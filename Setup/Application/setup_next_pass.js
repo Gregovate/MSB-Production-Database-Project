@@ -2506,6 +2506,8 @@ function setup205WireActionCenter(root) {
 const nextQcDiscovery = {mode: 'work', search: '', selectedTaskId: null};
 const nextQcDetailCache = new Map();
 function nextIsFinalShowQc(task) {
+  // Annual classification remains stable when the operator changes wording.
+  if (typeof task?.qc_check_flag === 'boolean') return task.qc_check_flag;
   const name = String(task?.task_name || task?.annual_task_name || '').trim();
   // Show Animation already has a final test task. Keep its existing identity.
   const animationTest = /^Show\s+Animation(?:\s|$)/i.test(String(task?.stage_name || '')) &&

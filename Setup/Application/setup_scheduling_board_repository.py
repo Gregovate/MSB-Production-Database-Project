@@ -172,6 +172,7 @@ class SetupSchedulingBoardRepository:
                     st.setup_task_id,
                     st.task_origin,
                     st.included_flag,
+                    st.qc_check_flag,
                     st.execution_status,
                     st.planned_order,
                     st.planned_date::text AS planned_date,
