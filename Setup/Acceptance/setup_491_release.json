@@ -1,0 +1,8 @@
+{
+  "profile": "491-qc",
+  "release_tag": "PR491-084",
+  "candidate": "aba4a5a4aacd54a648d8d2770743b757d28d4d86",
+  "target": "aba4a5a4aacd54a648d8d2770743b757d28d4d86",
+  "version": "V0.3.124-qc-unscheduled",
+  "migration": "Setup/Database/084_classify_unscheduled_qc_checks.sql"
+}
