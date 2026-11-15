@@ -128,7 +128,7 @@ def test_next_pass_catalog_waits_for_organization_readiness() -> None:
     assert "priorNextRenderLibrary" not in text
     assert "if (!setupNextState.scenes.length)" not in text
     assert "if (setupNextState.scenes.length) renderLibrary();" not in text
-    assert "setup_next_pass.js?v=2026-11-15.125.1" in html
+    assert "setup_next_pass.js?v=2026-11-15.126.1" in html
 
 
 def test_perform_work_shows_planned_and_actual_person_hours() -> None:
@@ -136,7 +136,7 @@ def test_perform_work_shows_planned_and_actual_person_hours() -> None:
     assert "nextLaborHoursText" in text
     assert "nextPerformLaborKpis" in text
     assert 'id="next-perform-kpis"' in text
-    assert "<span>Planned labor</span>" in text
+    assert "<span>Scheduled labor estimate</span>" in text
     assert "<span>Actual labor</span>" in text
     assert "<span>Completed-work variance</span>" in text
     assert "Est. labor" in text
@@ -150,7 +150,7 @@ def test_perform_work_shows_planned_and_actual_person_hours() -> None:
     assert "Completed:" in text
     assert "const labor = nextPerformLaborKpis(scopedAssignments);" in text
     assert "completedCount += 1;" in text
-    assert "reported work in Captain scope" in text
+    assert "reported against setup assignments in Captain scope; QC excluded" in text
     assert "no completed assignments in Captain scope" in text
 
 

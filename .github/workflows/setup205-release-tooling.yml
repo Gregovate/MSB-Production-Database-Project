@@ -49,6 +49,8 @@ jobs:
           Setup/Acceptance/test_setup_required_container_deploy.py
           Setup/Acceptance/test_setup_scheduled_search_deploy.py
           Setup/Acceptance/test_setup_492_release.py
+      - name: PR493 source-only preservation profile
+        run: python -m pytest -q Setup/Acceptance/test_setup_493_release.py
       - name: Full unchanged Setup regression
         run: python -m pytest -q -p no:cacheprovider Setup/Application
   windows-transport:
@@ -126,3 +128,7 @@ jobs:
           if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
           python Setup/Acceptance/setup_492_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb492-package')
           if ($LASTEXITCODE -ne 0) { throw 'PR492 committed transport failed' }
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'Setup/Acceptance/run_setup_493_release.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          python Setup/Acceptance/setup_493_transport.py $PWD (Join-Path $env:RUNNER_TEMP 'msb493-package')
+          if ($LASTEXITCODE -ne 0) { throw 'PR493 committed transport failed' }

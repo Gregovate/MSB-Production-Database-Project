@@ -1077,10 +1077,19 @@ function nextEnsurePerformToolbar() {
   return toolbar;
 }
 
+// Legacy QC assignments remain in the full board for audit history. Every
+// Scheduled Work projection uses this boundary before counts, labor or actions.
+function nextPerformWorkAssignments(board) {
+  const qcIds = new Set((board.tasks || []).filter(task => task.qc_check_flag)
+    .map(task => Number(task.setup_session_task_id)));
+  return (board.assignments || []).filter(assignment =>
+    !assignment.qc_check_flag && !qcIds.has(Number(assignment.setup_session_task_id)));
+}
+
 function nextPerformScheduledCaptains() {
   const board = setupNextState.performBoard || {};
   const assignmentCrewIds = new Set(
-    (board.assignments || []).map((assignment) => Number(assignment.setup_work_day_crew_id))
+    nextPerformWorkAssignments(board).map((assignment) => Number(assignment.setup_work_day_crew_id))
   );
   const candidateById = new Map(
     (board.captain_candidates || []).map((candidate) => [Number(candidate.person_id), candidate])
@@ -1634,7 +1643,7 @@ async function nextRefreshRescheduleDestinations(dialog) {
 function nextOpenRescheduleNoWorkBatch(dayId, shift) {
   if (!appState.access?.can_manage_setup || !['MORNING','AFTERNOON'].includes(shift)) return;
   const day = nextPerformDay(dayId);
-  const items = (setupNextState.performBoard.assignments || [])
+  const items = nextPerformWorkAssignments(setupNextState.performBoard)
     .filter(item => Number(item.setup_work_day_id) === Number(dayId)
       && item.shift_code === shift && nextCanRescheduleNoWork(item));
   if (!items.length) {
@@ -2736,7 +2745,7 @@ function renderNextExecution() {
   // Scheduled Work list over Report Fixes (or expose stale scheduled controls).
   if (nextQcDiscovery.mode !== 'work') return;
   nextRenderPerformCaptainFilter();
-  const allAssignments = (board.assignments || []).slice();
+  const allAssignments = nextPerformWorkAssignments(board);
   const scopedAssignments = nextPerformCaptainScopedAssignments(allAssignments);
   const assignments = nextFilterPerformAssignments(allAssignments);
   const labor = nextPerformLaborKpis(scopedAssignments);
@@ -2765,8 +2774,8 @@ function renderNextExecution() {
         ? `${labor.completedPlannedUnknown} completed assignment${labor.completedPlannedUnknown === 1 ? '' : 's'} missing plan estimate`
         : `Completed: ${labor.completedActualHours} hr actual vs ${labor.completedPlannedHours} hr planned`;
     kpis.innerHTML = `
-      <div class="next-perform-kpi"><span>Planned labor</span><strong>${escapeHtml(labor.plannedHours === 'TBD' ? 'TBD' : labor.plannedHours + ' hr')}</strong><small>${escapeHtml(plannedNote)}</small></div>
-      <div class="next-perform-kpi"><span>Actual labor</span><strong>${escapeHtml(labor.actualHours)} hr</strong><small>reported work in Captain scope</small></div>
+      <div class="next-perform-kpi"><span>Scheduled labor estimate</span><strong>${escapeHtml(labor.plannedHours === 'TBD' ? 'TBD' : labor.plannedHours + ' hr')}</strong><small>${escapeHtml(plannedNote)}</small></div>
+      <div class="next-perform-kpi"><span>Actual labor</span><strong>${escapeHtml(labor.actualHours)} hr</strong><small>reported against setup assignments in Captain scope; QC excluded</small></div>
       <div class="next-perform-kpi"><span>Completed-work variance</span><strong>${escapeHtml(varianceText)}</strong><small>${escapeHtml(varianceNote)}</small></div>
     `;
   }

@@ -253,7 +253,7 @@ def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
     assert "setup_next_pass.css?v=2026-11-14.123.1" in html
-    assert "setup_next_pass.js?v=2026-11-15.125.1" in html
+    assert "setup_next_pass.js?v=2026-11-15.126.1" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-11-12.122.3" in html
     assert "setup_scheduling_board.css?v=2026-11-11.111" in html
@@ -266,7 +266,7 @@ def test_perform_work_shows_planned_vs_actual_labor_kpi() -> None:
 
     assert "nextPerformLaborKpis" in ui
     assert 'id="next-perform-kpis"' in ui
-    assert "<span>Planned labor</span>" in ui
+    assert "<span>Scheduled labor estimate</span>" in ui
     assert "<span>Actual labor</span>" in ui
     assert "<span>Completed-work variance</span>" in ui
     assert "actual_person_minutes" in repo
