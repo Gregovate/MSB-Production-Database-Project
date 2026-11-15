@@ -205,7 +205,7 @@ def test_manager_email_leads_with_kpis_not_training_or_a_long_task_list():
     assert "Captain reminders remain OFF" in body
     assert "Unresolved items remain in the Manager Action Center" in body
     assert "tomorrow's Manager-only report" not in body
-    assert len(body.split()) < 400, "Template briefing must stay concise with small fixture"
+    assert len(body.split()) < 425, "Template briefing must stay concise with small fixture"
 
 
 def test_subject_and_body_are_both_reviewable_external_templates():
@@ -594,6 +594,7 @@ def test_qc_is_separate_from_setup_totals_pace_and_assignment_followup():
                                completion_work_date='2026-10-16')]
     board['assignments'].append(dict(board['assignments'][0],
                                     setup_work_day_task_id=34, setup_session_task_id=4))
+    board['qc_summary'] = dict(qc_total=2,qc_ready=1,qc_pending=1)
     report = mail.summarize(board, date(2026,10,17))
     baseline = mail.summarize(fixture_board(), date(2026,10,17))
     for key in ('total_tasks','completed_tasks','remaining_tasks','actual_pace',

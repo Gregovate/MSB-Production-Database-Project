@@ -2,7 +2,8 @@ Good morning $recipient_name,
 
 2026 SETUP — $report_date
 SETUP WORK — TOTAL $total_tasks  |  COMPLETED $completed_tasks  |  REMAINING $remaining_tasks
-QC — TOTAL $qc_total | READY $qc_ready | PENDING $qc_pending
+QC AREAS — TOTAL $qc_total | READY $qc_ready | FINAL QC PENDING $qc_pending
+QC FINDINGS — $qc_unclaimed unclaimed | $qc_claimed claimed | $qc_retest repaired, awaiting recheck | $qc_accepted accepted for season
 Blocked setup tasks: $blocked_tasks (includes $not_ready_tasks explicitly marked NOT READY; do not add these counts)
 
 SETUP LABOR — PERSON-HOURS

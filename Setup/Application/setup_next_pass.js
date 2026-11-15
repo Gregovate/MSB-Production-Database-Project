@@ -2058,6 +2058,8 @@ function setup205ManagementMetricsHtml(board) {
   return '<div class="setup205-management-summary">' +
     '<p><strong>QC readiness:</strong> ' + safe(m.qc_ready) + ' Ready for Production · ' +
     safe(m.qc_pending) + ' awaiting final QC · ' + safe(m.qc_total) + ' total areas.</p>' +
+    '<p>QC findings: ' + safe(m.qc_unclaimed) + ' unclaimed · ' + safe(m.qc_claimed) +
+    ' claimed · ' + safe(m.qc_retest) + ' repaired, awaiting recheck · ' + safe(m.qc_accepted) + ' accepted for season.</p>' +
     '<p><strong>Setup labor (person-hours):</strong> Annual estimate ' + safe(m.planned_person_hours) +
     ' · Reported to date ' + safe(m.reported_person_hours) + '</p>' +
     '<p>Completed tasks with estimates and labor reports (' + safe(m.matched_completed_tasks) +
@@ -2219,6 +2221,8 @@ async function loadSetup205ActionCenter() {
       encodeURIComponent(appState.seasonYear));
     if (!appState.access?.can_manage_setup) return;
     const board = payload.board || {};
+    const qcPayload = await api('api/setup/qc?season_year=' + encodeURIComponent(appState.seasonYear));
+    board.management_metrics = {...board.management_metrics, ...qcPayload.management_metrics};
     setup205WireActionCenter(target);
     target.innerHTML = setup205ManagementReportHtml(board, appState.seasonYear) +
       setup205ActionCenterHtml(board);

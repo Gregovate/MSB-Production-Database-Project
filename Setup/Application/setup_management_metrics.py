@@ -39,8 +39,8 @@ def management_metrics(tasks):
             matched_actual += recorded
     return {
         "qc_total": len(qc),
-        "qc_ready": sum(bool(t.get("effective_complete")) for t in qc),
-        "qc_pending": sum(not t.get("effective_complete") for t in qc),
+        "qc_ready": "Unavailable" if qc else 0,
+        "qc_pending": "Unavailable" if qc else 0,
         "planned_person_hours": round(planned, 2),
         "reported_person_hours": round(actual, 2),
         "estimate_missing_tasks": unknown,
@@ -51,3 +51,27 @@ def management_metrics(tasks):
         "matched_reported_hours": round(matched_actual, 2),
         "matched_variance_hours": round(matched_actual - matched_planned, 2),
     }
+
+
+def qc_metrics(snapshot):
+    """Use the same current signoffs as the green QC board, never task COMPLETE."""
+    ids = {int(g["task_id"]) for g in snapshot.get("final_gates", [])}
+    ready = {int(s["setup_session_task_id"]) for s in snapshot.get("signoffs", [])} & ids
+    findings = {int(f["qc_finding_id"]): f for f in snapshot.get("findings", [])
+                if int(f["setup_session_task_id"]) in ids}.values()
+    counts = dict(qc_total=len(ids), qc_ready=len(ready), qc_pending=len(ids-ready),
+                  qc_unclaimed=0, qc_claimed=0, qc_retest=0, qc_accepted=0)
+    for f in findings:
+        if f.get("accepted_work_order_id"):
+            counts["qc_accepted"] += 1
+        elif f.get("status") == "AWAITING_RETEST":
+            counts["qc_retest"] += 1
+        elif f.get("status") in ("OPEN", "CLAIMED"):
+            counts["qc_claimed" if f.get("claimed_by_person_id") else "qc_unclaimed"] += 1
+    return counts
+
+
+def read_qc_metrics(dsn, email, year):
+    # Existing authorized read function; no new grants or direct QC table reads.
+    from setup_qc_repository import SetupQcRepository
+    return qc_metrics(SetupQcRepository(dsn).snapshot(email, year))

@@ -10,6 +10,7 @@ from setup_api import (
 )
 from setup_qc_repository import SetupQcRepository
 from setup_qc_report import render_qc_report
+from setup_management_metrics import qc_metrics
 
 setup_qc_api = Blueprint("setup_qc_api", __name__)
 
@@ -36,7 +37,8 @@ def qc_integer(value, label: str, *, optional=False):
 def api_setup_qc_read() -> Response:
     _repo,email,_access=require_reader()
     year=qc_integer(request.args.get("season_year"),"season_year")
-    return jsonify(qc=qc_repo().snapshot(email,year))
+    snapshot = qc_repo().snapshot(email,year)
+    return jsonify(qc=snapshot, management_metrics=qc_metrics(snapshot))
 
 
 @setup_qc_api.get("/api/setup/qc/report")

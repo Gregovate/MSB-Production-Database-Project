@@ -702,8 +702,8 @@ def summarize(board: dict, today: date) -> dict:
         "report_date":today.isoformat(), "total_tasks":len(tasks),
         "completion_percent":f"{(len(complete) * 100 / len(tasks)) if tasks else 0:.1f}",
         "qc_total":len(qc_tasks),
-        "qc_ready":sum(bool(t.get("effective_complete")) for t in qc_tasks),
-        "qc_pending":sum(not t.get("effective_complete") for t in qc_tasks),
+        "qc_unclaimed":0, "qc_claimed":0, "qc_retest":0, "qc_accepted":0,
+        **board.get("qc_summary", {}),
         "completed_tasks":len(complete), "remaining_tasks":len(remaining),
         "blocked_tasks":len(blocked), "missing_report_occurrences":len(past),
         "continuation_needed":len(continuations),
@@ -938,6 +938,9 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     if mode in ("live", "today", "daily", "recover"):
         enforce_approved_manager_audience(managers, roster)
     board = SetupSchedulingBoardRepository(dsn).board(2026)
+    if any(t.get("qc_check_flag") for t in board.get("tasks", [])):
+        from setup_management_metrics import read_qc_metrics
+        board["qc_summary"] = read_qc_metrics(dsn, managers[0]["email"], 2026)
     report = summarize(board, today)
     enrich_continuations(report, report_work_evidence(dsn, [r["id"] for r in report["continuation_rows"]]))
     report.update(container_summary(dsn, season_year=2026))
