@@ -610,6 +610,8 @@ def summarize(board: dict, today: date) -> dict:
     if not tasks:
         raise PilotStop("The 2026 annual task list is empty")
     # QC is a readiness workflow, never an unscheduled job or crew workload.
+    from setup_management_metrics import management_metrics
+    metrics = management_metrics(tasks)
     qc_tasks = [t for t in tasks if t.get("qc_check_flag")]
     tasks = [t for t in tasks if not t.get("qc_check_flag")]
     complete = [t for t in tasks if t.get("effective_complete")]
@@ -695,6 +697,8 @@ def summarize(board: dict, today: date) -> dict:
     past.sort(key=lambda x: (x["date"],x["id"]))
     lines = lambda values: "\n".join(values) if values else "- None"
     return {
+        **metrics,
+        "not_ready_tasks":sum(t.get("readiness_state") == "NOT_READY" for t in actionable),
         "report_date":today.isoformat(), "total_tasks":len(tasks),
         "completion_percent":f"{(len(complete) * 100 / len(tasks)) if tasks else 0:.1f}",
         "qc_total":len(qc_tasks),

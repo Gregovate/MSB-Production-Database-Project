@@ -16,7 +16,8 @@ def test_manager_action_center_is_separate_protected_tab_not_scheduler_content()
     assert "actionButton.dataset.view = 'action-center'" in ui
     assert "actionButton.hidden = !appState.access?.can_manage_setup" in ui
     assert "loadSetup205ActionCenter()" in ui
-    assert "setup205ActionCenterHtml(board) +" in ui
+    assert "setup205ManagementReportHtml(board, appState.seasonYear) +" in ui
+    assert "setup205ActionCenterHtml(board);" in ui
     summary=ui.split("function setup205DeadlineKpiHtml(",1)[1].split(
         "\nasync function loadSetup205ActionCenter()",1)[0]
     assert "setup205-kpi-glance" in summary

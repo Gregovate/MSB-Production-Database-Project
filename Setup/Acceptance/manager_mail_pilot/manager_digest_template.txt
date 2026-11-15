@@ -3,7 +3,13 @@ Good morning $recipient_name,
 2026 SETUP — $report_date
 SETUP WORK — TOTAL $total_tasks  |  COMPLETED $completed_tasks  |  REMAINING $remaining_tasks
 QC — TOTAL $qc_total | READY $qc_ready | PENDING $qc_pending
-Blocked / NOT READY: $blocked_tasks
+Blocked setup tasks: $blocked_tasks (includes $not_ready_tasks explicitly marked NOT READY; do not add these counts)
+
+SETUP LABOR — PERSON-HOURS
+Annual estimate: $planned_person_hours | Reported to date: $reported_person_hours
+Same completed tasks ($matched_completed_tasks): planned $matched_planned_hours | reported $matched_reported_hours | variance $matched_variance_hours
+$estimate_missing_tasks tasks lack estimates; $unreported_tasks tasks have no work report; $labor_missing_reports reports lack labor details.
+Annual estimate uses minimum normal crew × task duration, once per task. Reported labor is not elapsed time. Variance compares only completed tasks with estimates and labor reports. QC excluded.
 Task pace: $actual_pace completed/day (last 7 days) vs $required_pace needed/day by November 17
 Task-based projected finish: $projected_finish
 $projection_confidence

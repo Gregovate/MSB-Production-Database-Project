@@ -20,6 +20,9 @@
 </td></tr>
 <tr><td style="padding:22px 26px 12px;">
 <p style="margin:0 0 18px;">Good morning $recipient_name,</p>
+<p><strong>Setup labor — person-hours:</strong> Annual estimate $planned_person_hours · Reported to date $reported_person_hours.</p>
+<p>Same completed tasks ($matched_completed_tasks): planned $matched_planned_hours · reported $matched_reported_hours · variance (reported minus planned) $matched_variance_hours.</p>
+<p>$estimate_missing_tasks tasks lack estimates; $unreported_tasks tasks have no work report; $labor_missing_reports reports lack labor details. Annual estimate = minimum normal crew × task duration, once per task. Recorded labor is not elapsed time; QC excluded.</p>
 <p><strong>QC readiness:</strong> $qc_ready ready · $qc_pending pending · $qc_total areas. QC checks are tracked separately from scheduled setup work.</p>
 <div style="font-size:12px;font-weight:bold;letter-spacing:1px;color:#546a7d;text-transform:uppercase;margin-bottom:8px;">2026 Setup work progress</div>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #dbe4eb;border-radius:7px;border-collapse:separate;">
@@ -28,7 +31,7 @@
 <td width="34%" style="padding:13px 9px;text-align:center;border-right:1px solid #dbe4eb;"><div style="font-size:11px;color:#536779;font-weight:bold;">COMPLETED</div><div style="font-size:29px;font-weight:bold;color:#177657;">$completed_tasks</div></td>
 <td width="33%" style="padding:13px 9px;text-align:center;"><div style="font-size:11px;color:#536779;font-weight:bold;">REMAINING</div><div style="font-size:29px;font-weight:bold;color:#123b57;">$remaining_tasks</div></td>
 </tr></table>
-<div style="padding:12px 0 8px;"><div style="font-size:12px;color:#536779;margin-bottom:5px;">$completion_percent% of Setup tasks complete · $blocked_tasks unfinished blocked / NOT READY</div>
+<div style="padding:12px 0 8px;"><div style="font-size:12px;color:#536779;margin-bottom:5px;">$completion_percent% of Setup tasks complete · $blocked_tasks blocked setup tasks (includes $not_ready_tasks explicitly marked NOT READY)</div>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#e1e8ee;border-radius:5px;"><tr><td style="height:9px;width:$completion_percent%;background:#279979;border-radius:5px;"></td><td style="height:9px;"></td></tr></table></div>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f3f7fa;margin-top:12px;">
 <tr><td style="padding:14px;vertical-align:top;width:50%;"><div style="font-size:11px;font-weight:bold;color:#526a7e;">ACTUAL / REQUIRED PACE</div><div style="font-weight:bold;font-size:18px;color:#123b57;">$actual_pace <span style="font-size:12px;">/ $required_pace</span></div><div style="font-size:12px;color:#526a7e;">completed tasks/day · last 7 days vs needed</div></td>

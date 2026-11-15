@@ -205,7 +205,7 @@ def test_manager_email_leads_with_kpis_not_training_or_a_long_task_list():
     assert "Captain reminders remain OFF" in body
     assert "Unresolved items remain in the Manager Action Center" in body
     assert "tomorrow's Manager-only report" not in body
-    assert len(body.split()) < 300, "Template briefing must stay concise with small fixture"
+    assert len(body.split()) < 400, "Template briefing must stay concise with small fixture"
 
 
 def test_subject_and_body_are_both_reviewable_external_templates():

@@ -198,3 +198,16 @@ assert(inventory.includes('Current/future assignment exists'));
 assert(inventory.includes('Deferred'));
 assert(inventoryHtml.includes('Task 2 · Partly worked'));
 console.log('PASS complete outstanding inventory: scheduled, partial, deferred; complete excluded');
+
+// QC is never an ordinary work blocker, reminder, capacity item or pace unit.
+ctx.appState.access.can_manage_setup=true;
+const mixed=structuredClone(base);
+mixed.tasks.push({setup_session_task_id:500,qc_check_flag:true,task_name:'QC sentinel',readiness_state:'NOT_READY',execution_status:'IN_PROGRESS'});
+mixed.assignments.push({setup_session_task_id:500,setup_work_day_id:10,work_report_count:0});
+mixed.assignments.push({setup_session_task_id:500,setup_work_day_id:12,work_report_count:0});
+assert.equal(get(mixed).tasks.length,k.tasks.length);
+assert.equal(get(mixed).blocked.length,k.blocked.length);
+assert.equal(get(mixed).overdue.length,k.overdue.length);
+assert(!ctx.setup205ActionCenterHtml(mixed).includes('QC sentinel'));
+assert.equal(mixed.tasks.length,6);
+assert.equal(mixed.assignments.length,5);

@@ -9,6 +9,8 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Any, Iterator
 
+from setup_management_metrics import management_metrics
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -269,6 +271,8 @@ class SetupSchedulingBoardRepository:
                     coalesce(sched.historical_assignment_count, 0) AS historical_assignment_count,
                     latest_report.evidence AS latest_work_report,
                     coalesce(progress.progress_entries, 0) AS progress_entries,
+                    coalesce(progress.reported_person_minutes, 0) AS reported_person_minutes,
+                    coalesce(progress.labor_missing_reports, 0) AS labor_missing_reports,
                     coalesce(progress.completed_quantity, 0) AS completed_quantity,
                     CASE WHEN st.execution_status='COMPLETE' AND st.annual_task_name ~*
                          'plug[[:space:]]+in[[:space:]]+network[[:space:]]+to[[:space:]]+controller.*2[[:space:]]+minute[[:space:]]+test[[:space:]]+show' THEN 100
@@ -506,6 +510,8 @@ class SetupSchedulingBoardRepository:
                 LEFT JOIN LATERAL (
                     SELECT
                         count(*) AS progress_entries,
+                        sum(p.crew_count * p.duration_minutes) AS reported_person_minutes,
+                        count(*) FILTER (WHERE p.crew_count IS NULL OR p.duration_minutes IS NULL) AS labor_missing_reports,
                         sum(coalesce(p.completed_quantity, 0)) AS completed_quantity,
                         max(p.percent_complete) AS percent_complete,
                         /* Current full-completion work evidence, one date per annual task. */
@@ -741,6 +747,7 @@ class SetupSchedulingBoardRepository:
             attach_blocked_successors(tasks, dependencies)
 
         return {
+            "management_metrics": management_metrics(tasks),
             "session": dict(session),
             "work_days": work_days,
             "crews": crews,
