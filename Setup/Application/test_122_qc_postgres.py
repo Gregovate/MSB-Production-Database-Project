@@ -353,6 +353,7 @@ def test_qc_readiness_can_be_confirmed_with_legacy_work_history(corrected_db):
             cur.execute("SELECT * FROM ops.set_setup_annual_hold('manager@test',10,true,'Ready')")
         cur.execute("SELECT * FROM ops.set_setup_annual_hold('manager@test',20,true,'Conditions checked')")
         assert cur.fetchone()[1:3] == ('READY','Conditions checked')
+        cur.execute('RESET ROLE')  # Internal gate remains unavailable to application role.
         cur.execute('SELECT ops.setup_qc_final_gate(20)')
         gate=cur.fetchone()[0]
         assert gate['readiness_met'] and gate['unfinished_work']
