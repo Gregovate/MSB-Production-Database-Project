@@ -12,6 +12,7 @@
   let repairScope = 'unclaimed';
   const repairExpanded = new Map();
   let auditScope = 'all';
+  const qcReturnPath=[];
   const searchWords = value => String(value || '').toLowerCase().replace(/\bstars\b/g,'star').replace(/#/g,'').split(/\s+/).filter(Boolean);
   const matchesWords = (values, words) => {
     const text=values.join(' ').toLowerCase().replace(/\bstars\b/g,'star').replace(/#/g,'');
@@ -57,6 +58,32 @@
     f => Number(f.setup_session_task_id) === Number(id)
   );
   const signoffFor = id => (snapshot.signoffs || []).find(q=>Number(q.setup_session_task_id)===Number(id));
+  // Resolve blockers by annual identity, never by their often-identical names.
+  function blockerMarkup(work) {
+    const task=nextQcAnnualTasks().find(t=>Number(t.setup_session_task_id)===Number(work.id));
+    if (!task) {
+      const ordinary=nextPerformTask(work.id);
+      const area=ordinary ? `${ordinary.stage_name || ordinary.stage_key} · ${ordinary.scene_name || 'Stage-level'} · ` : '';
+      return `<li>${html(area)}#${html(work.id)} ${html(work.name)}
+        <button type="button" data-qc-open-work="${Number(work.id)}">Open blocking work</button></li>`;
+    }
+    const area=`${task.stage_name || task.stage_key} · ${task.scene_name || 'Stage-level'}`;
+    return `<li><strong>${html(area)} · QC #${html(work.id)}</strong>
+      <button type="button" data-qc-open-blocker="${Number(work.id)}">Open blocking QC check</button></li>`;
+  }
+  function openBlockingQc(destination, source) {
+    const target=document.querySelector(`[data-qc-task-id="${destination}"]`);
+    if (!target) { qcMessage('This QC area is unavailable. Refresh QC Check and try again.');return; }
+    // Clear both filters before opening; reuse the normal toggle to preserve drafts.
+    nextQcDiscovery.search='';auditScope='all';
+    const search=document.getElementById('next-qc-search');
+    if(search) search.value='';
+    paintTaskStates();
+    if(source && source!==destination) qcReturnPath.push(source);
+    if(Number(nextQcDiscovery.selectedTaskId)!==destination) target.click();
+    else void window.setupQcRenderCurrent({preserveDraft:true});
+    target.scrollIntoView({block:'start'});target.focus({preventScroll:true});
+  }
   function paintTaskStates() {
     // Exact annual identity owns the color. All findings verified still awaits
     // auditor final signoff; green requires the persisted final signoff record.
@@ -234,6 +261,86 @@
     if (!host || host.dataset.qcBound) return;
     host.dataset.qcBound='1';
     host.addEventListener('click', async event => {
+      const back=event.target.closest('[data-qc-go-back]');
+      if(back) {const previous=qcReturnPath.pop();if(previous) openBlockingQc(previous,0);return;}
+      const work=event.target.closest('[data-qc-open-work]');
+      if(work) {
+        const taskId=Number(work.dataset.qcOpenWork),task=nextPerformTask(taskId);
+        actionButton=work;actionHost=host;
+        if(!task) {qcMessage('Task details unavailable. Refresh QC Check and try again.');return;}
+        // Show the exact annual task and its dated assignments, never guess a report target.
+        let panel=work.parentElement.querySelector('[data-qc-work-detail]');
+        if(panel) {panel.hidden=!panel.hidden;return;}
+        panel=document.createElement('div');panel.dataset.qcWorkDetail='1';
+        const assignments=(setupNextState.performBoard.assignments || []).filter(a=>Number(a.setup_session_task_id)===taskId && a.active_flag!==false);
+        panel.innerHTML=`<p><strong>${html(task.task_name)}</strong> · ${html(task.execution_status || 'Incomplete')}</p>
+          ${assignments.map(a=>`<p>${html(a.work_date || (setupNextState.performBoard.work_days || []).find(d=>Number(d.setup_work_day_id)===Number(a.setup_work_day_id))?.work_date)} · ${html(a.shift_code)} · ${html(nextPerformCrew(a)?.captain_display_name || a.captain_name || 'Captain not listed')}
+          ${appState.access?.can_manage_setup ? `<button type="button" data-qc-open-assignment="${Number(a.setup_work_day_task_id)}">Review / report this assignment</button>` : 'Ask this task’s Captain or a Setup Manager to review its work report.'}</p>`).join('')}
+          ${!assignments.length ? '<p>No scheduled assignment is available for this task.</p>' : ''}
+          ${appState.access?.can_manage_setup && !assignments.length ? `<p>Record the actual work against a dated assignment. Choose the day and crew that performed it, then use Report Work.</p><button type="button" data-qc-plan-work="${taskId}">Choose work day / crew to report work</button>` : ''}`;
+        work.parentElement.append(panel);return;
+      }
+      const assignment=event.target.closest('[data-qc-open-assignment]');
+      const planning=event.target.closest('[data-qc-plan-work]');
+      if(assignment || planning) {
+        actionButton=assignment || planning;actionHost=host;
+        try {
+          if(assignment) {
+            const assignmentId=Number(assignment.dataset.qcOpenAssignment);
+            const record=(setupNextState.performBoard.assignments || []).find(a=>Number(a.setup_work_day_task_id)===assignmentId);
+            if(!record) throw Error('Assignment unavailable. Refresh this area.');
+            document.querySelector('[data-qc-work-dialog]')?.remove();
+            const dialog=document.createElement('dialog');dialog.dataset.qcWorkDialog='1';
+            dialog.className='setup-board205-dialog';
+            dialog.innerHTML=`<button type="button" data-qc-close-work>Back to QC #${Number(id)}</button>
+              <h3>${html(record.task_name || nextPerformTask(record.setup_session_task_id)?.task_name)}</h3>
+              <details open data-assignment-id="${assignmentId}" data-session-task-id="${Number(record.setup_session_task_id)}" data-task-id="${Number(record.setup_task_id || nextPerformTask(record.setup_session_task_id)?.setup_task_id || 0)}"><summary>Work report and history</summary><div class="next-perform-body"></div></details>`;
+            document.body.append(dialog);
+            const finish=()=>{
+              if(!dialog.isConnected) return;
+              dialog.remove();
+              void window.setupQcRenderCurrent({preserveDraft:true});
+            };
+            // Explicit Back/save must finish immediately, not wait for the
+            // browser's queued close event before restoring the QC controls.
+            dialog.returnToQc=()=>{dialog.close();finish();};
+            dialog.querySelector('[data-qc-close-work]').onclick=dialog.returnToQc;
+            dialog.addEventListener('close',finish,{once:true});
+            dialog.showModal();
+            await loadNextTaskExecution(dialog.querySelector('details'),true);
+          } else {
+            // Return automatically after save or cancel; do not strand the auditor
+            // in planning or require them to claim their QC area again.
+            const taskId=Number(planning.dataset.qcPlanWork);
+            await setup205OpenManagerRecord('schedule',taskId);
+            document.getElementById('setup-board205-schedule-dialog')?.addEventListener('close',async()=>{
+              nextQcDiscovery.mode='qc';
+              nextQcDiscovery.selectedTaskId=Number(id);
+              await navigateSetupView('perform');
+              await window.setupQcRenderCurrent({preserveDraft:true});
+              document.querySelector(`[data-qc-detail="${Number(id)}"] [data-qc-open-work="${taskId}"]`)?.click();
+            },{once:true});
+          }
+        } catch(error) {qcMessage(error.message || String(error));}
+        return;
+      }
+      const readiness=event.target.closest('[data-qc-save-readiness]');
+      if(readiness) {
+        actionButton=readiness;actionHost=host;
+        const form=readiness.closest('[data-qc-readiness-form]');
+        if(!form.querySelector('[data-qc-readiness-confirm]').checked) {qcMessage('Confirm that the readiness conditions are met before saving.');return;}
+        try {
+          readiness.disabled=true;
+          await api(`api/setup/scheduling-board/season-tasks/${Number(id)}/annual-hold`,commandOptions('PATCH',{
+            ready:true,readiness_note:form.querySelector('textarea').value.trim() || null
+          }));
+          await window.setupQcRenderCurrent();
+        } catch(error) {qcMessage(error.message || String(error));}
+        finally {readiness.disabled=false;}
+        return;
+      }
+      const blocker=event.target.closest('[data-qc-open-blocker]');
+      if(blocker) {openBlockingQc(Number(blocker.dataset.qcOpenBlocker),Number(id));return;}
       const cancel=event.target.closest('[data-qc-edit-cancel]');
       if(cancel) {
         const f=snapshot.findings.find(f=>Number(f.qc_finding_id)===Number(cancel.dataset.qcEditCancel));
@@ -311,11 +418,17 @@
       await command({action,setup_session_task_id:targetId,qc_finding_id:finding,note});
     });
   }
-  window.setupQcRenderCurrent=async function() {
+  window.setupQcRenderCurrent=async function(options={}) {
     const id=nextQcDiscovery.selectedTaskId;
     if (!id || nextQcDiscovery.mode!=='qc') return;
     const host=document.querySelector(`[data-qc-detail="${Number(id)}"]`);
     if (!host) return;
+    // Preserve only user draft fields, keyed by their stable data attributes.
+    // Gate state, auditor ownership and final-test confirmation always refresh.
+    const drafts=options.preserveDraft ? [...host.querySelectorAll('textarea,select,input')].flatMap(field=>{
+      const key=[...field.attributes].find(a=>a.name.startsWith('data-qc-') && a.name!=='data-qc-final-tested');
+      return key ? [{key:key.name,value:key.value,text:field.value}] : [];
+    }) : [];
     host.textContent='Loading QC findings and report controls…';
     try { await currentData(); }
     catch (error) { host.textContent='QC details unavailable: '+(error.message||error);return; }
@@ -333,6 +446,7 @@
     const canSign=ownsAudit && gate?.readiness_met && !unfinished.length && !unrepaired.length;
     host.innerHTML=`
       <div class="next-qc-record">
+        ${qcReturnPath.length ? `<button type="button" id="qc-blocker-return" data-qc-go-back>Back to ${html(nextPerformTask(qcReturnPath[qcReturnPath.length-1])?.stage_name || 'original area')} · QC #${qcReturnPath[qcReturnPath.length-1]}</button>` : ''}
         ${final ? '<p class="next-qc-final-record"><strong>Ready for Production</strong> · '+html(localTime(final.signed_at))+' — report any newly found problem below.</p>' : ''}
         ${(snapshot.signoff_history || []).filter(h=>Number(h.setup_session_task_id)===Number(id)).length ? '<details><summary>Previous area sign-offs</summary>'+ (snapshot.signoff_history || []).filter(h=>Number(h.setup_session_task_id)===Number(id)).map(h=>'<p>'+html(localTime(h.evidence.signed_at))+' · '+html(h.evidence.test_evidence)+'<br>Reopened: '+html(localTime(h.invalidated_at))+' · '+html(h.reason)+'</p>').join('')+'</details>' : ''}
 
@@ -343,8 +457,14 @@
         ${ownsAudit && !final ? `<section class="next-qc-signoff">
           <h4>Final QC — Ready for Production</h4>
           ${!gate ? '<p>Readiness checks unavailable.</p>' : ''}
-          ${gate && !gate.readiness_met ? '<p>Blocked: annual readiness has not been confirmed.</p>' : ''}
-          ${unfinished.length ? `<p>Sign-off blocked — complete this required work first:</p><ul>${unfinished.map(w=>`<li>#${html(w.id)} ${html(w.name)}</li>`).join('')}</ul>` : ''}
+          ${gate && !gate.readiness_met ? `<div data-qc-readiness-form><p>Blocked: annual readiness has not been confirmed.</p>
+            <p>${html(nextPerformTask(id)?.readiness_note || nextPerformTask(id)?.readiness_condition || 'Review this area’s setup readiness before confirming.')}</p>
+            ${appState.access?.can_manage_setup ? `<details><summary>Review / confirm annual readiness</summary>
+              <p>This confirms readiness only. Required work, repairs and final QC sign-off are still checked separately.</p>
+              <label class="next-qc-confirm"><input type="checkbox" data-qc-readiness-confirm> I confirm this area’s readiness conditions are met.</label>
+              <label>Readiness note <textarea rows="2">${html(nextPerformTask(id)?.readiness_note || '')}</textarea></label>
+              <button type="button" data-qc-save-readiness>Save readiness confirmation</button></details>` : '<p>A Setup Manager must review and confirm annual readiness for this area.</p>'}</div>` : ''}
+          ${unfinished.length ? `<p>Sign-off blocked — complete this required work first:</p><ul>${unfinished.map(blockerMarkup).join('')}</ul>` : ''}
           ${unrepaired.length ? `<p>${unrepaired.length} problem(s) still need repair.</p>` : ''}
           <label class="next-qc-confirm"><input type="checkbox" data-qc-final-tested>
             I observed the full two-minute test and confirmed this area is ready${exceptions.length ? ", with the listed accepted exceptions" : ""}.</label>
@@ -367,6 +487,10 @@
           <button type="button" data-qc-action="REPORT_LINES" data-qc-task="${id}">Save Problems</button>
         </form>
       </div>`;
+    for(const draft of drafts) {
+      const field=[...host.querySelectorAll(`[${draft.key}]`)].find(f=>f.getAttribute(draft.key)===draft.value);
+      if(field) field.value=draft.text;
+    }
     bindControls(host,id);
   };
   window.setupQcRenderFixes=async function() {

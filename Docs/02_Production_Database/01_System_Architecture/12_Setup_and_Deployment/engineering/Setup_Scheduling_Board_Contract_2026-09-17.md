@@ -1832,3 +1832,28 @@ PR493 production receipt PASS at `/home/msbadmin/setup-deployment-reports/PR493-
 Open/Close Sign #2 (task393) exposed misleading READY TO SCHEDULE with EFFORT TBD. Save closed the assignment dialog, opened Planning Info, and hid its explanation under the overlay. Missing estimates now appear inside Schedule Assignment before placement: physical effort, normal crew and duration. Save uses the existing governed planning endpoint then the existing assignment command; selections survive either failure. Planning can be saved even if subsequent assignment fails, and the same dialog permits retry. Existing notes are preserved. Recorded-history continuation still avoids rewriting locked planning. Ready task cards with missing estimates read PLANNING INFO NEEDED. Assignment errors render in the active dialog. No database migration. Browser acceptance pending.
 
 PR494 browser acceptance November 15: Greg confirmed missing-effort validation in the assignment dialog, successful save after selecting effort, and reusable disposable preview CLEAN EXIT. Accepted app `8164cae8ecb71311abaa8d41d4e6d4be3e223231` / V0.3.127-inline-planning. Source-only release pins that app and expects PR493 live `e9b6e227ecd547497ee364de244cbc194da09998`; manager source/receipts remain unchanged, no email or database migration. Production receipt and live check pending.
+
+
+### QC blocker navigation — 2026-11-16 candidate
+
+Final sign-off prerequisite QC rows must identify stage, scene, and annual QC ID and open that exact area directly. Opening clears search and My QC Areas filters, preserves existing drafts through the established detail cache, and provides Back to the originating QC area. No prerequisite rules, assignments, findings, or sign-offs are changed. Ordinary work blockers retain their existing text in this bounded correction.
+
+Validation: JavaScript syntax and 18 QC discovery/workflow tests passed. Backend asset test passed. Chromium scenarios added for hidden/unassigned destinations, return navigation, draft retention, and zero writes; local Chromium execution blocked by runtime socket permissions. CI/browser acceptance and deployment remain pending. PR494 server receipt received; protected live scheduling check remains unconfirmed.
+
+Preview 2026-11-17: clean exit, acceptance FAILED. Icicle Tunnel ordinary work #476 and Glistening Grove annual readiness had no action. Candidate expanded to show exact dated work assignments and manager-only inline readiness confirmation using the existing guarded annual-hold API. No prerequisite bypass. Updated browser cases cover ordinary unscheduled blocker details, manager readiness confirmation, crew restriction, and remaining work still preventing sign-off. New browser acceptance pending.
+
+
+### PR495 second preview correction — 2026-11-17
+
+The operator rejected the readiness/work/navigation preview. Migration085 changes only the manager annual-readiness command: classified QC tasks permit readiness confirmation despite legacy work reports; ordinary tasks retain the historical lock. No task completion, progress, finding or sign-off is synthesized.
+
+Blocking ordinary work now opens the exact dated assignment's existing Report Work form in a dialog with Back to QC. Unscheduled work uses the existing day/crew assignment workflow and returns to the originating QC area. QC navigation refreshes gate/ownership and retains note drafts; final-test confirmation is not reused. Preview applies085 only to its disposable clone. Production promotion requires migration maintenance/snapshot tooling, not the earlier source-only draft.
+
+Validation: local Setup suite 1,035 passed; PostgreSQL and Chromium validation run in CI. Protected operator review remains required; prior CLEAN EXIT was cleanup, not acceptance.
+
+
+### PR495 protected acceptance and release preparation — 2026-11-17
+
+Greg confirmed Glistening Grove readiness, scheduled/reported Icicle Tunnel blocking work, then took auditor ownership and completed the pending scene QC workflow. He reported everything working; navigation was not separately retested. Disposable preview CLEAN EXIT received. Accepted application is 0e44e580ff73d13712e4c698e2faa0422187fe83.
+
+Production tooling pins that exact application separately from tooling commits and requires current PR494 source8164cae8ecb71311abaa8d41d4e6d4be3e223231. It uses the existing maintenance controller and snapshot runner for085, compares exact old/new readiness function security and body, fingerprints all business rows without exclusions, preserves installed manager report files, sends no mail, and requires protected live check after server PASS. Production deployment has not yet been run.

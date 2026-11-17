@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.127-inline-planning'};
+ if(path.includes('api/health')) body={version:'V0.3.128-qc-blocker-links'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -50,7 +50,7 @@ window.fetch=async (url,options={})=>{
    f.status={CLAIM_REPAIR:'CLAIMED',REPAIRED:'AWAITING_RETEST',RETEST_FAIL:'OPEN',RETEST_PASS:'VERIFIED'}[action.action]||f.status;
   }
   body={result:{finding_id:71}};
- } else if(path.includes('api/setup/qc?')) body={qc:structuredClone(qcFixture)};
+ } else if(path.includes('/annual-hold')) {qcWrites.push(action);qcFixture.final_gates.find(g=>g.task_id===598).readiness_met=action.ready;} else if(path.includes('api/setup/qc?')) body={qc:structuredClone(qcFixture)};
  return {ok:true,status:200,json:async()=>body};
 };
 </script>'''
@@ -104,6 +104,58 @@ addEventListener('load',()=>setTimeout(async()=>{
   for(const id of [483,598]) {
    await click('[data-qc-task-id="'+id+'"]');
    assert(document.querySelector('[data-qc-action="REPORT_LINES"]').getClientRects().length,'QC form missing '+id);
+  }
+  {
+  // A filtered, unclaimed scene must be reachable directly from a final gate.
+  qcFixture.auditors.push({setup_session_task_id:598,person_id:1,auditor:'Tester'});
+  qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[{id:483,name:'Identical QC name'}];
+  await setupQcRenderCurrent();
+  await click('[data-qc-area-scope="mine"]');
+  const search=document.querySelector('#next-qc-search');search.value='598';
+  search.dispatchEvent(new Event('input',{bubbles:true}));
+  const draft=document.querySelector('[data-qc-detail="598"] [data-qc-problems]');draft.value='Unsaved note';
+  const writesBefore=qcWrites.length;
+  await click('[data-qc-open-blocker="483"]');
+  assert(nextQcDiscovery.selectedTaskId===483,'Blocker did not open exact annual scene');
+  assert(search.value==='' && !document.querySelector('[data-qc-task-id="483"]').closest('.next-qc-row').hidden,'Blocker remains filtered out');
+  await click('#qc-blocker-return');
+  assert(nextQcDiscovery.selectedTaskId===598,'Return lost originating check');
+  assert(document.querySelector('[data-qc-detail="598"] [data-qc-problems]').value==='Unsaved note','Navigation lost draft');
+  assert(qcWrites.length===writesBefore,'Navigation wrote QC data');
+  // Ordinary work and readiness must provide actions as well as QC dependencies.
+  setupNextState.performBoard.tasks.push({setup_session_task_id:476,qc_check_flag:false,task_name:'Wire Arches',stage_name:'Icicle Tunnel',scene_name:'Arches'});
+  qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[{id:476,name:'Wire Arches'}];
+  qcFixture.final_gates.find(g=>g.task_id===598).readiness_met=false;
+  await setupQcRenderCurrent();
+  await click('[data-qc-open-work="476"]');
+  assert(document.querySelector('[data-qc-work-detail]').textContent.includes('No scheduled assignment'),'Ordinary blocker lacks actionable details');
+  assert(document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]').disabled,'Readiness gate bypassed');
+  if(ROLE) {
+    document.querySelector('[data-qc-readiness-form] details').open=true;
+    await click('[data-qc-save-readiness]');
+    assert(!qcFixture.final_gates.find(g=>g.task_id===598).readiness_met,'Unchecked readiness saved');
+    document.querySelector('[data-qc-readiness-confirm]').checked=true;
+    await click('[data-qc-save-readiness]');
+    assert(qcFixture.final_gates.find(g=>g.task_id===598).readiness_met,'Readiness confirmation not saved');
+    assert(document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]').disabled,'Work gate bypassed by readiness');
+  } else assert(!document.querySelector('[data-qc-save-readiness]'),'Crew given manager readiness control');
+  assert(qcWrites.length===(ROLE?1:0),'Unexpected blocker navigation write');
+  qcWrites.length=0; // Reset explicit readiness save before the read-only rendering checks.
+  if(ROLE) {
+    setupNextState.performBoard.assignments.push({setup_work_day_task_id:900,setup_session_task_id:476,work_date:'2026-11-16',shift_code:'MORNING'});
+    await setupQcRenderCurrent();
+    await click('[data-qc-open-work="476"]');
+    await click('[data-qc-open-assignment="900"]');
+    assert(document.querySelector('[data-qc-work-dialog] .next-report-work-form'),'Blocking work does not open actual report form');
+    assert(document.querySelector('[data-qc-work-dialog] .next-report-work-form').dataset.assignmentId==='900','Wrong work occurrence');
+    await click('[data-qc-close-work]');
+    assert(!document.querySelector('[data-qc-work-dialog]'),'Work dialog stranded navigation');
+    assert(nextQcDiscovery.selectedTaskId===598,'Work return lost original QC');
+    assert(document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]').disabled,'Closing report falsely cleared blocker');
+  }
+  qcFixture.auditors=[];qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[];
+  qcFixture.final_gates.find(g=>g.task_id===598).readiness_met=true;
+  await setupQcRenderCurrent();
   }
   // Unclassified historical sources never appear under either selected area.
   assert(!document.querySelector('[data-qc-link-intake]'),'Legacy reconciliation still visible');
