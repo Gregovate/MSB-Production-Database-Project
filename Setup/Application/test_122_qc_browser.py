@@ -105,6 +105,24 @@ addEventListener('load',()=>setTimeout(async()=>{
    await click('[data-qc-task-id="'+id+'"]');
    assert(document.querySelector('[data-qc-action="REPORT_LINES"]').getClientRects().length,'QC form missing '+id);
   }
+  // A filtered, unclaimed scene must be reachable directly from a final gate.
+  qcFixture.auditors.push({setup_session_task_id:598,person_id:1,auditor:'Tester'});
+  qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[{id:483,name:'Identical QC name'}];
+  await setupQcRenderCurrent();
+  await click('[data-qc-area-scope="mine"]');
+  const search=document.querySelector('#next-qc-search');search.value='598';
+  search.dispatchEvent(new Event('input',{bubbles:true}));
+  const draft=document.querySelector('[data-qc-detail="598"] [data-qc-problems]');draft.value='Unsaved note';
+  const writesBefore=qcWrites.length;
+  await click('[data-qc-open-blocker="483"]');
+  assert(nextQcDiscovery.selectedTaskId===483,'Blocker did not open exact annual scene');
+  assert(search.value==='' && !document.querySelector('[data-qc-task-id="483"]').closest('.next-qc-row').hidden,'Blocker remains filtered out');
+  await click('#qc-blocker-return');
+  assert(nextQcDiscovery.selectedTaskId===598,'Return lost originating check');
+  assert(document.querySelector('[data-qc-detail="598"] [data-qc-problems]').value==='Unsaved note','Navigation lost draft');
+  assert(qcWrites.length===writesBefore,'Navigation wrote QC data');
+  qcFixture.auditors=[];qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[];
+  await setupQcRenderCurrent();
   // Unclassified historical sources never appear under either selected area.
   assert(!document.querySelector('[data-qc-link-intake]'),'Legacy reconciliation still visible');
   assert(setupQcMatchesTaskSearch({setup_session_task_id:413,stage_name:'05a-Mega Star-MS'},'stars'),'Stars search does not find Mega Star');

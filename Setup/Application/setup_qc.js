@@ -57,6 +57,34 @@
     f => Number(f.setup_session_task_id) === Number(id)
   );
   const signoffFor = id => (snapshot.signoffs || []).find(q=>Number(q.setup_session_task_id)===Number(id));
+  // Resolve blockers by annual identity, never by their often-identical names.
+  function blockerMarkup(work) {
+    const task=nextQcAnnualTasks().find(t=>Number(t.setup_session_task_id)===Number(work.id));
+    if (!task) return `<li>#${html(work.id)} ${html(work.name)}</li>`;
+    const area=`${task.stage_name || task.stage_key} · ${task.scene_name || 'Stage-level'}`;
+    return `<li><strong>${html(area)} · QC #${html(work.id)}</strong>
+      <button type="button" data-qc-open-blocker="${Number(work.id)}">Open blocking QC check</button></li>`;
+  }
+  function openBlockingQc(destination, source) {
+    const target=document.querySelector(`[data-qc-task-id="${destination}"]`);
+    if (!target) { qcMessage('This QC area is unavailable. Refresh QC Check and try again.');return; }
+    // Clear both filters before opening; reuse the normal toggle to preserve drafts.
+    nextQcDiscovery.search='';auditScope='all';
+    const search=document.getElementById('next-qc-search');
+    if(search) search.value='';
+    paintTaskStates();
+    let back=document.getElementById('qc-blocker-return');
+    if(!back) {
+      back=document.createElement('button');back.id='qc-blocker-return';back.type='button';
+      document.getElementById('next-qc-list').before(back);
+    }
+    const origin=nextQcAnnualTasks().find(t=>Number(t.setup_session_task_id)===Number(source));
+    back.textContent=`Back to ${origin?.stage_name || 'original area'} · ${origin?.scene_name || 'Stage-level'} · QC #${source}`;
+    back.onclick=()=>{openBlockingQc(source,destination);back.hidden=true;};
+    back.hidden=false;
+    if(Number(nextQcDiscovery.selectedTaskId)!==destination) target.click();
+    target.scrollIntoView({block:'start'});target.focus({preventScroll:true});
+  }
   function paintTaskStates() {
     // Exact annual identity owns the color. All findings verified still awaits
     // auditor final signoff; green requires the persisted final signoff record.
@@ -234,6 +262,8 @@
     if (!host || host.dataset.qcBound) return;
     host.dataset.qcBound='1';
     host.addEventListener('click', async event => {
+      const blocker=event.target.closest('[data-qc-open-blocker]');
+      if(blocker) {openBlockingQc(Number(blocker.dataset.qcOpenBlocker),Number(id));return;}
       const cancel=event.target.closest('[data-qc-edit-cancel]');
       if(cancel) {
         const f=snapshot.findings.find(f=>Number(f.qc_finding_id)===Number(cancel.dataset.qcEditCancel));
@@ -344,7 +374,7 @@
           <h4>Final QC — Ready for Production</h4>
           ${!gate ? '<p>Readiness checks unavailable.</p>' : ''}
           ${gate && !gate.readiness_met ? '<p>Blocked: annual readiness has not been confirmed.</p>' : ''}
-          ${unfinished.length ? `<p>Sign-off blocked — complete this required work first:</p><ul>${unfinished.map(w=>`<li>#${html(w.id)} ${html(w.name)}</li>`).join('')}</ul>` : ''}
+          ${unfinished.length ? `<p>Sign-off blocked — complete this required work first:</p><ul>${unfinished.map(blockerMarkup).join('')}</ul>` : ''}
           ${unrepaired.length ? `<p>${unrepaired.length} problem(s) still need repair.</p>` : ''}
           <label class="next-qc-confirm"><input type="checkbox" data-qc-final-tested>
             I observed the full two-minute test and confirmed this area is ready${exceptions.length ? ", with the listed accepted exceptions" : ""}.</label>
