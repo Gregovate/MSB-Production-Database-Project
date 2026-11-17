@@ -1850,3 +1850,10 @@ The operator rejected the readiness/work/navigation preview. Migration085 change
 Blocking ordinary work now opens the exact dated assignment's existing Report Work form in a dialog with Back to QC. Unscheduled work uses the existing day/crew assignment workflow and returns to the originating QC area. QC navigation refreshes gate/ownership and retains note drafts; final-test confirmation is not reused. Preview applies085 only to its disposable clone. Production promotion requires migration maintenance/snapshot tooling, not the earlier source-only draft.
 
 Validation: local Setup suite 1,035 passed; PostgreSQL and Chromium validation run in CI. Protected operator review remains required; prior CLEAN EXIT was cleanup, not acceptance.
+
+
+### PR495 protected acceptance and release preparation — 2026-11-17
+
+Greg confirmed Glistening Grove readiness, scheduled/reported Icicle Tunnel blocking work, then took auditor ownership and completed the pending scene QC workflow. He reported everything working; navigation was not separately retested. Disposable preview CLEAN EXIT received. Accepted application is 0e44e580ff73d13712e4c698e2faa0422187fe83.
+
+Production tooling pins that exact application separately from tooling commits and requires current PR494 source8164cae8ecb71311abaa8d41d4e6d4be3e223231. It uses the existing maintenance controller and snapshot runner for085, compares exact old/new readiness function security and body, fingerprints all business rows without exclusions, preserves installed manager report files, sends no mail, and requires protected live check after server PASS. Production deployment has not yet been run.

@@ -1,0 +1,8 @@
+{
+  "profile": "495-qc",
+  "release_tag": "PR495-085",
+  "candidate": "0e44e580ff73d13712e4c698e2faa0422187fe83",
+  "target": "0e44e580ff73d13712e4c698e2faa0422187fe83",
+  "version": "V0.3.128-qc-blocker-links",
+  "migration": "Setup/Database/085_allow_qc_readiness_confirmation.sql"
+}
