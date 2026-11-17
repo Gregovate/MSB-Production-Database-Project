@@ -3347,7 +3347,7 @@ async function submitNextProgress(event) {
     setAlert(percent === 100 ? 'Work reported — task complete.' : `Work reported — task is ${percent}% complete and remains In Progress.`, 'ok');
     await loadNextExecution();
     if (typeof board205Load === 'function') await board205Load();
-    form.closest('[data-qc-work-dialog]')?.close();
+    form.closest('[data-qc-work-dialog]')?.returnToQc();
   } catch (error) {
     setAlert(error.message || error, 'error');
     window.alert(error.message || error);

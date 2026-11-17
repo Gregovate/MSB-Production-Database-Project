@@ -296,8 +296,16 @@
               <h3>${html(record.task_name || nextPerformTask(record.setup_session_task_id)?.task_name)}</h3>
               <details open data-assignment-id="${assignmentId}" data-session-task-id="${Number(record.setup_session_task_id)}" data-task-id="${Number(record.setup_task_id || nextPerformTask(record.setup_session_task_id)?.setup_task_id || 0)}"><summary>Work report and history</summary><div class="next-perform-body"></div></details>`;
             document.body.append(dialog);
-            dialog.querySelector('[data-qc-close-work]').onclick=()=>dialog.close();
-            dialog.addEventListener('close',()=>{dialog.remove();void window.setupQcRenderCurrent({preserveDraft:true});},{once:true});
+            const finish=()=>{
+              if(!dialog.isConnected) return;
+              dialog.remove();
+              void window.setupQcRenderCurrent({preserveDraft:true});
+            };
+            // Explicit Back/save must finish immediately, not wait for the
+            // browser's queued close event before restoring the QC controls.
+            dialog.returnToQc=()=>{dialog.close();finish();};
+            dialog.querySelector('[data-qc-close-work]').onclick=dialog.returnToQc;
+            dialog.addEventListener('close',finish,{once:true});
             dialog.showModal();
             await loadNextTaskExecution(dialog.querySelector('details'),true);
           } else {
