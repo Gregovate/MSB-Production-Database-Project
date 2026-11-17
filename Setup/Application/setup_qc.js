@@ -12,6 +12,7 @@
   let repairScope = 'unclaimed';
   const repairExpanded = new Map();
   let auditScope = 'all';
+  const qcReturnPath=[];
   const searchWords = value => String(value || '').toLowerCase().replace(/\bstars\b/g,'star').replace(/#/g,'').split(/\s+/).filter(Boolean);
   const matchesWords = (values, words) => {
     const text=values.join(' ').toLowerCase().replace(/\bstars\b/g,'star').replace(/#/g,'');
@@ -78,16 +79,9 @@
     const search=document.getElementById('next-qc-search');
     if(search) search.value='';
     paintTaskStates();
-    let back=document.getElementById('qc-blocker-return');
-    if(!back) {
-      back=document.createElement('button');back.id='qc-blocker-return';back.type='button';
-      document.getElementById('next-qc-list').before(back);
-    }
-    const origin=nextQcAnnualTasks().find(t=>Number(t.setup_session_task_id)===Number(source));
-    back.textContent=`Back to ${origin?.stage_name || 'original area'} · ${origin?.scene_name || 'Stage-level'} · QC #${source}`;
-    back.onclick=()=>{openBlockingQc(source,destination);back.hidden=true;};
-    back.hidden=false;
+    if(source && source!==destination) qcReturnPath.push(source);
     if(Number(nextQcDiscovery.selectedTaskId)!==destination) target.click();
+    else void window.setupQcRenderCurrent({preserveDraft:true});
     target.scrollIntoView({block:'start'});target.focus({preventScroll:true});
   }
   function paintTaskStates() {
@@ -267,6 +261,8 @@
     if (!host || host.dataset.qcBound) return;
     host.dataset.qcBound='1';
     host.addEventListener('click', async event => {
+      const back=event.target.closest('[data-qc-go-back]');
+      if(back) {const previous=qcReturnPath.pop();if(previous) openBlockingQc(previous,0);return;}
       const work=event.target.closest('[data-qc-open-work]');
       if(work) {
         const taskId=Number(work.dataset.qcOpenWork),task=nextPerformTask(taskId);
@@ -278,10 +274,10 @@
         panel=document.createElement('div');panel.dataset.qcWorkDetail='1';
         const assignments=(setupNextState.performBoard.assignments || []).filter(a=>Number(a.setup_session_task_id)===taskId && a.active_flag!==false);
         panel.innerHTML=`<p><strong>${html(task.task_name)}</strong> · ${html(task.execution_status || 'Incomplete')}</p>
-          ${assignments.map(a=>`<p>${html(a.work_date || (setupNextState.performBoard.work_days || []).find(d=>Number(d.setup_work_day_id)===Number(a.setup_work_day_id))?.work_date)} · ${html(a.shift_code)} · ${html(a.captain_name || 'Captain not listed')}
+          ${assignments.map(a=>`<p>${html(a.work_date || (setupNextState.performBoard.work_days || []).find(d=>Number(d.setup_work_day_id)===Number(a.setup_work_day_id))?.work_date)} · ${html(a.shift_code)} · ${html(nextPerformCrew(a)?.captain_display_name || a.captain_name || 'Captain not listed')}
           ${appState.access?.can_manage_setup ? `<button type="button" data-qc-open-assignment="${Number(a.setup_work_day_task_id)}">Review / report this assignment</button>` : 'Ask this task’s Captain or a Setup Manager to review its work report.'}</p>`).join('')}
           ${!assignments.length ? '<p>No scheduled assignment is available for this task.</p>' : ''}
-          ${appState.access?.can_manage_setup ? `<button type="button" data-qc-plan-work="${taskId}">Open task planning</button>` : ''}`;
+          ${appState.access?.can_manage_setup && !assignments.length ? `<p>Record the actual work against a dated assignment. Choose the day and crew that performed it, then use Report Work.</p><button type="button" data-qc-plan-work="${taskId}">Choose work day / crew to report work</button>` : ''}`;
         work.parentElement.append(panel);return;
       }
       const assignment=event.target.closest('[data-qc-open-assignment]');
@@ -289,8 +285,34 @@
       if(assignment || planning) {
         actionButton=assignment || planning;actionHost=host;
         try {
-          if(assignment) nextQcDiscovery.mode='work';
-          await setup205OpenManagerRecord(assignment ? 'report' : 'planning',Number(assignment ? assignment.dataset.qcOpenAssignment : planning.dataset.qcPlanWork));
+          if(assignment) {
+            const assignmentId=Number(assignment.dataset.qcOpenAssignment);
+            const record=(setupNextState.performBoard.assignments || []).find(a=>Number(a.setup_work_day_task_id)===assignmentId);
+            if(!record) throw Error('Assignment unavailable. Refresh this area.');
+            document.querySelector('[data-qc-work-dialog]')?.remove();
+            const dialog=document.createElement('dialog');dialog.dataset.qcWorkDialog='1';
+            dialog.className='setup-board205-dialog';
+            dialog.innerHTML=`<button type="button" data-qc-close-work>Back to QC #${Number(id)}</button>
+              <h3>${html(record.task_name || nextPerformTask(record.setup_session_task_id)?.task_name)}</h3>
+              <details open data-assignment-id="${assignmentId}" data-session-task-id="${Number(record.setup_session_task_id)}" data-task-id="${Number(record.setup_task_id || nextPerformTask(record.setup_session_task_id)?.setup_task_id || 0)}"><summary>Work report and history</summary><div class="next-perform-body"></div></details>`;
+            document.body.append(dialog);
+            dialog.querySelector('[data-qc-close-work]').onclick=()=>dialog.close();
+            dialog.addEventListener('close',()=>{dialog.remove();void window.setupQcRenderCurrent({preserveDraft:true});},{once:true});
+            dialog.showModal();
+            await loadNextTaskExecution(dialog.querySelector('details'),true);
+          } else {
+            // Return automatically after save or cancel; do not strand the auditor
+            // in planning or require them to claim their QC area again.
+            const taskId=Number(planning.dataset.qcPlanWork);
+            await setup205OpenManagerRecord('schedule',taskId);
+            document.getElementById('setup-board205-schedule-dialog')?.addEventListener('close',async()=>{
+              nextQcDiscovery.mode='qc';
+              nextQcDiscovery.selectedTaskId=Number(id);
+              await navigateSetupView('perform');
+              await window.setupQcRenderCurrent({preserveDraft:true});
+              document.querySelector(`[data-qc-detail="${Number(id)}"] [data-qc-open-work="${taskId}"]`)?.click();
+            },{once:true});
+          }
         } catch(error) {qcMessage(error.message || String(error));}
         return;
       }
@@ -388,11 +410,17 @@
       await command({action,setup_session_task_id:targetId,qc_finding_id:finding,note});
     });
   }
-  window.setupQcRenderCurrent=async function() {
+  window.setupQcRenderCurrent=async function(options={}) {
     const id=nextQcDiscovery.selectedTaskId;
     if (!id || nextQcDiscovery.mode!=='qc') return;
     const host=document.querySelector(`[data-qc-detail="${Number(id)}"]`);
     if (!host) return;
+    // Preserve only user draft fields, keyed by their stable data attributes.
+    // Gate state, auditor ownership and final-test confirmation always refresh.
+    const drafts=options.preserveDraft ? [...host.querySelectorAll('textarea,select,input')].flatMap(field=>{
+      const key=[...field.attributes].find(a=>a.name.startsWith('data-qc-') && a.name!=='data-qc-final-tested');
+      return key ? [{key:key.name,value:key.value,text:field.value}] : [];
+    }) : [];
     host.textContent='Loading QC findings and report controls…';
     try { await currentData(); }
     catch (error) { host.textContent='QC details unavailable: '+(error.message||error);return; }
@@ -410,6 +438,7 @@
     const canSign=ownsAudit && gate?.readiness_met && !unfinished.length && !unrepaired.length;
     host.innerHTML=`
       <div class="next-qc-record">
+        ${qcReturnPath.length ? `<button type="button" id="qc-blocker-return" data-qc-go-back>Back to ${html(nextPerformTask(qcReturnPath[qcReturnPath.length-1])?.stage_name || 'original area')} · QC #${qcReturnPath[qcReturnPath.length-1]}</button>` : ''}
         ${final ? '<p class="next-qc-final-record"><strong>Ready for Production</strong> · '+html(localTime(final.signed_at))+' — report any newly found problem below.</p>' : ''}
         ${(snapshot.signoff_history || []).filter(h=>Number(h.setup_session_task_id)===Number(id)).length ? '<details><summary>Previous area sign-offs</summary>'+ (snapshot.signoff_history || []).filter(h=>Number(h.setup_session_task_id)===Number(id)).map(h=>'<p>'+html(localTime(h.evidence.signed_at))+' · '+html(h.evidence.test_evidence)+'<br>Reopened: '+html(localTime(h.invalidated_at))+' · '+html(h.reason)+'</p>').join('')+'</details>' : ''}
 
@@ -424,7 +453,7 @@
             <p>${html(nextPerformTask(id)?.readiness_note || nextPerformTask(id)?.readiness_condition || 'Review this area’s setup readiness before confirming.')}</p>
             ${appState.access?.can_manage_setup ? `<details><summary>Review / confirm annual readiness</summary>
               <p>This confirms readiness only. Required work, repairs and final QC sign-off are still checked separately.</p>
-              <label><input type="checkbox" data-qc-readiness-confirm> I confirm this area’s readiness conditions are met.</label>
+              <label class="next-qc-confirm"><input type="checkbox" data-qc-readiness-confirm> I confirm this area’s readiness conditions are met.</label>
               <label>Readiness note <textarea rows="2">${html(nextPerformTask(id)?.readiness_note || '')}</textarea></label>
               <button type="button" data-qc-save-readiness>Save readiness confirmation</button></details>` : '<p>A Setup Manager must review and confirm annual readiness for this area.</p>'}</div>` : ''}
           ${unfinished.length ? `<p>Sign-off blocked — complete this required work first:</p><ul>${unfinished.map(blockerMarkup).join('')}</ul>` : ''}
@@ -450,6 +479,10 @@
           <button type="button" data-qc-action="REPORT_LINES" data-qc-task="${id}">Save Problems</button>
         </form>
       </div>`;
+    for(const draft of drafts) {
+      const field=[...host.querySelectorAll(`[${draft.key}]`)].find(f=>f.getAttribute(draft.key)===draft.value);
+      if(field) field.value=draft.text;
+    }
     bindControls(host,id);
   };
   window.setupQcRenderFixes=async function() {

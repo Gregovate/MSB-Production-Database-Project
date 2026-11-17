@@ -1841,3 +1841,12 @@ Final sign-off prerequisite QC rows must identify stage, scene, and annual QC ID
 Validation: JavaScript syntax and 18 QC discovery/workflow tests passed. Backend asset test passed. Chromium scenarios added for hidden/unassigned destinations, return navigation, draft retention, and zero writes; local Chromium execution blocked by runtime socket permissions. CI/browser acceptance and deployment remain pending. PR494 server receipt received; protected live scheduling check remains unconfirmed.
 
 Preview 2026-11-17: clean exit, acceptance FAILED. Icicle Tunnel ordinary work #476 and Glistening Grove annual readiness had no action. Candidate expanded to show exact dated work assignments and manager-only inline readiness confirmation using the existing guarded annual-hold API. No prerequisite bypass. Updated browser cases cover ordinary unscheduled blocker details, manager readiness confirmation, crew restriction, and remaining work still preventing sign-off. New browser acceptance pending.
+
+
+### PR495 second preview correction — 2026-11-17
+
+The operator rejected the readiness/work/navigation preview. Migration085 changes only the manager annual-readiness command: classified QC tasks permit readiness confirmation despite legacy work reports; ordinary tasks retain the historical lock. No task completion, progress, finding or sign-off is synthesized.
+
+Blocking ordinary work now opens the exact dated assignment's existing Report Work form in a dialog with Back to QC. Unscheduled work uses the existing day/crew assignment workflow and returns to the originating QC area. QC navigation refreshes gate/ownership and retains note drafts; final-test confirmation is not reused. Preview applies085 only to its disposable clone. Production promotion requires migration maintenance/snapshot tooling, not the earlier source-only draft.
+
+Validation: local Setup suite 1,035 passed; PostgreSQL and Chromium validation run in CI. Protected operator review remains required; prior CLEAN EXIT was cleanup, not acceptance.

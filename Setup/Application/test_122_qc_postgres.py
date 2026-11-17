@@ -328,3 +328,36 @@ def test_qc_classification_survives_rename_and_blocks_scheduling(corrected_db):
         cur.execute("INSERT INTO ops.setup_work_day_task VALUES(3,10,2,1,'AM')")
         cur.execute('SELECT setup_work_day_id FROM ops.setup_work_day_task WHERE setup_work_day_task_id=1')
         assert cur.fetchone() == (1,)
+
+
+def test_qc_readiness_can_be_confirmed_with_legacy_work_history(corrected_db):
+    """QC readiness is live; ordinary setup history and all other QC gates remain protected."""
+    with corrected_db.cursor() as cur:
+        cur.execute((Path(__file__).parents[1]/'Database/083_repeatable_preshow_qc.sql').read_text())
+        cur.execute("""ALTER TABLE ops.setup_session_task ADD COLUMN actual_started_at timestamptz,
+            ADD COLUMN annual_readiness_note text;
+            CREATE TABLE ops.setup_task_progress(setup_session_task_id bigint, note text);
+            INSERT INTO ops.setup_task_progress VALUES(20,'Original QC work'),(10,'Original setup work');
+            UPDATE ops.setup_session_task SET actual_started_at=now(),annual_readiness_state='NOT_READY' WHERE setup_session_task_id IN(10,20);
+            CREATE FUNCTION ref.setup_management_actor(text,boolean)
+            RETURNS TABLE(directus_user_id uuid,person_id integer,display_name text)
+            LANGUAGE plpgsql AS $$ BEGIN
+              IF $1<>'manager@test' THEN RAISE EXCEPTION USING ERRCODE='42501'; END IF;
+              RETURN QUERY SELECT '00000000-0000-0000-0000-000000000001'::uuid,1,'Manager'::text;
+            END $$;""")
+        cur.execute((Path(__file__).parents[1]/'Database/085_allow_qc_readiness_confirmation.sql').read_text())
+        cur.execute('SET ROLE fieldwiring_app')
+        with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+            cur.execute("SELECT * FROM ops.set_setup_annual_hold('crew@test',20,true,'Ready')")
+        with pytest.raises(psycopg2.errors.CheckViolation):
+            cur.execute("SELECT * FROM ops.set_setup_annual_hold('manager@test',10,true,'Ready')")
+        cur.execute("SELECT * FROM ops.set_setup_annual_hold('manager@test',20,true,'Conditions checked')")
+        assert cur.fetchone()[1:3] == ('READY','Conditions checked')
+        cur.execute('SELECT ops.setup_qc_final_gate(20)')
+        gate=cur.fetchone()[0]
+        assert gate['readiness_met'] and gate['unfinished_work']
+        cur.execute('RESET ROLE')
+        cur.execute('SELECT note FROM ops.setup_task_progress ORDER BY setup_session_task_id')
+        assert cur.fetchall()==[('Original setup work',),('Original QC work',)]
+        cur.execute('SELECT count(*) FROM ops.setup_qc_signoff')
+        assert cur.fetchone()==(0,)

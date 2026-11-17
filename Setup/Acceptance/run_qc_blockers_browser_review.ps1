@@ -42,10 +42,11 @@ try {
     Set-Location -LiteralPath $Review
     Write-Host "QCBlockers128 TEST CANDIDATE: $CandidateSha"
     Write-Host 'WRITABLE DISPOSABLE REVIEW: Scheduled Work / QC Check / QC Repairs Needed. All test writes go to the clone.'
-    Write-Host 'Source-only review. No migrations. Open a blocking QC scene from final sign-off, then use Back. Verify stage/scene labels and retained notes.'
+    Write-Host 'Disposable review applies migration 085 only to the clone. Open a blocking QC scene from final sign-off, then use Back. Verify stage/scene labels and retained notes.'
     Write-Host 'Production unchanged; ordinary Production activity can continue.'
     Write-Host 'Review normal Crew reporting and repairs without Manager approval or scheduling. Historical Intake cleanup is separate.'
     & (Join-Path $Review 'Setup\Acceptance\run_setup_disposable_browser_preview.ps1') `
+       -MigrationPaths @('Setup/Database/085_allow_qc_readiness_confirmation.sql') `
        -PreviewPort 8898 `
        -CandidateSha $CandidateSha `
        -TargetRef $Ref `

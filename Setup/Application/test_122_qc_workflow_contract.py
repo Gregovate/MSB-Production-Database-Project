@@ -92,7 +92,7 @@ def test_qc_modes_own_their_panel_and_do_not_fall_through_to_scheduled_work():
 
 def test_qc_entry_not_blocked_by_manager_intake_retrieval():
     """Legacy Intake review must not prevent early QC reporting."""
-    view=JS.split("window.setupQcRenderCurrent=async function()",1)[1].split(
+    view=JS.split("window.setupQcRenderCurrent=async function(options={})",1)[1].split(
         "window.setupQcRenderFixes=async function()",1)[0]
     before_render=view.split("host.innerHTML=",1)[0]
     assert "await reviewIntake()" not in before_render

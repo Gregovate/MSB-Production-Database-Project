@@ -139,6 +139,20 @@ addEventListener('load',()=>setTimeout(async()=>{
     assert(qcFixture.final_gates.find(g=>g.task_id===598).readiness_met,'Readiness confirmation not saved');
     assert(document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]').disabled,'Work gate bypassed by readiness');
   } else assert(!document.querySelector('[data-qc-save-readiness]'),'Crew given manager readiness control');
+  assert(qcWrites.length===(ROLE?1:0),'Unexpected blocker navigation write');
+  qcWrites.length=0; // Reset explicit readiness save before the read-only rendering checks.
+  if(ROLE) {
+    setupNextState.performBoard.assignments.push({setup_work_day_task_id:900,setup_session_task_id:476,work_date:'2026-11-16',shift_code:'MORNING'});
+    await setupQcRenderCurrent();
+    await click('[data-qc-open-work="476"]');
+    await click('[data-qc-open-assignment="900"]');
+    assert(document.querySelector('[data-qc-work-dialog] .next-report-work-form'),'Blocking work does not open actual report form');
+    assert(document.querySelector('[data-qc-work-dialog] .next-report-work-form').dataset.assignmentId==='900','Wrong work occurrence');
+    await click('[data-qc-close-work]');
+    assert(!document.querySelector('[data-qc-work-dialog]'),'Work dialog stranded navigation');
+    assert(nextQcDiscovery.selectedTaskId===598,'Work return lost original QC');
+    assert(document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]').disabled,'Closing report falsely cleared blocker');
+  }
   qcFixture.auditors=[];qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[];
   qcFixture.final_gates.find(g=>g.task_id===598).readiness_met=true;
   await setupQcRenderCurrent();
