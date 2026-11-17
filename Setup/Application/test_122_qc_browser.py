@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.127-inline-planning'};
+ if(path.includes('api/health')) body={version:'V0.3.128-qc-blocker-links'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);
@@ -105,6 +105,7 @@ addEventListener('load',()=>setTimeout(async()=>{
    await click('[data-qc-task-id="'+id+'"]');
    assert(document.querySelector('[data-qc-action="REPORT_LINES"]').getClientRects().length,'QC form missing '+id);
   }
+  {
   // A filtered, unclaimed scene must be reachable directly from a final gate.
   qcFixture.auditors.push({setup_session_task_id:598,person_id:1,auditor:'Tester'});
   qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[{id:483,name:'Identical QC name'}];
@@ -123,6 +124,7 @@ addEventListener('load',()=>setTimeout(async()=>{
   assert(qcWrites.length===writesBefore,'Navigation wrote QC data');
   qcFixture.auditors=[];qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[];
   await setupQcRenderCurrent();
+  }
   // Unclassified historical sources never appear under either selected area.
   assert(!document.querySelector('[data-qc-link-intake]'),'Legacy reconciliation still visible');
   assert(setupQcMatchesTaskSearch({setup_session_task_id:413,stage_name:'05a-Mega Star-MS'},'stars'),'Stars search does not find Mega Star');
