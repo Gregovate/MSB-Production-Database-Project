@@ -50,7 +50,7 @@ window.fetch=async (url,options={})=>{
    f.status={CLAIM_REPAIR:'CLAIMED',REPAIRED:'AWAITING_RETEST',RETEST_FAIL:'OPEN',RETEST_PASS:'VERIFIED'}[action.action]||f.status;
   }
   body={result:{finding_id:71}};
- } else if(path.includes('api/setup/qc?')) body={qc:structuredClone(qcFixture)};
+ } else if(path.includes('/annual-hold')) {qcWrites.push(action);qcFixture.final_gates.find(g=>g.task_id===598).readiness_met=action.ready;} else if(path.includes('api/setup/qc?')) body={qc:structuredClone(qcFixture)};
  return {ok:true,status:200,json:async()=>body};
 };
 </script>'''
@@ -122,7 +122,25 @@ addEventListener('load',()=>setTimeout(async()=>{
   assert(nextQcDiscovery.selectedTaskId===598,'Return lost originating check');
   assert(document.querySelector('[data-qc-detail="598"] [data-qc-problems]').value==='Unsaved note','Navigation lost draft');
   assert(qcWrites.length===writesBefore,'Navigation wrote QC data');
+  // Ordinary work and readiness must provide actions as well as QC dependencies.
+  setupNextState.performBoard.tasks.push({setup_session_task_id:476,qc_check_flag:false,task_name:'Wire Arches',stage_name:'Icicle Tunnel',scene_name:'Arches'});
+  qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[{id:476,name:'Wire Arches'}];
+  qcFixture.final_gates.find(g=>g.task_id===598).readiness_met=false;
+  await setupQcRenderCurrent();
+  await click('[data-qc-open-work="476"]');
+  assert(document.querySelector('[data-qc-work-detail]').textContent.includes('No scheduled assignment'),'Ordinary blocker lacks actionable details');
+  assert(document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]').disabled,'Readiness gate bypassed');
+  if(ROLE) {
+    document.querySelector('[data-qc-readiness-form] details').open=true;
+    await click('[data-qc-save-readiness]');
+    assert(!qcFixture.final_gates.find(g=>g.task_id===598).readiness_met,'Unchecked readiness saved');
+    document.querySelector('[data-qc-readiness-confirm]').checked=true;
+    await click('[data-qc-save-readiness]');
+    assert(qcFixture.final_gates.find(g=>g.task_id===598).readiness_met,'Readiness confirmation not saved');
+    assert(document.querySelector('[data-qc-action="READY_FOR_PRODUCTION"]').disabled,'Work gate bypassed by readiness');
+  } else assert(!document.querySelector('[data-qc-save-readiness]'),'Crew given manager readiness control');
   qcFixture.auditors=[];qcFixture.final_gates.find(g=>g.task_id===598).unfinished_work=[];
+  qcFixture.final_gates.find(g=>g.task_id===598).readiness_met=true;
   await setupQcRenderCurrent();
   }
   // Unclassified historical sources never appear under either selected area.
