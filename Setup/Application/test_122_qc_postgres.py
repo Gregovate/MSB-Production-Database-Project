@@ -373,12 +373,15 @@ def test_peer_qc_checks_do_not_infer_circular_blockers(corrected_db):
             setup_work_day_task_id integer PRIMARY KEY, setup_session_task_id bigint,
             setup_work_day_id integer, setup_work_day_crew_id integer, shift_code text)''')
         cur.execute((root / '084_classify_unscheduled_qc_checks.sql').read_text())
-        cur.execute('''INSERT INTO ops.setup_session_task
-            (setup_session_task_id,setup_session_id,annual_task_name,annual_stage_id,
-             annual_lor_scene_id,task_origin,qc_check_flag)
-            VALUES (588,1,'Stage QC one',5,NULL,'SEASON_ONLY',true),
-                   (590,1,'Stage QC two',5,NULL,'SEASON_ONLY',true),
-                   (591,1,'Scene peer QC',5,7,'SEASON_ONLY',true)''')
+        cur.execute('''INSERT INTO ref.setup_task(setup_task_id,task_name,qc_check_flag)
+            VALUES (1588,'Stage QC one',true),(1590,'Stage QC two',true),
+                   (1591,'Scene peer QC',true);
+            INSERT INTO ops.setup_session_task
+            (setup_session_task_id,setup_session_id,setup_task_id,annual_task_name,
+             annual_stage_id,annual_lor_scene_id)
+            VALUES (588,1,1588,'Stage QC one',5,NULL),
+                   (590,1,1590,'Stage QC two',5,NULL),
+                   (591,1,1591,'Scene peer QC',5,7)''')
         # Reproduce the production loop before migration, including scene peers.
         cur.execute('SELECT ops.setup_qc_final_gate(588)')
         assert 590 in {r['id'] for r in cur.fetchone()[0]['unfinished_work']}
