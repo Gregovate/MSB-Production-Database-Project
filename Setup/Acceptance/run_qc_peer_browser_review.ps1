@@ -42,11 +42,11 @@ try {
     Set-Location -LiteralPath $Review
     Write-Host "QCPeers129 TEST CANDIDATE: $CandidateSha"
     Write-Host 'WRITABLE DISPOSABLE REVIEW: Scheduled Work / QC Check / QC Repairs Needed. All test writes go to the clone.'
-    Write-Host 'Disposable review applies migration 086 only to the clone. Verify Santa Workshop QC588 and QC590 no longer require each other. Observe and sign off each separately; required scene checks and ordinary work must still block.'
+    Write-Host 'Disposable review applies migrations 086 and 087 only to the clone. Verify Santa Workshop has only active QC588 with its existing findings. QC590 is retained as excluded history. Required scene checks and ordinary work must still block.'
     Write-Host 'Production unchanged; ordinary Production activity can continue.'
     Write-Host 'Review normal Crew reporting and repairs without Manager approval or scheduling. Historical Intake cleanup is separate.'
     & (Join-Path $Review 'Setup\Acceptance\run_setup_disposable_browser_preview.ps1') `
-       -MigrationPaths @('Setup/Database/086_prevent_inferred_qc_peer_cycles.sql') `
+       -MigrationPaths @('Setup/Database/086_prevent_inferred_qc_peer_cycles.sql', 'Setup/Database/087_retire_duplicate_santa_workshop_qc.sql') `
        -PreviewPort 8898 `
        -CandidateSha $CandidateSha `
        -TargetRef $Ref `

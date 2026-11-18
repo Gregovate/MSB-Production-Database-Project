@@ -417,3 +417,33 @@ def test_peer_qc_checks_do_not_infer_circular_blockers(corrected_db):
         assert cur.fetchone() == (2,)
         cur.execute('SELECT status FROM ops.setup_qc_finding WHERE qc_finding_id=%s', (finding,))
         assert cur.fetchone() == ('VERIFIED',)
+
+
+def test_retire_only_confirmed_empty_santa_duplicate(corrected_db):
+    with corrected_db.cursor() as cur:
+        root = Path(__file__).parents[1] / 'Database'
+        cur.execute((root / '083_repeatable_preshow_qc.sql').read_text())
+        cur.execute('''CREATE TABLE ops.setup_work_day_task(
+            setup_work_day_task_id integer PRIMARY KEY, setup_session_task_id bigint,
+            setup_work_day_id integer, setup_work_day_crew_id integer, shift_code text)''')
+        cur.execute((root / '084_classify_unscheduled_qc_checks.sql').read_text())
+        cur.execute("INSERT INTO ref.stage VALUES(19,'19','19-Santa''s Workshop-SW')")
+        cur.execute('''INSERT INTO ops.setup_session_task
+            (setup_session_task_id,setup_session_id,setup_task_id,annual_task_name,annual_stage_id)
+            VALUES(588,1,120,'Santa QC',19),(590,1,120,'Duplicate QC',19)''')
+        cur.execute("SELECT ops.setup_qc_command('crew@test','CLAIM_AUDIT',590)")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',588,NULL,'Repair on original')")
+        finding = cur.fetchone()[0]['finding_ids'][0]
+        cur.execute((root / '087_retire_duplicate_santa_workshop_qc.sql').read_text())
+        cur.execute('SELECT included_flag FROM ops.setup_session_task WHERE setup_session_task_id=590')
+        assert cur.fetchone() == (False,)
+        cur.execute('SELECT count(*) FROM ops.setup_qc_auditor WHERE setup_session_task_id=590')
+        assert cur.fetchone() == (1,)
+        cur.execute('SELECT setup_session_task_id,status FROM ops.setup_qc_finding WHERE qc_finding_id=%s', (finding,))
+        assert cur.fetchone() == (588,'OPEN')
+        cur.execute((root / '087_retire_duplicate_santa_workshop_qc.sql').read_text())
+        # A mismatched identity must fail rather than retire another area's QC.
+        cur.execute('UPDATE ops.setup_session_task SET annual_stage_id=5 WHERE setup_session_task_id=590')
+        with pytest.raises(psycopg2.errors.RaiseException):
+            cur.execute((root / '087_retire_duplicate_santa_workshop_qc.sql').read_text())
+        cur.execute('ROLLBACK')
