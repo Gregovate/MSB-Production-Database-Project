@@ -24,7 +24,7 @@ window.qcWrites=[];
 window.fetch=async (url,options={})=>{
  const path=String(url), action=options.body ? JSON.parse(options.body) : null;
  let body={};
- if(path.includes('api/health')) body={version:'V0.3.128-qc-blocker-links'};
+ if(path.includes('api/health')) body={version:'V0.3.129-qc-peer-gates'};
  if(path.includes('qc/intake-candidates')) throw Error('Normal QC requested legacy Intake');
  if(path.includes('api/setup/qc/action')) {
   qcWrites.push(action);

@@ -1,0 +1,11 @@
+{
+  "profile": "496-qc",
+  "release_tag": "PR496-086-087",
+  "candidate": "86a9904b0a31b3203ee1e6c3430312899f29710e",
+  "target": "86a9904b0a31b3203ee1e6c3430312899f29710e",
+  "version": "V0.3.129-qc-peer-gates",
+  "migrations": [
+    "Setup/Database/086_prevent_inferred_qc_peer_cycles.sql",
+    "Setup/Database/087_retire_duplicate_santa_workshop_qc.sql"
+  ]
+}
