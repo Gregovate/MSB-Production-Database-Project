@@ -1,0 +1,74 @@
+<#
+QC blocker navigation, current-Production disposable browser review.
+- Exact commit; one temporary detached-source review branch; no Production writes.
+- Uses EXISTING Setup acceptance runner, port 8898 and Server Management profile.
+- Preserves any failed/dirty review worktree for diagnosis.
+#>
+param(
+    [Parameter(Mandatory = $true)][string]$CandidateSha,
+    [string]$ReviewerEmail = 'gliebig@sheboyganlights.org',
+    [string]$PrimaryRepo = 'C:\Users\Greg\Github\MSB-Production-Database-Project'
+)
+$ErrorActionPreference = 'Stop'
+$Ref = 'fix/qc-peer-cycle'
+$ExpectedVersion = 'V0.3.129-qc-peer-gates'
+if ($CandidateSha -cnotmatch '^[a-f0-9]{40}$') { throw 'HOLD: exact candidate SHA required.' }
+if (-not (Test-Path -LiteralPath $PrimaryRepo -PathType Container)) { throw 'HOLD: MSB main worktree missing.' }
+$Origin = (& git -C $PrimaryRepo remote get-url origin)
+if ($LASTEXITCODE -ne 0 -or ([string]$Origin) -notmatch 'Gregovate/MSB-Production-Database-Project(?:\.git)?$') {
+    throw 'HOLD: unexpected repository origin.'
+}
+# Discover registered worktrees before choosing a new review directory.
+& git -C $PrimaryRepo worktree list --porcelain
+if ($LASTEXITCODE -ne 0) { throw 'HOLD: worktree discovery failed.' }
+# Fetch just this branch; do NOT switch, pull or overwrite the current checkout.
+& git -C $PrimaryRepo fetch origin "+refs/heads/${Ref}:refs/remotes/origin/${Ref}"
+if ($LASTEXITCODE -ne 0) { throw 'HOLD: candidate fetch failed.' }
+$Remote = (& git -C $PrimaryRepo rev-parse "refs/remotes/origin/$Ref")
+if ($LASTEXITCODE -ne 0 -or ([string]$Remote).Trim() -cne $CandidateSha) {
+    throw 'HOLD: exact candidate differs from requested SHA.'
+}
+$Short = $CandidateSha.Substring(0,12)
+$LocalBranch = "review/qcpeers129-$Short"
+$Review = Join-Path $env:TEMP "MSB-QCPeers129-$Short"
+if (Test-Path -LiteralPath $Review) { throw "HOLD: review worktree path already exists: $Review" }
+$wasCreated = $false
+$cleanExit = $false
+$start = (Get-Location).Path
+try {
+    & git -C $PrimaryRepo worktree add -b $LocalBranch $Review $CandidateSha
+    if ($LASTEXITCODE -ne 0) { throw 'HOLD: local exact-SHA worktree creation failed.' }
+    $wasCreated = $true
+    Set-Location -LiteralPath $Review
+    Write-Host "QCPeers129 TEST CANDIDATE: $CandidateSha"
+    Write-Host 'WRITABLE DISPOSABLE REVIEW: Scheduled Work / QC Check / QC Repairs Needed. All test writes go to the clone.'
+    Write-Host 'Disposable review applies migration 086 only to the clone. Verify Santa Workshop QC588 and QC590 no longer require each other. Observe and sign off each separately; required scene checks and ordinary work must still block.'
+    Write-Host 'Production unchanged; ordinary Production activity can continue.'
+    Write-Host 'Review normal Crew reporting and repairs without Manager approval or scheduling. Historical Intake cleanup is separate.'
+    & (Join-Path $Review 'Setup\Acceptance\run_setup_disposable_browser_preview.ps1') `
+       -MigrationPaths @('Setup/Database/086_prevent_inferred_qc_peer_cycles.sql') `
+       -PreviewPort 8898 `
+       -CandidateSha $CandidateSha `
+       -TargetRef $Ref `
+       -LocalReviewBranch $LocalBranch `
+       -PreviewEmail $ReviewerEmail `
+       -ExpectedVersion $ExpectedVersion `
+       -AllowConcurrentProductionWrites
+    if (-not $?) { throw 'HOLD: disposable browser preview did not exit cleanly.' }
+    $cleanExit = $true
+} finally {
+    Set-Location -LiteralPath $start
+    if ($wasCreated -and $cleanExit) {
+        $dirty = @(git -C $Review status --porcelain)
+        $actual = (& git -C $Review rev-parse HEAD)
+        if ($LASTEXITCODE -eq 0 -and ([string]$actual).Trim() -ceq $CandidateSha -and $dirty.Count -eq 0) {
+            & git -C $PrimaryRepo worktree remove $Review
+            if ($LASTEXITCODE -ne 0) { Write-Warning "Preserve review path for inspection: $Review" }
+            else { & git -C $PrimaryRepo branch -D $LocalBranch | Out-Null }
+        } else {
+            Write-Warning "HOLD: preserving unexpected changed worktree: $Review"
+        }
+    } elseif ($wasCreated) {
+        Write-Warning "HOLD: preserving test worktree for diagnostic review: $Review"
+    }
+}

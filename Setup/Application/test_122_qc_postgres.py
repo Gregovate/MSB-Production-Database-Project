@@ -362,3 +362,55 @@ def test_qc_readiness_can_be_confirmed_with_legacy_work_history(corrected_db):
         assert cur.fetchall()==[('Original setup work',),('Original QC work',)]
         cur.execute('SELECT count(*) FROM ops.setup_qc_signoff')
         assert cur.fetchone()==(0,)
+
+
+def test_peer_qc_checks_do_not_infer_circular_blockers(corrected_db):
+    """Same-scope QC peers are independent; stage still waits for scene QC."""
+    with corrected_db.cursor() as cur:
+        root = Path(__file__).parents[1] / 'Database'
+        cur.execute((root / '083_repeatable_preshow_qc.sql').read_text())
+        cur.execute('''CREATE TABLE ops.setup_work_day_task(
+            setup_work_day_task_id integer PRIMARY KEY, setup_session_task_id bigint,
+            setup_work_day_id integer, setup_work_day_crew_id integer, shift_code text)''')
+        cur.execute((root / '084_classify_unscheduled_qc_checks.sql').read_text())
+        cur.execute('''INSERT INTO ops.setup_session_task
+            (setup_session_task_id,setup_session_id,annual_task_name,annual_stage_id,
+             annual_lor_scene_id,task_origin,qc_check_flag)
+            VALUES (588,1,'Stage QC one',5,NULL,'SEASON_ONLY',true),
+                   (590,1,'Stage QC two',5,NULL,'SEASON_ONLY',true),
+                   (591,1,'Scene peer QC',5,7,'SEASON_ONLY',true)''')
+        # Reproduce the production loop before migration, including scene peers.
+        cur.execute('SELECT ops.setup_qc_final_gate(588)')
+        assert 590 in {r['id'] for r in cur.fetchone()[0]['unfinished_work']}
+        cur.execute('SELECT ops.setup_qc_final_gate(590)')
+        assert 588 in {r['id'] for r in cur.fetchone()[0]['unfinished_work']}
+        cur.execute((root / '086_prevent_inferred_qc_peer_cycles.sql').read_text())
+        for task in (588,590):
+            cur.execute('SELECT ops.setup_qc_final_gate(%s)', (task,))
+            assert {r['id'] for r in cur.fetchone()[0]['unfinished_work']} == {10,11,20,591}
+        cur.execute('SELECT ops.setup_qc_final_gate(20)')
+        assert {r['id'] for r in cur.fetchone()[0]['unfinished_work']} == {10,40}
+        # Explicit peer dependency remains enforced, rather than silently waived.
+        cur.execute("INSERT INTO ops.setup_session_task_dependency VALUES(590,588,'ANNUAL')")
+        cur.execute('SELECT ops.setup_qc_final_gate(590)')
+        assert 588 in {r['id'] for r in cur.fetchone()[0]['unfinished_work']}
+        cur.execute("UPDATE ops.setup_session_task SET execution_status='COMPLETE' WHERE setup_session_task_id IN (10,11,40)")
+        cur.execute("SET ROLE fieldwiring_app")
+        for task in (20,591,588,590):
+            cur.execute("SELECT ops.setup_qc_command('crew@test','CLAIM_AUDIT',%s)", (task,))
+        with pytest.raises(psycopg2.errors.CheckViolation):
+            cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',588,'Scene still unchecked',120,'Test')")
+        for task in (20,591):
+            cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',%s,'Scene observed',120,'Test')", (task,))
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPORT_LINES',588,NULL,'Failed light')")
+        finding = cur.fetchone()[0]['finding_ids'][0]
+        with pytest.raises(psycopg2.errors.CheckViolation):
+            cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',588,'Open failure',120,'Test')")
+        cur.execute("SELECT ops.setup_qc_command('crew@test','REPAIRED',588,%s,'Replaced light')", (finding,))
+        for task in (588,590):
+            cur.execute("SELECT ops.setup_qc_ready_for_production('crew@test',%s,'Full area retest passed',120,'Test')", (task,))
+        cur.execute('RESET ROLE')
+        cur.execute('SELECT count(*) FROM ops.setup_qc_signoff WHERE setup_session_task_id IN (588,590)')
+        assert cur.fetchone() == (2,)
+        cur.execute('SELECT status FROM ops.setup_qc_finding WHERE qc_finding_id=%s', (finding,))
+        assert cur.fetchone() == ('VERIFIED',)
