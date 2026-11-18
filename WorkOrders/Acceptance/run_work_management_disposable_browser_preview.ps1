@@ -7,12 +7,14 @@ param(
     [Parameter(Mandatory=$true)][int]$PreviewPort,
     [Parameter(Mandatory=$true)][string]$PreviewEmail,
     [switch]$ApprovedReviewProfile,
+    [ValidateSet('fix/419-work-order-clarification', 'feature/122-unified-ticket-setup-accountability-20261111')]
+    [string]$CandidateRef = 'fix/419-work-order-clarification',
     [switch]$V1Validation,
     [switch]$V1Browser,
     [ValidateSet('Manager','Crew')][string]$V1ReviewerRole = 'Manager'
 )
 $ErrorActionPreference = 'Stop'
-$Ref = 'fix/419-work-order-clarification'
+$Ref = $CandidateRef
 if (-not $ApprovedReviewProfile) { throw 'HOLD: #419 Server Management review profile not approved.' }
 if ($V1Validation -and $V1Browser) { throw 'HOLD: choose V1 SQL validation OR native V1 browser review, not both.' }
 if ($CandidateSha -cnotmatch '^[a-f0-9]{40}$') { throw 'HOLD: exact 40-hex SHA required.' }

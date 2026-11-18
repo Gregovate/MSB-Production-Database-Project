@@ -1324,3 +1324,57 @@ missing-reporter contact exceptions and disposable no-send notices explicit.
 This is wording only: validation, authorization, saved activity, notification
 capture and delivery handling remain unchanged. No schema or runtime dependency
 change is required. Production wording deployment is pending.
+
+
+## November 11, 2026 — Universal Intake approval, conditional Setup wiring trace
+
+Independent Work Order Intake exists during Setup, during show operation,
+maintenance, after show and year-round. **Most Intakes must not be forced to
+reference Setup tasks.** The Intake's original Stage, when known, is an area
+hint only. A repair reported against Stage 13 does not prove the original
+annual task, Captain, operator, Display identity or fault cause.
+
+**Every Manager promotion requires duplicate review** across current
+`stage.work_order_intake` and native `ops.work_order` records for the
+reported Stage, including multiple reporters observing the same failed
+Racing Arches sections. The Manager distinguishes a true duplicate from
+separate problems in the same Stage, and chooses one authoritative native
+Work Order to perform the repair. Preserve each original reporter's notes
+and Intake ID; use the existing governed
+`ops.work_management_duplicate_link` / `ops.work_management_duplicate`
+for linking an Intake to the canonical WO, rather than promoting multiple
+native repairs. Do not automatically merge on a Stage or keyword match.
+Manager review confirmation is not itself proof that two cases differ;
+the server must recheck current link state under a transaction when
+applying final promotion. UI-only blocking is insufficient.
+
+**Only when applicable to original installation wiring** may the Manager
+add an optional exact annual Setup task relationship. The only eligible
+task family is the existing `PLUG IN & VERIFY: Wire ...` wiring/verify
+task for the reported Stage. Network two-minute tests, installation tasks,
+general Setup steps, show-operation repairs and unrelated maintenance
+must never be presented as alternative original-wiring links.
+
+This increment adds a read-only Manager comparison endpoint plus
+conditional wiring candidates in the existing Work Management Intake
+approval screen. It does **not** yet create an authoritative
+ticket/annual-task link, alter the established promotion function or
+claim that UI selection prevents server-side duplicate requests. Follow-up
+must add the minimal governed stored relationship and atomic server-side
+promotion/link/recheck, preserving all submitted evidence, exact People
+identities and history. Existing rights, migration freeze/snapshot
+and disposable operator acceptance remain mandatory.
+
+The final user-visible sequence is:
+1. Open one submitted Intake and review other requests / existing WO cases.
+2. If same repair: link the Intake as duplicate of the existing WO; do
+   not create a new WO.
+3. If distinct repair: Manager confirms separate work and promotes one WO.
+4. Optionally, **only for original Setup wiring defects**, confirm the
+   precise Wiring/Verify annual task and examine its actual dated work
+   reports. A link does not blame its Captain or workers.
+5. Complete the repair through the existing WO, then independently record
+   sequence-based QC retest; WO completion never implies sequence PASS.
+
+No new master request, duplicate QC ledger, invented Display, rewritten
+historical labor, or separate database is authorized.

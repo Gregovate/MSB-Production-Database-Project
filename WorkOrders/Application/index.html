@@ -254,6 +254,31 @@
             </div>
             <p id="intake-mapping-status" class="subtle" role="status"></p>
           </fieldset>
+          <fieldset id="review-intake-approval-links" hidden>
+            <legend>Manager approval · Compare other repair requests</legend>
+            <p class="subtle">Compare reports of the same fault before creating another Work Order.
+              Sharing a Stage does not mean two requests are duplicates.</p>
+            <div id="review-intake-related-status" role="status">Choose Promote &amp; Assign to review existing requests.</div>
+            <div id="review-intake-related-requests"></div>
+            <label>
+              <input id="review-intake-checked" type="checkbox">
+              I reviewed the related Intake requests and Work Orders.
+              This request needs a distinct Work Order.
+            </label>
+            <label for="review-intake-setup-association">Does this repair relate to the original Setup wiring/verify work?</label>
+            <select id="review-intake-setup-association">
+              <option value="not_applicable">No — normal repair, operations or other Work Order</option>
+              <option value="review">Yes — review original wiring/verify Setup step</option>
+            </select>
+            <div id="review-intake-wiring-review" hidden>
+              <p class="subtle">Only an existing PLUG IN &amp; VERIFY wiring step is eligible.
+                A Stage match does not establish who did the work or the cause of the defect.</p>
+              <div id="review-intake-wiring-steps"></div>
+            </div>
+            <p class="subtle">If an existing Work Order already covers this problem, use
+              <strong>Mark duplicate of an existing Work Order</strong> instead.
+              Preserve each reporter's original request and evidence.</p>
+          </fieldset>
           <fieldset id="review-create-fields" hidden>
             <legend id="review-work-order-legend">New internal Work Order</legend>
             <label for="review-problem">Describe the work</label>
