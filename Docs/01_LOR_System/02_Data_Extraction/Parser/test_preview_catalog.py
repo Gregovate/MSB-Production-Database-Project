@@ -1,0 +1,337 @@
+"""Disposable catalog checks. Never use G:, PostgreSQL or production runner."""
+import ast
+import hashlib
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+from preview_catalog import Catalog, capture, source_digest
+# Load the actual parser functions via AST without running parser top-level I/O.
+parser_source=Path(__file__).with_name('parse_props_v7_scene_parser.py').read_text(encoding='utf-8-sig')
+parser_tree=ast.parse(parser_source)
+parser_functions=[node for node in parser_tree.body if isinstance(node,ast.FunctionDef) and node.name in {'sha256_file','source_manifest_sha256'}]
+parser_scope={'Path':Path,'json':json,'hashlib':hashlib}
+exec(compile(ast.Module(body=parser_functions,type_ignores=[]),'<actual-parser-source-digest>','exec'),parser_scope)
+actual_parser_digest=parser_scope['source_manifest_sha256']
+
+RAW='<PreviewClass id="preview" Name="Show Background Stage 00 Test" Revision="57" Brightness="20"><Scene id="scene" Name="Stage"/><PropClass id="prop" Name="Channel" Comment="HW-Flood-01" MasterDimmable="True" ChannelGrid="Regular,1C,1,3" DeviceType="LOR"/></PreviewClass>'
+
+class CatalogTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+        root=Path(self.temp.name);self.folder=root/'Database Previews V6.6.12';self.folder.mkdir()
+        self.file=self.folder/'Test.lorprev';self.file.write_text(RAW)
+        files=capture(self.folder)
+        self.accepted=dict(schema_version=1,status='COMPLETED',validation='PASSED',lor_version='6.6.12',
+                           source_folder=str(self.folder),evidence_id='a'*64,source_manifest_sha256=source_digest(files),
+                           previews=[{k:files[0][k] for k in ('filename','preview_id','name','revision')}],
+                           run_id=32,import_run_id=74,preview_count=1,source_sqlite_sha256='b'*64,report_sha256='c'*64,report_url='report')
+        self.catalog=Catalog(root/'evidence',self.folder,'6.6.12');self.actor='publisher@example.org'
+
+    def register(self): return self.catalog.review(self.accepted,self.actor)
+
+    def test_parser_digest_parity(self):
+        self.assertEqual(source_digest(capture(self.folder)),actual_parser_digest(self.folder))
+
+    def test_bootstrap_requires_accepted_bytes(self):
+        self.file.write_text(RAW.replace('True','False'))
+        with self.assertRaisesRegex(ValueError,'unchanged accepted'): self.register()
+        self.assertFalse(self.catalog.root.exists())
+
+    def test_register_export_review_publish_consume_without_ingest(self):
+        self.register();self.file.write_text(RAW.replace('True','False').replace('Channel"','New Channel"').replace('57','58'))
+        proposal=self.register();self.assertTrue(proposal['can_publish'])
+        self.assertEqual(len(proposal['changes'][0]['metadata_changes']),2)
+        before=self.file.read_bytes();doc=self.catalog.publish(self.accepted,self.actor,proposal['review_id'])
+        self.assertEqual(doc['schema_version'],3);self.assertEqual(doc['status'],'ACCEPTED')
+        self.assertEqual(doc['database_baseline_evidence_id'],self.accepted['evidence_id'])
+        self.assertEqual(doc,self.catalog.current(self.accepted));self.assertEqual(before,self.file.read_bytes())
+        self.assertEqual(doc['previews'][0]['revision'],'58')
+        self.assertNotEqual(doc['source_manifest_sha256'],self.accepted['source_manifest_sha256'])
+
+    def test_current_without_publication_is_completed_source(self):
+        self.assertEqual(self.catalog.current(self.accepted),self.accepted)
+
+    def test_protected_changes_cannot_publish(self):
+        self.register()
+        for old,new in [('HW-Flood-01','Other Display'),('Regular,1C,1,3','Aux A,1D,4,6'),('id="prop"','id="different"'),('Name="Stage"','Name="Other Scene"'),('DeviceType="LOR"','DeviceType="DMX"')]:
+            with self.subTest(field=old):
+                self.file.write_text(RAW.replace(old,new));review=self.register()
+                self.assertFalse(review['can_publish'])
+                with self.assertRaises(ValueError):self.catalog.publish(self.accepted,self.actor,review['review_id'])
+
+    def test_edit_after_review_blocks_publication(self):
+        review=self.register();self.file.write_text(RAW.replace('True','False'))
+        with self.assertRaisesRegex(ValueError,'stale'):self.catalog.publish(self.accepted,self.actor,review['review_id'])
+
+    def test_publisher_mismatch_blocks(self):
+        review=self.register()
+        with self.assertRaisesRegex(ValueError,'another publisher'):self.catalog.publish(self.accepted,'other@example.org',review['review_id'])
+
+    def test_new_baseline_invalidates_review(self):
+        review=self.register();accepted=dict(self.accepted,evidence_id='d'*64,run_id=33)
+        with self.assertRaises(OSError):self.catalog.publish(accepted,self.actor,review['review_id'])
+
+    def test_tampered_evidence_blocks(self):
+        review=self.register();self.catalog.publish(self.accepted,self.actor,review['review_id'])
+        directory=self.catalog.context(self.accepted);(directory/'current.json').write_text('{}')
+        with self.assertRaisesRegex(ValueError,'integrity'):self.catalog.current(self.accepted)
+
+    def test_second_publisher_review_is_stale_after_first_publication(self):
+        review=self.register();self.catalog.publish(self.accepted,self.actor,review['review_id'])
+        with self.assertRaisesRegex(ValueError,'stale'):self.catalog.publish(self.accepted,self.actor,review['review_id'])
+
+    def test_source_capture_drift_blocks(self):
+        first=capture(self.folder)
+        with patch('preview_catalog.capture',side_effect=[first,[]]):
+            with self.assertRaisesRegex(ValueError,'changed during'):self.catalog.scan()
+
+    def test_missing_preview_blocks(self):
+        self.register();self.file.unlink()
+        with self.assertRaisesRegex(ValueError,'empty'):self.register()
+
+    def test_unknown_setting_requires_review(self):
+        self.register();self.file.write_text(RAW.replace('DeviceType="LOR"','DeviceType="LOR" NewField="unknown"'))
+        self.assertFalse(self.register()['can_publish'])
+
+    def test_name_without_display_comment_is_not_exempt(self):
+        self.file.write_text(RAW.replace('Comment="HW-Flood-01"','Comment=""'))
+        files=capture(self.folder)
+        self.accepted['source_manifest_sha256']=source_digest(files)
+        self.register();self.file.write_text(self.file.read_text().replace('Name="Channel"','Name="Different"'))
+        self.assertFalse(self.register()['can_publish'])
+
+    def test_review_diffs_against_last_publication(self):
+        review=self.register();self.file.write_text(RAW.replace('True','False'))
+        changed=self.register();self.catalog.publish(self.accepted,self.actor,changed['review_id'])
+        self.assertEqual(self.register()['changes'],[])
+
+    def test_missing_committed_pointer_never_falls_back(self):
+        review=self.register();self.catalog.publish(self.accepted,self.actor,review['review_id'])
+        (self.catalog.context(self.accepted)/'current.json').unlink()
+        with self.assertRaisesRegex(ValueError,'pointer is missing'):self.catalog.current(self.accepted)
+        with self.assertRaisesRegex(ValueError,'pointer is missing'):self.register()
+
+    def test_parser_digest_multiple_files_nonascii_names_and_order(self):
+        (self.folder/'à Extras.lorprev').write_text(RAW.replace('id="preview"','id="second-preview"'),encoding='utf-8')
+        (self.folder/'A First.lorprev').write_bytes(RAW.replace('id="preview"','id="third-preview"').encode('utf-8-sig'))
+        captured=capture(self.folder)
+        self.assertEqual(source_digest(list(reversed(captured))),actual_parser_digest(self.folder))
+
+    def test_known_previously_proven_pc_parser_digest(self):
+        self.file.unlink()
+        raw='<PreviewClass id="managed" Name="Rotary-Trees" Revision="57"><Scene Name="HW-Flood" /></PreviewClass>'
+        (self.folder/'Rotary.lorprev').write_bytes(raw.encode('utf-8'))
+        self.assertEqual(source_digest(capture(self.folder)),'f0b1d09d14ed4e5438f010e8fb69c096339dd97f4a44acbbee3cb6859d61fe18')
+
+    def test_three_preview_batch_and_atomic_rejection(self):
+        for index in (2,3):
+            (self.folder/('Test'+str(index)+'.lorprev')).write_text(RAW.replace('id="preview"','id="preview'+str(index)+'"'))
+        files=capture(self.folder)
+        self.accepted.update(preview_count=3,source_manifest_sha256=actual_parser_digest(self.folder),
+                             previews=[{k:f[k] for k in ('filename','preview_id','name','revision')} for f in files])
+        self.register()
+        for path in self.folder.glob('*.lorprev'):
+            path.write_text(path.read_text().replace('MasterDimmable="True"','MasterDimmable="False"'))
+        review=self.register()
+        self.assertTrue(review['can_publish']);self.assertEqual(len(review['changes']),3)
+        published=self.catalog.publish(self.accepted,self.actor,review['review_id'])
+        self.assertEqual(len(published['previews']),3)
+        self.assertEqual(published['source_manifest_sha256'],actual_parser_digest(self.folder))
+        current=self.register()
+        self.assertFalse(current['can_publish']);self.assertEqual(current['changes'],[])
+        # One protected edit rejects the entire next batch, never a subset.
+        for path in self.folder.glob('*.lorprev'):
+            path.write_text(path.read_text().replace('MasterDimmable="False"','MasterDimmable="True"'))
+        self.file.write_text(self.file.read_text().replace('Regular,1C,1,3','Aux A,1C,1,3'))
+        blocked=self.register();self.assertFalse(blocked['can_publish'])
+        with self.assertRaises(ValueError):self.catalog.publish(self.accepted,self.actor,blocked['review_id'])
+        self.assertEqual(self.catalog.current(self.accepted),published)
+
+if __name__=='__main__':unittest.main()
+
+
+class SequencingPolicyTests(CatalogTests):
+    def test_sequencing_rows_groups_views_and_uuid_filename_rename(self):
+        self.register()
+        source=RAW.replace('Revision="57"','Revision="58"').replace('Stage 00 Test','Stage 00 Renamed')
+        source=source.replace('</PropClass>','</PropClass>')  # fixture is self-closing
+        source=source.replace('DeviceType="LOR"/>','DeviceType="LOR"><MotionRowDefaults><MotionRowDefault id="row" name="Cave Door" type="custom" subc="0,0"/></MotionRowDefaults></PropClass>')
+        source=source.replace('</PreviewClass>','<PropGroup id="group" Name="Sequencer"><member id="prop"/></PropGroup><PropViews><PropView id="view"><ViewMember id="prop"/></PropView></PropViews></PreviewClass>')
+        self.file.unlink();self.file=self.folder/'Renamed.lorprev';self.file.write_text(source)
+        review=self.register();self.assertTrue(review['can_publish'])
+        self.assertEqual(review['changes'][0]['previous_filename'],'Test.lorprev')
+        doc=self.catalog.publish(self.accepted,self.actor,review['review_id'])
+        self.assertEqual(len(doc['previews']),1);self.assertEqual(doc['previews'][0]['preview_id'],'preview')
+        self.assertEqual(doc['previews'][0]['filename'],'Renamed.lorprev')
+
+    def test_stage_reassignment_and_hidden_database_nodes_still_block(self):
+        self.register()
+        for change in [RAW.replace('Stage 00','Stage 01'),RAW.replace('</PreviewClass>','<PropGroup id="g"><Scene id="hidden" Name="Other"/></PropGroup></PreviewClass>')]:
+            self.file.write_text(change);self.assertFalse(self.register()['can_publish'])
+
+    def test_legacy_baseline_not_silently_rebased_to_changed_master(self):
+        self.register();directory=self.catalog.context(self.accepted)
+        baseline=self.catalog.read(directory/'baseline.json')
+        baseline['files'][0].pop('sequencing_contract_sha256')
+        self.catalog.write(directory/'baseline.json',baseline)
+        self.file.write_text(RAW.replace('Stage 00 Test','Stage 00 Renamed'))
+        self.assertFalse(self.register()['can_publish'])
+
+    def test_actual_published_export_anchor_allows_actual_october_export(self):
+        import os
+        fixture=os.environ.get('MSB_PREVIEW_FIXTURE_DIR')
+        if not fixture:self.skipTest('Private operator fixtures not in repository')
+        old=Path(fixture)/'2026 Master Musical Preview v6.6.12 2026-08-20.lorprev'
+        new=Path(fixture)/'2026 Master Musical Preview v6.6.12 2026-10-30.lorprev'
+        self.asset_patch=patch('preview_catalog.capture_backgrounds',return_value=[])
+        self.asset_patch.start();self.addCleanup(self.asset_patch.stop)
+        self.file.write_bytes(old.read_bytes());files=capture(self.folder)
+        self.accepted.update(source_manifest_sha256=source_digest(files),previews=[{k:files[0][k] for k in ('filename','preview_id','name','revision')}])
+        self.register();directory=self.catalog.context(self.accepted)
+        baseline=self.catalog.read(directory/'baseline.json');baseline['files'][0].pop('sequencing_contract_sha256')
+        self.catalog.write(directory/'baseline.json',baseline)
+        self.file.unlink();self.file=self.folder/new.name;self.file.write_bytes(new.read_bytes())
+        result=self.register();self.assertTrue(result['can_publish']);self.assertEqual(len(result['changes']),1)
+        published=self.catalog.publish(self.accepted,self.actor,result['review_id'])
+        self.assertEqual(published['previews'][0]['revision'],'142')
+        self.assertEqual(self.catalog.current(self.accepted),published)
+
+    def test_legacy_unchanged_bytes_register_anchor_for_later_edit(self):
+        self.register();directory=self.catalog.context(self.accepted)
+        baseline=self.catalog.read(directory/'baseline.json');baseline['files'][0].pop('sequencing_contract_sha256')
+        self.catalog.write(directory/'baseline.json',baseline)
+        self.register()  # still exact original bytes: safe policy adoption
+        self.file.write_text(RAW.replace('Stage 00 Test','Stage 00 New Date'))
+        self.assertTrue(self.register()['can_publish'])
+
+class BackgroundTests(CatalogTests):
+    def setUp(self):
+        super().setUp()
+        import io
+        self.image=b'old external image bytes'
+        self.original_open=Path.open
+        def reader(path,*args,**kwargs):
+            if str(path).startswith('G:'):
+                return io.BytesIO(self.image)
+            return self.original_open(path,*args,**kwargs)
+        self.open_patch=patch.object(Path,'open',reader);self.open_patch.start();self.addCleanup(self.open_patch.stop)
+        self.image_raw=RAW.replace('<Scene id="scene" Name="Stage"/>','<Scene id="scene" Name="Stage" BackgroundFile="G:\\Shared drives\\Display Folders\\Background.png"/>')
+
+    def test_external_image_change_same_path_is_reviewed_and_published(self):
+        self.file.write_text(self.image_raw)
+        files=capture(self.folder)
+        self.accepted.update(source_manifest_sha256=source_digest(files))
+        first=self.register();doc=self.catalog.publish(self.accepted,self.actor,first['review_id'])
+        self.assertEqual(doc['schema_version'],3);self.assertEqual(doc['minimum_updater_version'],'1.1.2')
+        self.image=b'new external image bytes'
+        review=self.register();self.assertTrue(review['can_publish'])
+        self.assertEqual(review['changes'][0]['background_changes'][0]['action'],'BACKGROUND_IMAGE_UPDATED')
+        self.assertEqual(review['master_digest'],doc['source_manifest_sha256'])
+        self.image=b'edited again after review'
+        with self.assertRaisesRegex(ValueError,'stale'):self.catalog.publish(self.accepted,self.actor,review['review_id'])
+
+    def test_no_embedding_no_arbitrary_files(self):
+        from preview_catalog import capture_backgrounds
+        import xml.etree.ElementTree as ET
+        for raw in [self.image_raw.replace('Background.png','../secret.png'),self.image_raw.replace('G:', 'C:'),self.image_raw.replace('Background.png','secret.txt'),self.image_raw.replace('Revision="57"','Revision="57" EmbedBackgrounds="True"')]:
+            with self.subTest(raw=raw):
+                with self.assertRaises(ValueError):capture_backgrounds(ET.fromstring(raw))
+        self.image=b''
+        with self.assertRaisesRegex(ValueError,'empty'):capture_backgrounds(ET.fromstring(self.image_raw))
+
+
+class AllBackgroundProblemTests(CatalogTests):
+    def test_reports_every_bad_scene_across_previews_without_writing_evidence(self):
+        import io
+        original_open = Path.open
+        attempted = []
+        def reader(path, *args, **kwargs):
+            if str(path).startswith('G:'):
+                attempted.append(str(path))
+                if str(path).endswith('valid.png'):
+                    return io.BytesIO(b'valid linked bytes')
+                raise FileNotFoundError(str(path))
+            return original_open(path, *args, **kwargs)
+        prefix = 'G:\\Shared drives\\Display Folders\\'
+        scenes = ''.join('<Scene id="s'+str(i)+'" Name="'+name+'" BackgroundFile="'+prefix+file+'"/>' for i, (name,file) in enumerate([('Mega Tree','missing.png'),("Fred’s Stars",'missing.png'),('Good scene','valid.png')]))
+        self.file.write_text(RAW.replace('<Scene id="scene" Name="Stage"/>', scenes))
+        second = self.folder/'Second.lorprev'
+        second.write_text(RAW.replace('id="preview"','id="second"',1).replace('<Scene id="scene" Name="Stage"/>','<Scene id="other" Name="Tunnel" BackgroundFile="'+prefix+'other.png"/>'))
+        with patch.object(Path, 'open', reader):
+            with self.assertRaises(ValueError) as raised:
+                capture(self.folder)
+        report = str(raised.exception)
+        for label in [self.file.name, 'Second.lorprev', 'Mega Tree', 'Fred’s Stars', 'Tunnel', 'missing.png', 'other.png', 'Publication blocked']:
+            self.assertIn(label, report)
+        self.assertEqual(len(attempted), 4)
+        self.assertNotIn('Scene: Good scene', report)
+
+
+class BackgroundErrorReasonTests(unittest.TestCase):
+    def test_missing_and_denied_are_distinguished_without_repeating_path(self):
+        from preview_catalog import capture_backgrounds
+        import xml.etree.ElementTree as ET
+        raw = '<PreviewClass><Scene Name="Test scene" BackgroundFile="G:\\Shared drives\\Display Folders\\one.png"/></PreviewClass>'
+        for error, reason in [(FileNotFoundError(2, 'not found'), 'File or folder not found'), (PermissionError(13, 'denied'), 'Access denied'), (OSError(22, 'invalid argument'), 'File read failed')]:
+            with self.subTest(reason=reason), patch.object(Path, 'open', side_effect=error):
+                with self.assertRaises(ValueError) as raised:
+                    capture_backgrounds(ET.fromstring(raw))
+                message = str(raised.exception)
+                self.assertIn(reason, message)
+                self.assertIn('errno=' + str(error.errno), message)
+                self.assertEqual(message.count('one.png'), 1)
+
+
+class BackgroundPolicyRecoveryTests(unittest.TestCase):
+    def test_legacy_recovery_requires_exact_complete_old_contract(self):
+        import preview_catalog as m
+        import xml.etree.ElementTree as ET
+        old = ET.fromstring(RAW.replace('Name="Stage"', 'Name="Stage" BackgroundFile="G:\\old.png"'))
+        current = ET.fromstring(RAW.replace('Name="Stage"', 'Name="Stage" BackgroundFile="G:\\new.png"'))
+        baseline = dict(sha256='f'*64, contract_sha256=m.digest(m.contract_node(old)))
+        result = m.recover_legacy_background_contract(baseline, current, {'Stage': 'G:\\old.png'})
+        self.assertEqual(result['proof'], 'EXACT_LEGACY_CONTRACT_MATCH')
+        self.assertEqual(result['sequencing_contract_sha256'], m.digest(m.sequencing_contract_node(old)))
+        for attribute in ('Comment', 'ChannelGrid', 'id'):
+            changed = ET.fromstring(ET.tostring(current))
+            prop = changed.find('PropClass');prop.set(attribute, 'UNAPPROVED')
+            self.assertIsNone(m.recover_legacy_background_contract(baseline, changed, {'Stage': 'G:\\old.png'}))
+        changed = ET.fromstring(ET.tostring(current));changed.find('Scene').set('Name','Changed scene')
+        self.assertIsNone(m.recover_legacy_background_contract(baseline, changed, {'Stage':'G:\\old.png'}))
+
+    def test_actual_master_only_scale_diff_is_presentation(self):
+        import os, preview_catalog as m
+        import xml.etree.ElementTree as ET
+        folder = Path(os.environ.get('MSB_PREVIEW_FIXTURE_DIR','nonexistent'))
+        current = folder.parent/'review-current/2026 Master Musical Preview v6.6.12 2026-10-30.lorprev'
+        original = folder/'2026 Master Musical Preview v6.6.12 2026-08-20.lorprev'
+        if not current.exists() or not original.exists():self.skipTest('Optional private fixtures unavailable')
+        old,new = ET.parse(original).getroot(),ET.parse(current).getroot()
+        self.assertEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(new))
+        prop = next(new.iter('PropClass'));prop.set('ChannelGrid','Changed')
+        self.assertNotEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(new))
+
+
+class TraditionalDrawingPolicyTests(unittest.TestCase):
+    def test_actual_repaired_stage07_matches_but_new_identity_does_not(self):
+        import os, preview_catalog as m
+        import xml.etree.ElementTree as ET
+        root = Path(os.environ.get('MSB_PREVIEW_FIXTURE_DIR','nonexistent'))
+        original = root/'LOR-Original-Stage07.lorprev'
+        repaired = root.parent/'deliverables/Show Background Stage 07 WhoHouse Mt Crumpit.lorprev'
+        if not original.exists() or not repaired.exists():self.skipTest('Optional private fixtures unavailable')
+        old,new=ET.parse(original).getroot(),ET.parse(repaired).getroot()
+        self.assertEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(new))
+        for field in ('id','Comment','ChannelGrid','MasterPropId'):
+            changed=ET.fromstring(ET.tostring(new));prop=next(p for p in changed.iter('PropClass') if p.get('Comment')=='WV-MtCrumpitPanel-01');prop.set(field,'DIFFERENT')
+            self.assertNotEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(changed))
+
+    def test_rgb_parameters_and_scene_membership_remain_protected(self):
+        import preview_catalog as m, xml.etree.ElementTree as ET
+        old=ET.fromstring('<PreviewClass id="p" Name="Stage 07"><PropClass id="x" StringType="RGB" DeviceType="LOR" Parm1="10"><shape ShapeName="Lines-Connected"><point x="0"/></shape></PropClass><Scene id="s"><member id="x"/></Scene></PreviewClass>')
+        changed=ET.fromstring(ET.tostring(old));changed.find('PropClass').set('Parm1','20')
+        self.assertNotEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(changed))
+        changed=ET.fromstring(ET.tostring(old));changed.find('Scene/member').set('id','other')
+        self.assertNotEqual(m.sequencing_contract_node(old),m.sequencing_contract_node(changed))

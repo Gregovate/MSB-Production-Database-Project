@@ -1,0 +1,45 @@
+MSB LOR Preview Update
+======================
+
+Use this before starting work on MSB Light-O-Rama sequences.
+
+1. CLOSE LIGHT-O-RAMA
+   Make sure the Light-O-Rama Sequencer is closed.
+
+2. DOUBLE-CLICK
+   "Update your PC Previews to LOR Master Files"
+
+3. WAIT FOR THE CHECK TO FINISH
+   The updater automatically finds the latest accepted LOR2DB production
+   reconciliation and the correct approved versioned master-preview folder.
+   You do not select a version or folder.
+
+4. REVIEW THE RESULTS
+   The window will show:
+   - accepted LOR2DB Run
+   - approved master source
+   - controlled previews already current
+   - controlled previews that will be added
+   - controlled previews that will be replaced
+   - personal/unmanaged previews that will be preserved
+
+5. APPROVE THE UPDATE
+   Confirm Light-O-Rama is closed.
+   If controlled MSB previews will be replaced, acknowledge the warning.
+   Click "Update PC Previews".
+
+6. REOPEN LIGHT-O-RAMA
+   After the updater reports success, reopen Light-O-Rama and continue working.
+
+IMPORTANT
+---------
+- Do NOT manually import the full MSB preview library.
+- Do NOT copy another programmer's LORPreviews.xml.
+- Do NOT choose a "Database Previews Vx.x.x" folder yourself.
+- Personal/imported/store previews are preserved.
+- The updater gets the approved master location from the latest COMPLETED
+  LOR2DB reconciliation report.
+- If the approved source is missing or does not match the LOR2DB evidence,
+  the updater stops rather than guessing.
+
+If the updater reports BLOCKED or FAILED, stop and contact the MSB database administrator.

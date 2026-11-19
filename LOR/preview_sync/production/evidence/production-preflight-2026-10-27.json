@@ -1,0 +1,33 @@
+{
+  "evidence_type": "operator_reported_read_only_production_preflight",
+  "result": "PASS",
+  "service": "lor-preflight-api.service",
+  "service_state": "active",
+  "runtime_user": "lor-preflight",
+  "runtime_group": "msbadmin",
+  "working_directory": "/opt/lor-preflight",
+  "backend_version": "V0.6.3",
+  "backend_sha256": "4813bb9a842f50752b26cfba497c9894529f2a296a9b0c446401bbebaf69e67f",
+  "publisher_sha256": "422ef7a7fde3fd4cf0745802190ee0573c3538a61e31027e26177af28221b9ab",
+  "nas_mount": "/mnt/msb-web",
+  "nas_filesystem": "cifs",
+  "crew_resolver_execute": false,
+  "frozen_source_select": true,
+  "frozen_preview_select": true,
+  "accepted_source": {
+    "run_id": 32,
+    "import_run_id": 74,
+    "status": "COMPLETED",
+    "validation": "PASSED",
+    "parser_validation": "PASSED",
+    "completed_at": "2026-10-27T20:34:48.565108Z",
+    "lor_version": "6.6.12",
+    "folder": "G:\\Shared drives\\MSB Database\\Database Previews V6.6.12",
+    "preview_count": 34,
+    "source_manifest_sha256": "c21e028797315d590457f16aa1a31ef91b5850970a5fa9e3fa8988d5cf8de692",
+    "source_sqlite_sha256": "a8c71152d48b6d695ba8a7180a8587727bf818ca2da702d3628fc87c06b20902",
+    "report_sha256": "88ab70f66a73b53d2412b65237c3919d1a2d44d57db43a053cc9362c6f9a742e"
+  },
+  "production_mutations": false,
+  "remaining_gates": ["current_clone_permission_acceptance", "operator_browser_review", "actual_cloudflare_policy", "windows_browser_handoff", "production_deployment_approval", "live_pc_apply_and_lor_acceptance"]
+}

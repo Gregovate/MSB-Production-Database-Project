@@ -1,4 +1,4 @@
-/* MSB LOR landing page - 2026-08-27 V0.6.2 */
+/* MSB LOR landing page - 2026-10-27 V0.6.3 */
 (function () {
   "use strict";
 
@@ -87,7 +87,7 @@
         <div><dt>Production SQLite</dt><dd class="path-value">${esc(run?.sqlite_path || "Not built in the current approved-version state")}</dd></div>
         <div><dt>SQLite SHA-256</dt><dd class="digest">${esc(run?.sqlite_sha256 || "Not available until a validated parser run completes")}</dd></div>
       </dl>
-      <a class="primary" href="parser/">Run parser</a>
+      ${model.access?.can_run_parser === true ? '<a class="primary" href="parser/">Run parser</a>' : '<p>Parser execution is restricted to authorized operators.</p>'}
     </section>`;
   }
 
@@ -156,7 +156,7 @@
   }
 
   function workflowCard(workflow, handoff) {
-    if (handoff) {
+    if (handoff && model.access?.can_operate_lor === true) {
       return `<section class="card workflow next-step-card">
         <div>
           <p class="eyebrow">Next step</p>
@@ -176,7 +176,7 @@
     let action = "";
     if (workflow.action?.kind === "review") {
       action = `<a class="primary" href="${esc(workflow.action.url)}">${esc(workflow.action.label)}</a>`;
-    } else if (workflow.can_start) {
+    } else if (workflow.can_start && model.access?.can_operate_lor === true) {
       action = `<button id="start-run" class="primary" type="button">Start reconciliation</button>`;
     }
     return `<section class="card workflow">

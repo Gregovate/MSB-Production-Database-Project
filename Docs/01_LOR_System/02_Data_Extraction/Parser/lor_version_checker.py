@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-CHECKER_VERSION = "V1.4.1"
+CHECKER_VERSION = "V1.4.2"
 MANIFEST_VERSION = 4
 CRITICAL_ELEMENTS = {"PreviewClass", "Scene", "PropClass"}
 UUID_RE = re.compile(
@@ -653,10 +653,21 @@ def compare_manifests(baseline: dict[str, Any], candidate: dict[str, Any]) -> li
 
     all_tags = sorted(set(old["attributes"]) | set(new["attributes"]))
     for tag in all_tags:
-        findings.extend(set_difference_findings(
+        attribute_findings = set_difference_findings(
             old["attributes"].get(tag, []), new["attributes"].get(tag, []), tag, "attribute",
             removed_severity=removed_structure_severity,
-        ))
+        )
+        # The production parser does not consume ViewMember.sharedid. LOR may
+        # add it during sequencer view editing within the approved version.
+        # Keep the evidence, but do not misclassify this exact optional field
+        # as parser-breaking. Other new vocabulary and cross-version checks
+        # retain their existing blocking behavior.
+        for finding in attribute_findings:
+            if (same_version and tag == "ViewMember"
+                    and finding.message == "New attribute: sharedid"):
+                findings.append(Finding("INFO", finding.area, finding.message))
+            else:
+                findings.append(finding)
     findings.extend(compare_shapes(
         old["attribute_shapes"], new["attribute_shapes"],
         severity=content_severity,
