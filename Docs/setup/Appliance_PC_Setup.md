@@ -880,8 +880,9 @@ After installation:
 
 The Show PC supports two flashing paths:
 
-1. **Tasmotizer / esptool for ESP82xx manual-boot fixtures** — preferred for the existing MSB homemade ESP-02S/ESP8285 fixture because the CH340 adapter does not expose DTR/RTS automatic-reset lines.
-2. **Tasmota Web Installer** — useful for devices/adapters that support the browser workflow or automatic reset.
+1. **Tasmotizer for the existing MSB ESP-02S/ESP8285 fixture** — preferred normal workflow. The Tasmota project still lists Tasmotizer for ESP82xx devices, and the Windows build is portable/no-install.
+2. **esptool for diagnostics or scripted flashing** — use for read-only chip tests, troubleshooting, or controlled command-line flashing.
+3. **Tasmota Web Installer** — alternate method for devices/adapters that work cleanly with the browser workflow or automatic reset. It is not the preferred method for the existing MSB manual-boot CH340 jig.
 
 Official Tasmota flashing documentation:
 
@@ -915,6 +916,12 @@ ESP programming mode  PASS
 ```
 
 The Tasmota Web Installer previously failed during bootloader synchronization with this fixture even though Chrome successfully paired with COM20. The fixture does not provide the DTR/RTS automatic-reset signaling commonly used by browser flashing workflows.
+
+### Verified repeat-flash result
+
+Using the same Show PC, COM20 CH340 adapter, and homemade ESP-02S fixture, multiple new modules were successfully flashed. One module repeatedly failed the read-only esptool bootloader test with `No serial data received`, while other modules passed and flashed normally. Treat that individual ESP-02S as suspect hardware rather than changing the known-good PC/driver/jig configuration.
+
+For repeated ESP-02S production flashing, use Tasmotizer with the existing manual programming-mode procedure.
 
 For this fixture, use manual bootloader mode and either Tasmotizer or esptool rather than changing the known-good wiring merely to satisfy the browser installer.
 
