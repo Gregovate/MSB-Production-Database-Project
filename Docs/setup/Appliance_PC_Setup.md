@@ -831,7 +831,56 @@ This arrangement is the intended end state because it preserves all three requir
 
 ---
 
-## 13. Remaining Setup Steps
+## 13. Tasmota USB-to-Serial Programming Support
+
+The Show PC is also used to flash Tasmota devices.
+
+### Preserve Light-O-Rama COM assignments
+
+Existing FTDI USB serial adapters for Light-O-Rama occupy COM3 through COM18. Do **not** renumber or remove those assignments merely to add a programming adapter.
+
+Use COM20 for the Tasmota programming adapter when available.
+
+### WCH CH340 programming adapter
+
+The programming adapter currently reports:
+
+```text
+USB\VID_1A86&PID_7523
+Manufacturer: WCH / wch.cn
+Target COM port: COM20
+```
+
+This VID/PID identifies the WCH CH340 USB-to-serial family.
+
+On the initial Windows 11 connection, Device Manager reported no bound driver:
+
+```text
+Driver Name: null
+Driver Package ID: null
+Driver Provider: null
+```
+
+Install the official WCH Windows driver:
+
+[WCH CH340/CH341 Windows Driver — CH341SER.EXE](https://www.wch-ic.com/downloads/CH341SER_EXE.html)
+
+The WCH package supports Windows 11 x64 and is the vendor driver for CH340/CH341 USB serial devices.
+
+After installation:
+
+1. unplug and reconnect the CH340 adapter;
+2. open Device Manager -> Ports (COM & LPT);
+3. verify it appears as `USB-SERIAL CH340`;
+4. preserve COM3-COM18 for Light-O-Rama;
+5. assign/retain COM20 for the CH340 when available;
+6. verify the Tasmota flashing tool can open COM20 before relying on the adapter.
+
+Do not uninstall or clean up the existing FTDI COM-port assignments as part of this driver installation.
+
+---
+
+## 14. Remaining Setup Steps
 
 The following items still need to be performed and verified on the new Show PC before they become part of the confirmed procedure:
 
