@@ -878,24 +878,47 @@ After installation:
 
 ### Tasmota flashing method
 
-Use the current official **Tasmota Web Installer** in Google Chrome:
+The Show PC supports two flashing paths:
+
+1. **Tasmotizer / esptool for ESP82xx manual-boot fixtures** — preferred for the existing MSB homemade ESP-02S/ESP8285 fixture because the CH340 adapter does not expose DTR/RTS automatic-reset lines.
+2. **Tasmota Web Installer** — useful for devices/adapters that support the browser workflow or automatic reset.
+
+Official Tasmota flashing documentation:
+
+[Tasmota Getting Started](https://tasmota.github.io/docs/Getting-Started/)
+
+Official Web Installer:
 
 [Tasmota Web Installer](https://tasmota.github.io/install/)
 
-The Web Installer supports ESP82xx and ESP32 devices through the browser's Web Serial interface.
+### Verified ESP-02S / CH340 fixture behavior
 
-For this Show PC:
+The existing homemade MSB flasher uses the WCH CH340 adapter on COM20 and manual programming-mode control.
 
-1. connect the CH340 programmer and confirm `USB-SERIAL CH340 (COM20)`;
-2. put the ESP device into programming mode;
-3. open the Tasmota Web Installer in Chrome;
-4. select the desired Tasmota firmware;
-5. click **Install**;
-6. when Chrome asks for a serial port, select the CH340 / COM20 device;
-7. for a first-time Tasmota flash, erase the existing flash before writing the new firmware;
-8. after flashing, remove GPIO0-to-GND/programming mode and power-cycle the device.
+A direct esptool test succeeded:
 
-Tasmotizer remains an available legacy GUI tool for ESP82xx devices, but the Web Installer is the preferred normal workflow for this appliance because it supports both ESP82xx and ESP32 without installing another flashing application.
+```text
+Connected to ESP8266 on COM20
+Chip type: ESP8285H16
+MAC: 3c:e9:0e:ee:85:cd
+Stub flasher running
+```
+
+This proves:
+
+```text
+Windows CH340 driver  PASS
+COM20                 PASS
+CH340 serial link     PASS
+TX/RX wiring          PASS
+ESP programming mode  PASS
+```
+
+The Tasmota Web Installer previously failed during bootloader synchronization with this fixture even though Chrome successfully paired with COM20. The fixture does not provide the DTR/RTS automatic-reset signaling commonly used by browser flashing workflows.
+
+For this fixture, use manual bootloader mode and either Tasmotizer or esptool rather than changing the known-good wiring merely to satisfy the browser installer.
+
+If using the Web Installer for a controlled retry, set flash speed to **115200 baud**, manually enter programming mode before connecting, and keep GPIO0 in the required programming state through erase/write.
 
 Do not uninstall or clean up the existing FTDI COM-port assignments as part of this driver installation.
 
