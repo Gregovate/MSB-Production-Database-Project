@@ -876,6 +876,27 @@ After installation:
 5. assign/retain COM20 for the CH340 when available;
 6. verify the Tasmota flashing tool can open COM20 before relying on the adapter.
 
+### Tasmota flashing method
+
+Use the current official **Tasmota Web Installer** in Google Chrome:
+
+[Tasmota Web Installer](https://tasmota.github.io/install/)
+
+The Web Installer supports ESP82xx and ESP32 devices through the browser's Web Serial interface.
+
+For this Show PC:
+
+1. connect the CH340 programmer and confirm `USB-SERIAL CH340 (COM20)`;
+2. put the ESP device into programming mode;
+3. open the Tasmota Web Installer in Chrome;
+4. select the desired Tasmota firmware;
+5. click **Install**;
+6. when Chrome asks for a serial port, select the CH340 / COM20 device;
+7. for a first-time Tasmota flash, erase the existing flash before writing the new firmware;
+8. after flashing, remove GPIO0-to-GND/programming mode and power-cycle the device.
+
+Tasmotizer remains an available legacy GUI tool for ESP82xx devices, but the Web Installer is the preferred normal workflow for this appliance because it supports both ESP82xx and ESP32 without installing another flashing application.
+
 Do not uninstall or clean up the existing FTDI COM-port assignments as part of this driver installation.
 
 ---
