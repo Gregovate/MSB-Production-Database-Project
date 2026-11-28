@@ -349,6 +349,16 @@ LabelPrintService runtime mapping
     = how PRINT-SERVER physically renders that approved profile
 ```
 
+## October 19 #230 physical labelability — narrower Display label candidate, not an identity migration
+
+Greg's observed Candyland field pieces include **small Candy Cane Rows and Tumbling Gingerbread components** with existing permanent Display IDs but no practical existing physical label. Some Church Bells and other awkward shapes cannot physically accept any ordinary durable QR label. **Permanent `ref.display.display_id` does not prove a label was ever affixed or physically verified.** The [owning #230 physical identity/labelability engineering contract](../04_Containers_and_Storage/engineering/Reference_Data_Manager_Physical_Identity_and_Labelability_Contract.md) now requires explicit tag-present/missing/physically-impossible status, reviewed classification of integral show-base versus removable cargo, and approved Manager per-Display Print Label requests.
+
+**Proposed physical profile:** Greg wants a **24mm PT-P950NW laminated Display QR/name** option for compact pieces where the existing 36mm Default Display label is too large. This is a **profile candidate**, not a blanket change to 36mm defaults or proof that QR is scannable under field conditions. Approve this profile only after Brother/template b-PAC physical print, QR/text legibility at field scan distance using existing Zebra/phone/HOTWAV routes, cold/wet/UV/tape adhesion and media mismatch/preflight trials. Retain approved 36mm default and all existing physical full-URL QR payload compatibility. Use the existing `ref.display.print_label` → LabelPrintService polling/reset contract; do not create another print queue or put workstation template filenames on each Display record. #230 stores *which logical profile and whether the physical tag exists*, subject to schema audit, not the printers' media/template implementation.
+
+**When geometry makes labeling genuinely impossible:** document the no-QR physical exception against exact canonical Display/Scene/Setup-task membership and actual operator visual confirmation rather than requiring phone-based one-by-one lookups, inventing scanner input or guessing GPS. Do not hide these Display records from Testing, Setup or 2027 Takedown obligations. The #230 contract owns the reference classification; #132 owns Setup installation verification, #88 owns movement observations, and Labeling/Scanning owns the actual media/QR capability.
+
+**Status:** DRAFT requirement; no 24mm Display template or Production profile cutover accepted or deployed by this documentation. The current/default 36mm Display family below remains the actual baseline.
+
 ## Existing Display Default Direction
 
 Existing Displays should use the current 36 mm PT-P950NW two-line logical profile by default unless deliberately assigned another approved profile.
